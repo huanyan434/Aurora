@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - Aurora</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="popup-alert error">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>欢迎回来</h1>
+            <p>请登录您的账号</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login') }}">
+            <div class="form-group">
+                <label for="email">邮箱地址</label>
+                <input type="email" id="email" name="email" required 
+                       placeholder="请输入邮箱">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required
+                       placeholder="请输入密码">
+            </div>
+            
+            <div class="form-options">
+                <label>
+                    <input type="checkbox" name="remember"> 记住我
+                </label>
+            </div>
+            
+            <button type="submit" class="submit-btn">登录</button>
+        </form>
+        
+        <div class="auth-footer">
+            还没有账号？<a href="{{ url_for('auth.signup') }}">立即注册</a>
+        </div>
+    </div>
+    
+    <script>
+        // 获取弹出对话框元素
+        const popupAlert = document.querySelector('.popup-alert');
+        
+        if (popupAlert) {
+            // 3秒后自动关闭弹出框
+            setTimeout(() => {
+                popupAlert.style.animation = 'fadeOut 0.3s ease-out forwards';
+                setTimeout(() => {
+                    popupAlert.remove();
+                }, 300);
+            }, 3000);
+
+            // 点击对话框时立即关闭
+            popupAlert.addEventListener('click', () => {
+                popupAlert.style.animation = 'fadeOut 0.3s ease-out forwards';
+                setTimeout(() => {
+                    popupAlert.remove();
+                }, 300);
+            });
+        }
+    </script>
+</body>
+</html>

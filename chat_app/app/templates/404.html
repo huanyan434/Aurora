@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>404 - 页面未找到</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
+    <style>
+        .error-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg-color, #fff);
+            color: var(--dark-color, #333);
+        }
+        .error-code {
+            font-size: 8rem;
+            font-weight: bold;
+            margin: 0;
+            background: linear-gradient(45deg, #4361ee, #7209b7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .error-message {
+            font-size: 1.5rem;
+            margin: 1rem 0;
+            color: var(--gray-color, #666);
+        }
+        .back-link {
+            margin-top: 2rem;
+            padding: 0.8rem 1.5rem;
+            background: #4361ee;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .back-link:hover {
+            background: #3651d4;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-page">
+        <h1 class="error-code">404</h1>
+        <p class="error-message">抱歉，页面未找到</p>
+        <a href="/" class="back-link">返回首页</a>
+    </div>
+</body>
+</html> 
