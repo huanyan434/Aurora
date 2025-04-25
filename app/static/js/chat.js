@@ -1122,10 +1122,8 @@ document.addEventListener('DOMContentLoaded', function() {
         let processedContent = content;
         
         // 处理 <image>图片描述</image> 标签
-        if (displayOnly) {
-            // 如果是用于显示的内容，删除 <image> 标签
-            processedContent = processedContent.replace(/<image>(.*?)<\/image>/g, '');
-        }
+        // 始终删除 <image> 标签块，不管是否为显示模式
+        processedContent = processedContent.replace(/<image>.*?<\/image>/gs, '');
         
         // 处理 <base64>图片base64</base64> 标签
         // 将图片标签保存起来，等待文本处理后再附加到末尾
