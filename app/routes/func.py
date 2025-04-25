@@ -1,0 +1,882 @@
+from openai import OpenAI
+from dotenv import load_dotenv, find_dotenv
+import os
+import re
+import json
+import time
+import copy
+import threading
+import queue
+from app.history import save_history, load_history
+from app.utils.token_tracker import record_token_usage
+from flask_login import current_user
+import requests
+from flask import current_app
+
+# 全局变量，用于存储正在进行的响应
+active_responses = {}
+response_queues = {}
+response_locks = {}
+response_status = {}  # 状态: 'running', 'finished', 'error'
+
+# 当前用户ID全局变量
+current_user_id = None
+
+
+def model_name(model: str):
+    # 正向
+    """if model == "deepseek-ai/DeepSeek-R1":
+        model = "DeepSeek-R1"
+    elif model == "deepseek-ai/DeepSeek-V3":
+        model = "DeepSeek-V3"
+    elif model == "doubao-1-5-lite-32k-250115":
+        model = "Doubao-1.5-lite"
+    elif model == "doubao-1-5-pro-32k-250115":
+        model = "Doubao-1.5-pro"
+    elif model == "doubao-1-5-pro-256k-250115":
+        model = "Doubao-1.5-pro-256k"
+    elif model == "doubao-1-5-vision-pro-32k-250115":
+        model = "Doubao-1.5-vision-pro"""
+    # 反向
+    if model == "DeepSeek-R1":
+        model = "deepseek-ai/DeepSeek-R1"
+    elif model == "DeepSeek-V3":
+        model = "deepseek-ai/DeepSeek-V3"
+    elif model == "Doubao-1.5-lite":
+        model = "doubao-1-5-lite-32k-250115"
+    elif model == "Doubao-1.5-pro":
+        model = "doubao-1-5-pro-32k-250115"
+    elif model == "Doubao-1.5-pro-256k":
+        model = "doubao-1-5-pro-256k-250115"
+    elif model == "Doubao-1.5-vision-pro":
+        model = "doubao-1-5-vision-pro-32k-250115"
+    elif model == "Gemini-2.5-pro":
+        model = "gemini-2.5-pro-exp-03-25"
+    elif model == "Gemini-2.5-flash":
+        model = "models/gemini-2.5-flash-preview-04-17"
+    elif model == "Gemini-2.0-flash":
+        model = "models/gemini-2.0-flash"        
+    return model
+
+
+def stream_volcano_ark_api(model: str, history: list, response_queue):
+    _ = load_dotenv(find_dotenv())
+    api_key = os.environ['api_keyA']
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://ark.cn-beijing.volces.com/api/v3",
+        timeout=1800,
+    )
+
+    try:
+        # 创建流式响应
+        response = client.chat.completions.create(
+            model=model,
+            messages=history,
+            stream=True,
+        )
+
+        # 收集完整响应以便稍后计算token
+        reasoning_content = ""
+        content = ""
+        fstrs = True
+        fstct = True
+        stm = time.time()
+
+        # 统计token的估算值（基于字符数）
+        total_prompt_chars = sum(len(msg.get('content', ''))
+                                 for msg in history)
+        total_completion_chars = 0
+
+        for chunk in response:
+            if hasattr(
+                    chunk.choices[0].delta,
+                    'reasoning_content') and chunk.choices[0].delta.reasoning_content:
+                if fstrs:
+                    fstrs = False
+                reasoning_content += chunk.choices[0].delta.reasoning_content
+                tkt = time.time() - stm
+                response_text = "<think time=" + \
+                    str(int(tkt)) + ">" + reasoning_content + "</think>"
+                response_queue.put(response_text)
+            else:
+                if fstct:
+                    fstct = False
+                    tkt = time.time() - stm
+
+                # 有新内容时添加字符计数
+                if chunk.choices[0].delta.content:
+                    content += chunk.choices[0].delta.content
+                    total_completion_chars += len(
+                        chunk.choices[0].delta.content)
+
+                if not reasoning_content.strip():
+                    response_queue.put(content)
+                else:
+                    response_text = "<think time=" + \
+                        str(int(tkt)) + ">" + reasoning_content + \
+                        "</think>" + content
+                    response_queue.put(response_text)
+
+        # 流式响应完成后估算token并记录
+        chinese_chars_prompt = sum(1 for char in str(
+            history) if '\u4e00' <= char <= '\u9fff')
+        other_chars_prompt = total_prompt_chars - chinese_chars_prompt
+        prompt_tokens = int(chinese_chars_prompt * 0.6) + \
+            int(other_chars_prompt * 0.3)
+
+        chinese_chars_comp = sum(
+            1 for char in content if '\u4e00' <= char <= '\u9fff')
+        other_chars_comp = total_completion_chars - chinese_chars_comp
+        completion_tokens = int(chinese_chars_comp * 0.6) + \
+            int(other_chars_comp * 0.3)
+
+        # 记录token使用，使用全局用户ID
+        global current_user_id
+        user_id = current_user_id if current_user_id else 'anonymous'
+
+        try:
+            from flask import has_app_context
+            if has_app_context():
+                record_token_usage(
+                    user_id=user_id,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    model_name=model
+                )
+            else:
+                from app import create_app
+                app = create_app()
+                with app.app_context():
+                    record_token_usage(
+                        user_id=user_id,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        model_name=model
+                    )
+        except Exception as e:
+            print(f"记录token使用出错: {str(e)}")
+
+        # 标记响应完成
+        response_queue.put(None)
+        return "<think time=" + \
+            str(int(tkt)) + ">" + reasoning_content + \
+            "</think>" + content
+    except Exception as e:
+        print(f"Volcano API调用出错: {str(e)}")
+        response_queue.put(f"<e>{str(e)}</e>")
+        response_queue.put(None)
+        return f"发生错误: {str(e)}"
+
+
+def stream_siliconflow_api(model: str, history: list, response_queue):
+    _ = load_dotenv(find_dotenv())
+    api_key = os.environ['api_keyB']
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.siliconflow.cn/v1",
+        timeout=1800,
+    )
+
+    try:
+        # 创建流式响应
+        response = client.chat.completions.create(
+            model=model,
+            messages=history,
+            stream=True,
+        )
+
+        # 收集流式响应内容
+        reasoning_content = ""
+        content = ""
+        fstrs = True
+        fstct = True
+        stm = time.time()
+
+        for chunk in response:
+            if hasattr(
+                    chunk.choices[0].delta,
+                    'reasoning_content') and chunk.choices[0].delta.reasoning_content:
+                if fstrs:
+                    fstrs = False
+                reasoning_content += chunk.choices[0].delta.reasoning_content
+                tkt = time.time() - stm
+                response_text = "<think time=" + \
+                    str(int(tkt)) + ">" + reasoning_content + "</think>"
+                response_queue.put(response_text)
+            elif chunk.choices[0].delta.content:
+                if fstct:
+                    fstct = False
+                    tkt = time.time() - stm
+                content += chunk.choices[0].delta.content
+                if not reasoning_content.strip():
+                    response_queue.put(content)
+                else:
+                    response_text = "<think time=" + \
+                        str(int(tkt)) + ">" + reasoning_content + \
+                        "</think>" + content
+                    response_queue.put(response_text)
+
+        # 获取token使用信息并记录
+        global current_user_id
+        user_id = current_user_id if current_user_id else 'anonymous'
+        complete_response = client.chat.completions.create(
+            model=model,
+            messages=history,
+            stream=False,
+            max_tokens=1
+        )
+        prompt_tokens = complete_response.usage.prompt_tokens if hasattr(
+            complete_response, 'usage') else 0
+        completion_tokens = len(content) // 2
+
+        try:
+            from flask import has_app_context
+            if has_app_context():
+                record_token_usage(
+                    user_id=user_id,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    model_name=model
+                )
+            else:
+                from app import create_app
+                app = create_app()
+                with app.app_context():
+                    record_token_usage(
+                        user_id=user_id,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        model_name=model
+                    )
+        except Exception as e:
+            print(f"记录token使用出错: {str(e)}")
+
+        # 标记响应完成
+        response_queue.put(None)
+        return "<think time=" + \
+            str(int(tkt)) + ">" + reasoning_content + \
+            "</think>" + content
+    except Exception as e:
+        print(f"SiliconFlow API调用出错: {str(e)}")
+        response_queue.put(f"<e>{str(e)}</e>")
+        response_queue.put(None)
+        return f"发生错误: {str(e)}"
+
+def stream_gemini_api(model: str, history: list, response_queue):
+    _ = load_dotenv(find_dotenv())
+    api_key = os.environ['api_keyC']
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://gemini.wanyim.cn/v1beta",
+        timeout=1800,
+    )
+
+    try:
+        # 创建流式响应
+        response = client.chat.completions.create(
+            model=model,
+            messages=history,
+            stream=True,
+        )
+
+        # 收集流式响应内容
+        reasoning_content = ""
+        content = ""
+        fstrs = True
+        fstct = True
+        stm = time.time()
+
+        for chunk in response:
+            if hasattr(
+                    chunk.choices[0].delta,
+                    'reasoning_content') and chunk.choices[0].delta.reasoning_content:
+                if fstrs:
+                    fstrs = False
+                reasoning_content += chunk.choices[0].delta.reasoning_content
+                tkt = time.time() - stm
+                response_text = "<think time=" + \
+                    str(int(tkt)) + ">" + reasoning_content + "</think>"
+                response_queue.put(response_text)
+            elif chunk.choices[0].delta.content:
+                if fstct:
+                    fstct = False
+                    tkt = time.time() - stm
+                content += chunk.choices[0].delta.content
+                if not reasoning_content.strip():
+                    response_queue.put(content)
+                else:
+                    response_text = "<think time=" + \
+                        str(int(tkt)) + ">" + reasoning_content + \
+                        "</think>" + content
+                    response_queue.put(response_text)
+
+        # 获取token使用信息并记录
+        global current_user_id
+        user_id = current_user_id if current_user_id else 'anonymous'
+        complete_response = client.chat.completions.create(
+            model=model,
+            messages=history,
+            stream=False,
+            max_tokens=1
+        )
+        prompt_tokens = complete_response.usage.prompt_tokens if hasattr(
+            complete_response, 'usage') else 0
+        completion_tokens = len(content) // 2
+
+        try:
+            from flask import has_app_context
+            if has_app_context():
+                record_token_usage(
+                    user_id=user_id,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    model_name=model
+                )
+            else:
+                from app import create_app
+                app = create_app()
+                with app.app_context():
+                    record_token_usage(
+                        user_id=user_id,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        model_name=model
+                    )
+        except Exception as e:
+            print(f"记录token使用出错: {str(e)}")
+
+        # 标记响应完成
+        response_queue.put(None)
+        return "<think time=" + \
+            str(int(tkt)) + ">" + reasoning_content + \
+            "</think>" + content
+    except Exception as e:
+        print(f"Gemini API调用出错: {str(e)}")
+        response_queue.put(f"<e>{str(e)}</e>")
+        response_queue.put(None)
+        return f"发生错误: {str(e)}"
+
+def autohistory(history: dict, model: str, response_queue):
+    """处理历史并调用对应API生成回复"""    
+    # 创建历史记录的深拷贝，处理特殊标记
+    his = copy.deepcopy(history)
+    for i in his:
+        if i['role'] == 'user':
+            i['content'] = parse_base64_blocks(i['content'])
+        elif i['role'] == 'assistant':
+            i['content'] = parse_think_blocks(
+                parse_model_blocks(i['content']))[1]
+
+    # 保存原始模型名并转换为 API 调用格式
+    model_orig = model
+    api_model = model_name(model)
+
+    # 选择正确的 API 并调用
+    content = ""
+    try:
+        if "doubao" in api_model:
+            content = stream_volcano_ark_api(api_model, his, response_queue)
+        elif "gemini" in api_model:
+            content = stream_gemini_api(api_model, his, response_queue)
+        else:
+            content = stream_siliconflow_api(api_model, his, response_queue)
+    except Exception as e:
+        print(f"API调用出错: {str(e)}")
+        response_queue.put(f"<e>API调用失败: {str(e)}</e>")
+        response_queue.put(None)
+        content = f"处理请求时出错: {str(e)}"
+
+    history.append({"role": "assistant",
+                    "content": f"<model=\"{model_orig}\"/>" + content})
+    return history
+
+
+def parse_think_blocks(text):
+    """解析思考块，返回思考内容和剩余文本"""
+    import re
+
+    # 处理None或空字符串
+    if not text:
+        return None, ""
+
+    # 匹配 <think time=数字>内容</think> 格式
+    think_pattern = r'<think time=(\d+)>(.*?)</think>'
+    match = re.search(think_pattern, text, re.DOTALL)
+
+    if not match:
+        return None, text
+
+    # 提取思考时间和内容
+    think_time = match.group(1)
+    think_content = match.group(2).strip()
+
+    # 构造新的思考内容格式 - 确保包含完整的标签
+    think_block = f"<think time={think_time}>{think_content}</think>"
+
+    # 获取剩余文本（去除思考块的部分）
+    remaining_text = text[:match.start()] + text[match.end():]
+
+    return think_block, remaining_text.strip()
+
+
+def parse_image_blocks(text):
+    """解析图片块，返回剩余文本"""
+    import re
+
+    # 如果输入为None或空字符串，直接返回空字符串
+    if not text:
+        return ""
+
+    # 匹配 <image>内容</image> 格式
+    think_pattern = r'<image>(.*?)</image>'
+    match = re.search(think_pattern, text, re.DOTALL)
+
+    if not match:
+        return text
+
+    # 获取剩余文本
+    remaining_text = text[:match.start()] + text[match.end():]
+
+    return remaining_text.strip()
+
+
+def parse_base64_blocks(text):
+    """解析base64块，返回剩余文本"""
+    import re
+
+    # 如果输入为None或空字符串，直接返回空字符串
+    if not text:
+        return ""
+
+    # 匹配 <base64>内容</base64> 格式
+    think_pattern = r'<base64>(.*?)</base64>'
+    match = re.search(think_pattern, text, re.DOTALL)
+
+    if not match:
+        return text
+
+    # 获取剩余文本
+    remaining_text = text[:match.start()] + text[match.end():]
+
+    return remaining_text.strip()
+
+
+def parse_model_blocks(text):
+    """解析模型块，返回剩余文本"""
+    import re
+
+    # 如果输入为None或空字符串，直接返回空字符串
+    if not text:
+        return ""
+
+    # 匹配 <model="内容"> 格式
+    think_pattern = r'<model="(.*?)"/>'
+    match = re.search(think_pattern, text, re.DOTALL)
+
+    if not match:
+        return text
+
+    # 获取剩余文本
+    remaining_text = text[:match.start()] + text[match.end():]
+
+    return remaining_text.strip()
+
+
+def generate_thread(
+        message_id,
+        prompt,
+        conversation_id,
+        model,
+        image_base64=None,
+        user_id=None):
+    """生成响应的线程函数"""
+    # 初始化队列和状态
+    response_queues[message_id] = queue.Queue()
+    response_status[message_id] = 'running'
+
+    # 设置为全局变量以便其他函数可以访问
+    global current_user_id
+    if user_id is None:
+        user_id = 'anonymous'
+    current_user_id = user_id
+
+    # 导入必要模块
+    from flask import has_app_context
+
+    # 创建应用实例和上下文
+    app = None
+    try:
+        # 尝试导入应用模块并创建应用实例
+        from app import create_app
+        app = create_app()
+    except Exception as app_err:
+        print(f"创建应用实例失败: {str(app_err)}")
+        response_status[message_id] = 'error'
+        if message_id in response_queues:
+            response_queues[message_id].put(
+                f"<e>应用上下文创建失败: {str(app_err)}</e>")
+            response_queues[message_id].put(None)  # 发送结束标记
+        return
+
+    # 使用创建的应用上下文执行所有操作
+    with app.app_context():
+        try:
+            # 保存原始模型名
+            model_orig = model
+            # 转换模型名为API所需格式
+            model = model_name(model)
+
+            # 确保prompt不为None
+            if prompt is None:
+                prompt = ""
+
+            # 加载历史记录
+            try:
+                history = load_history(conversation_id)
+                print(f"成功加载历史记录，条数: {len(history)}")
+            except Exception as e:
+                print(f"加载历史记录出错: {str(e)}")
+                history = []  # 出错时使用空历史
+
+            # 调用图片解析
+            if image_base64 and not "gemini" in model:
+                describe = qwen_parse_image(image_base64)
+                prompt = prompt + \
+                    f"\n\n<image>用户上传了一张图片，你可以查看图片描述：{describe}</image>\n\n<base64>{image_base64}</base64>"
+            elif image_base64 and "gemini" in model:
+                prompt = [{"type": "image_url",
+                          "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
+                         {"type": "text",
+                          "text": prompt}]
+            # 增加用户消息到历史记录
+            history.append({"role": "user", "content": prompt})
+            # 保存历史记录
+            try:
+                save_history(conversation_id, history)
+                print(f"成功保存历史记录，条数: {len(history)}")
+            except Exception as e:
+                print(f"保存历史记录出错: {str(e)}")
+            # 使用线程安全的队列接收响应
+            updated_history = autohistory(
+                history, model_orig, response_queues[message_id])
+
+            # 保存历史记录
+            try:
+                save_history(conversation_id, updated_history)
+                print(f"成功保存历史记录，条数: {len(updated_history)}")
+            except Exception as e:
+                print(f"保存历史记录出错: {str(e)}")
+
+            # 标记响应完成
+            response_status[message_id] = 'finished'
+
+        except Exception as e:
+            print(f"生成响应时出错: {str(e)}")
+            response_status[message_id] = 'error'
+
+            if message_id in response_queues:
+                response_queues[message_id].put(f"<e>{str(e)}</e>")
+                response_queues[message_id].put(None)  # 发送结束标记
+
+
+def generate(
+        message_id,
+        prompt,
+        conversation_id,
+        model,
+        image_base64=None,
+        user_id=None):
+    """启动生成响应的线程，并返回流式响应"""
+
+    # 检查是否已有相同message_id的响应正在处理
+    if message_id in response_status and response_status[message_id] == 'running':
+        # 已经有线程在处理这个消息，直接使用现有队列
+        print(f"消息 {message_id} 已经在处理中，连接到现有队列")
+
+        # 返回连接成功信息，通知前端已成功连接到现有流
+        yield json.dumps({
+            "message_id": message_id,
+            "text": "",
+            "think": None,
+            "connected": True
+        }) + "\n"
+    elif message_id in response_status and response_status[message_id] == 'finished':
+        # 已经完成的请求，重新启动会创建错误，返回错误提示
+        yield json.dumps({
+            "message_id": message_id,
+            "text": "此请求已经完成，请创建新的请求",
+            "error": True
+        }) + "\n"
+        return
+    else:
+        # 如果是新的请求但没有提供prompt，也无法继续
+        if not prompt and message_id not in response_status:
+            yield json.dumps({
+                "message_id": message_id,
+                "text": "缺少提示内容，无法继续",
+                "error": True
+            }) + "\n"
+            return
+
+        # 启动新线程处理生成
+        threading.Thread(
+            target=generate_thread,
+            args=(
+                message_id,
+                prompt,
+                conversation_id,
+                model,
+                image_base64,
+                user_id),
+            daemon=True).start()
+
+        # 返回已启动消息，通知前端请求已开始处理
+        yield json.dumps({
+            "message_id": message_id,
+            "text": "",
+            "think": None,
+            "started": True
+        }) + "\n"
+
+    # 返回流式响应
+    while True:
+        try:
+            # 如果消息ID不在队列中，可能是第一次连接，需要等待队列建立
+            if message_id not in response_queues:
+                time.sleep(0.1)
+                continue
+
+            # 从队列获取响应
+            response = response_queues[message_id].get(timeout=30)  # 30秒超时
+
+            # 如果收到None，表示响应结束
+            if response is None:
+                # 发送完成信号
+                yield json.dumps({
+                    "message_id": message_id,
+                    "text": "",
+                    "think": None,
+                    "finished": True
+                }) + "\n"
+                break
+
+            # 检查是否是错误消息
+            if (response.startswith("<e>") and response.endswith("</e>")
+                ) or (response.startswith("<e>") and response.endswith("</e>")):
+                # 提取错误信息
+                if response.startswith("<e>"):
+                    error_msg = response[3:-4]  # 提取<e>...</e>中的错误信息
+                else:
+                    error_msg = response[7:-8]  # 提取<e>...</e>中的错误信息
+
+                yield json.dumps({
+                    "message_id": message_id,
+                    "text": f"发生错误: {error_msg}",
+                    "think": None,
+                    "error": True
+                }) + "\n"
+                continue
+
+            # 解析并格式化响应
+            parsed = parse_think_blocks(response)
+            if parsed[0]:  # 如果返回了思考内容
+                think_block, remaining_text = parsed
+                yield json.dumps({
+                    "message_id": message_id,
+                    "text": remaining_text,
+                    "think": think_block
+                }) + "\n"
+            else:
+                yield json.dumps({
+                    "message_id": message_id,
+                    "text": response,
+                    "think": None
+                }) + "\n"
+
+        except queue.Empty:
+            # 检查状态，如果已完成或出错但没有收到None，则退出
+            if message_id in response_status and response_status[message_id] in [
+                    'finished', 'error']:
+                # 发送完成信号
+                yield json.dumps({
+                    "message_id": message_id,
+                    "text": "",
+                    "think": None,
+                    "finished": True
+                }) + "\n"
+                break
+
+            # 发送心跳以保持连接
+            yield json.dumps({
+                "message_id": message_id,
+                "text": "",
+                "think": None,
+                "heartbeat": True
+            }) + "\n"
+            continue
+        except Exception as e:
+            print(f"流式响应过程中出错: {str(e)}")
+            yield json.dumps({
+                "message_id": message_id,
+                "text": f"发生错误: {str(e)}",
+                "think": None,
+                "error": True
+            }) + "\n"
+            break
+
+    # 清理资源（根据需要决定是否保留以便客户端重连）
+    # 如果状态是finished，可以在适当的时候清理资源
+    if message_id in response_status and response_status[message_id] == 'finished':
+        # 可以选择延迟清理，例如10分钟后
+        def delayed_cleanup():
+            time.sleep(600)  # 10分钟后
+            if message_id in response_queues:
+                del response_queues[message_id]
+            if message_id in response_status:
+                del response_status[message_id]
+
+        threading.Thread(target=delayed_cleanup, daemon=True).start()
+
+
+def get_active_responses():
+    """获取当前所有活跃的响应状态，用于前端检查未完成的响应"""
+    active = {}
+    for msg_id, status in response_status.items():
+        if status == 'running':
+            active[msg_id] = {
+                'status': status,
+                'message_id': msg_id
+            }
+    return active
+
+
+def qwen_parse_image(image_base64):
+    """使用通义千问API的视觉功能解析图片"""
+    if not image_base64:
+        return None
+
+    try:
+        api_key = os.environ.get('api_keyB')
+        if not api_key:
+            print("未配置SiliconFlow API密钥，无法处理图片")
+            return "无法解析图片，请检查API配置"
+
+        # 初始化客户端
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.siliconflow.cn/v1",
+            timeout=60
+        )
+
+        # 构建请求
+        messages = [{"role": "user",
+                     "content": [{"type": "image_url",
+                                  "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
+                                 {"type": "text",
+                                  "text": "请详细描述这张图片的内容，不要使用markdown格式，不要书名号。"}]}]
+
+        # 发送请求 - 使用Qwen/Qwen2.5-VL-32B-Instruct作为视觉模型
+        response = client.chat.completions.create(
+            model="Qwen/Qwen2.5-VL-32B-Instruct",
+            messages=messages,
+            max_tokens=1000
+        )
+
+        # 解析响应
+        if response and response.choices and len(response.choices) > 0:
+            description = response.choices[0].message.content
+
+            # 获取token使用情况
+            prompt_tokens = getattr(response.usage, 'prompt_tokens', 0)
+            completion_tokens = getattr(response.usage, 'completion_tokens', 0)
+
+            # 使用全局用户ID
+            global current_user_id
+            user_id = current_user_id or 'anonymous'
+
+            # 记录token使用
+            try:
+                record_token_usage(
+                    user_id=user_id,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    model_name='Qwen/Qwen2.5-VL-32B-Instruct'
+                )
+                print(
+                    f"图片API Token记录 - 用户: {user_id}, 模型: Qwen/Qwen2.5-VL-32B-Instruct, 输入: {prompt_tokens}, 输出: {completion_tokens}")
+            except Exception as e:
+                print(f"记录token使用出错: {str(e)}")
+
+            return description
+        else:
+            print("API响应无效")
+            return "无法解析图片内容"
+
+    except Exception as e:
+        print(f"解析图片时出错: {str(e)}")
+        return f"图片解析失败: {str(e)}"
+
+
+def name_conversation(conversation_id):
+    """根据对话内容生成标题"""
+    # 导入必要的模块
+    from flask import has_app_context
+
+    # 创建应用实例和上下文
+    app = None
+    try:
+        # 尝试导入应用模块并创建应用实例
+        from app import create_app
+        app = create_app()
+    except Exception as app_err:
+        print(f"创建应用实例失败: {str(app_err)}")
+        return "无法生成标题：应用上下文创建失败"
+
+    # 使用创建的应用上下文执行所有操作
+    with app.app_context():
+        # 加载历史记录
+        try:
+            history = load_history(conversation_id)
+            print(f"成功加载对话历史记录，条数: {len(history)}")
+        except Exception as e:
+            print(f"加载对话历史记录出错: {str(e)}")
+            return "无法加载对话历史：" + str(e)
+
+    if not history:
+        return "不存在的对话历史"
+
+    # 处理历史内容
+    for i in history:
+        if i['role'] == 'user':
+            i['content'] = parse_base64_blocks(i['content'])
+        if i['role'] == 'assistant':
+            i['content'] = parse_think_blocks(
+                parse_model_blocks(i['content']))[1]
+
+    # 添加请求获取标题
+    title_prompt = "请根据以上对话内容生成一个标题，不要生成其他内容，标题需要简洁明了，不要超过10个字，不要使用markdown格式，不要书名号，不要emoji和konomoji，不要使用特殊字符，不要括号"
+    history.append({"role": "user", "content": title_prompt})
+
+    # 指定使用DeepSeek-V3模型生成标题
+    front_model = "DeepSeek-V3"
+
+    # 创建队列接收响应
+    temp_queue = queue.Queue()
+
+    # 获取响应
+    updated_history = autohistory(
+        history, front_model, temp_queue)
+
+    # 从队列获取最后一个响应
+    content = ""
+    while True:
+        try:
+            response = temp_queue.get(timeout=1)
+            if response is None:
+                break
+            content = response
+        except queue.Empty:
+            break
+
+    return content

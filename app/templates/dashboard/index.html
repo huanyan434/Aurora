@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}仪表盘{% endblock %}
+
+{% block styles %}
+<style>
+    .card {
+        transition: transform 0.3s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .stat-unit {
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+    .token-breakdown {
+        font-size: 0.8rem;
+        margin-top: 10px;
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>系统统计</h1>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">总消息数</h5>
+                    <p class="card-text stat-value" id="total-messages">加载中...</p>
+                    <div class="stat-unit">条消息</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">总用户数</h5>
+                    <p class="card-text stat-value" id="total-users">加载中...</p>
+                    <div class="stat-unit">位用户</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">在线用户数</h5>
+                    <p class="card-text stat-value" id="online-users">加载中...</p>
+                    <div class="stat-unit">位用户在线</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Token使用量</h5>
+                    <p class="card-text stat-value" id="total-tokens">加载中...</p>
+                    <div class="stat-unit">总Token</div>
+                    <div class="token-breakdown">
+                        输入: <span id="prompt-tokens">-</span> | 
+                        输出: <span id="completion-tokens">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">24小时Token使用量</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-center" style="height: 120px;">
+                        <div class="text-center">
+                            <div class="h2" id="recent-24h-tokens">加载中...</div>
+                            <div class="text-muted">过去24小时</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">系统状态</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-around" style="height: 120px;">
+                        <div class="text-center">
+                            <div class="h4">Token计费</div>
+                            <div class="badge bg-success">已启用</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="h4">API状态</div>
+                            <div class="badge bg-success">在线</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function formatNumber(num) {
+        return new Intl.NumberFormat('zh-CN').format(num);
+    }
+    
+    function updateStats() {
+        fetch('/dashboard/stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-messages').textContent = formatNumber(data.total_messages);
+                document.getElementById('total-users').textContent = formatNumber(data.total_users);
+                document.getElementById('online-users').textContent = formatNumber(data.online_users);
+                document.getElementById('total-tokens').textContent = formatNumber(data.total_tokens);
+                document.getElementById('prompt-tokens').textContent = formatNumber(data.prompt_tokens);
+                document.getElementById('completion-tokens').textContent = formatNumber(data.completion_tokens);
+                document.getElementById('recent-24h-tokens').textContent = formatNumber(data.recent_24h_tokens);
+            })
+            .catch(error => {
+                console.error('获取统计数据失败:', error);
+            });
+    }
+
+    // 页面加载时获取数据
+    updateStats();
+    
+    // 每30秒更新一次数据
+    setInterval(updateStats, 30000);
+</script>
+{% endblock %} 

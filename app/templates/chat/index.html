@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    <script src="https://s4.zstatic.net/ajax/libs/marked/15.0.7/marked.min.js"></script>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://s4.zstatic.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://s4.zstatic.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <!-- KaTeX Auto-render Extension -->
+    <script defer src="https://s4.zstatic.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <!-- 侧边栏切换按钮 -->
+    <button class="sidebar-toggle">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+        </svg>
+    </button>
+    <div class="app-container">
+        <!-- 遮罩层 -->
+        <div class="sidebar-overlay"></div>
+        
+        <!-- 侧边栏 -->
+        <div class="conversation-sidebar {{ 'collapsed' if session.get('sidebar_collapsed') else '' }}">
+            <div class="sidebar-header">
+                <h2>对话历史</h2>
+                <button id="new-chat-btn" class="new-chat-btn">新对话</button>
+            </div>
+            
+            <!-- 对话列表 -->
+            <div class="conversation-list" id="conversations-list">
+                <!-- 对话列表项会通过 JavaScript 动态添加 -->
+            </div>
+
+            <!-- 用户信息 -->
+            <div class="user-profile">
+                <div class="user-avatar">
+                    {{ current_user.username[0].upper() }}
+                </div>
+                <div class="user-info">
+                    <div class="user-name">{{ current_user.username }}</div>
+                    <div class="user-status">在线</div>
+                </div>
+                <button class="logout-btn" title="退出登录">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 只保留一个折叠按钮 -->
+        <button class="collapse-btn {{ 'collapsed' if session.get('sidebar_collapsed') else '' }}">
+            <svg class="collapse-icon" viewBox="0 0 24 24">
+                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+            </svg>
+        </button>
+
+        <!-- 主聊天区域 -->
+        <div class="chat-main">
+            <!-- 在聊天界面顶部添加模型选择器 -->
+            <div class="model-select">
+                <div class="model-select-header">
+                    <span class="selected-model">DeepSeek-R1</span>
+                    <span class="arrow"></span>
+                </div>
+                <div class="model-select-options">
+                    <div class="model-option" data-value="DeepSeek-R1">
+                        <img src="{{ url_for('static', filename='models/DeepSeek-R1.png') }}" alt="DeepSeek-R1" class="model-option-icon">
+                        <span>DeepSeek-R1</span>
+                    </div>
+                    <div class="model-option" data-value="DeepSeek-V3">
+                        <img src="{{ url_for('static', filename='models/DeepSeek-V3.png') }}" alt="DeepSeek-V3" class="model-option-icon">
+                        <span>DeepSeek-V3</span>
+                    </div>
+                    <div class="model-option" data-value="Doubao-1.5-lite">
+                        <img src="{{ url_for('static', filename='models/Doubao-1.5-lite.png') }}" alt="Doubao-1.5-lite" class="model-option-icon">
+                        <span>Doubao-1.5-lite</span>
+                    </div>
+                    <div class="model-option" data-value="Doubao-1.5-pro">
+                        <img src="{{ url_for('static', filename='models/Doubao-1.5-pro.png') }}" alt="Doubao-1.5-pro" class="model-option-icon">
+                        <span>Doubao-1.5-pro</span>
+                    </div>
+                    <div class="model-option" data-value="Doubao-1.5-pro-256k">
+                        <img src="{{ url_for('static', filename='models/Doubao-1.5-pro-256k.png') }}" alt="Doubao-1.5-pro-256k" class="model-option-icon">
+                        <span>Doubao-1.5-pro-256k</span>
+                    </div>
+                    <div class="model-option" data-value="Doubao-1.5-vision-pro">
+                        <img src="{{ url_for('static', filename='models/Doubao-1.5-vision-pro.png') }}" alt="Doubao-1.5-vision-pro" class="model-option-icon">
+                        <span>Doubao-1.5-vision-pro</span>
+                    </div>
+                    <div class="model-option" data-value="Gemini-2.5-pro">
+                        <img src="{{ url_for('static', filename='models/Gemini-2.5-pro.png') }}" alt="Gemini-2.5-pro" class="model-option-icon">
+                        <span>Gemini-2.5-pro</span>
+                    </div>
+                    <div class="model-option" data-value="Gemini-2.5-flash">
+                        <img src="{{ url_for('static', filename='models/Gemini-2.5-flash.png') }}" alt="Gemini-2.5-flash" class="model-option-icon">
+                        <span>Gemini-2.5-flash</span>
+                    </div>
+                    <div class="model-option" data-value="Gemini-2.0-flash">
+                        <img src="{{ url_for('static', filename='models/Gemini-2.0-flash.png') }}" alt="Gemini-2.0-flash" class="model-option-icon">
+                        <span>Gemini-2.0-flash</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 消息区域 -->
+            <div id="messages" class="messages">
+                <!-- 消息内容将通过 JavaScript 动态添加 -->
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-area">
+                <!-- 图片预览区域 -->
+                <div id="image-preview-container" class="image-preview-container" style="display: none;">
+                    <div class="preview-image-wrapper">
+                        <img id="preview-image" src="" alt="预览图片">
+                        <button type="button" class="remove-image-btn" title="删除图片">×</button>
+                    </div>
+                </div>
+                <div class="input-row">
+                    <textarea 
+                        id="message-input" 
+                        placeholder="给 Aurora 发送消息..."
+                        rows="1"
+                    ></textarea>
+                    <button class="image-upload-button" type="button" title="上传图片">
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+                        </svg>
+                        <input type="file" id="image-upload" accept="image/*" style="display:none">
+                    </button>
+                    <button class="send-button" type="button">
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+</body>
+</html>

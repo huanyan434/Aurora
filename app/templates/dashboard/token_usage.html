@@ -1,0 +1,631 @@
+{% extends "base.html" %}
+
+{% block title %}Token使用量统计 - 仪表盘{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://s4.zstatic.net/npm/apexcharts@3.35.2/dist/apexcharts.min.css">
+<style>
+    .stats-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .stats-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+    .chart-container {
+        height: 300px;
+        margin-bottom: 20px;
+    }
+    .token-label {
+        color: #fd7e14;
+        font-weight: bold;
+    }
+    .token-progress {
+        height: 8px;
+        border-radius: 4px;
+    }
+    .date-range-selector {
+        margin-bottom: 20px;
+    }
+    .model-badge {
+        margin-right: 5px;
+        margin-bottom: 5px;
+        border-radius: 20px;
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+    .table-responsive {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h1 class="mb-4">Token使用量统计</h1>
+    
+    <!-- 统计卡片区域 -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card stats-card bg-primary text-white">
+                <div class="card-body text-center">
+                    <div class="stats-icon">
+                        <i class="bi bi-hash"></i>
+                    </div>
+                    <h5>总Token使用量</h5>
+                    <h2 id="total-tokens">加载中...</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stats-card bg-success text-white">
+                <div class="card-body text-center">
+                    <div class="stats-icon">
+                        <i class="bi bi-arrow-up-right-circle"></i>
+                    </div>
+                    <h5>提示词Token</h5>
+                    <h2 id="prompt-tokens">加载中...</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stats-card bg-info text-white">
+                <div class="card-body text-center">
+                    <div class="stats-icon">
+                        <i class="bi bi-arrow-down-left-circle"></i>
+                    </div>
+                    <h5>回复Token</h5>
+                    <h2 id="completion-tokens">加载中...</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stats-card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <div class="stats-icon">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <h5>近24小时使用量</h5>
+                    <h2 id="recent-tokens">加载中...</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 图表区域 -->
+    <div class="row mb-4">
+        <div class="col-md-8 mb-3">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">每日Token使用趋势</h5>
+                    <div class="btn-group date-range-selector">
+                        <button type="button" class="btn btn-sm btn-outline-light active" data-range="7">7天</button>
+                        <button type="button" class="btn btn-sm btn-outline-light" data-range="30">30天</button>
+                        <button type="button" class="btn btn-sm btn-outline-light" data-range="all">全部</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="dailyTokenChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">提示词与回复Token分布</h5>
+                </div>
+                <div class="card-body">
+                    <div id="tokenDistributionChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">模型使用分布</h5>
+                </div>
+                <div class="card-body">
+                    <div id="modelDistributionChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">用户Token使用情况</h5>
+                </div>
+                <div class="card-body">
+                    <div id="userTokenChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 详细数据区域 -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">模型使用详情</h5>
+                    <button class="btn btn-sm btn-outline-light" id="refresh-model-btn">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>模型名称</th>
+                                    <th>使用量</th>
+                                    <th>占比</th>
+                                </tr>
+                            </thead>
+                            <tbody id="model-table">
+                                <tr>
+                                    <td colspan="3" class="text-center">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">用户使用详情</h5>
+                    <button class="btn btn-sm btn-outline-light" id="refresh-user-btn">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>用户名</th>
+                                    <th>使用量</th>
+                                    <th>占比</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-table">
+                                <tr>
+                                    <td colspan="3" class="text-center">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://s4.zstatic.net/npm/apexcharts@3.35.2/dist/apexcharts.min.js"></script>
+<script>
+    // 格式化数字
+    function formatNumber(num) {
+        return new Intl.NumberFormat('zh-CN').format(num);
+    }
+    
+    // 图表对象
+    let dailyTokenChart = null;
+    let tokenDistributionChart = null;
+    let modelDistributionChart = null;
+    let userTokenChart = null;
+    
+    // 全局数据存储
+    let tokenData = {
+        daily_data: [],
+        model_data: [],
+        user_data: []
+    };
+    
+    // 初始化图表
+    function initCharts() {
+        // 每日Token使用趋势图
+        const dailyTokenOptions = {
+            series: [{
+                name: 'Token使用量',
+                data: []
+            }],
+            chart: {
+                type: 'area',
+                height: 300,
+                toolbar: {
+                    show: false
+                },
+                zoom: {
+                    enabled: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3
+            },
+            colors: ['#4e73df'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.7,
+                    opacityTo: 0.3,
+                    stops: [0, 90, 100]
+                }
+            },
+            xaxis: {
+                categories: [],
+                labels: {
+                    rotate: -45,
+                    rotateAlways: false
+                }
+            },
+            yaxis: {
+                labels: {
+                    formatter: function(val) {
+                        return formatNumber(val);
+                    }
+                }
+            },
+            markers: {
+                size: 4,
+                colors: ['#4e73df'],
+                strokeColors: '#fff',
+                strokeWidth: 2,
+                hover: {
+                    size: 6
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function(val) {
+                        return formatNumber(val) + " tokens";
+                    }
+                }
+            }
+        };
+        
+        // Token分布图（提示词/回复）
+        const tokenDistributionOptions = {
+            series: [0, 0],
+            labels: ['提示词Token', '回复Token'],
+            chart: {
+                type: 'donut',
+                height: 300
+            },
+            colors: ['#1cc88a', '#36b9cc'],
+            legend: {
+                position: 'bottom'
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: '总Token',
+                                formatter: function (w) {
+                                    return formatNumber(w.globals.seriesTotals.reduce((a, b) => a + b, 0));
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        height: 250
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+        
+        // 模型分布图
+        const modelDistributionOptions = {
+            series: [],
+            chart: {
+                type: 'donut',
+                height: 300
+            },
+            labels: [],
+            colors: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b'],
+            legend: {
+                position: 'bottom'
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%'
+                    }
+                }
+            },
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        height: 250
+                    },
+                    legend: {
+                        show: false
+                    }
+                }
+            }]
+        };
+        
+        // 用户Token使用情况图
+        const userTokenOptions = {
+            series: [{
+                name: 'Token使用量',
+                data: []
+            }],
+            chart: {
+                type: 'bar',
+                height: 300,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: true,
+                    borderRadius: 4,
+                    dataLabels: {
+                        position: 'top'
+                    }
+                }
+            },
+            colors: ['#4e73df'],
+            dataLabels: {
+                enabled: true,
+                formatter: function (val) {
+                    return formatNumber(val);
+                },
+                offsetX: 20,
+                style: {
+                    fontSize: '12px',
+                    colors: ['#304758']
+                }
+            },
+            xaxis: {
+                categories: [],
+                labels: {
+                    formatter: function(val) {
+                        return formatNumber(val);
+                    }
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function(val) {
+                        return formatNumber(val) + " tokens";
+                    }
+                }
+            }
+        };
+        
+        // 初始化图表
+        dailyTokenChart = new ApexCharts(document.getElementById('dailyTokenChart'), dailyTokenOptions);
+        tokenDistributionChart = new ApexCharts(document.getElementById('tokenDistributionChart'), tokenDistributionOptions);
+        modelDistributionChart = new ApexCharts(document.getElementById('modelDistributionChart'), modelDistributionOptions);
+        userTokenChart = new ApexCharts(document.getElementById('userTokenChart'), userTokenOptions);
+        
+        dailyTokenChart.render();
+        tokenDistributionChart.render();
+        modelDistributionChart.render();
+        userTokenChart.render();
+    }
+    
+    // 更新图表数据
+    function updateCharts(data, daysRange = 7) {
+        // 更新每日Token使用趋势图
+        let filteredDailyData = [...data.daily_data];
+        if (daysRange !== 'all' && filteredDailyData.length > daysRange) {
+            filteredDailyData = filteredDailyData.slice(-daysRange);
+        }
+        
+        const dates = filteredDailyData.map(item => item.date);
+        const tokenValues = filteredDailyData.map(item => item.tokens);
+        
+        dailyTokenChart.updateOptions({
+            xaxis: {
+                categories: dates
+            }
+        });
+        dailyTokenChart.updateSeries([{
+            name: 'Token使用量',
+            data: tokenValues
+        }]);
+        
+        // 更新Token分布图
+        tokenDistributionChart.updateSeries([
+            data.prompt_tokens,
+            data.completion_tokens
+        ]);
+        
+        // 更新模型分布图
+        const modelLabels = data.model_data.map(item => item.model);
+        const modelValues = data.model_data.map(item => item.tokens);
+        
+        modelDistributionChart.updateOptions({
+            labels: modelLabels
+        });
+        modelDistributionChart.updateSeries(modelValues);
+        
+        // 更新用户Token使用情况图
+        const topUsers = data.user_data.slice(0, 5);
+        const usernames = topUsers.map(item => item.username);
+        const userTokens = topUsers.map(item => item.tokens);
+        
+        userTokenChart.updateOptions({
+            xaxis: {
+                categories: usernames
+            }
+        });
+        userTokenChart.updateSeries([{
+            name: 'Token使用量',
+            data: userTokens
+        }]);
+    }
+    
+    // 加载模型使用详情表格
+    function loadModelTable(modelData, totalTokens) {
+        const modelTable = document.getElementById('model-table');
+        modelTable.innerHTML = '';
+        
+        if (modelData.length === 0) {
+            modelTable.innerHTML = '<tr><td colspan="3" class="text-center">没有模型使用数据</td></tr>';
+            return;
+        }
+        
+        modelData.forEach(item => {
+            const row = document.createElement('tr');
+            const percentage = (item.tokens / totalTokens * 100).toFixed(2);
+            
+            row.innerHTML = `
+                <td>
+                    <span class="model-badge bg-primary text-white">${item.model}</span>
+                </td>
+                <td>${formatNumber(item.tokens)}</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1 me-2 token-progress">
+                            <div class="progress-bar bg-primary" style="width: ${percentage}%"></div>
+                        </div>
+                        <span>${percentage}%</span>
+                    </div>
+                </td>
+            `;
+            
+            modelTable.appendChild(row);
+        });
+    }
+    
+    // 加载用户使用详情表格
+    function loadUserTable(userData, totalTokens) {
+        const userTable = document.getElementById('user-table');
+        userTable.innerHTML = '';
+        
+        if (userData.length === 0) {
+            userTable.innerHTML = '<tr><td colspan="3" class="text-center">没有用户使用数据</td></tr>';
+            return;
+        }
+        
+        userData.forEach(item => {
+            const row = document.createElement('tr');
+            const percentage = (item.tokens / totalTokens * 100).toFixed(2);
+            
+            row.innerHTML = `
+                <td>${item.username}</td>
+                <td>${formatNumber(item.tokens)}</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1 me-2 token-progress">
+                            <div class="progress-bar bg-success" style="width: ${percentage}%"></div>
+                        </div>
+                        <span>${percentage}%</span>
+                    </div>
+                </td>
+            `;
+            
+            userTable.appendChild(row);
+        });
+    }
+    
+    // 加载Token使用量数据
+    function loadTokenUsageData() {
+        fetch('/dashboard/usage_data')
+            .then(response => response.json())
+            .then(data => {
+                // 存储数据
+                tokenData = data;
+                
+                // 填充统计数据
+                document.getElementById('total-tokens').textContent = formatNumber(data.total_tokens);
+                document.getElementById('prompt-tokens').textContent = formatNumber(data.prompt_tokens);
+                document.getElementById('completion-tokens').textContent = formatNumber(data.completion_tokens);
+                document.getElementById('recent-tokens').textContent = formatNumber(data.recent_24h_tokens);
+                
+                // 更新图表
+                updateCharts(data, 7); // 默认显示7天
+                
+                // 更新表格
+                loadModelTable(data.model_data, data.total_tokens);
+                loadUserTable(data.user_data, data.total_tokens);
+            })
+            .catch(error => {
+                console.error('获取Token使用量数据失败:', error);
+                document.getElementById('total-tokens').textContent = '加载失败';
+                document.getElementById('prompt-tokens').textContent = '加载失败';
+                document.getElementById('completion-tokens').textContent = '加载失败';
+                document.getElementById('recent-tokens').textContent = '加载失败';
+            });
+    }
+    
+    // 初始化日期范围选择器
+    function initDateRangeSelector() {
+        const buttons = document.querySelectorAll('.date-range-selector button');
+        
+        buttons.forEach(button => {
+            button.addEventListener('click', function() {
+                // 移除所有按钮的active类
+                buttons.forEach(btn => btn.classList.remove('active'));
+                
+                // 添加当前按钮的active类
+                this.classList.add('active');
+                
+                // 获取日期范围
+                const range = this.getAttribute('data-range');
+                
+                // 更新图表
+                updateCharts(tokenData, range);
+            });
+        });
+    }
+    
+    // 页面初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化图表
+        initCharts();
+        
+        // 初始化日期范围选择器
+        initDateRangeSelector();
+        
+        // 加载数据
+        loadTokenUsageData();
+        
+        // 添加刷新按钮功能
+        document.getElementById('refresh-model-btn').addEventListener('click', function() {
+            loadTokenUsageData();
+        });
+        
+        document.getElementById('refresh-user-btn').addEventListener('click', function() {
+            loadTokenUsageData();
+        });
+        
+        // 每5分钟自动刷新一次
+        setInterval(loadTokenUsageData, 300000);
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,506 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理 - 仪表盘{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://s4.zstatic.net/npm/apexcharts@3.35.2/dist/apexcharts.min.css">
+<style>
+    .online-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    .online {
+        background-color: #28a745;
+    }
+    .offline {
+        background-color: #dc3545;
+    }
+    .search-box {
+        margin-bottom: 20px;
+    }
+    .stats-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .stats-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+    .chart-container {
+        height: 300px;
+        margin-bottom: 20px;
+    }
+    .user-card {
+        border-radius: 10px;
+        margin-bottom: 15px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .user-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .user-card.online {
+        border-left: 4px solid #28a745;
+    }
+    .user-card.offline {
+        border-left: 4px solid #dc3545;
+    }
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #6c757d;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    .card-view-toggle {
+        margin-bottom: 15px;
+    }
+    #userStatusChart {
+        margin: 0 auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h1 class="mb-4">用户管理</h1>
+    
+    <!-- 统计卡片区域 -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card stats-card bg-primary text-white">
+                <div class="card-body text-center">
+                    <div class="stats-icon">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <h5>总用户数</h5>
+                    <h2 id="total-users-count">加载中...</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card stats-card bg-success text-white">
+                <div class="card-body text-center">
+                    <div class="stats-icon">
+                        <i class="bi bi-person-check-fill"></i>
+                    </div>
+                    <h5>在线用户数</h5>
+                    <h2 id="online-users-count">加载中...</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 图表区域 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">用户状态分布</h5>
+                </div>
+                <div class="card-body">
+                    <div id="userStatusChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 搜索和视图切换 -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="search-box input-group">
+                <input type="text" id="user-search" class="form-control" placeholder="搜索用户名或邮箱...">
+                <button class="btn btn-outline-secondary" type="button" id="refresh-btn">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                </button>
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <div class="btn-group card-view-toggle" role="group">
+                <button type="button" class="btn btn-outline-primary active" id="card-view-btn">
+                    <i class="bi bi-grid-3x3-gap-fill"></i> 卡片视图
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="table-view-btn">
+                    <i class="bi bi-table"></i> 表格视图
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 用户列表区域 - 卡片视图 -->
+    <div class="row" id="users-card-container">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-2">加载用户数据中...</p>
+        </div>
+    </div>
+    
+    <!-- 用户列表区域 - 表格视图 (默认隐藏) -->
+    <div class="row d-none" id="users-table-container">
+        <div class="col">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">用户列表</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>用户名</th>
+                                    <th>邮箱</th>
+                                    <th>状态</th>
+                                    <th>会话数</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table">
+                                <tr>
+                                    <td colspan="5" class="text-center">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 用户详情模态框 -->
+    <div class="modal fade" id="userDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userDetailTitle">用户详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6 class="text-muted">ID</h6>
+                                <p id="modal-user-id">-</p>
+                            </div>
+                            <div class="mb-3">
+                                <h6 class="text-muted">用户名</h6>
+                                <p id="modal-username">-</p>
+                            </div>
+                            <div class="mb-3">
+                                <h6 class="text-muted">邮箱</h6>
+                                <p id="modal-email">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6 class="text-muted">状态</h6>
+                                <p id="modal-status">-</p>
+                            </div>
+                            <div class="mb-3">
+                                <h6 class="text-muted">会话数</h6>
+                                <p id="modal-conversations">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://s4.zstatic.net/npm/apexcharts@3.35.2/dist/apexcharts.min.js"></script>
+<script>
+    // 格式化数字
+    function formatNumber(num) {
+        return new Intl.NumberFormat('zh-CN').format(num);
+    }
+    
+    // 图表对象
+    let userStatusChart = null;
+    
+    // 初始化图表
+    function initCharts() {
+        // 用户状态分布图
+        const userStatusOptions = {
+            series: [0, 0],
+            labels: ['在线', '离线'],
+            chart: {
+                type: 'donut',
+                height: 300
+            },
+            colors: ['#28a745', '#dc3545'],
+            legend: {
+                position: 'bottom'
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: '总用户',
+                                formatter: function (w) {
+                                    return formatNumber(w.globals.seriesTotals.reduce((a, b) => a + b, 0));
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        height: 250
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+        
+        // 初始化图表
+        userStatusChart = new ApexCharts(document.getElementById('userStatusChart'), userStatusOptions);
+        userStatusChart.render();
+    }
+    
+    // 更新图表数据
+    function updateCharts(users) {
+        // 用户状态数据
+        const onlineCount = users.filter(user => user.is_online).length;
+        const offlineCount = users.length - onlineCount;
+        
+        // 更新用户状态图
+        userStatusChart.updateSeries([onlineCount, offlineCount]);
+    }
+    
+    // 加载用户卡片视图
+    function loadUserCards(users) {
+        const container = document.getElementById('users-card-container');
+        container.innerHTML = '';
+        
+        if (users.length === 0) {
+            container.innerHTML = '<div class="col-12 text-center py-5"><p>没有找到用户</p></div>';
+            return;
+        }
+        
+        users.forEach(user => {
+            // 创建用户卡片
+            const card = document.createElement('div');
+            card.className = `col-md-4 col-lg-3 mb-3`;
+            
+            // 获取用户名首字母作为头像
+            const initial = user.username.charAt(0).toUpperCase();
+            
+            // 构建卡片内容
+            card.innerHTML = `
+                <div class="card user-card ${user.is_online ? 'online' : 'offline'}" data-user-id="${user.id}">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="user-avatar me-3" style="background-color: ${user.is_online ? '#28a745' : '#dc3545'}">
+                                ${initial}
+                            </div>
+                            <div>
+                                <h5 class="card-title mb-0">${user.username}</h5>
+                                <small class="text-muted">${user.email}</small>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <span class="online-indicator ${user.is_online ? 'online' : 'offline'}"></span>
+                                    <span>${user.is_online ? '在线' : '离线'}</span>
+                                </div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <small class="text-muted">会话: ${formatNumber(user.conversations_count)}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(card);
+            
+            // 添加点击事件以显示详情
+            const userCard = card.querySelector('.user-card');
+            userCard.addEventListener('click', () => showUserDetail(user));
+        });
+    }
+    
+    // 加载用户表格视图
+    function loadUserTable(users) {
+        const usersTable = document.getElementById('users-table');
+        usersTable.innerHTML = '';
+        
+        if (users.length === 0) {
+            usersTable.innerHTML = '<tr><td colspan="5" class="text-center">没有找到用户</td></tr>';
+            return;
+        }
+        
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            
+            // 设置行样式
+            if (user.is_online) {
+                row.classList.add('table-success');
+            }
+            
+            // 添加各列数据
+            row.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+                <td>
+                    <span class="online-indicator ${user.is_online ? 'online' : 'offline'}"></span>
+                    ${user.is_online ? '在线' : '离线'}
+                </td>
+                <td>${formatNumber(user.conversations_count)}</td>
+            `;
+            
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', () => showUserDetail(user));
+            
+            usersTable.appendChild(row);
+        });
+    }
+    
+    // 显示用户详情模态框
+    function showUserDetail(user) {
+        // 填充模态框数据
+        document.getElementById('userDetailTitle').textContent = `用户详情: ${user.username}`;
+        document.getElementById('modal-user-id').textContent = user.id;
+        document.getElementById('modal-username').textContent = user.username;
+        document.getElementById('modal-email').textContent = user.email;
+        
+        // 设置状态显示
+        const statusEl = document.getElementById('modal-status');
+        statusEl.innerHTML = `
+            <span class="online-indicator ${user.is_online ? 'online' : 'offline'}"></span>
+            ${user.is_online ? '在线' : '离线'}
+        `;
+        
+        document.getElementById('modal-conversations').textContent = formatNumber(user.conversations_count);
+        
+        // 显示模态框
+        const modal = new bootstrap.Modal(document.getElementById('userDetailModal'));
+        modal.show();
+    }
+    
+    // 加载所有用户数据
+    function loadUsers() {
+        fetch('/dashboard/users')
+            .then(response => response.json())
+            .then(data => {
+                // 填充统计数据
+                document.getElementById('total-users-count').textContent = formatNumber(data.total_users);
+                document.getElementById('online-users-count').textContent = formatNumber(data.online_users);
+                
+                // 排序：在线用户在前
+                data.users.sort((a, b) => {
+                    if (a.is_online && !b.is_online) return -1;
+                    if (!a.is_online && b.is_online) return 1;
+                    return 0; // 不再按token使用量排序
+                });
+                
+                // 更新图表
+                updateCharts(data.users);
+                
+                // 加载用户卡片和表格
+                loadUserCards(data.users);
+                loadUserTable(data.users);
+                
+                // 保存用户数据到全局变量，用于搜索
+                window.allUsers = data.users;
+            })
+            .catch(error => {
+                console.error('获取用户数据失败:', error);
+                document.getElementById('users-card-container').innerHTML = 
+                    '<div class="col-12 text-center py-5"><p class="text-danger">加载用户数据失败</p></div>';
+                document.getElementById('users-table').innerHTML = 
+                    '<tr><td colspan="5" class="text-center text-danger">加载用户数据失败</td></tr>';
+            });
+    }
+    
+    // 搜索用户
+    function searchUsers(searchText) {
+        if (!window.allUsers) return;
+        
+        const filteredUsers = window.allUsers.filter(user => {
+            const username = user.username.toLowerCase();
+            const email = user.email.toLowerCase();
+            return username.includes(searchText) || email.includes(searchText);
+        });
+        
+        // 更新卡片和表格视图
+        loadUserCards(filteredUsers);
+        loadUserTable(filteredUsers);
+    }
+    
+    // 切换视图
+    function toggleView(viewType) {
+        const cardContainer = document.getElementById('users-card-container');
+        const tableContainer = document.getElementById('users-table-container');
+        const cardBtn = document.getElementById('card-view-btn');
+        const tableBtn = document.getElementById('table-view-btn');
+        
+        if (viewType === 'card') {
+            cardContainer.classList.remove('d-none');
+            tableContainer.classList.add('d-none');
+            cardBtn.classList.add('active');
+            tableBtn.classList.remove('active');
+        } else {
+            cardContainer.classList.add('d-none');
+            tableContainer.classList.remove('d-none');
+            cardBtn.classList.remove('active');
+            tableBtn.classList.add('active');
+        }
+    }
+    
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化图表
+        initCharts();
+        
+        // 加载数据
+        loadUsers();
+        
+        // 搜索功能
+        document.getElementById('user-search').addEventListener('input', function(e) {
+            const searchText = e.target.value.toLowerCase();
+            searchUsers(searchText);
+        });
+        
+        // 视图切换
+        document.getElementById('card-view-btn').addEventListener('click', () => toggleView('card'));
+        document.getElementById('table-view-btn').addEventListener('click', () => toggleView('table'));
+        
+        // 刷新按钮
+        document.getElementById('refresh-btn').addEventListener('click', loadUsers);
+        
+        // 自动刷新
+        setInterval(loadUsers, 60000);
+    });
+</script>
+{% endblock %}
