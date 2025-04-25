@@ -288,8 +288,28 @@ def stream_gemini_api(model: str, history: list, response_queue):
         stm = time.time()
 
         for chunk in response:
-           response_content = chunk.choices[0].delta.content
-           response_queue.put(response_content)
+            if hasattr(
+                    chunk.choices[0].delta,
+                    'reasoning_content') and chunk.choices[0].delta.reasoning_content:
+                if fstrs:
+                    fstrs = False
+                reasoning_content += chunk.choices[0].delta.reasoning_content
+                tkt = time.time() - stm
+                response_text = "<think time=" + \
+                    str(int(tkt)) + ">" + reasoning_content + "</think>"
+                response_queue.put(response_text)
+            elif chunk.choices[0].delta.content:
+                if fstct:
+                    fstct = False
+                    tkt = time.time() - stm
+                content += chunk.choices[0].delta.content
+                if not reasoning_content.strip():
+                    response_queue.put(content)
+                else:
+                    response_text = "<think time=" + \
+                        str(int(tkt)) + ">" + reasoning_content + \
+                        "</think>" + content
+                    response_queue.put(response_text)
 
         # 获取token使用信息并记录
         global current_user_id
