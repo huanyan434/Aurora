@@ -144,6 +144,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.style.height = 'auto';
                 this.style.height = (this.scrollHeight) + 'px';
             });
+
+            // 添加粘贴事件监听器，用于检测和上传粘贴的图片
+            elements.messageInput.addEventListener('paste', function(e) {
+                // 检查剪贴板数据中是否包含图片
+                const clipboardData = e.clipboardData || window.clipboardData;
+                const items = clipboardData.items;
+                
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        // 阻止默认粘贴行为
+                        e.preventDefault();
+                        
+                        // 获取图片文件
+                        const file = items[i].getAsFile();
+                        if (file) {
+                            // 使用与图片上传相同的处理逻辑
+                            state.selectedImage = file;
+                            
+                            // 显示图片预览
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                elements.previewImage.src = e.target.result;
+                                elements.imagePreviewContainer.style.display = 'block';
+                            };
+                            reader.readAsDataURL(file);
+                            
+                            // 更新发送按钮状态
+                            updateSendButtonState();
+                            
+                            // 提示用户
+                            showNotification('图片已粘贴', 3000);
+                            
+                            // 只处理第一个图片
+                            break;
+                        }
+                    }
+                }
+            });
         }
 
         // 新对话按钮点击事件
@@ -207,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateSendButtonState();
             
             // 提示用户可以添加描述或直接发送
-            showNotification('图片已选择，您可以添加描述或直接点击发送按钮', 3000);
+            showNotification('图片已选择', 3000);
         } else if (file) {
             showError('请选择有效的图片文件');
         }
