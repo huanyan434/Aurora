@@ -369,16 +369,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     messageData.image_type = state.selectedImage.type;
                     messageData.image_name = state.selectedImage.name;
                     
-                    // 添加消息预览(包含图片预览)
-                    const messageContent = await createImagePreview(state.selectedImage, content);
-                    appendMessage(messageContent, true);
+                    // 首先添加图片作为独立元素 (不在气泡中)
+                    const imageContent = await createImagePreview(state.selectedImage);
+                    const imageContainer = document.createElement('div');
+                    imageContainer.className = 'user-image-container';
+                    imageContainer.innerHTML = imageContent;
+                    elements.messagesContainer.appendChild(imageContainer);
+                    
+                    // 然后如果有文本内容，再添加文本气泡
+                    if (content) {
+                        appendMessage(content, true);
+                    }
                 } catch (error) {
                     console.error('图片处理失败:', error);
                     showError('图片处理失败');
                     return;
                 }
             } else {
-                // 文本消息，直接添加
+                // 纯文本消息，直接添加
                 appendMessage(content, true);
             }
             
@@ -453,16 +461,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = function(e) {
-                let content = '';
-                
-                // 如果有文字说明，先添加文字
-                if (caption) {
-                    content += `<p>${escapeHtml(caption)}</p>`;
-                }
-                
-                // 图片显示在文字后面
-                content += `<div class="image-preview"><img src="${e.target.result}" alt="上传的图片"></div>`;
-                
+                // 只返回图片HTML，不包含文字说明
+                // 图片不再放在气泡内，而是作为独立元素显示
+                const content = `<div class="standalone-image-container"><img src="${e.target.result}" alt="上传的图片" class="standalone-image"></div>`;
                 resolve(content);
             };
             reader.readAsDataURL(imageFile);
@@ -1117,7 +1118,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 处理消息内容中的特殊标签
-    function processMessageContent(content, displayOnly = false) {
+    function processMessageContent(content, displayOnly = false, separateImages = false) {
         if (!content) return '';
         let processedContent = content;
         
@@ -1125,6 +1126,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 始终删除 <image> 标签块，不管是否为显示模式
         processedContent = processedContent.replace(/<image>.*?<\/image>/gs, '');
         
+        // 如果不需要分离图片，按原方式处理 <base64> 标签
+        if (!separateImages) {
         // 处理 <base64>图片base64</base64> 标签
         // 将图片标签保存起来，等待文本处理后再附加到末尾
         let imageElements = [];
@@ -1138,6 +1141,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // 文本处理完成后，将所有图片附加到末尾
         if (imageElements.length > 0) {
             processedContent = processedContent.trim() + '<br>' + imageElements.join('');
+            }
+        } else {
+            // 需要分离图片时，直接删除 <base64> 标签，不附加
+            processedContent = processedContent.replace(/<base64>.*?<\/base64>/gs, '');
         }
         
         return processedContent;
@@ -1284,16 +1291,74 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (msg.role === 'user') {
                     // 用户消息
                     console.log('添加历史用户消息');
+                    
+                    // 检查消息内容是否包含图片预览或base64图片标签
+                    const hasImagePreview = msg.content.includes('<div class="image-preview">');
+                    const hasBase64Image = msg.content.includes('<base64>');
+                    
+                    if (hasImagePreview || hasBase64Image) {
+                        let textContent = msg.content;
+                        let imageHTML = '';
+                        
+                        // 处理图片预览
+                        if (hasImagePreview) {
+                            const imageMatch = textContent.match(/<div class="image-preview">(.*?)<\/div>/s);
+                            if (imageMatch) {
+                                imageHTML = imageMatch[1];
+                                // 移除消息中的图片部分
+                                textContent = textContent.replace(/<div class="image-preview">.*?<\/div>/s, '').trim();
+                            }
+                        }
+                        
+                        // 处理base64图片标签
+                        if (hasBase64Image) {
+                            const base64Match = textContent.match(/<base64>(.*?)<\/base64>/s);
+                            if (base64Match) {
+                                const base64Content = base64Match[1];
+                                imageHTML = `<img src="data:image/png;base64,${base64Content}" alt="嵌入图片" class="embedded-image" style="max-width: 100%; border-radius: 8px; margin: 10px 0;" />`;
+                                // 移除消息中的base64部分
+                                textContent = textContent.replace(/<base64>.*?<\/base64>/s, '').trim();
+                            }
+                        }
+                        
+                        // 创建独立的图片容器
+                        if (imageHTML) {
+                            const imageContainer = document.createElement('div');
+                            imageContainer.className = 'user-image-container';
+                            imageContainer.innerHTML = `<div class="standalone-image-container">${imageHTML}</div>`;
+                            chatMessages.appendChild(imageContainer);
+                        }
+                        
+                        // 处理<image>标签（直接删除，不显示）
+                        textContent = textContent.replace(/<image>.*?<\/image>/gs, '').trim();
+                        
+                        // 如果还有文本内容，添加文本气泡
+                        if (textContent) {
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = 'message user';
                     const contentDiv = document.createElement('div');
                     contentDiv.className = 'message-content';
                     
-                    // 处理特殊标签（<image>和<base64>）
-                    const processedContent = processMessageContent(msg.content, true);
+                            // 处理特殊标签
+                            const processedContent = processMessageContent(textContent, true, true);
+                            contentDiv.innerHTML = marked.parse(processedContent);
+                            
+                            messageDiv.appendChild(contentDiv);
+                            chatMessages.appendChild(messageDiv);
+                        }
+                    } else {
+                        // 无图片的普通消息
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'message-content';
+                        
+                        // 处理特殊标签
+                        const processedContent = processMessageContent(msg.content, true, true);
                     contentDiv.innerHTML = marked.parse(processedContent);
                     
                     // 添加到消息元素
                     messageDiv.appendChild(contentDiv);
                     chatMessages.appendChild(messageDiv);
+                    }
                 } else {
                     let content = msg.content;
                     
@@ -1379,7 +1444,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             textContent = textContent.replace(/\n/g, '<br>');
                             
                             // 处理base64图片标签
-                            textContent = processMessageContent(textContent);
+                            textContent = processMessageContent(textContent, false);
                             
                             // 解析并显示
                             contentDiv.innerHTML = marked.parse(textContent);

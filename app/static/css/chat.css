@@ -1784,4 +1784,41 @@ body.dark .au-tooltip {
     --au-transition-duration-fast: .1s;
     --au-transition-duration-slow: .3s
 }
-*/
+
+/* 自定义独立图片容器样式 */
+.user-image-container {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin: 8px 0;
+    padding: 0 16px;
+}
+
+.standalone-image-container {
+    max-width: 60%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.standalone-image {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* 移除已有的图片预览内部样式 */
+.message.user .image-preview {
+    margin-top: 8px;
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+    .standalone-image-container {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+}
