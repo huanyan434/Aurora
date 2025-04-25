@@ -53,9 +53,9 @@ def model_name(model: str):
     elif model == "Gemini-2.5-pro":
         model = "gemini-2.5-pro-exp-03-25"
     elif model == "Gemini-2.5-flash":
-        model = "models/gemini-2.5-flash-preview-04-17"
+        model = "gemini-2.5-flash-preview-04-17"
     elif model == "Gemini-2.0-flash":
-        model = "models/gemini-2.0-flash"        
+        model = "gemini-2.0-flash"        
     return model
 
 
@@ -268,7 +268,7 @@ def stream_gemini_api(model: str, history: list, response_queue):
     api_key = os.environ['api_keyC']
     client = OpenAI(
         api_key=api_key,
-        base_url="https://gemini.wanyim.cn/v1beta",
+        base_url="https://gemini.wanyim.cn/v1beta/openai",
         timeout=1800,
     )
 
