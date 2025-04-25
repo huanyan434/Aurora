@@ -268,7 +268,7 @@ def stream_gemini_api(model: str, history: list, response_queue):
     api_key = os.environ['api_keyC']
     client = OpenAI(
         api_key=api_key,
-        base_url="https://gemini.wanyim.cn/v1beta/openai",
+        base_url="https://gemini-openai.wanyim.cn/v1",
         timeout=1800,
     )
 
@@ -288,28 +288,8 @@ def stream_gemini_api(model: str, history: list, response_queue):
         stm = time.time()
 
         for chunk in response:
-            if hasattr(
-                    chunk.choices[0].delta,
-                    'reasoning_content') and chunk.choices[0].delta.reasoning_content:
-                if fstrs:
-                    fstrs = False
-                reasoning_content += chunk.choices[0].delta.reasoning_content
-                tkt = time.time() - stm
-                response_text = "<think time=" + \
-                    str(int(tkt)) + ">" + reasoning_content + "</think>"
-                response_queue.put(response_text)
-            elif chunk.choices[0].delta.content:
-                if fstct:
-                    fstct = False
-                    tkt = time.time() - stm
-                content += chunk.choices[0].delta.content
-                if not reasoning_content.strip():
-                    response_queue.put(content)
-                else:
-                    response_text = "<think time=" + \
-                        str(int(tkt)) + ">" + reasoning_content + \
-                        "</think>" + content
-                    response_queue.put(response_text)
+           response_content = chunk.choices[0].delta.content
+           response_queue.put(response_content)
 
         # 获取token使用信息并记录
         global current_user_id
