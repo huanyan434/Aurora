@@ -612,11 +612,12 @@ def generate(
     else:
         # 如果是新的请求但没有提供prompt，也无法继续
         if not prompt and message_id not in response_status:
-            yield json.dumps({
-                "message_id": message_id,
-                "text": "缺少提示内容，无法继续",
-                "error": True
-            }) + "\n"
+            if not image_base64:
+                yield json.dumps({
+                    "message_id": message_id,
+                    "text": "缺少提示内容，无法继续",
+                    "error": True
+                }) + "\n"
             return
 
         # 启动新线程处理生成
