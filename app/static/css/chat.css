@@ -160,8 +160,7 @@ body {
 }
 
 .conversation-item:hover {
-    background: rgba(255, 255, 255, 0.7);
-    transform: translateX(5px);
+    border-color: #3c59d6;
 }
 
 .conversation-title {
@@ -170,10 +169,6 @@ body {
     margin-bottom: 4px;
 }
 
-.conversation-time {
-    font-size: 12px;
-    color: var(--gray-color);
-}
 
 /* 用户信息区域 */
 .user-profile {
@@ -1628,6 +1623,13 @@ body {
     background: rgba(67, 97, 238, 0.1);
 }
 
+/* 添加图标样式 */
+.dropdown-icon {
+    margin-right: 8px;
+    color: #666;
+    min-width: 16px;
+}
+
 .dropdown-item i {
     margin-right: 8px;
     font-size: 16px;
@@ -2451,4 +2453,24 @@ body.dark .au-tooltip {
 .au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=right] {
     right: 100%;
     transform: translate(50%)rotate(90deg)
+}
+
+/* 对话标题内联编辑样式 */
+.conversation-title-edit {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    border: 1px solid #3a7adc;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: #fff;
+    color: #333;
+    transition: border-color 0.2s;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(58, 122, 220, 0.2);
+}
+
+.conversation-title-edit:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
 }

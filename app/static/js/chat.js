@@ -1686,10 +1686,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 dropdownMenu.className = 'dropdown-menu';
                 dropdownMenu.innerHTML = `
                     <div class="dropdown-item rename-item">
-                        🔄重命名
+                        <svg class="dropdown-icon" viewBox="0 0 24 24" width="16" height="16">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+                        </svg>
+                        <span>重命名</span>
                     </div>
                     <div class="dropdown-item delete-item">
-                        🗑️删除
+                        <svg class="dropdown-icon" viewBox="0 0 24 24" width="16" height="16">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                        </svg>
+                        <span>删除</span>
                     </div>
                 `;
 
@@ -1711,8 +1717,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     e.stopPropagation();
                     dropdownMenu.remove(); // 移除菜单
 
-                    // 显示重命名对话框
-                    showRenameDialog(conv.id, conv.title);
+                    // 找到对话标题元素并使其可编辑
+                    const conversationItem = document.querySelector(`.conversation-item[data-id="${conv.id}"]`);
+                    if (conversationItem) {
+                        const titleElement = conversationItem.querySelector('.conversation-title');
+                        if (titleElement) {
+                            // 调用内联编辑函数
+                            makeConversationTitleEditable(conv.id, titleElement, conv.title || '新对话');
+                        }
+                    }
                 };
 
                 // 删除选项点击事件
@@ -3500,6 +3513,108 @@ document.addEventListener('DOMContentLoaded', function () {
         } finally {
             saveBtn.disabled = false;
             saveBtn.textContent = '保存';
+        }
+    }
+
+    /**
+     * 将对话标题转换为可编辑的输入框
+     * @param {string} conversationId - 对话ID
+     * @param {HTMLElement} titleElement - 标题元素
+     * @param {string} currentTitle - 当前标题内容
+     */
+    function makeConversationTitleEditable(conversationId, titleElement, currentTitle) {
+        // 保存原始标题内容和样式
+        const originalTitle = currentTitle;
+        const originalDisplay = titleElement.style.display;
+        
+        // 创建输入框
+        const inputElement = document.createElement('input');
+        inputElement.type = 'text';
+        inputElement.value = originalTitle;
+        inputElement.className = 'conversation-title-edit';
+        inputElement.style.width = '100%';
+        inputElement.style.boxSizing = 'border-box';
+        inputElement.style.padding = '4px 8px';
+        inputElement.style.border = '1px solid #ccc';
+        inputElement.style.borderRadius = '4px';
+        inputElement.style.fontSize = '14px';
+        
+        // 隐藏原标题元素
+        titleElement.style.display = 'none';
+        // 将输入框插入到标题元素后面
+        titleElement.parentNode.insertBefore(inputElement, titleElement.nextSibling);
+        // 自动聚焦输入框并选择全部文本
+        inputElement.focus();
+        inputElement.select();
+        
+        // 处理回车键提交
+        inputElement.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                submitTitleEdit();
+            } else if (e.key === 'Escape') {
+                cancelTitleEdit();
+            }
+        });
+        
+        // 处理失去焦点时提交
+        inputElement.addEventListener('blur', function() {
+            submitTitleEdit();
+        });
+        
+        // 提交编辑
+        function submitTitleEdit() {
+            const newTitle = inputElement.value.trim();
+            if (newTitle && newTitle !== originalTitle) {
+                // 更新UI
+                titleElement.textContent = newTitle;
+                
+                // 发送API请求更新标题
+                fetch('/api/conversation/rename', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        conversation_id: conversationId,
+                        title: newTitle
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('对话重命名成功:', newTitle);
+                    } else {
+                        console.error('对话重命名失败:', data.message);
+                        // 重置为原始标题
+                        titleElement.textContent = originalTitle;
+                    }
+                })
+                .catch(error => {
+                    console.error('对话重命名请求错误:', error);
+                    // 重置为原始标题
+                    titleElement.textContent = originalTitle;
+                });
+            } else if (!newTitle) {
+                // 如果标题为空，恢复原标题
+                titleElement.textContent = originalTitle;
+            }
+            
+            // 恢复原标题元素显示
+            titleElement.style.display = originalDisplay;
+            // 移除输入框
+            if (inputElement.parentNode) {
+                inputElement.parentNode.removeChild(inputElement);
+            }
+        }
+        
+        // 取消编辑
+        function cancelTitleEdit() {
+            // 恢复原标题元素显示
+            titleElement.style.display = originalDisplay;
+            // 移除输入框
+            if (inputElement.parentNode) {
+                inputElement.parentNode.removeChild(inputElement);
+            }
         }
     }
 });
