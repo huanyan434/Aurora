@@ -625,52 +625,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (contentDiv) {
                         try {
                             // 处理内容，确保是字符串
-                            let content = currentContent;
-                            if (typeof content !== 'string') {
-                                if (content.content) {
-                                    content = content.content;
-                                } else if (content.text) {
+                            let textContent = currentContent;
+                            if (typeof textContent !== 'string') {
+                                if (textContent.content) {
+                                    textContent = textContent.content;
+                                } else if (textContent.text) {
                                             // 增加对text对象的支持
-                                    content = content.text;
+                                    textContent = textContent.text;
                                 } else {
-                                    content = JSON.stringify(content);
+                                    textContent = JSON.stringify(textContent);
                                 }
                             }
                                     
-                                    // 替换换行符为 \n 而非 <br>，以便和历史记录的解析保持一致
-                                    content = content.replace(/\n/g, '\n');
-                            
-                            // 处理base64图片标签
-                            content = processMessageContent(content);
-                            
-                                    // 确保正文内容正确显示 - 使用与历史记录相同的解析方式
-                            let formattedContent = marked.parse(content);
-
-                            contentDiv.innerHTML = formattedContent;
-                                    console.log('正文内容已更新', contentDiv.innerHTML.substring(0, 50));
+                                    // 处理base64图片标签，不先替换换行符
+                                    // textContent = textContent.replace(/\n/g, '<br>');
                                     
-                                    // 如果有思考内容，更新思考头部
-                                    if (thinkHeaderElement && currentThink) {
-                                        // 解析思考时间标签
-                                        const thinkTimeMatch = currentThink.match(/<think time=(\d+)>/);
-                                        let thinkSeconds = 0;
-                                        
-                                        if (thinkTimeMatch && thinkTimeMatch[1]) {
-                                            // 使用标签中指定的时间
-                                            thinkSeconds = parseInt(thinkTimeMatch[1], 10) || 0;
-                                            
-                                            // 使用固定的时间更新头部
-                                            thinkHeaderElement.innerHTML = `
-                                                <span>已深度思考（用时 ${thinkSeconds} 秒）<span style="display:inline-block; width:5px;"></span>
-                                                <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
-                                            `;
-                                        }
-                                        console.log('思考头部已更新');
-                                    }
-                                } catch (error) {
-                                    console.error('处理消息内容时出错:', error);
-                                    contentDiv.innerHTML = `<p>消息处理错误: ${error.message}</p>`;
-                                }
+                                    // 处理base64图片标签
+                                    textContent = processMessageContent(textContent, false);
+                                    
+                                    // 解析并显示
+                                    contentDiv.innerHTML = marked.parse(textContent);
+                        } catch (error) {
+                            console.error('处理消息内容时出错:', error);
+                            contentDiv.innerHTML = `<p>消息处理错误: ${error.message}</p>`;
+                        }
                             } else {
                                 console.error('找不到消息内容元素，无法更新内容');
                             }
@@ -770,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 // 检查是否真正完成了思考（有think标签和时间）
                                 let isThinkingComplete = false;
                                 
-                                if (thinkTimeMatch && thinkTimeMatch[1] && currentContent && currentContent.trim() !== '') {
+                                if (thinkTimeMatch && thinkTimeMatch[1]) {
                             // 使用标签中指定的时间
                             thinkSeconds = parseInt(thinkTimeMatch[1], 10) || 0;
                                     console.log(`从标签提取思考时间: ${thinkSeconds}秒`);
@@ -907,11 +885,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                 }
                                 
-                                // 替换换行符为 \n 而非 <br>，以便和历史记录的解析保持一致
-                                textContent = textContent.replace(/\n/g, '\n');
+                                // 不再替换换行符为<br>，保留原始格式以便正确解析代码块
+                                // textContent = textContent.replace(/\n/g, '<br>');
                                 
                                 // 处理base64图片
-                                textContent = processMessageContent(textContent);
+                                textContent = processMessageContent(textContent, false);
                                 
                                 // 确保内容已经显示
                                 try {
@@ -1440,8 +1418,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 }
                             }
                             
-                            // 替换换行符
-                            textContent = textContent.replace(/\n/g, '<br>');
+                            // 处理base64图片标签，不先替换换行符
+                            // textContent = textContent.replace(/\n/g, '<br>');
                             
                             // 处理base64图片标签
                             textContent = processMessageContent(textContent, false);
