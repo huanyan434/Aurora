@@ -206,13 +206,22 @@ body {
 
 .user-name {
     font-weight: 500;
-    font-size: 14px;
     color: var(--dark-color);
+    margin-bottom: 2px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.user-name:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
 }
 
 .user-status {
     font-size: 12px;
-    color: var(--gray-color);
+    color: #28a745;
+    display: flex;
+    align-items: center;
 }
 
 /* 登出按钮样式 */
@@ -1820,5 +1829,261 @@ body.dark .au-tooltip {
 @media (prefers-color-scheme: dark) {
     .standalone-image-container {
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* 用户信息弹窗 */
+.user-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    overflow: auto;
+}
+
+.user-modal.show {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.user-modal-content {
+    background-color: var(--main-bg);
+    padding: 0;
+    border-radius: 12px;
+    width: 500px;
+    max-width: 90%;
+    max-height: 90vh;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.user-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+}
+
+.user-modal-header h3 {
+    font-size: 18px;
+    margin: 0;
+}
+
+.close-modal {
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-modal:hover {
+    transform: scale(1.1);
+}
+
+.user-modal-body {
+    padding: 20px;
+    max-height: calc(90vh - 60px); /* 减去header的高度 */
+    overflow-y: auto;
+}
+
+.user-info-section {
+    margin-bottom: 20px;
+}
+
+.user-info-section h4 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: var(--dark-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.username-edit {
+    display: flex;
+    gap: 10px;
+}
+
+#username-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+#save-username-btn {
+    padding: 8px 15px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#save-username-btn:hover {
+    background: var(--secondary-color);
+}
+
+/* 会员信息样式 */
+.membership-card {
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: white;
+    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+}
+
+.membership-card.free {
+    background: linear-gradient(135deg, #636e72, #b2bec3);
+}
+
+.membership-card.vip {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+}
+
+.membership-card.svip {
+    background: linear-gradient(135deg, #e84393, #fd79a8);
+}
+
+.membership-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.membership-level {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.membership-status {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.membership-days {
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.membership-dates {
+    font-size: 12px;
+    margin-top: 10px;
+    opacity: 0.8;
+}
+
+/* 会员权益样式 */
+.privilege-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.privilege-item {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    transition: all 0.2s;
+}
+
+.privilege-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.privilege-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.privilege-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--dark-color);
+}
+
+.privilege-description {
+    font-size: 12px;
+    color: var(--gray-color);
+}
+
+/* 加载动画 */
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80px;
+    color: var(--gray-color);
+}
+
+@media (prefers-color-scheme: dark) {
+    .user-name {
+        color: #fff;
+    }
+    
+    .user-modal-content {
+        background-color: #2a2a2a;
+    }
+    
+    .user-info-section h4 {
+        color: #fff;
+        border-color: #444;
+    }
+    
+    #username-input {
+        background: #333;
+        color: #fff;
+        border-color: #444;
+    }
+    
+    .privilege-item {
+        background: rgba(40, 40, 40, 0.5);
+        border-color: #444;
+    }
+    
+    .privilege-name {
+        color: #eee;
+    }
+    
+    .privilege-description {
+        color: #aaa;
+    }
+}
+
+@media (max-width: 768px) {
+    .user-modal-content {
+        width: 95%;
+        max-width: 450px;
+        max-height: 80vh;
+    }
+    
+    .user-modal-body {
+        padding: 15px;
+        max-height: calc(80vh - 60px);
+    }
+    
+    .privilege-list {
+        grid-template-columns: 1fr;
     }
 }

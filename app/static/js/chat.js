@@ -11,6 +11,13 @@ document.addEventListener('DOMContentLoaded', function() {
         sidebarToggle: document.querySelector('.sidebar-toggle'),
         sidebarOverlay: document.querySelector('.sidebar-overlay'),
         logoutBtn: document.querySelector('.logout-btn'),
+        userNameDisplay: document.getElementById('user-name-display'),
+        userProfileModal: document.getElementById('user-profile-modal'),
+        closeModalBtn: document.querySelector('.close-modal'),
+        usernameInput: document.getElementById('username-input'),
+        saveUsernameBtn: document.getElementById('save-username-btn'),
+        membershipInfo: document.getElementById('membership-info'),
+        membershipPrivileges: document.getElementById('membership-privileges'),
         confirmDialog: null,
         confirmOk: null,
         confirmCancel: null,
@@ -48,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setupEventListeners();
             setupScrollListener();
             setupModelSelector();
+            setupUserProfileModal();
             // 获取当前用户信息
             await getCurrentUser();
             // 加载侧边栏状态
@@ -232,6 +240,30 @@ document.addEventListener('DOMContentLoaded', function() {
         // 删除图片按钮事件
         if (elements.removeImageBtn) {
             elements.removeImageBtn.addEventListener('click', removeSelectedImage);
+        }
+
+        // 用户名点击事件
+        if (elements.userNameDisplay) {
+            elements.userNameDisplay.addEventListener('click', openUserProfileModal);
+        }
+
+        // 关闭模态窗口事件
+        if (elements.closeModalBtn) {
+            elements.closeModalBtn.addEventListener('click', closeUserProfileModal);
+        }
+
+        // 点击模态窗口外部关闭
+        if (elements.userProfileModal) {
+            elements.userProfileModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeUserProfileModal();
+                }
+            });
+        }
+
+        // 保存用户名按钮点击事件
+        if (elements.saveUsernameBtn) {
+            elements.saveUsernameBtn.addEventListener('click', updateUsername);
         }
     }
 
@@ -3018,6 +3050,166 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('加载侧边栏状态时出错:', error);
             // 默认保持现有状态或使用默认状态
+        }
+    }
+
+    // ====================== 用户资料模态窗口 ======================
+    function setupUserProfileModal() {
+        // 如果模态窗口元素不存在，跳过
+        if (!elements.userProfileModal) return;
+        
+        // 按ESC键关闭模态窗口
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && elements.userProfileModal.classList.contains('show')) {
+                closeUserProfileModal();
+            }
+        });
+    }
+
+    function openUserProfileModal() {
+        if (!elements.userProfileModal) return;
+        
+        elements.userProfileModal.classList.add('show');
+        
+        // 获取用户VIP信息
+        fetchUserMembershipInfo();
+    }
+
+    function closeUserProfileModal() {
+        if (!elements.userProfileModal) return;
+        
+        elements.userProfileModal.classList.remove('show');
+    }
+
+    async function fetchUserMembershipInfo() {
+        if (!state.currentUser.id || !elements.membershipInfo) return;
+        
+        try {
+            // 显示加载状态
+            elements.membershipInfo.innerHTML = '<div class="loading-spinner">加载会员信息中...</div>';
+            elements.membershipPrivileges.innerHTML = '';
+            
+            // 获取用户会员信息
+            const response = await fetch(`/vip/get_vip_level/${state.currentUser.id}`);
+            
+            if (!response.ok) {
+                throw new Error('获取会员信息失败');
+            }
+            
+            const memberData = await response.json();
+            
+            // 构建会员信息卡片
+            let membershipCard = `
+                <div class="membership-card ${memberData.level}">
+                    <div class="membership-header">
+                        <div class="membership-level">${memberData.level_display}</div>
+                        <div class="membership-status">${memberData.expired ? '已过期' : '有效'}</div>
+                    </div>
+            `;
+            
+            if (memberData.is_member) {
+                membershipCard += `
+                    <div class="membership-days">剩余 ${memberData.days_left} 天</div>
+                `;
+                
+                if (memberData.member_since && memberData.member_until) {
+                    membershipCard += `
+                        <div class="membership-dates">
+                            ${new Date(memberData.member_since).toLocaleDateString()} - 
+                            ${new Date(memberData.member_until).toLocaleDateString()}
+                        </div>
+                    `;
+                }
+            }
+            
+            membershipCard += `</div>`;
+            
+            // 更新会员信息
+            elements.membershipInfo.innerHTML = membershipCard;
+            
+            // 创建会员权益列表
+            let privilegesList = '<div class="privilege-list">';
+            
+            if (memberData.privileges && memberData.privileges.length > 0) {
+                memberData.privileges.forEach(privilege => {
+                    privilegesList += `
+                        <div class="privilege-item">
+                            <div class="privilege-icon">
+                                <i class="bi ${privilege.icon}"></i>
+                            </div>
+                            <div class="privilege-name">${privilege.name}</div>
+                            <div class="privilege-description">${privilege.description}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                privilegesList += '<p>无可用权益</p>';
+            }
+            
+            privilegesList += '</div>';
+            
+            // 更新权益列表
+            elements.membershipPrivileges.innerHTML = privilegesList;
+            
+        } catch (error) {
+            console.error('获取会员信息时出错:', error);
+            elements.membershipInfo.innerHTML = `<p class="text-danger">获取会员信息失败: ${error.message}</p>`;
+        }
+    }
+
+    async function updateUsername() {
+        if (!elements.usernameInput || !elements.saveUsernameBtn) return;
+        
+        const newUsername = elements.usernameInput.value.trim();
+        
+        // 验证用户名
+        if (!newUsername) {
+            showNotification('用户名不能为空', 3000);
+            return;
+        }
+        
+        if (newUsername === state.currentUser.username) {
+            showNotification('用户名未变更', 3000);
+            return;
+        }
+        
+        try {
+            // 禁用按钮，显示加载状态
+            elements.saveUsernameBtn.disabled = true;
+            elements.saveUsernameBtn.textContent = '保存中...';
+            
+            // 发送更新请求
+            const response = await fetch('/api/user/update_username', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: newUsername })
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || '更新用户名失败');
+            }
+            
+            const data = await response.json();
+            
+            // 更新状态和显示
+            state.currentUser.username = newUsername;
+            elements.userNameDisplay.textContent = newUsername;
+            
+            // 显示成功提示
+            showNotification('用户名已更新', 3000);
+            
+            // 可能需要更新页面其他显示用户名的地方
+            
+        } catch (error) {
+            console.error('更新用户名时出错:', error);
+            showNotification(`更新失败: ${error.message}`, 3000);
+        } finally {
+            // 恢复按钮状态
+            elements.saveUsernameBtn.disabled = false;
+            elements.saveUsernameBtn.textContent = '保存';
         }
     }
 });

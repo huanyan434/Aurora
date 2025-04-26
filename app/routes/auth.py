@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import login_user, logout_user, login_required
+from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User
 from app.utils.auth import hash_password, verify_password
 from app import db
@@ -63,3 +63,58 @@ def logout():
     logout_user()
     # 重定向到登录页面
     return redirect(url_for('auth.login'))
+
+@auth_bp.route('/api/user/current')
+@login_required
+def get_current_user():
+    """获取当前登录用户信息"""
+    try:
+        return jsonify({
+            'id': current_user.id,
+            'username': current_user.username,
+            'email': current_user.email
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@auth_bp.route('/api/user/update_username', methods=['POST'])
+@login_required
+def update_username():
+    """更新用户名"""
+    try:
+        data = request.json
+        new_username = data.get('username')
+        
+        if not new_username:
+            return jsonify({'success': False, 'message': '用户名不能为空'}), 400
+            
+        # 检查用户名长度
+        if len(new_username) < 2 or len(new_username) > 20:
+            return jsonify({
+                'success': False, 
+                'message': '用户名长度应在2-20个字符之间'
+            }), 400
+            
+        # 检查用户名是否已存在
+        existing_user = User.query.filter(
+            User.username == new_username, 
+            User.id != current_user.id
+        ).first()
+        
+        if existing_user:
+            return jsonify({
+                'success': False, 
+                'message': '该用户名已被使用'
+            }), 400
+            
+        # 更新用户名
+        current_user.username = new_username
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': '用户名更新成功',
+            'username': new_username
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
