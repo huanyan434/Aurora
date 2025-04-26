@@ -44,8 +44,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ====================== 初始化 ======================
     async function init() {
         try {
-        validateElements();
-        setupEventListeners();
+            validateElements();
+            setupEventListeners();
             setupScrollListener();
             setupModelSelector();
             // 获取当前用户信息
@@ -57,6 +57,12 @@ document.addEventListener('DOMContentLoaded', function() {
             await checkActiveResponses();
             startMarkdownObserver();
             scrollToBottom(true);
+            
+            // 初始化完成后添加复制按钮
+            setTimeout(() => {
+                console.log('初始化完成，添加复制按钮...');
+                window.addCopyButtonsToAllCodeBlocks();
+            }, 1000);
         } catch (error) {
             console.error('初始化失败:', error);
             showError('初始化失败: ' + error.message);
@@ -1257,114 +1263,114 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
             
-            data.history.forEach(msg => {
-                // 跳过空消息
-                if (!msg.content || !msg.content.trim()) {
-                    return;
-                }
+                data.history.forEach(msg => {
+                    // 跳过空消息
+                    if (!msg.content || !msg.content.trim()) {
+                        return;
+                    }
 
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${msg.role === 'user' ? 'user' : 'ai'}`;
-                
-                if (msg.role === 'user') {
-                    // 用户消息
-                    console.log('添加历史用户消息');
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${msg.role === 'user' ? 'user' : 'ai'}`;
                     
-                    // 检查消息内容是否包含图片预览或base64图片标签
-                    const hasImagePreview = msg.content.includes('<div class="image-preview">');
-                    const hasBase64Image = msg.content.includes('<base64>');
-                    
-                    if (hasImagePreview || hasBase64Image) {
-                        let textContent = msg.content;
-                        let imageHTML = '';
+                    if (msg.role === 'user') {
+                        // 用户消息
+                        console.log('添加历史用户消息');
                         
-                        // 处理图片预览
-                        if (hasImagePreview) {
-                            const imageMatch = textContent.match(/<div class="image-preview">(.*?)<\/div>/s);
-                            if (imageMatch) {
-                                imageHTML = imageMatch[1];
-                                // 移除消息中的图片部分
-                                textContent = textContent.replace(/<div class="image-preview">.*?<\/div>/s, '').trim();
-                            }
-                        }
+                        // 检查消息内容是否包含图片预览或base64图片标签
+                        const hasImagePreview = msg.content.includes('<div class="image-preview">');
+                        const hasBase64Image = msg.content.includes('<base64>');
                         
-                        // 处理base64图片标签
-                        if (hasBase64Image) {
-                            const base64Match = textContent.match(/<base64>(.*?)<\/base64>/s);
-                            if (base64Match) {
-                                const base64Content = base64Match[1];
-                                imageHTML = `<img src="data:image/png;base64,${base64Content}" alt="嵌入图片" class="embedded-image" style="max-width: 100%; border-radius: 8px; margin: 10px 0;" />`;
-                                // 移除消息中的base64部分
-                                textContent = textContent.replace(/<base64>.*?<\/base64>/s, '').trim();
-                            }
-                        }
-                        
-                        // 创建独立的图片容器
-                        if (imageHTML) {
-                            const imageContainer = document.createElement('div');
-                            imageContainer.className = 'user-image-container';
-                            imageContainer.innerHTML = `<div class="standalone-image-container">${imageHTML}</div>`;
-                            chatMessages.appendChild(imageContainer);
-                        }
-                        
-                        // 处理<image>标签（直接删除，不显示）
-                        textContent = textContent.replace(/<image>.*?<\/image>/gs, '').trim();
-                        
-                        // 如果还有文本内容，添加文本气泡
-                        if (textContent) {
-                            const messageDiv = document.createElement('div');
-                            messageDiv.className = 'message user';
-                    const contentDiv = document.createElement('div');
-                    contentDiv.className = 'message-content';
-                    
-                            // 处理特殊标签
-                            const processedContent = processMessageContent(textContent, true, true);
-                            contentDiv.innerHTML = marked.parse(processedContent);
+                        if (hasImagePreview || hasBase64Image) {
+                            let textContent = msg.content;
+                            let imageHTML = '';
                             
-                            messageDiv.appendChild(contentDiv);
-                            chatMessages.appendChild(messageDiv);
-                        }
-                    } else {
-                        // 无图片的普通消息
+                            // 处理图片预览
+                            if (hasImagePreview) {
+                                const imageMatch = textContent.match(/<div class="image-preview">(.*?)<\/div>/s);
+                                if (imageMatch) {
+                                    imageHTML = imageMatch[1];
+                                    // 移除消息中的图片部分
+                                    textContent = textContent.replace(/<div class="image-preview">.*?<\/div>/s, '').trim();
+                                }
+                            }
+                            
+                            // 处理base64图片标签
+                            if (hasBase64Image) {
+                                const base64Match = textContent.match(/<base64>(.*?)<\/base64>/s);
+                                if (base64Match) {
+                                    const base64Content = base64Match[1];
+                                    imageHTML = `<img src="data:image/png;base64,${base64Content}" alt="嵌入图片" class="embedded-image" style="max-width: 100%; border-radius: 8px; margin: 10px 0;" />`;
+                                    // 移除消息中的base64部分
+                                    textContent = textContent.replace(/<base64>.*?<\/base64>/s, '').trim();
+                                }
+                            }
+                            
+                            // 创建独立的图片容器
+                            if (imageHTML) {
+                                const imageContainer = document.createElement('div');
+                                imageContainer.className = 'user-image-container';
+                                imageContainer.innerHTML = `<div class="standalone-image-container">${imageHTML}</div>`;
+                                chatMessages.appendChild(imageContainer);
+                            }
+                            
+                            // 处理<image>标签（直接删除，不显示）
+                            textContent = textContent.replace(/<image>.*?<\/image>/gs, '').trim();
+                            
+                            // 如果还有文本内容，添加文本气泡
+                            if (textContent) {
+                                const messageDiv = document.createElement('div');
+                                messageDiv.className = 'message user';
                         const contentDiv = document.createElement('div');
                         contentDiv.className = 'message-content';
                         
-                        // 处理特殊标签
-                        const processedContent = processMessageContent(msg.content, true, true);
-                    contentDiv.innerHTML = marked.parse(processedContent);
-                    
-                    // 添加到消息元素
-                    messageDiv.appendChild(contentDiv);
-                    chatMessages.appendChild(messageDiv);
-                    }
-                } else {
-                    let content = msg.content;
-                    
-                    // 提取模型名称
-                    const modelMatch = content.match(/<model="([^"]+)"\/>/);
-                    const modelName = modelMatch ? modelMatch[1] : 'DeepSeek-R1';
-                    const imageName = getModelImageName(modelName);
-                    
-                    console.log('添加历史AI消息，模型:', modelName);
-                    
-                    // 创建并添加模型信息
-                    const modelInfoDiv = document.createElement('div');
-                    modelInfoDiv.className = 'model-info';
-                    modelInfoDiv.innerHTML = `
-                            <img src="/static/models/${imageName}.png" alt="${modelName}" class="model-avatar" onerror="this.src='/static/models/default.png';">
-                            <div class="model-name"><strong>${modelName}</strong></div>
-                    `;
-                    
-                    // 添加到消息元素
-                    messageDiv.appendChild(modelInfoDiv);
-                    
-                    // 提取并渲染有思考内容的折叠块
-                    const thinkRegex = /<think time=(\d+)>([\s\S]*?)<\/think>/;
-                    const thinkMatches = content.match(thinkRegex);
-                    if (thinkMatches && thinkMatches[2].trim()) {
-                        const thinkTime = thinkMatches[1];
-                        const thinkContent = thinkMatches[2];
-                        // 创建折叠容器
+                                // 处理特殊标签
+                                const processedContent = processMessageContent(textContent, true, true);
+                                contentDiv.innerHTML = marked.parse(processedContent);
+                                
+                                messageDiv.appendChild(contentDiv);
+                                chatMessages.appendChild(messageDiv);
+                            }
+                        } else {
+                            // 无图片的普通消息
+                            const contentDiv = document.createElement('div');
+                            contentDiv.className = 'message-content';
+                            
+                            // 处理特殊标签
+                            const processedContent = processMessageContent(msg.content, true, true);
+                        contentDiv.innerHTML = marked.parse(processedContent);
+                        
+                        // 添加到消息元素
+                        messageDiv.appendChild(contentDiv);
+                        chatMessages.appendChild(messageDiv);
+                        }
+                    } else {
+                        let content = msg.content;
+                        
+                        // 提取模型名称
+                        const modelMatch = content.match(/<model="([^"]+)"\/>/);
+                        const modelName = modelMatch ? modelMatch[1] : 'DeepSeek-R1';
+                        const imageName = getModelImageName(modelName);
+                        
+                        console.log('添加历史AI消息，模型:', modelName);
+                        
+                        // 创建并添加模型信息
+                        const modelInfoDiv = document.createElement('div');
+                        modelInfoDiv.className = 'model-info';
+                        modelInfoDiv.innerHTML = `
+                                <img src="/static/models/${imageName}.png" alt="${modelName}" class="model-avatar" onerror="this.src='/static/models/default.png';">
+                                <div class="model-name"><strong>${modelName}</strong></div>
+                        `;
+                        
+                        // 添加到消息元素
+                        messageDiv.appendChild(modelInfoDiv);
+                        
+                        // 提取并渲染有思考内容的折叠块
+                        const thinkRegex = /<think time=(\d+)>([\s\S]*?)<\/think>/;
+                        const thinkMatches = content.match(thinkRegex);
+                        if (thinkMatches && thinkMatches[2].trim()) {
+                            const thinkTime = thinkMatches[1];
+                            const thinkContent = thinkMatches[2];
+                            // 创建折叠容器
                 const thinkContainer = document.createElement('div');
                 thinkContainer.className = 'think-container';
                 thinkContainer.style.margin = '0.5rem 0';
@@ -1442,11 +1448,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 强制滚动到底部
                     scrollToBottom(true);
-        })
-        .catch(error => {
-            console.error('加载历史记录失败:', error);
-            showError('加载历史记录失败: ' + error.message);
-        });
+                
+                // 历史记录加载完成后，添加复制按钮
+                console.log('历史记录加载完成，添加复制按钮...');
+                setTimeout(() => {
+                    window.addCopyButtonsToAllCodeBlocks();
+                }, 300);
+            })
+            .catch(error => {
+                console.error('加载历史记录失败:', error);
+                showError('加载历史记录失败: ' + error.message);
+            });
     }
 
     function updateUrl(conversationId) {
@@ -2096,6 +2108,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 修改 startMarkdownObserver 函数
     function startMarkdownObserver() {
+        console.log('启动Markdown观察器...');
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList') {
@@ -2119,6 +2132,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     // 解析 Markdown
                                     const parsedHtml = marked.parse(processedText);
                                     contentDiv.innerHTML = parsedHtml;
+                                    
+                                    // 为代码块添加复制按钮
+                                    console.log('新内容渲染后添加复制按钮');
+                                    addCopyButtonsToCodeBlocks(contentDiv);
                                     
                                     // 渲染数学公式
                                     renderMathInElement(contentDiv, {
@@ -2149,6 +2166,116 @@ document.addEventListener('DOMContentLoaded', function() {
             childList: true,
             subtree: true
         });
+    }
+    
+    // 为代码块添加复制按钮
+    function addCopyButtonsToCodeBlocks(container) {
+        const codeBlocks = container.querySelectorAll('pre code');
+        console.log('找到代码块数量:', codeBlocks.length);
+        
+        codeBlocks.forEach((codeBlock, index) => {
+            // 创建复制按钮容器
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'copy-button-container';
+            buttonContainer.style.cssText = 'position: absolute; top: 5px; right: 5px; z-index: 100; opacity: 1;';
+            
+            // 创建复制按钮
+            const copyButton = document.createElement('button');
+            copyButton.className = 'copy-button';
+            copyButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+            copyButton.title = "复制代码";
+            copyButton.style.cssText = 'background: rgba(240, 240, 240, 0.8); border: none; border-radius: 4px; color: #555; cursor: pointer; padding: 5px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.12);';
+            
+            // 添加点击事件
+            copyButton.addEventListener('click', async (e) => {
+                e.stopPropagation(); // 防止事件冒泡
+                const code = codeBlock.textContent;
+                
+                try {
+                    await navigator.clipboard.writeText(code);
+                    // 复制成功，修改按钮文本
+                    copyButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                    copyButton.style.background = 'rgba(73, 204, 144, 0.8)';
+                    copyButton.style.color = '#fff';
+                    
+                    // 显示提示
+                    showNotification('代码已复制到剪贴板', 1500);
+                    
+                    // 2秒后恢复原状
+                    setTimeout(() => {
+                        copyButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+                        copyButton.style.background = 'rgba(240, 240, 240, 0.8)';
+                        copyButton.style.color = '#555';
+                    }, 2000);
+                } catch (err) {
+                    console.error('复制失败：', err);
+                    copyButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+                    copyButton.style.background = 'rgba(255, 59, 48, 0.8)';
+                    copyButton.style.color = '#fff';
+                    
+                    // 显示失败提示
+                    showNotification('复制失败，请手动复制', 1500);
+                    
+                    // 2秒后恢复原状
+                    setTimeout(() => {
+                        copyButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+                        copyButton.classList.remove('copy-error');
+                    }, 2000);
+                    
+                    // 兼容性处理：尝试使用备用方法复制
+                    fallbackCopy(code);
+                }
+            });
+            
+            // 添加按钮到容器
+            buttonContainer.appendChild(copyButton);
+            
+            // 确保代码块的父元素有相对定位
+            const preElement = codeBlock.parentElement;
+            if (preElement && preElement.tagName === 'PRE') {
+                // 强制设置pre元素的样式
+                preElement.style.position = 'relative';
+                preElement.style.padding = '1em';
+                preElement.style.borderRadius = '6px';
+                preElement.style.margin = '0.5em 0';
+                preElement.style.overflow = 'auto';
+                
+                preElement.appendChild(buttonContainer);
+                console.log(`已添加复制按钮到第${index+1}个代码块`);
+            } else {
+                console.log(`找不到第${index+1}个代码块的PRE父元素`);
+            }
+        });
+    }
+    
+    // 兼容性备用复制方法
+    function fallbackCopy(text) {
+        try {
+            // 创建一个临时文本区域
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            // 尝试执行复制命令
+            const successful = document.execCommand('copy');
+            
+            // 清理并返回
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                showNotification('已复制到剪贴板');
+            } else {
+                showNotification('复制失败，请手动复制');
+            }
+        } catch (err) {
+            console.error('备用复制方法失败:', err);
+            showNotification('复制失败，请手动复制');
+        }
     }
 
     // 添加 showConfirmDialog 函数
@@ -2274,6 +2401,64 @@ document.addEventListener('DOMContentLoaded', function() {
             background: #3651d4;
         }
 
+        /* 代码块样式增强 */
+        pre {
+            position: relative !important;
+            border-radius: 6px !important;
+            padding: 1em !important;
+            margin: 0.5em 0 !important;
+            overflow: auto !important;
+        }
+        
+        pre code {
+            font-family: 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace !important;
+            font-size: 0.9em !important;
+            line-height: 1.5 !important;
+            display: block !important;
+        }
+        
+        .copy-button-container {
+            position: absolute !important;
+            top: 5px !important;
+            right: 5px !important;
+            /* 移除透明度，使按钮始终显示 */
+            opacity: 1;
+            z-index: 10 !important;
+        }
+        
+        .copy-button {
+            background: rgba(240, 240, 240, 0.8) !important;
+            border: none !important;
+            border-radius: 4px !important;
+            color: #555 !important;
+            cursor: pointer !important;
+            font-size: 12px !important;
+            padding: 5px !important;
+            transition: all 0.2s !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
+            width: 28px !important;
+            height: 28px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        
+        .copy-button:hover {
+            background: rgba(255, 255, 255, 0.95) !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15) !important;
+            color: #000 !important;
+        }
+        
+        .copy-button.copy-success {
+            background: rgba(73, 204, 144, 0.8) !important;
+            color: #fff !important;
+        }
+        
+        .copy-button.copy-error {
+            background: rgba(255, 59, 48, 0.8) !important;
+            color: #fff !important;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -2294,7 +2479,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     `;
-
     document.head.appendChild(confirmDialogStyle);
 
     // 加载对话列表
@@ -2783,4 +2967,27 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('续流失败:', e);
         }
     }
+
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', init);
+
+    // 全局复制按钮添加函数，可以从控制台调用
+    window.addCopyButtonsToAllCodeBlocks = function() {
+        console.log('手动添加复制按钮到所有代码块...');
+        const allContainers = document.querySelectorAll('.message-content');
+        console.log('找到消息内容容器数量:', allContainers.length);
+        
+        allContainers.forEach((container, index) => {
+            console.log(`处理第${index+1}个消息容器`);
+            addCopyButtonsToCodeBlocks(container);
+        });
+        
+        console.log('复制按钮添加完成');
+    };
+
+    // 在页面完全加载后运行复制按钮添加
+    window.addEventListener('load', function() {
+        console.log('页面完全加载，运行复制按钮添加...');
+        setTimeout(window.addCopyButtonsToAllCodeBlocks, 500);
+    });
 })
