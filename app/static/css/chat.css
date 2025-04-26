@@ -260,6 +260,33 @@ body {
     backdrop-filter: blur(var(--glass-blur));
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     margin-left: 0;
+    position: relative; /* 添加相对定位，用于顶部渐变定位 */
+}
+
+/* 添加顶部白色渐变阴影 */
+.chat-main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, 
+                rgb(255, 255, 255) 0%, 
+                rgb(255, 255, 255) 76%,
+                rgba(255, 255, 255, 0) 100%);
+    z-index: 14; /* 使其索引仅次于模型选择框(z-index: 15) */
+    pointer-events: none; /* 确保不会干扰下方元素的点击 */
+}
+
+/* 暗色模式下的顶部渐变 */
+@media (prefers-color-scheme: dark) {
+    .chat-main::before {
+        background: linear-gradient(to bottom, 
+                    rgba(30, 30, 30, 0.95) 0%, 
+                    rgba(30, 30, 30, 0.95) 76%,
+                    rgba(30, 30, 30, 0) 100%);
+    }
 }
 
 #messages {
@@ -819,6 +846,13 @@ body {
     align-items: center;
     justify-content: space-between;
     transition: all 0.2s ease;
+}
+
+/* 添加模型选择框标题的响应式字体大小 */
+@media (max-width: 768px) {
+    .model-select-header {
+        font-size: 17px; /* 移动端字体小2px */
+    }
 }
 
 .model-select-header:hover {
