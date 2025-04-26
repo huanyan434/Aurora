@@ -165,12 +165,13 @@
                                     <th>用户名</th>
                                     <th>邮箱</th>
                                     <th>状态</th>
+                                    <th>会员</th>
                                     <th>会话数</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table">
                                 <tr>
-                                    <td colspan="5" class="text-center">加载中...</td>
+                                    <td colspan="6" class="text-center">加载中...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -213,7 +214,60 @@
                                 <h6 class="text-muted">会话数</h6>
                                 <p id="modal-conversations">-</p>
                             </div>
+                            <div class="mb-3">
+                                <h6 class="text-muted">会员状态</h6>
+                                <p id="modal-membership">-</p>
+                            </div>
                         </div>
+                    </div>
+                    
+                    <!-- 会员管理 -->
+                    <div class="mt-4">
+                        <h5 class="border-bottom pb-2 mb-3">会员管理</h5>
+                        <form id="membership-form" class="row g-3">
+                            <input type="hidden" id="member-user-id" value="">
+                            
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="is-member-switch">
+                                    <label class="form-check-label" for="is-member-switch">开启会员</label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 member-controls">
+                                <div class="row align-items-center">
+                                    <div class="col-auto">
+                                        <label for="member-level" class="form-label">会员级别</label>
+                                    </div>
+                                    <div class="col">
+                                        <select class="form-select" id="member-level">
+                                            <option value="vip">VIP会员</option>
+                                            <option value="svip">SVIP会员</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 member-controls">
+                                <div class="row align-items-center">
+                                    <div class="col-auto">
+                                        <label for="member-duration" class="form-label">延长时间</label>
+                                    </div>
+                                    <div class="col">
+                                        <select class="form-select" id="member-duration">
+                                            <option value="30">30天</option>
+                                            <option value="90">90天</option>
+                                            <option value="180">180天</option>
+                                            <option value="365">365天</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12 mt-3 text-end">
+                                <button type="button" class="btn btn-primary" id="update-membership-btn">更新会员状态</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -313,6 +367,21 @@
             // 获取用户名首字母作为头像
             const initial = user.username.charAt(0).toUpperCase();
             
+            // 会员状态标识
+            let memberBadge = '';
+            if (user.is_member) {
+                if (user.member_expired) {
+                    memberBadge = `<span class="badge bg-warning ms-2">会员已过期</span>`;
+                } else {
+                    const levelLabels = {
+                        'vip': 'VIP会员',
+                        'svip': 'SVIP会员'
+                    };
+                    const levelLabel = levelLabels[user.member_level] || user.member_level;
+                    memberBadge = `<span class="badge bg-primary ms-2">${levelLabel}</span>`;
+                }
+            }
+            
             // 构建卡片内容
             card.innerHTML = `
                 <div class="card user-card ${user.is_online ? 'online' : 'offline'}" data-user-id="${user.id}">
@@ -322,7 +391,7 @@
                                 ${initial}
                             </div>
                             <div>
-                                <h5 class="card-title mb-0">${user.username}</h5>
+                                <h5 class="card-title mb-0">${user.username} ${memberBadge}</h5>
                                 <small class="text-muted">${user.email}</small>
                             </div>
                         </div>
@@ -355,7 +424,7 @@
         usersTable.innerHTML = '';
         
         if (users.length === 0) {
-            usersTable.innerHTML = '<tr><td colspan="5" class="text-center">没有找到用户</td></tr>';
+            usersTable.innerHTML = '<tr><td colspan="6" class="text-center">没有找到用户</td></tr>';
             return;
         }
         
@@ -367,6 +436,21 @@
                 row.classList.add('table-success');
             }
             
+            // 会员状态
+            let memberStatus = '非会员';
+            if (user.is_member) {
+                if (user.member_expired) {
+                    memberStatus = `<span class="badge bg-warning">已过期</span>`;
+                } else {
+                    const levelLabels = {
+                        'vip': 'VIP会员',
+                        'svip': 'SVIP会员'
+                    };
+                    const levelLabel = levelLabels[user.member_level] || user.member_level;
+                    memberStatus = `<span class="badge bg-primary">${levelLabel}</span>`;
+                }
+            }
+            
             // 添加各列数据
             row.innerHTML = `
                 <td>${user.id}</td>
@@ -376,6 +460,7 @@
                     <span class="online-indicator ${user.is_online ? 'online' : 'offline'}"></span>
                     ${user.is_online ? '在线' : '离线'}
                 </td>
+                <td>${memberStatus}</td>
                 <td>${formatNumber(user.conversations_count)}</td>
             `;
             
@@ -403,9 +488,113 @@
         
         document.getElementById('modal-conversations').textContent = formatNumber(user.conversations_count);
         
+        // 设置会员状态显示
+        const membershipEl = document.getElementById('modal-membership');
+        if (user.is_member) {
+            if (user.member_expired) {
+                membershipEl.innerHTML = `<span class="badge bg-warning">会员已过期</span>`;
+            } else {
+                const levelLabels = {
+                    'vip': 'VIP会员',
+                    'svip': 'SVIP会员'
+                };
+                const levelLabel = levelLabels[user.member_level] || user.member_level;
+                membershipEl.innerHTML = `
+                    <span class="badge bg-primary">${levelLabel}</span>
+                    <span class="ms-2">剩余 ${user.member_days_left} 天</span>
+                `;
+                if (user.member_until) {
+                    membershipEl.innerHTML += `<br><small class="text-muted">到期时间: ${new Date(user.member_until).toLocaleString()}</small>`;
+                }
+            }
+        } else {
+            membershipEl.textContent = '非会员';
+        }
+        
+        // 设置会员管理表单值
+        document.getElementById('member-user-id').value = user.id;
+        document.getElementById('is-member-switch').checked = user.is_member;
+        
+        if (user.member_level) {
+            const levelSelect = document.getElementById('member-level');
+            if (levelSelect.querySelector(`option[value="${user.member_level}"]`)) {
+                levelSelect.value = user.member_level;
+            }
+        }
+        
+        // 控制会员设置选项的显示
+        toggleMemberControls(user.is_member);
+        
         // 显示模态框
         const modal = new bootstrap.Modal(document.getElementById('userDetailModal'));
         modal.show();
+    }
+    
+    // 控制会员设置选项的显示/隐藏
+    function toggleMemberControls(show) {
+        const controls = document.querySelectorAll('.member-controls');
+        controls.forEach(el => {
+            el.style.display = show ? 'block' : 'none';
+        });
+    }
+    
+    // 更新用户会员状态
+    function updateUserMembership(userId, isMember, memberLevel, durationDays) {
+        fetch('/dashboard/update_user_membership', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                is_member: isMember,
+                member_level: memberLevel,
+                duration_days: durationDays
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 提示成功
+                alert('会员状态更新成功');
+                
+                // 刷新用户列表
+                loadUsers();
+                
+                // 更新模态框内的会员信息显示
+                const user = data.user;
+                const memberStatus = user.member_status;
+                
+                const membershipEl = document.getElementById('modal-membership');
+                if (user.is_member) {
+                    if (memberStatus.expired) {
+                        membershipEl.innerHTML = `<span class="badge bg-warning">会员已过期</span>`;
+                    } else {
+                        const levelLabels = {
+                            'basic': '基础会员',
+                            'premium': '高级会员',
+                            'vip': 'VIP会员'
+                        };
+                        const levelLabel = levelLabels[user.member_level] || user.member_level;
+                        membershipEl.innerHTML = `
+                            <span class="badge bg-primary">${levelLabel}</span>
+                            <span class="ms-2">剩余 ${memberStatus.days_left} 天</span>
+                        `;
+                        if (user.member_until) {
+                            membershipEl.innerHTML += `<br><small class="text-muted">到期时间: ${new Date(user.member_until).toLocaleString()}</small>`;
+                        }
+                    }
+                } else {
+                    membershipEl.textContent = '非会员';
+                }
+            } else {
+                alert('更新失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('更新会员状态失败:', error);
+            alert('更新会员状态失败，请检查网络连接或重试');
+        });
     }
     
     // 加载所有用户数据
@@ -439,7 +628,7 @@
                 document.getElementById('users-card-container').innerHTML = 
                     '<div class="col-12 text-center py-5"><p class="text-danger">加载用户数据失败</p></div>';
                 document.getElementById('users-table').innerHTML = 
-                    '<tr><td colspan="5" class="text-center text-danger">加载用户数据失败</td></tr>';
+                    '<tr><td colspan="6" class="text-center text-danger">加载用户数据失败</td></tr>';
             });
     }
     
@@ -498,6 +687,21 @@
         
         // 刷新按钮
         document.getElementById('refresh-btn').addEventListener('click', loadUsers);
+        
+        // 会员设置开关事件
+        document.getElementById('is-member-switch').addEventListener('change', function(e) {
+            toggleMemberControls(e.target.checked);
+        });
+        
+        // 更新会员状态按钮事件
+        document.getElementById('update-membership-btn').addEventListener('click', function() {
+            const userId = document.getElementById('member-user-id').value;
+            const isMember = document.getElementById('is-member-switch').checked;
+            const memberLevel = document.getElementById('member-level').value;
+            const durationDays = parseInt(document.getElementById('member-duration').value);
+            
+            updateUserMembership(userId, isMember, memberLevel, durationDays);
+        });
         
         // 自动刷新
         setInterval(loadUsers, 60000);

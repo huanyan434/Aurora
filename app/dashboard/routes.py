@@ -212,13 +212,22 @@ def get_users():
             # 获取该用户的会话数
             conversations_count = Conversation.query.filter_by(user_id=user.id).count()
             
+            # 获取会员信息
+            member_status = user.get_member_status()
+            
             user_list.append({
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
                 'is_online': user.id in active_user_ids,
                 'token_usage': user_token_usage,
-                'conversations_count': conversations_count
+                'conversations_count': conversations_count,
+                'is_member': user.is_member,
+                'member_level': user.member_level,
+                'member_days_left': member_status['days_left'],
+                'member_expired': member_status['expired'],
+                'member_since': user.member_since.isoformat() if user.member_since else None,
+                'member_until': user.member_until.isoformat() if user.member_until else None
             })
         
         return jsonify({
@@ -249,4 +258,58 @@ def count_active_users():
     except Exception as e:
         print(f"计算在线用户时出错: {e}")
         # 出错时返回1（至少当前用户在线）
-        return 1 
+        return 1
+
+@dashboard_bp.route('/update_user_membership', methods=['POST'])
+@dashboard_login_required
+def update_user_membership():
+    """更新用户会员状态"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        is_member = data.get('is_member', False)
+        member_level = data.get('member_level', 'free')
+        duration_days = data.get('duration_days', 30)  # 默认30天
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': '用户不存在'}), 404
+        
+        user.is_member = is_member
+        
+        # 如果设置为会员
+        if is_member:
+            user.member_level = member_level
+            now = datetime.utcnow()
+            
+            # 如果用户已经是会员并且还未过期，则在现有到期时间基础上延长
+            if user.is_member and user.member_until and user.member_until > now:
+                user.member_until = user.member_until + timedelta(days=duration_days)
+            else:
+                # 否则从当前时间开始计算
+                user.member_since = now
+                user.member_until = now + timedelta(days=duration_days)
+        else:
+            # 如果取消会员资格，清空会员信息
+            user.member_level = 'free'
+            user.member_until = None
+        
+        db.session.commit()
+        
+        # 返回更新后的会员信息
+        return jsonify({
+            'success': True,
+            'message': '会员状态更新成功',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'is_member': user.is_member,
+                'member_level': user.member_level,
+                'member_since': user.member_since.isoformat() if user.member_since else None,
+                'member_until': user.member_until.isoformat() if user.member_until else None,
+                'member_status': user.get_member_status()
+            }
+        })
+    except Exception as e:
+        print(f"更新用户会员状态时出错: {e}")
+        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500 

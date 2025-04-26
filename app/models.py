@@ -9,7 +9,49 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
+    # 会员相关字段
+    is_member = db.Column(db.Boolean, default=False)
+    member_level = db.Column(db.String(20), default='free')  # free, basic, premium, vip
+    member_since = db.Column(db.DateTime, nullable=True)
+    member_until = db.Column(db.DateTime, nullable=True)
     conversations = db.relationship('Conversation', backref='user', lazy=True)
+
+    def is_active_member(self):
+        """检查用户会员是否有效"""
+        if not self.is_member:
+            return False
+        if not self.member_until:
+            return False
+        return datetime.utcnow() < self.member_until
+
+    def get_member_status(self):
+        """获取会员状态信息"""
+        if not self.is_member:
+            return {
+                'is_member': False,
+                'level': 'free',
+                'days_left': 0,
+                'expired': False
+            }
+        
+        days_left = 0
+        expired = True
+        
+        if self.member_until:
+            now = datetime.utcnow()
+            if now < self.member_until:
+                # 计算剩余天数
+                days_left = (self.member_until - now).days
+                expired = False
+        
+        return {
+            'is_member': True,
+            'level': self.member_level,
+            'days_left': days_left,
+            'expired': expired,
+            'since': self.member_since.isoformat() if self.member_since else None,
+            'until': self.member_until.isoformat() if self.member_until else None
+        }
 
 class Conversation(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)  # 使用UUID

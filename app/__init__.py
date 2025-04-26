@@ -41,11 +41,13 @@ def register_blueprints(app):
     from .routes import chat_bp, auth_bp  # 从routes/__init__.py导入
     from .history import history_bp
     from .dashboard import dashboard_bp  # 从dashboard模块导入
+    from .routes.vip import vip_bp  # 导入新创建的vip蓝图
     
     app.register_blueprint(chat_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(history_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(vip_bp, url_prefix='/vip')  # 注册vip蓝图，url前缀为/vip
 
 def register_error_handlers(app):
     from flask import jsonify, render_template
