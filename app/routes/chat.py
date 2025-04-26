@@ -344,3 +344,30 @@ def get_current_user():
         "email": "",
         "is_authenticated": False
     })
+
+@chat_bp.route('/save-sidebar-state', methods=['POST'])
+def save_sidebar_state():
+    """保存用户侧边栏状态"""
+    try:
+        data = request.json
+        is_open = data.get('isOpen')
+        
+        # 使用会话存储所有用户的侧边栏状态
+        session['sidebar_state'] = is_open
+        return jsonify({"success": True, "message": "侧边栏状态已保存"}), 200
+    
+    except Exception as e:
+        print(f"保存侧边栏状态时出错: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@chat_bp.route('/get-sidebar-state', methods=['GET'])
+def get_sidebar_state():
+    """获取用户侧边栏状态"""
+    try:
+        # 从会话获取状态，默认为打开
+        sidebar_state = session.get('sidebar_state', True)
+        return jsonify({"isOpen": sidebar_state}), 200
+    
+    except Exception as e:
+        print(f"获取侧边栏状态时出错: {str(e)}")
+        return jsonify({"error": str(e), "isOpen": True}), 500

@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
             setupModelSelector();
             // 获取当前用户信息
             await getCurrentUser();
+            // 加载侧边栏状态
+            await loadSidebarState();
             // 加载对话列表
             await loadConversations();
             await initChat();
@@ -1839,7 +1841,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    collapsed: state.isSidebarCollapsed
+                    isOpen: !state.isSidebarCollapsed
                 })
             }).catch(error => {
                 console.error('保存侧边栏状态失败:', error);
@@ -2990,4 +2992,32 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('页面完全加载，运行复制按钮添加...');
         setTimeout(window.addCopyButtonsToAllCodeBlocks, 500);
     });
-})
+
+    // 加载侧边栏状态
+    async function loadSidebarState() {
+        try {
+            const response = await fetch('/get-sidebar-state');
+            if (!response.ok) {
+                throw new Error('获取侧边栏状态失败');
+            }
+            
+            const data = await response.json();
+            
+            // 根据服务器返回状态设置侧边栏
+            state.isSidebarCollapsed = !data.isOpen;
+            
+            if (state.isSidebarCollapsed) {
+                elements.sidebar.classList.add('collapsed');
+                elements.collapseBtn.classList.add('collapsed');
+            } else {
+                elements.sidebar.classList.remove('collapsed');
+                elements.collapseBtn.classList.remove('collapsed');
+            }
+            
+            console.log('已加载侧边栏状态:', data.isOpen ? '打开' : '关闭');
+        } catch (error) {
+            console.error('加载侧边栏状态时出错:', error);
+            // 默认保持现有状态或使用默认状态
+        }
+    }
+});
