@@ -2087,3 +2087,63 @@ body.dark .au-tooltip {
         grid-template-columns: 1fr;
     }
 }
+
+.username-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.username-display span {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.edit-username-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.edit-username-btn:hover {
+    background-color: rgba(67, 97, 238, 0.1);
+    transform: scale(1.1);
+}
+
+.edit-username-btn i {
+    font-size: 16px;
+}
+
+#cancel-username-btn {
+    padding: 8px 15px;
+    background: #f0f0f0;
+    color: var(--dark-color);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#cancel-username-btn:hover {
+    background: #e0e0e0;
+}
+
+@media (prefers-color-scheme: dark) {
+    #cancel-username-btn {
+        background: #333;
+        color: #fff;
+    }
+    
+    #cancel-username-btn:hover {
+        background: #444;
+    }
+}

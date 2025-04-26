@@ -261,9 +261,21 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        // 编辑用户名按钮点击事件
+        const editUsernameBtn = document.querySelector('.edit-username-btn');
+        if (editUsernameBtn) {
+            editUsernameBtn.addEventListener('click', toggleUsernameEdit);
+        }
+
         // 保存用户名按钮点击事件
         if (elements.saveUsernameBtn) {
             elements.saveUsernameBtn.addEventListener('click', updateUsername);
+        }
+
+        // 取消编辑用户名按钮事件
+        const cancelUsernameBtn = document.getElementById('cancel-username-btn');
+        if (cancelUsernameBtn) {
+            cancelUsernameBtn.addEventListener('click', cancelUsernameEdit);
         }
     }
 
@@ -3158,58 +3170,87 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function updateUsername() {
-        if (!elements.usernameInput || !elements.saveUsernameBtn) return;
+        const usernameInput = document.getElementById('username-input');
+        const saveBtn = document.getElementById('save-username-btn');
+        const errorSpan = document.getElementById('username-error');
         
-        const newUsername = elements.usernameInput.value.trim();
+        if (!usernameInput || !saveBtn) return;
+        
+        const newUsername = usernameInput.value.trim();
         
         // 验证用户名
         if (!newUsername) {
-            showNotification('用户名不能为空', 3000);
+            if (errorSpan) errorSpan.textContent = '用户名不能为空';
             return;
         }
         
-        if (newUsername === state.currentUser.username) {
-            showNotification('用户名未变更', 3000);
+        if (newUsername.length < 2 || newUsername.length > 20) {
+            if (errorSpan) errorSpan.textContent = '用户名长度必须在2-20个字符之间';
             return;
         }
         
         try {
-            // 禁用按钮，显示加载状态
-            elements.saveUsernameBtn.disabled = true;
-            elements.saveUsernameBtn.textContent = '保存中...';
+            saveBtn.disabled = true;
+            saveBtn.textContent = '保存中...';
             
-            // 发送更新请求
-            const response = await fetch('/api/user/update_username', {
+            const response = await fetch('/auth/api/user/update_username', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: newUsername })
             });
             
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || '更新用户名失败');
-            }
-            
             const data = await response.json();
             
-            // 更新状态和显示
-            state.currentUser.username = newUsername;
-            elements.userNameDisplay.textContent = newUsername;
-            
-            // 显示成功提示
-            showNotification('用户名已更新', 3000);
-            
-            // 可能需要更新页面其他显示用户名的地方
-            
+            if (response.ok) {
+                // 更新成功
+                const userNameDisplay = document.getElementById('user-name-display');
+                if (userNameDisplay) userNameDisplay.textContent = newUsername;
+                
+                // 更新全局状态
+                state.currentUser.username = newUsername;
+                
+                // 关闭编辑模式
+                toggleUsernameEdit(false);
+                
+                // 显示成功消息
+                showNotification('用户名已更新', 3000);
+            } else {
+                // 显示错误信息
+                if (errorSpan) errorSpan.textContent = data.message || '更新用户名失败';
+            }
         } catch (error) {
             console.error('更新用户名时出错:', error);
-            showNotification(`更新失败: ${error.message}`, 3000);
+            if (errorSpan) errorSpan.textContent = '更新用户名时发生错误';
         } finally {
-            // 恢复按钮状态
-            elements.saveUsernameBtn.disabled = false;
-            elements.saveUsernameBtn.textContent = '保存';
+            saveBtn.disabled = false;
+            saveBtn.textContent = '保存';
+        }
+    }
+
+    // 切换用户名编辑模式
+    function toggleUsernameEdit() {
+        const displayEl = document.querySelector('.username-display');
+        const editEl = document.querySelector('.username-edit');
+        const usernameInput = document.getElementById('username-input');
+        const currentUsername = document.getElementById('profile-username').textContent;
+        
+        if (displayEl && editEl && usernameInput) {
+            displayEl.style.display = 'none';
+            editEl.style.display = 'flex';
+            usernameInput.value = currentUsername;
+            usernameInput.focus();
+            usernameInput.select();
+        }
+    }
+    
+    // 取消用户名编辑
+    function cancelUsernameEdit() {
+        const displayEl = document.querySelector('.username-display');
+        const editEl = document.querySelector('.username-edit');
+        
+        if (displayEl && editEl) {
+            displayEl.style.display = 'flex';
+            editEl.style.display = 'none';
         }
     }
 });

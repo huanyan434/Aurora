@@ -157,9 +157,16 @@
                     <!-- 用户名修改 -->
                     <div class="user-info-section">
                         <h4>用户名</h4>
-                        <div class="username-edit">
+                        <div class="username-display">
+                            <span id="profile-username">{{ current_user.username }}</span>
+                            <button class="edit-username-btn" title="修改用户名">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                        <div class="username-edit" style="display: none;">
                             <input type="text" id="username-input" value="{{ current_user.username }}">
                             <button id="save-username-btn">保存</button>
+                            <button id="cancel-username-btn">取消</button>
                         </div>
                     </div>
                     
