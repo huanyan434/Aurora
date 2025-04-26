@@ -118,3 +118,51 @@ def update_username():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
+
+@auth_bp.route('/api/user/update_password', methods=['POST'])
+@login_required
+def update_password():
+    """更新用户密码"""
+    try:
+        data = request.json
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+        
+        if not current_password or not new_password or not confirm_password:
+            return jsonify({
+                'success': False, 
+                'message': '所有密码字段都不能为空'
+            }), 400
+            
+        # 检查当前密码是否正确
+        if not verify_password(current_user.password_hash, current_password):
+            return jsonify({
+                'success': False, 
+                'message': '当前密码不正确'
+            }), 400
+            
+        # 检查新密码是否与确认密码匹配
+        if new_password != confirm_password:
+            return jsonify({
+                'success': False, 
+                'message': '新密码与确认密码不匹配'
+            }), 400
+            
+        # 检查新密码长度
+        if len(new_password) < 6:
+            return jsonify({
+                'success': False, 
+                'message': '新密码长度不能少于6个字符'
+            }), 400
+            
+        # 更新密码
+        current_user.password_hash = hash_password(new_password)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': '密码更新成功'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500

@@ -1911,6 +1911,47 @@ body.dark .au-tooltip {
     padding-bottom: 5px;
 }
 
+.username-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.username-display span {
+    font-size: 16px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.user-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-username-btn, .edit-password-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.edit-username-btn:hover, .edit-password-btn:hover {
+    background-color: rgba(67, 97, 238, 0.1);
+    transform: scale(1.1);
+}
+
+.edit-username-btn i, .edit-password-btn i {
+    font-size: 16px;
+}
+
 .username-edit {
     display: flex;
     gap: 10px;
@@ -1936,6 +1977,192 @@ body.dark .au-tooltip {
 
 #save-username-btn:hover {
     background: var(--secondary-color);
+}
+
+#cancel-username-btn {
+    padding: 8px 15px;
+    background: #f0f0f0;
+    color: var(--dark-color);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#cancel-username-btn:hover {
+    background: #e0e0e0;
+}
+
+@media (prefers-color-scheme: dark) {
+    #cancel-username-btn {
+        background: #333;
+        color: #fff;
+    }
+    
+    #cancel-username-btn:hover {
+        background: #444;
+    }
+}
+
+/* 移除旧的change-password-btn样式，保留其他样式 */
+.change-password-btn {
+    padding: 8px 15px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 15px;
+}
+
+.change-password-btn:hover {
+    background: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 密码弹窗样式 */
+#password-modal {
+    z-index: 1001; /* 确保在用户资料弹窗上面 */
+}
+
+#password-form {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.password-field {
+    margin-bottom: 16px;
+}
+
+.password-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: var(--dark-color);
+    font-weight: 500;
+}
+
+.password-field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 14px;
+    background: transparent;
+    color: var(--dark-color);
+    transition: all 0.2s;
+}
+
+.password-field input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
+    outline: none;
+}
+
+.password-notice {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--gray-color);
+    border-left: 3px solid var(--primary-color);
+}
+
+.password-notice p {
+    margin: 5px 0;
+}
+
+.password-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: flex-end;
+}
+
+#save-password-btn {
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+#save-password-btn:hover {
+    background: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#save-password-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+#cancel-password-btn {
+    padding: 10px 20px;
+    background: #f0f0f0;
+    color: var(--dark-color);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+#cancel-password-btn:hover {
+    background: #e0e0e0;
+}
+
+.close-password-modal {
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-password-modal:hover {
+    transform: scale(1.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    #password-form {
+        background: rgba(40, 40, 40, 0.5);
+    }
+    
+    .password-field input {
+        background: rgba(30, 30, 30, 0.8);
+        color: #fff;
+        border-color: #444;
+    }
+    
+    .password-field label {
+        color: #eee;
+    }
+    
+    .password-notice {
+        background: rgba(40, 40, 40, 0.5);
+        color: #bbb;
+    }
+    
+    #cancel-password-btn {
+        background: #333;
+        color: #fff;
+    }
+    
+    #cancel-password-btn:hover {
+        background: #444;
+    }
 }
 
 /* 会员信息样式 */
@@ -2088,62 +2315,140 @@ body.dark .au-tooltip {
     }
 }
 
-.username-display {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+/* moreTooltip */
+.au-theme {
+    --au-input-height-l: 44px;
+    --au-input-height-m: 34px;
+    --au-input-height-s: 30px;
+    --au-input-height-xs: 26px;
+    --au-font-weight-strong: 600;
+    --au-font-size-l: 16px;
+    --au-line-height-l: 28px;
+    --au-font-size-m: 14px;
+    --au-line-height-m: 25px;
+    --au-font-size-sp: 13px;
+    --au-line-height-sp: 23px;
+    --au-font-size-s: 12px;
+    --au-line-height-s: 21px;
+    --au-font-size-xsp: 11px;
+    --au-line-height-xsp: 19.5px;
+    --au-font-size-xs: 10px;
+    --au-line-height-xs: 18px;
+    --au-ease-in-out: cubic-bezier(.4, 0, .2, 1);
+    --au-ease-in: cubic-bezier(.4, 0, 1, 1);
+    --au-ease-out: cubic-bezier(0, 0, .2, 1);
+    --au-font-family-code: Menlo, "Roboto Mono", "Courier New", Courier, monospace, "Inter", sans-serif;
+    --au-transition-duration: .2s;
+    --au-transition-duration-fast: .1s;
+    --au-transition-duration-slow: .3s
 }
 
-.username-display span {
-    font-size: 16px;
-    font-weight: 500;
+.au-tooltip {
+    --tooltip-text-color: #fff;
+    --tooltip-color: #222;
+    --tooltip-box-shadow: 0 6px 16px 0 rgba(0, 0, 0, .08), 0 3px 6px -4px rgba(0, 0, 0, .12), 0 9px 28px 8px rgba(0, 0, 0, .05)
 }
 
-.edit-username-btn {
-    background: none;
-    border: none;
-    color: var(--primary-color);
-    cursor: pointer;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
+.au-tooltip.au-tooltip--m {
+    --tooltip-font-size: var(--au-font-size-m);
+    --tooltip-line-height: var(--au-line-height-m);
+    --tooltip-padding: 6px 12px;
+    --tooltip-arrow-size: 8px
+}
+
+.au-tooltip.au-tooltip--s {
+    --tooltip-font-size: var(--au-font-size-s);
+    --tooltip-line-height: var(--au-line-height-s);
+    --tooltip-padding: 6px 10px;
+    --tooltip-arrow-size: 6px
+}
+
+body.dark .au-tooltip {
+    --tooltip-text-color: rgb(var(--au-rgb-label-1));
+    --tooltip-color: rgb(var(--au-rgb-elevated));
+    --tooltip-box-shadow: 0 6px 16px 0 rgba(0, 0, 0, .08), 0 3px 6px -4px rgba(0, 0, 0, .12), 0 9px 28px 8px rgba(0, 0, 0, .05)
+}
+
+.au-tooltip.au-tooltip--show-shadow,
+.au-tooltip.au-tooltip--show-shadow__arrow,
+body.dark .au-tooltip {
+    box-shadow: var(--tooltip-box-shadow)
+}
+
+.au-tooltip {
+    padding: var(--tooltip-padding);
+    font-size: var(--tooltip-font-size);
+    line-height: var(--tooltip-line-height);
+    background-color: var(--tooltip-color);
+    color: var(--tooltip-text-color);
+    max-width: var(--au-toast-max-width, calc(100vw - 28px));
+    border-radius: 10px;
+    position: relative
+}
+
+.au-tooltip__arrow {
+    z-index: -1;
+    color: var(--tooltip-color);
+    z-index: 1;
     justify-content: center;
-    transition: all 0.2s;
+    align-items: flex-start;
+    display: flex;
+    position: absolute
 }
 
-.edit-username-btn:hover {
-    background-color: rgba(67, 97, 238, 0.1);
-    transform: scale(1.1);
+.au-tooltip__arrow.au-tooltip__arrow--sharp {
+    width: calc(var(--tooltip-arrow-size)*1.414);
+    height: calc(var(--tooltip-arrow-size)*1.414);
+    background-color: var(--tooltip-color)
 }
 
-.edit-username-btn i {
-    font-size: 16px;
+.au-tooltip__arrow.au-tooltip__arrow--soft {
+    width: calc(var(--tooltip-arrow-size)*2);
+    height: calc(var(--tooltip-arrow-size)*2)
 }
 
-#cancel-username-btn {
-    padding: 8px 15px;
-    background: #f0f0f0;
-    color: var(--dark-color);
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
+.au-tooltip__soft-arrow {
+    height: var(--tooltip-arrow-size);
+    flex-shrink: 0;
+    transform: translateY(100%)
 }
 
-#cancel-username-btn:hover {
-    background: #e0e0e0;
+.au-tooltip__arrow.au-tooltip__arrow--sharp[au-floating-placement^=top] {
+    top: 100%;
+    transform: translateY(-50%)rotate(45deg)
 }
 
-@media (prefers-color-scheme: dark) {
-    #cancel-username-btn {
-        background: #333;
-        color: #fff;
-    }
-    
-    #cancel-username-btn:hover {
-        background: #444;
-    }
+.au-tooltip__arrow.au-tooltip__arrow--sharp[au-floating-placement^=bottom] {
+    bottom: 100%;
+    transform: translateY(50%)rotate(45deg)
+}
+
+.au-tooltip__arrow.au-tooltip__arrow--sharp[au-floating-placement^=left] {
+    left: 100%;
+    transform: translate(-50%)rotate(45deg)
+}
+
+.au-tooltip__arrow.au-tooltip__arrow--sharp[au-floating-placement^=right] {
+    right: 100%;
+    transform: translate(50%)rotate(45deg)
+}
+
+.au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=top] {
+    top: 100%;
+    transform: translateY(-50%)
+}
+
+.au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=bottom] {
+    bottom: 100%;
+    transform: translateY(50%)rotate(180deg)
+}
+
+.au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=left] {
+    left: 100%;
+    transform: translate(-50%)rotate(270deg)
+}
+
+.au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=right] {
+    right: 100%;
+    transform: translate(50%)rotate(90deg)
 }
