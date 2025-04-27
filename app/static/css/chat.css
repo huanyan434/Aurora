@@ -51,7 +51,7 @@ body {
 
 /* ===== 修复的侧边栏样式 ===== */
 .conversation-sidebar {
-    width: 280px;
+    width: 260px;
     height: 100%;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
@@ -264,7 +264,7 @@ body {
 }
 
 /* 添加顶部白色渐变阴影 */
-.chat-main::before {
+.chat-overlay {
     content: '';
     position: absolute;
     top: 0;
@@ -277,6 +277,13 @@ body {
                 rgba(255, 255, 255, 0) 100%);
     z-index: 14; /* 使其索引仅次于模型选择框(z-index: 15) */
     pointer-events: none; /* 确保不会干扰下方元素的点击 */
+}
+.chat-overlay-d {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 55px;
+    background: rgb(255, 255, 255)
 }
 
 /* 暗色模式下的顶部渐变 */
@@ -668,7 +675,7 @@ body {
 /* 侧边栏折叠按钮 */
 .collapse-btn {
     position: absolute;
-    left: 280px;
+    left: 260px;
     top: 50%;
     transform: translateY(-50%);
     width: 30px;
@@ -2220,7 +2227,7 @@ body.dark .au-tooltip {
 }
 
 .membership-card.svip {
-    background: linear-gradient(135deg, #e84393, #fd79a8);
+    background: linear-gradient(135deg, #5ca4e7, #9bdbfe);
 }
 
 .membership-header {

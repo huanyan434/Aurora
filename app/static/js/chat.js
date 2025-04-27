@@ -3569,7 +3569,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 titleElement.textContent = newTitle;
                 
                 // 发送API请求更新标题
-                fetch('/api/conversation/rename', {
+                fetch(`/conversations/${conversationId}/update_title`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

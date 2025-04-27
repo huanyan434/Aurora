@@ -4,7 +4,6 @@ from ..models import User
 from ..extensions import db
 from dotenv import load_dotenv, find_dotenv
 import os
-import requests
 import time
 from hashlib import md5
 

@@ -10,7 +10,6 @@ import queue
 from app.history import save_history, load_history
 from app.utils.token_tracker import record_token_usage
 from flask_login import current_user
-import requests
 from flask import current_app
 
 # 全局变量，用于存储正在进行的响应
