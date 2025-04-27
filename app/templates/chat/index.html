@@ -65,6 +65,8 @@
 
         <!-- 主聊天区域 -->
         <div class="chat-main">
+            <div class="chat-overlay"></div>
+            <div class="chat-overlay-d"></div>
             <!-- 在聊天界面顶部添加模型选择器 -->
             <div class="model-select">
                 <div class="model-select-header">
@@ -189,6 +191,16 @@
                         <div id="membership-privileges">
                             <!-- 会员权益列表将通过JavaScript动态添加 -->
                         </div>
+                    </div>
+
+                    <!-- 兑换兑换码 -->
+                    <div class="user-info-section">
+                        <h4>兑换兑换码</h4>
+                        <div class="redeem-section" style="display: flex; align-items: center; gap: 8px;">
+                            <input type="text" id="vip-code-input" placeholder="输入兑换码" style="flex: 1; padding: 6px;" />
+                            <button type="button" id="vip-redeem-btn" style="padding: 6px 12px;">兑换</button>
+                        </div>
+                        <div id="vip-redeem-result" style="margin-top: 6px;"></div>
                     </div>
                 </div>
             </div>

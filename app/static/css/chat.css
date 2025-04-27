@@ -288,7 +288,7 @@ body {
 
 /* 暗色模式下的顶部渐变 */
 @media (prefers-color-scheme: dark) {
-    .chat-main::before {
+    .chat-overlay {
         background: linear-gradient(to bottom, 
                     rgba(30, 30, 30, 0.95) 0%, 
                     rgba(30, 30, 30, 0.95) 76%,
@@ -2514,4 +2514,43 @@ body.dark .au-tooltip {
 .conversation-title-edit:focus {
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+}
+
+/* VIP 兑换输入和按钮样式 */
+#vip-code-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#vip-code-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+#vip-redeem-btn {
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(67, 97, 238, 0.3);
+}
+
+#vip-redeem-btn:hover {
+    background: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4);
+}
+
+#vip-redeem-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
 }

@@ -26,7 +26,10 @@ document.addEventListener('DOMContentLoaded', function () {
         imageUploadInput: document.getElementById('image-upload'),
         imagePreviewContainer: document.getElementById('image-preview-container'),
         previewImage: document.getElementById('preview-image'),
-        removeImageBtn: document.querySelector('.remove-image-btn')
+        removeImageBtn: document.querySelector('.remove-image-btn'),
+        vipCodeInput: document.getElementById('vip-code-input'), // 兑换码输入框
+        vipRedeemBtn: document.getElementById('vip-redeem-btn'),   // 兑换按钮
+        vipRedeemResult: document.getElementById('vip-redeem-result'), // 兑换结果显示
     };
     // ====================== 状态管理 ======================
     const state = {
@@ -378,6 +381,42 @@ document.addEventListener('DOMContentLoaded', function () {
         const cancelUsernameBtn = document.getElementById('cancel-username-btn');
         if (cancelUsernameBtn) {
             cancelUsernameBtn.addEventListener('click', cancelUsernameEdit);
+        }
+
+        // 兑换兑换码事件
+        const vipCodeInputEl = document.getElementById('vip-code-input');
+        const vipRedeemBtnEl = document.getElementById('vip-redeem-btn');
+        const vipRedeemResultEl = document.getElementById('vip-redeem-result');
+        if (vipRedeemBtnEl) {
+            vipRedeemBtnEl.addEventListener('click', async () => {
+                const code = vipCodeInputEl?.value.trim();
+                if (!code) {
+                    vipRedeemResultEl.textContent = '请输入兑换码';
+                    return;
+                }
+                try {
+                    const resp = await fetch('/vip/get_vip_token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code })
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok) {
+                        vipRedeemResultEl.textContent = data.message;
+                    } else {
+                        vipRedeemResultEl.textContent = `兑换成功：${data.type.toUpperCase()} ${data.days} 天`;
+                        // 刷新会员信息
+                        fetchUserMembershipInfo();
+                    }
+                } catch (error) {
+                    console.error('兑换失败:', error);
+                    vipRedeemResultEl.textContent = '兑换失败，请稍后重试';
+                }
+            });
+            // 支持回车提交
+            vipCodeInputEl?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') vipRedeemBtnEl.click();
+            });
         }
     }
 

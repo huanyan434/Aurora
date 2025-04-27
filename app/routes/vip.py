@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app, request
 from flask_login import login_required, current_user
 from ..models import User
 from ..extensions import db
@@ -6,6 +6,8 @@ from dotenv import load_dotenv, find_dotenv
 import os
 import time
 from hashlib import md5
+import random, string, json
+from datetime import datetime, timedelta
 
 vip_bp = Blueprint('vip', __name__)
 
@@ -129,4 +131,65 @@ def get_privileges_by_level(level):
         ]
     }
     
-    return privileges.get(level, privileges['free']) 
+    return privileges.get(level, privileges['free'])
+
+def generate_vip_tokens(count=100):
+    """生成指定数量的随机兑换码列表"""
+    seen = set()
+    tokens = []
+    durations = [30, 90, 365]
+    types = ['vip', 'svip']
+    while len(tokens) < count:
+        code = '-'.join(
+            ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+            for _ in range(5)
+        )
+        if code in seen:
+            continue
+        seen.add(code)
+        ttype = random.choice(types)
+        days = random.choice(durations)
+        tokens.append({'code': code, 'type': ttype, 'days': days})
+    return tokens
+
+@vip_bp.before_app_request
+def init_vip_tokens():
+    """应用启动时初始化兑换码文件"""
+    file_path = os.path.join(current_app.instance_path, 'vip_token.json')
+    if not os.path.exists(file_path):
+        tokens = generate_vip_tokens(100)
+        with open(file_path, 'w') as f:
+            json.dump(tokens, f)
+
+@vip_bp.route('/get_vip_token', methods=['POST'])
+@login_required
+def get_vip_token():
+    """用户兑换兑换码接口"""
+    data = request.get_json() or {}
+    code = data.get('code')
+    if not code:
+        return jsonify({'success': False, 'message': '兑换码不能为空'}), 400
+    file_path = os.path.join(current_app.instance_path, 'vip_token.json')
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'message': '无可用兑换码'}), 400
+    with open(file_path, 'r') as f:
+        tokens = json.load(f)
+    target = None
+    for t in tokens:
+        if t['code'] == code:
+            target = t
+            break
+    if not target:
+        return jsonify({'success': False, 'message': '兑换码无效或已使用'}), 400
+    # 移除已使用的兑换码
+    tokens = [t for t in tokens if t['code'] != code]
+    with open(file_path, 'w') as f:
+        json.dump(tokens, f)
+    # 激活会员
+    user = current_user
+    user.is_member = True
+    user.member_level = target['type']
+    user.member_since = datetime.utcnow()
+    user.member_until = datetime.utcnow() + timedelta(days=target['days'])
+    db.session.commit()
+    return jsonify({'success': True, 'type': target['type'], 'days': target['days']}), 200 
