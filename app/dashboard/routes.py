@@ -227,7 +227,8 @@ def get_users():
                 'member_days_left': member_status['days_left'],
                 'member_expired': member_status['expired'],
                 'member_since': user.member_since.isoformat() if user.member_since else None,
-                'member_until': user.member_until.isoformat() if user.member_until else None
+                'member_until': user.member_until.isoformat() if user.member_until else None,
+                'balance': user.balance  # 添加余额信息
             })
         
         return jsonify({
@@ -312,4 +313,51 @@ def update_user_membership():
         })
     except Exception as e:
         print(f"更新用户会员状态时出错: {e}")
-        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500 
+        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
+
+@dashboard_bp.route('/add_user_balance', methods=['POST'])
+@dashboard_login_required
+def add_user_balance():
+    """管理员给用户充值余额"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        amount = float(data.get('amount', 0))
+        
+        # 验证输入
+        if not user_id or amount <= 0:
+            return jsonify({
+                'success': False,
+                'message': '无效的用户ID或充值金额'
+            }), 400
+        
+        # 获取用户
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': '用户不存在'
+            }), 404
+        
+        # 充值余额
+        user.add_balance(amount)
+        db.session.commit()
+        
+        # 返回充值结果
+        return jsonify({
+            'success': True,
+            'message': f'成功为用户 {user.username} 充值 ¥{amount:.2f}',
+            'balance': user.balance,
+            'formatted_balance': f'¥{user.balance:.2f}'
+        })
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'message': f'无效的充值金额: {str(e)}'
+        }), 400
+    except Exception as e:
+        print(f"给用户充值余额时出错: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'充值失败: {str(e)}'
+        }), 500 

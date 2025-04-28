@@ -14,6 +14,8 @@ class User(UserMixin, db.Model):
     member_level = db.Column(db.String(20), default='free')  # free, basic, premium, vip
     member_since = db.Column(db.DateTime, nullable=True)
     member_until = db.Column(db.DateTime, nullable=True)
+    # 用户余额字段
+    balance = db.Column(db.Float, default=0.0)
     conversations = db.relationship('Conversation', backref='user', lazy=True)
 
     def is_active_member(self):
@@ -52,6 +54,14 @@ class User(UserMixin, db.Model):
             'since': self.member_since.isoformat() if self.member_since else None,
             'until': self.member_until.isoformat() if self.member_until else None
         }
+        
+    def add_balance(self, amount):
+        """增加或减少用户余额"""
+        self.balance += amount
+        # 确保余额不会变成负数
+        if self.balance < 0:
+            self.balance = 0
+        return True
 
 class Conversation(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)  # 使用UUID

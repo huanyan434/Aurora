@@ -8,7 +8,7 @@ import copy
 import threading
 import queue
 from app.history import save_history, load_history
-from app.utils.token_tracker import record_token_usage
+from app.utils.token_tracker import record_token_usage, get_latest_token_usage
 from flask_login import current_user
 from flask import current_app
 
@@ -521,6 +521,21 @@ def generate_thread(
     # 使用创建的应用上下文执行所有操作
     with app.app_context():
         try:
+            # 获取正确的数据库实例
+            from app import db
+            
+            # 检查用户余额（如果是登录用户）
+            if user_id != 'anonymous':
+                from app.models import User
+                user = User.query.get(user_id)
+                if user and user.balance <= 0:
+                    response_status[message_id] = 'error'
+                    if message_id in response_queues:
+                        response_queues[message_id].put(
+                            f"<e>余额不足，请充值后继续使用</e>")
+                        response_queues[message_id].put(None)
+                        return
+            
             # 保存原始模型名
             model_orig = model
             # 转换模型名为API所需格式
@@ -566,6 +581,37 @@ def generate_thread(
                 print(f"成功保存历史记录，条数: {len(updated_history)}")
             except Exception as e:
                 print(f"保存历史记录出错: {str(e)}")
+                
+            # 扣费逻辑（如果用户已登录）
+            if user_id != 'anonymous':
+                try:
+                    from app.models import User
+                    user = User.query.get(user_id)
+                    if user:
+                        # 获取上次API调用的token使用量，从数据库或token记录中获取
+                        usage = get_latest_token_usage(user_id)
+                        if usage:
+                            total_tokens = usage.get('prompt_tokens', 0) + usage.get('completion_tokens', 0)
+                            
+                            # 根据会员级别确定费率
+                            if user.member_level == 'svip':
+                                fee_rate = 0.0  # SVIP不收费
+                            elif user.is_member and user.member_level == 'vip':
+                                fee_rate = 0.0005  # VIP费率
+                            else:
+                                fee_rate = 0.001  # 普通用户费率
+                            
+                            # 计算费用并扣除（使用负数，因为扣费是减少余额）
+                            fee = total_tokens * fee_rate
+                            if fee > 0:
+                                # 使用add_balance方法，但传入负值来扣费
+                                # user.balance -= fee
+                                user.add_balance(-fee)  # 使用负值扣费
+                                db.session.commit()
+                                print(f"用户{user.username}扣费成功，扣除{fee}元，当前余额{user.balance}元")
+                except Exception as e:
+                    print(f"扣费过程中出错: {str(e)}")
+                    # 不中断用户体验，只记录错误
 
             # 标记响应完成
             response_status[message_id] = 'finished'

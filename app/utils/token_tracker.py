@@ -128,4 +128,42 @@ def get_token_usage_stats():
             "completion_tokens": 0,
             "records_count": 0,
             "error": str(e)
-        } 
+        }
+
+def get_latest_token_usage(user_id):
+    """
+    获取指定用户最新的token使用记录
+    
+    参数:
+        user_id: 用户ID
+        
+    返回:
+        dict: 包含prompt_tokens、completion_tokens等信息的字典，如果没有找到记录则返回None
+    """
+    try:
+        file_path = get_token_file_path()
+        if not os.path.exists(file_path):
+            return None
+            
+        with open(file_path, 'r', encoding='utf-8') as f:
+            usage_data = json.load(f)
+        
+        # 筛选出指定用户的记录并按时间戳排序
+        user_records = [
+            record for record in usage_data
+            if str(record.get("user_id", "")) == str(user_id)
+        ]
+        
+        if not user_records:
+            return None
+            
+        # 按时间戳排序，获取最新记录
+        user_records.sort(
+            key=lambda x: datetime.fromisoformat(x["timestamp"]).timestamp(),
+            reverse=True
+        )
+        
+        return user_records[0]
+    except Exception as e:
+        print(f"获取用户最新token使用记录时出错: {e}")
+        return None 

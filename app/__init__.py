@@ -42,12 +42,14 @@ def register_blueprints(app):
     from .history import history_bp
     from .dashboard import dashboard_bp  # 从dashboard模块导入
     from .routes.vip import vip_bp  # 导入新创建的vip蓝图
+    from .routes.money import money_bp  # 导入新创建的money蓝图
     
     app.register_blueprint(chat_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(history_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(vip_bp, url_prefix='/vip')  # 注册vip蓝图，url前缀为/vip
+    app.register_blueprint(money_bp, url_prefix='/money')  # 注册money蓝图，url前缀为/money
 
 def register_error_handlers(app):
     from flask import jsonify, render_template

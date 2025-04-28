@@ -192,4 +192,95 @@ def get_vip_token():
     user.member_since = datetime.utcnow()
     user.member_until = datetime.utcnow() + timedelta(days=target['days'])
     db.session.commit()
-    return jsonify({'success': True, 'type': target['type'], 'days': target['days']}), 200 
+    return jsonify({'success': True, 'type': target['type'], 'days': target['days']}), 200
+
+@vip_bp.route('/check_vip_token', methods=['POST'])
+@login_required
+def check_vip_token():
+    """检查兑换码可用性"""
+    data = request.get_json() or {}
+    code = data.get('code')
+    if not code:
+        return jsonify({'success': False, 'message': '兑换码不能为空'}), 400
+    
+    file_path = os.path.join(current_app.instance_path, 'vip_token.json')
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'message': '无可用兑换码'}), 400
+    
+    with open(file_path, 'r') as f:
+        tokens = json.load(f)
+    
+    target = None
+    for t in tokens:
+        if t['code'] == code:
+            target = t
+            break
+    
+    if not target:
+        return jsonify({'success': False, 'message': '兑换码无效或已使用'}), 400
+    
+    return jsonify({
+        'success': True, 
+        'type': target['type'], 
+        'days': target['days'],
+        'message': f'有效的{target["type"].upper()}兑换码，可激活{target["days"]}天'
+    }), 200
+
+@vip_bp.route('/activate_vip_token', methods=['POST'])
+@login_required
+def activate_vip_token():
+    """激活会员兑换码，支持SVIP降级为VIP的特殊处理"""
+    data = request.get_json() or {}
+    code = data.get('code')
+    days_override = data.get('days_override')  # 用于SVIP降级VIP时的天数覆盖
+    
+    if not code:
+        return jsonify({'success': False, 'message': '兑换码不能为空'}), 400
+    
+    file_path = os.path.join(current_app.instance_path, 'vip_token.json')
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'message': '无可用兑换码'}), 400
+    
+    with open(file_path, 'r') as f:
+        tokens = json.load(f)
+    
+    target = None
+    for t in tokens:
+        if t['code'] == code:
+            target = t
+            break
+    
+    if not target:
+        return jsonify({'success': False, 'message': '兑换码无效或已使用'}), 400
+    
+    # 移除已使用的兑换码
+    tokens = [t for t in tokens if t['code'] != code]
+    with open(file_path, 'w') as f:
+        json.dump(tokens, f)
+    
+    # 激活会员
+    user = current_user
+    days = days_override if days_override else target['days']
+    
+    # 如果用户已是会员，则延长会员时间
+    if user.is_member and user.member_until > datetime.utcnow():
+        user.member_until = user.member_until + timedelta(days=days)
+    else:
+        user.is_member = True
+        user.member_level = target['type']
+        user.member_since = datetime.utcnow()
+        user.member_until = datetime.utcnow() + timedelta(days=days)
+    
+    db.session.commit()
+    
+    # 获取更新后的会员状态
+    member_status = user.get_member_status()
+    
+    return jsonify({
+        'success': True, 
+        'type': user.member_level,
+        'days': days,
+        'days_left': member_status['days_left'],
+        'member_until': user.member_until.isoformat() if user.member_until else None,
+        'message': f'成功激活{user.member_level.upper()}会员，有效期至{user.member_until.strftime("%Y-%m-%d")}'
+    }), 200 

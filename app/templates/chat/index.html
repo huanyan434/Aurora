@@ -192,15 +192,41 @@
                             <!-- 会员权益列表将通过JavaScript动态添加 -->
                         </div>
                     </div>
+                    
+                    <!-- 余额信息 -->
+                    <div class="user-info-section" id="balance-section">
+                        <h4>余额信息</h4>
+                        <div id="balance-display">
+                            <div class="loading-spinner">加载中...</div>
+                        </div>
+                        <!-- 余额充值 -->
+                        <div class="redeem-section">
+                            <h4>充值码兑换</h4>
+                            <div class="redeem-form">
+                                <input type="text" id="money-code-input" placeholder="输入充值码" class="redeem-input" />
+                                <button type="button" id="money-redeem-btn" class="redeem-button">充值</button>
+                            </div>
+                            <div id="money-redeem-result" class="redeem-result"></div>
+                        </div>
+                    </div>
 
                     <!-- 兑换兑换码 -->
                     <div class="user-info-section">
-                        <h4>兑换兑换码</h4>
-                        <div class="redeem-section" style="display: flex; align-items: center; gap: 8px;">
-                            <input type="text" id="vip-code-input" placeholder="输入兑换码" style="flex: 1; padding: 6px;" />
-                            <button type="button" id="vip-redeem-btn" style="padding: 6px 12px;">兑换</button>
+                        <h4>会员兑换</h4>
+                        <div class="redeem-section">
+                            <div class="redeem-form">
+                                <input type="text" id="vip-code-input" placeholder="输入会员兑换码" class="redeem-input" />
+                                <button type="button" id="vip-redeem-btn" class="redeem-button">兑换</button>
+                            </div>
+                            <div id="vip-redeem-result" class="redeem-result"></div>
                         </div>
-                        <div id="vip-redeem-result" style="margin-top: 6px;"></div>
+                    </div>
+
+                    <!-- 获取兑换码链接 -->
+                    <div class="get-code-section">
+                        <a href="https://afdian.com/a/mchyj" target="_blank" class="get-code-link">
+                            <i class="bi bi-gift"></i> 获取兑换码
+                        </a>
                     </div>
                 </div>
             </div>

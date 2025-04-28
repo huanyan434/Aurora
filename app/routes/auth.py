@@ -28,31 +28,43 @@ def login():
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
-    with db.session.begin():
-        if request.method == 'POST':
-            email = request.form.get('email')
-            username = request.form.get('username')
-            password = request.form.get('password')
-            
-            user = User.query.filter_by(email=email).first()
-            
-            
-            if user:
-                flash('邮箱地址已存在')
-                return redirect(url_for('auth.signup'))
-            
-            new_user = User(
-                email=email,
-                username=username,
-                password_hash=hash_password(password)
-            )
-            
-            db.session.add(new_user)
-            db.session.commit()
-            
-            return redirect(url_for('auth.login'))
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        email = request.form.get('email', '')
+
+        # 验证必填字段
+        if not username or not password:
+            flash('用户名和密码为必填项', 'danger')
+            return render_template('auth/signup.html')
+
+        # 检查用户名长度
+        if len(username) < 3:
+            flash('用户名长度至少为3个字符', 'danger')
+            return render_template('auth/signup.html')
+
+        # 检查用户名是否已存在
+        if User.query.filter_by(username=username).first():
+            flash('用户名已存在，请选择其他用户名', 'danger')
+            return render_template('auth/signup.html')
+
+        # 创建新用户
+        new_user = User(
+            username=username,
+            email=email
+        )
+        new_user.set_password(password)
         
-        return render_template('auth/signup.html')
+        # 设置默认余额为10元
+        new_user.balance = 10.0
+        
+        db.session.add(new_user)
+        db.session.commit()
+
+        flash('注册成功，现在可以登录了', 'success')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('auth/signup.html')
 
 @auth_bp.route('/logout')
 @login_required
