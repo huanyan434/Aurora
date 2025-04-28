@@ -18,6 +18,11 @@ class User(UserMixin, db.Model):
     balance = db.Column(db.Float, default=0.0)
     conversations = db.relationship('Conversation', backref='user', lazy=True)
 
+    def set_password(self, password):
+        """设置用户密码"""
+        from app.utils.auth import hash_password
+        self.password_hash = hash_password(password)
+
     def is_active_member(self):
         """检查用户会员是否有效"""
         if not self.is_member:
