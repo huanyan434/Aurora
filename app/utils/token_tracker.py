@@ -166,4 +166,75 @@ def get_latest_token_usage(user_id):
         return user_records[0]
     except Exception as e:
         print(f"获取用户最新token使用记录时出错: {e}")
-        return None 
+        return None
+
+def get_user_daily_model_usage(user_id, model_name):
+    """
+    获取用户今天使用特定模型的次数
+    
+    参数:
+        user_id: 用户ID
+        model_name: 模型名称
+        
+    返回:
+        int: 今天使用该模型的次数
+    """
+    try:
+        from datetime import datetime, time
+        
+        # 获取今天的起始时间（UTC+8时区，0点）
+        today = datetime.now().date()
+        today_start_utc = datetime.combine(today, time(0, 0, 0))
+        
+        # 读取token使用记录
+        file_path = get_token_file_path()
+        if not os.path.exists(file_path):
+            return 0
+            
+        with open(file_path, 'r', encoding='utf-8') as f:
+            usage_data = json.load(f)
+        
+        # 筛选出今天该用户使用特定模型的记录
+        today_records = [
+            record for record in usage_data
+            if str(record.get("user_id", "")) == str(user_id) and
+            record.get("model", "") == model_name and
+            datetime.fromisoformat(record["timestamp"]).date() == today
+        ]
+        
+        # 返回今天使用的次数
+        return len(today_records)
+    except Exception as e:
+        print(f"获取用户每日模型使用次数出错: {e}")
+        return 0
+
+def get_model_free_usage_limit(model_name):
+    """
+    获取模型的每日免费使用次数
+    
+    参数:
+        model_name: 模型名称
+        
+    返回:
+        int: 每日免费使用次数限制
+    """
+    from app.routes.func import model_name_reverse
+    model_name = model_name_reverse(model_name)
+    # 定义每个模型的每日免费使用次数
+    free_usage_limits = {
+        # 默认为5次
+        "default": 5,
+        # 具体模型可以有不同限制
+        "DeepSeek-R1": 20,
+        "DeepSeek-V3": 50,
+        "Doubao-1.5-lite": 10, 
+        "Doubao-1.5-pro": 10,
+        "Doubao-1.5-pro-256k": 5,
+        "Doubao-1.5-vision-pro": 5,
+        "Gemini-2.5-pro": 30,
+        "Gemini-2.5-flash": 30,
+        "Gemini-2.0-flash": 30,
+    }
+    
+    # 如果模型名称在定义的限制中，返回对应的限制，否则返回默认值
+    return free_usage_limits.get(model_name, free_usage_limits["default"]) 

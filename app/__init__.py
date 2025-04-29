@@ -43,6 +43,7 @@ def register_blueprints(app):
     from .dashboard import dashboard_bp  # 从dashboard模块导入
     from .routes.vip import vip_bp  # 导入新创建的vip蓝图
     from .routes.money import money_bp  # 导入新创建的money蓝图
+    from .routes.api import api_bp  # 导入新创建的api蓝图
     
     app.register_blueprint(chat_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -50,9 +51,10 @@ def register_blueprints(app):
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(vip_bp, url_prefix='/vip')  # 注册vip蓝图，url前缀为/vip
     app.register_blueprint(money_bp, url_prefix='/money')  # 注册money蓝图，url前缀为/money
+    app.register_blueprint(api_bp, url_prefix='/api')  # 注册api蓝图，url前缀为/api
 
 def register_error_handlers(app):
-    from flask import jsonify, render_template
+    from flask import jsonify, render_template, request, redirect, url_for
     
     @app.errorhandler(401)
     def unauthorized_error(error):

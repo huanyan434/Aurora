@@ -1109,8 +1109,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 // 刷新余额显示
                 await fetchUserBalanceInfo();
+                // 刷新免费次数显示
+                await updateAllModelsFreeUsage();
             } catch (error) {
-                console.error('刷新余额信息失败:', error);
+                console.error('刷新信息失败:', error);
             }
             
             return aiMessageDiv;
@@ -2241,6 +2243,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const modelOptions = modelSelect.querySelector('.model-select-options');
         const selectedModelSpan = modelSelect.querySelector('.selected-model');
 
+        // 添加免费次数提示的样式
+        const freeUsageStyle = document.createElement('style');
+        freeUsageStyle.textContent = `
+            .free-usage-display {
+                display: inline-block;
+                margin-left: 8px;
+                padding: 2px 6px;
+                background-color: rgba(255, 236, 153, 0.7);
+                border-radius: 4px;
+                font-size: 12px;
+                color: #664d03;
+            }
+            .free-usage-display.depleted {
+                background-color: rgba(255, 200, 200, 0.7);
+                color: #842029;
+            }
+            .free-usage-remaining {
+                font-weight: bold;
+            }
+        `;
+        document.head.appendChild(freeUsageStyle);
+
         // 根据localStorage中保存的模型设置初始选中状态
         const savedModel = state.currentModel;
         const savedModelOption = modelOptions.querySelector(`.model-option[data-value="${savedModel}"]`);
@@ -2262,7 +2286,12 @@ document.addEventListener('DOMContentLoaded', function () {
         // 点击头部显示/隐藏选项
         modelHeader.addEventListener('click', (e) => {
             e.stopPropagation();
-            modelSelect.classList.toggle('active');
+            const isActive = modelSelect.classList.toggle('active');
+            
+            // 更新所有模型的免费使用次数
+            if (isActive) {
+                updateAllModelsFreeUsage();
+            }
         });
 
         // 点击选项时更新选中的模型
@@ -2297,6 +2326,9 @@ document.addEventListener('DOMContentLoaded', function () {
         document.addEventListener('click', () => {
             modelSelect.classList.remove('active');
         });
+        
+        // 初始化时更新一次所有模型的免费使用次数
+        updateAllModelsFreeUsage();
     }
 
     // 获取当前选中的模型
@@ -4025,23 +4057,23 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('会员权益信息:', memberInfo.privileges);
             
             if (memberInfo.privileges && Array.isArray(memberInfo.privileges) && memberInfo.privileges.length > 0) {
-                let privilegesHTML = '<div class="privilege-list">';
-                
-                memberInfo.privileges.forEach(privilege => {
-                    privilegesHTML += `
-                        <div class="privilege-item">
-                            <div class="privilege-icon">
-                                <i class="bi ${privilege.icon || 'bi-check-circle'}"></i>
-                            </div>
+            let privilegesHTML = '<div class="privilege-list">';
+            
+            memberInfo.privileges.forEach(privilege => {
+                privilegesHTML += `
+                    <div class="privilege-item">
+                        <div class="privilege-icon">
+                            <i class="bi ${privilege.icon || 'bi-check-circle'}"></i>
+                        </div>
                             <div class="privilege-name">${privilege.name || ''}</div>
                             <div class="privilege-description">${privilege.description || ''}</div>
-                        </div>
-                    `;
-                });
-                
-                privilegesHTML += '</div>';
+                    </div>
+                `;
+            });
+            
+            privilegesHTML += '</div>';
                 console.log('生成的权益HTML:', privilegesHTML);
-                
+            
                 membershipPrivilegesElement.innerHTML = privilegesHTML;
             } else {
                 membershipPrivilegesElement.innerHTML = '<div class="no-privileges">无可用权益</div>';
@@ -4292,15 +4324,96 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         try {
+            // 获取当前选择的模型
+            const currentModel = getSelectedModel();
+            
+            // 检查模型免费次数
+            const modelUsage = await fetchModelFreeUsageInfo(currentModel);
+            
+            // 如果还有免费次数，直接允许发送
+            if (modelUsage.remaining > 0) {
+                return true;
+            }
+            
+            // 没有免费次数，检查余额
             const balanceData = await fetchUserBalanceInfo();
             if (!balanceData.success || balanceData.balance <= 0) {
-                showToast('余额不足，请充值后继续使用', 'danger');
+                showToast('您今日免费使用次数已用完，且余额不足，请充值后继续使用', 'danger');
                 return false;
             }
             return true;
         } catch (error) {
-            console.error('检查余额时出错:', error);
+            console.error('检查余额和免费次数时出错:', error);
             return true; // 出错时允许发送，后端会再次检查
+        }
+    }
+
+    // 获取模型的免费使用次数信息
+    async function fetchModelFreeUsageInfo(modelName) {
+        try {
+            // 构建请求URL，包含用户ID
+            let url = `/api/model/free_usage?model=${encodeURIComponent(modelName)}`;
+            
+            // 如果有当前用户信息，添加user_id参数
+            if (state.currentUser && state.currentUser.id) {
+                url += `&user_id=${state.currentUser.id}`;
+            }
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('获取模型免费使用次数信息失败');
+            }
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.message || '获取模型免费使用次数信息失败');
+            }
+            
+            return {
+                current: data.current,
+                limit: data.limit,
+                remaining: data.remaining
+            };
+        } catch (error) {
+            console.error('获取模型免费使用次数信息失败:', error);
+            return {
+                current: 0,
+                limit: 0,
+                remaining: 0
+            };
+        }
+    }
+    
+    // 更新所有模型的免费使用次数显示
+    async function updateAllModelsFreeUsage() {
+        const modelOptions = document.querySelectorAll('.model-option');
+        for (const option of modelOptions) {
+            const modelName = option.getAttribute('data-value');
+            try {
+                const usageInfo = await fetchModelFreeUsageInfo(modelName);
+                
+                // 查找或创建免费次数显示元素
+                let freeUsageDisplay = option.querySelector('.free-usage-display');
+                if (!freeUsageDisplay) {
+                    freeUsageDisplay = document.createElement('div');
+                    freeUsageDisplay.className = 'free-usage-display';
+                    option.appendChild(freeUsageDisplay);
+                }
+                
+                // 更新显示内容
+                freeUsageDisplay.innerHTML = `
+                    <span class="free-usage-remaining">${usageInfo.remaining}</span>/<span class="free-usage-limit">${usageInfo.limit}</span>
+                `;
+                
+                // 如果剩余次数为0，添加警告样式
+                if (usageInfo.remaining <= 0) {
+                    freeUsageDisplay.classList.add('depleted');
+                } else {
+                    freeUsageDisplay.classList.remove('depleted');
+                }
+            } catch (error) {
+                console.error(`获取模型${modelName}免费使用次数失败:`, error);
+            }
         }
     }
 });

@@ -55,9 +55,6 @@ def signup():
         )
         new_user.set_password(password)
         
-        # 设置默认余额为10元
-        new_user.balance = 10.0
-        
         db.session.add(new_user)
         db.session.commit()
 

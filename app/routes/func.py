@@ -8,7 +8,7 @@ import copy
 import threading
 import queue
 from app.history import save_history, load_history
-from app.utils.token_tracker import record_token_usage, get_latest_token_usage
+from app.utils.token_tracker import record_token_usage, get_latest_token_usage, get_user_daily_model_usage, get_model_free_usage_limit
 from flask_login import current_user
 from flask import current_app
 
@@ -23,20 +23,6 @@ current_user_id = None
 
 
 def model_name(model: str):
-    # 正向
-    """if model == "deepseek-ai/DeepSeek-R1":
-        model = "DeepSeek-R1"
-    elif model == "deepseek-ai/DeepSeek-V3":
-        model = "DeepSeek-V3"
-    elif model == "doubao-1-5-lite-32k-250115":
-        model = "Doubao-1.5-lite"
-    elif model == "doubao-1-5-pro-32k-250115":
-        model = "Doubao-1.5-pro"
-    elif model == "doubao-1-5-pro-256k-250115":
-        model = "Doubao-1.5-pro-256k"
-    elif model == "doubao-1-5-vision-pro-32k-250115":
-        model = "Doubao-1.5-vision-pro"""
-    # 反向
     if model == "DeepSeek-R1":
         model = "deepseek-ai/DeepSeek-R1"
     elif model == "DeepSeek-V3":
@@ -56,7 +42,26 @@ def model_name(model: str):
     elif model == "Gemini-2.0-flash":
         model = "gemini-2.0-flash"        
     return model
-
+def model_name_reverse(model: str):
+    if model == "deepseek-ai/DeepSeek-R1":
+        model = "DeepSeek-R1"
+    elif model == "deepseek-ai/DeepSeek-V3":
+        model = "DeepSeek-V3"
+    elif model == "doubao-1-5-lite-32k-250115":
+        model = "Doubao-1.5-lite"
+    elif model == "doubao-1-5-pro-32k-250115":
+        model = "Doubao-1.5-pro"
+    elif model == "doubao-1-5-pro-256k-250115":
+        model = "Doubao-1.5-pro-256k"
+    elif model == "doubao-1-5-vision-pro-32k-250115":
+        model = "Doubao-1.5-vision-pro"
+    elif model == "gemini-2.5-pro-exp-03-25":
+        model = "Gemini-2.5-pro"
+    elif model == "gemini-2.5-flash-preview-04-17":
+        model = "Gemini-2.5-flash"
+    elif model == "gemini-2.0-flash":
+        model = "Gemini-2.0-flash"
+    return model
 
 def stream_volcano_ark_api(model: str, history: list, response_queue):
     _ = load_dotenv(find_dotenv())
@@ -524,17 +529,31 @@ def generate_thread(
             # 获取正确的数据库实例
             from app import db
             
-            # 检查用户余额（如果是登录用户）
+            # 检查用户余额和免费次数（如果是登录用户）
+            will_charge = False
             if user_id != 'anonymous':
                 from app.models import User
+                from app.utils.token_tracker import get_user_daily_model_usage, get_model_free_usage_limit
+                
                 user = User.query.get(user_id)
-                if user and user.balance <= 0:
-                    response_status[message_id] = 'error'
-                    if message_id in response_queues:
-                        response_queues[message_id].put(
-                            f"<e>余额不足，请充值后继续使用</e>")
-                        response_queues[message_id].put(None)
-                        return
+                
+                # 检查是否还有免费次数
+                current_usage = get_user_daily_model_usage(user_id, model)
+                free_limit = get_model_free_usage_limit(model)
+                
+                if current_usage >= free_limit:
+                    # 已用完免费次数，需要检查余额
+                    will_charge = True
+                    if user and user.balance <= 0:
+                        response_status[message_id] = 'error'
+                        if message_id in response_queues:
+                            response_queues[message_id].put(
+                                f"<e>您今日免费使用次数已用完，且余额不足，请充值后继续使用</e>")
+                            response_queues[message_id].put(None)
+                            return
+                else:
+                    # 还有免费次数，不需要扣费，记录使用情况即可
+                    print(f"用户{user_id}今日使用{model}的第{current_usage+1}次，免费次数上限为{free_limit}")
             
             # 保存原始模型名
             model_orig = model
@@ -582,8 +601,8 @@ def generate_thread(
             except Exception as e:
                 print(f"保存历史记录出错: {str(e)}")
                 
-            # 扣费逻辑（如果用户已登录）
-            if user_id != 'anonymous':
+            # 扣费逻辑（如果用户已登录且需要扣费）
+            if user_id != 'anonymous' and will_charge:
                 try:
                     from app.models import User
                     user = User.query.get(user_id)
@@ -795,6 +814,32 @@ def get_active_responses():
                 'message_id': msg_id
             }
     return active
+
+
+def get_model_free_usage_info(model_name, user_id=None):
+    """获取模型的免费使用次数信息"""
+    from app.utils.token_tracker import get_user_daily_model_usage, get_model_free_usage_limit
+    
+    if not user_id:
+        # 匿名用户
+        return {
+            'current': 0,
+            'limit': get_model_free_usage_limit(model_name),
+            'remaining': get_model_free_usage_limit(model_name)
+        }
+    
+    # 获取用户今日使用次数
+    current_usage = get_user_daily_model_usage(user_id, model_name)
+    # 获取免费使用次数限制
+    free_limit = get_model_free_usage_limit(model_name)
+    # 计算剩余免费次数
+    remaining = max(0, free_limit - current_usage)
+    
+    return {
+        'current': current_usage,
+        'limit': free_limit,
+        'remaining': remaining
+    }
 
 
 def qwen_parse_image(image_base64):
