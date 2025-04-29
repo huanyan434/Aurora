@@ -360,4 +360,52 @@ def add_user_balance():
         return jsonify({
             'success': False,
             'message': f'充值失败: {str(e)}'
+        }), 500
+
+@dashboard_bp.route('/reset_user_balance', methods=['POST'])
+@dashboard_login_required
+def reset_user_balance():
+    """管理员重置用户余额"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        amount = float(data.get('amount', 0))  # 新的余额值
+        
+        # 验证输入
+        if not user_id or amount < 0:  # 允许重置为0
+            return jsonify({
+                'success': False,
+                'message': '无效的用户ID或余额值'
+            }), 400
+        
+        # 获取用户
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': '用户不存在'
+            }), 404
+        
+        # 重置余额
+        old_balance = user.balance
+        user.balance = amount
+        db.session.commit()
+        
+        # 返回结果
+        return jsonify({
+            'success': True,
+            'message': f'成功将用户 {user.username} 的余额从 ¥{old_balance:.2f} 重置为 ¥{amount:.2f}',
+            'balance': user.balance,
+            'formatted_balance': f'¥{user.balance:.2f}'
+        })
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'message': f'无效的余额值: {str(e)}'
+        }), 400
+    except Exception as e:
+        print(f"重置用户余额时出错: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'重置失败: {str(e)}'
         }), 500 

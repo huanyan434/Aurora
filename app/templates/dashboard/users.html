@@ -292,6 +292,31 @@
                             <div class="col-12 mt-3 text-end">
                                 <button type="button" class="btn btn-success" id="add-balance-btn">充值余额</button>
                             </div>
+                            
+                            <div class="col-12 mt-4">
+                                <div class="card border-warning">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h6 class="mb-0">重置余额</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <div class="row align-items-center">
+                                                    <div class="col-auto">
+                                                        <label for="reset-balance-amount" class="form-label">新余额值</label>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type="number" class="form-control" id="reset-balance-amount" min="0" step="0.01" value="0.00" placeholder="请输入新余额值">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 text-end">
+                                                <button type="button" class="btn btn-warning" id="reset-balance-btn">重置余额</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -302,11 +327,63 @@
         </div>
     </div>
 </div>
+
+<!-- 自定义通知组件 - 已移除，现在在JS中动态创建并添加到body -->
+
 {% endblock %}
 
 {% block scripts %}
 <script src="https://s4.zstatic.net/npm/apexcharts@3.35.2/dist/apexcharts.min.js"></script>
 <script>
+    // 自定义通知组件
+    function showNotification(message, type = 'success', duration = 5000) {
+        // 检查是否已存在通知容器
+        let container = document.getElementById('notification-container');
+        
+        // 如果不存在，创建一个并添加到body
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            container.className = 'position-fixed bottom-0 end-0 p-3';
+            container.style.zIndex = '9999'; // 设置最高z-index优先级
+            document.body.appendChild(container); // 直接附加到body元素
+        }
+        
+        // 创建通知元素
+        const notification = document.createElement('div');
+        notification.className = `toast fade show border-${type} mb-2`;
+        notification.setAttribute('role', 'alert');
+        notification.setAttribute('aria-live', 'assertive');
+        notification.setAttribute('aria-atomic', 'true');
+        
+        // 设置通知内容
+        notification.innerHTML = `
+            <div class="toast-header bg-${type} text-white">
+                <strong class="me-auto">${type === 'success' ? '成功' : type === 'danger' ? '错误' : '提示'}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        `;
+        
+        // 添加到容器
+        container.appendChild(notification);
+        
+        // 关闭按钮事件
+        const closeBtn = notification.querySelector('.btn-close');
+        closeBtn.addEventListener('click', () => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        });
+        
+        // 自动关闭
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, duration);
+    }
+    
     // 格式化数字
     function formatNumber(num) {
         return new Intl.NumberFormat('zh-CN').format(num);
@@ -586,7 +663,7 @@
         .then(data => {
             if (data.success) {
                 // 提示成功
-                alert('会员状态更新成功');
+                showNotification('会员状态更新成功', 'success');
                 
                 // 刷新用户列表
                 loadUsers();
@@ -617,12 +694,12 @@
                     membershipEl.textContent = '非会员';
                 }
             } else {
-                alert('更新失败: ' + data.message);
+                showNotification(data.message || '更新失败', 'danger');
             }
         })
         .catch(error => {
             console.error('更新会员状态失败:', error);
-            alert('更新会员状态失败，请检查网络连接或重试');
+            showNotification('更新会员状态失败，请检查网络连接或重试', 'danger');
         });
     }
     
@@ -642,7 +719,7 @@
         .then(data => {
             if (data.success) {
                 // 提示成功
-                alert(`充值成功，用户当前余额: ${data.formatted_balance}`);
+                showNotification(`充值成功，用户当前余额: ${data.formatted_balance}`, 'success');
                 
                 // 刷新用户列表
                 loadUsers();
@@ -650,12 +727,54 @@
                 // 更新模态框内的余额显示
                 document.getElementById('modal-balance').textContent = data.formatted_balance;
             } else {
-                alert('充值失败: ' + data.message);
+                showNotification(data.message || '充值失败', 'danger');
             }
         })
         .catch(error => {
             console.error('充值余额失败:', error);
-            alert('充值余额失败，请检查网络连接或重试');
+            showNotification('充值余额失败，请检查网络连接或重试', 'danger');
+        });
+    }
+    
+    // 重置余额
+    function resetUserBalance(userId, amount) {
+        // 防止重复通知的标志
+        let hasShownNotification = false;
+        
+        fetch('/dashboard/reset_user_balance', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId, amount: amount }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 提示成功
+                showNotification(`已成功重置用户余额为 ¥${amount.toFixed(2)}`, 'success');
+                hasShownNotification = true;
+                
+                // 更新模态框内的余额显示
+                document.getElementById('modal-balance').textContent = `¥${data.new_balance !== undefined ? data.new_balance.toFixed(2) : amount.toFixed(2)}`;
+                
+                // 安全地刷新用户列表
+                try {
+                    loadUsers();
+                } catch (err) {
+                    console.error('刷新用户列表时出错:', err);
+                    // 不显示额外的错误通知，因为已经显示了成功通知
+                }
+            } else {
+                showNotification(data.message || '重置余额失败', 'danger');
+                hasShownNotification = true;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (!hasShownNotification) {
+                showNotification('重置余额时发生错误', 'danger');
+            }
         });
     }
     
@@ -764,7 +883,7 @@
             
             // 验证输入
             if (isNaN(durationDays) || durationDays < 1) {
-                alert('请输入有效的会员天数');
+                showNotification('请输入有效的会员天数', 'danger');
                 return;
             }
             
@@ -778,11 +897,28 @@
             
             // 验证输入
             if (isNaN(amount) || amount <= 0) {
-                alert('请输入有效的充值金额');
+                showNotification('请输入有效的充值金额', 'danger');
                 return;
             }
             
             addUserBalance(userId, amount);
+        });
+        
+        // 重置余额按钮事件
+        document.getElementById('reset-balance-btn').addEventListener('click', function() {
+            const userId = document.getElementById('balance-user-id').value;
+            const amount = parseFloat(document.getElementById('reset-balance-amount').value);
+            
+            // 验证输入
+            if (isNaN(amount) || amount < 0) {
+                showNotification('请输入有效的余额值', 'danger');
+                return;
+            }
+            
+            // 确认是否重置
+            if (confirm(`确定要将用户 ${userId} 的余额重置为 ¥${amount.toFixed(2)} 吗？`)) {
+                resetUserBalance(userId, amount);
+            }
         });
         
         // 自动刷新

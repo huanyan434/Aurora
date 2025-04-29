@@ -21,7 +21,7 @@ def login():
             return redirect(url_for('auth.login'))
         
         login_user(user, remember=remember)
-        session['user_id'] = user.id  # 确保这里是 'user_id'
+        session['user_id'] = str(user.id)  # 将UUID转换为字符串
         return redirect(url_for('chat.chat_index'))
     
     return render_template('auth/login.html')
@@ -48,10 +48,11 @@ def signup():
             flash('用户名已存在，请选择其他用户名', 'danger')
             return render_template('auth/signup.html')
 
-        # 创建新用户
+        # 创建新用户，使用UUID作为ID并设置默认余额
         new_user = User(
             username=username,
-            email=email
+            email=email,
+            balance=10.0  # 设置默认余额为10元
         )
         new_user.set_password(password)
         
@@ -79,9 +80,12 @@ def get_current_user():
     """获取当前登录用户信息"""
     try:
         return jsonify({
-            'id': current_user.id,
+            'id': str(current_user.id),  # 将UUID转换为字符串
             'username': current_user.username,
-            'email': current_user.email
+            'email': current_user.email,
+            'is_member': current_user.is_member,
+            'member_level': current_user.member_level,
+            'balance': current_user.balance
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

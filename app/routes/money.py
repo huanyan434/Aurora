@@ -5,23 +5,33 @@ from ..extensions import db
 import os
 import random, string, json
 from datetime import datetime
+import uuid
 
 money_bp = Blueprint('money', __name__)
 
-@money_bp.route('/get_balance/<int:user_id>', methods=['GET'])
+@money_bp.route('/get_balance/<string:user_id>', methods=['GET'])
 @login_required
 def get_balance(user_id):
     """获取用户的余额信息"""
     try:
         # 检查是否是请求自己的余额信息
-        if user_id != current_user.id:
+        if str(current_user.id) != user_id:
             return jsonify({
                 'success': False,
                 'message': '权限不足'
             }), 403
         
         # 获取用户
-        user = User.query.get(user_id)
+        try:
+            user_uuid = uuid.UUID(user_id)
+            user = User.query.get(user_uuid)
+        except ValueError:
+            # 如果不是有效的UUID，返回错误
+            return jsonify({
+                'success': False,
+                'message': '无效的用户ID格式'
+            }), 400
+            
         if not user:
             return jsonify({
                 'success': False,

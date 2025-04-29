@@ -223,17 +223,17 @@ def get_model_free_usage_limit(model_name):
     # 定义每个模型的每日免费使用次数
     free_usage_limits = {
         # 默认为5次
-        "default": 5,
+        "default": 20,
         # 具体模型可以有不同限制
-        "DeepSeek-R1": 20,
+        "DeepSeek-R1": 25,
         "DeepSeek-V3": 50,
         "Doubao-1.5-lite": 10, 
         "Doubao-1.5-pro": 10,
-        "Doubao-1.5-pro-256k": 5,
-        "Doubao-1.5-vision-pro": 5,
-        "Gemini-2.5-pro": 30,
-        "Gemini-2.5-flash": 30,
-        "Gemini-2.0-flash": 30,
+        "Doubao-1.5-pro-256k": 10,
+        "Doubao-1.5-vision-pro": 10,
+        "Gemini-2.5-pro": 80,
+        "Gemini-2.5-flash": 80,
+        "Gemini-2.0-flash": 80,
     }
     
     # 如果模型名称在定义的限制中，返回对应的限制，否则返回默认值

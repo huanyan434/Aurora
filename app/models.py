@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
@@ -67,10 +67,21 @@ class User(UserMixin, db.Model):
         if self.balance < 0:
             self.balance = 0
         return True
+        
+    def to_dict(self):
+        """将用户对象转换为字典"""
+        return {
+            'id': str(self.id),
+            'username': self.username,
+            'email': self.email,
+            'is_member': self.is_member,
+            'member_level': self.member_level,
+            'balance': self.balance
+        }
 
 class Conversation(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)  # 使用UUID
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user.id'))
     title = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 确保是DateTime类型
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -79,7 +90,7 @@ class Conversation(db.Model):
     def to_dict(self):
         return {
             'id': str(self.id),  # 如果使用UUID，确保转换为字符串
-            'user_id': self.user_id,
+            'user_id': str(self.user_id),
             'title': self.title,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
@@ -96,4 +107,18 @@ class Message(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    try:
+        # 尝试将用户ID转换为UUID并查询
+        return User.query.get(uuid.UUID(user_id))
+    except (ValueError, AttributeError):
+        # 如果转换UUID失败，可能是旧的整数ID格式，尝试直接查询
+        try:
+            # 对于旧的整数ID数据，尝试使用整数ID查询
+            if isinstance(user_id, str) and user_id.isdigit():
+                return User.query.filter(User.id == user_id).first()
+            # 如果已经是整数
+            elif isinstance(user_id, int):
+                return User.query.filter(User.id == user_id).first()
+        except Exception as e:
+            print(f"加载用户出错: {e}")
+    return None

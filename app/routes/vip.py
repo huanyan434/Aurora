@@ -8,23 +8,33 @@ import time
 from hashlib import md5
 import random, string, json
 from datetime import datetime, timedelta
+import uuid
 
 vip_bp = Blueprint('vip', __name__)
 
-@vip_bp.route('/get_vip_level/<int:user_id>', methods=['GET'])
+@vip_bp.route('/get_vip_level/<string:user_id>', methods=['GET'])
 @login_required
 def get_vip_level(user_id):
     """获取用户的会员级别信息"""
     try:
         # 检查是否是请求自己的会员信息
-        if user_id != current_user.id:
+        if str(current_user.id) != user_id:
             return jsonify({
                 'success': False,
                 'message': '权限不足'
             }), 403
         
         # 获取用户
-        user = User.query.get(user_id)
+        try:
+            user_uuid = uuid.UUID(user_id)
+            user = User.query.get(user_uuid)
+        except ValueError:
+            # 如果不是有效的UUID，返回错误
+            return jsonify({
+                'success': False,
+                'message': '无效的用户ID格式'
+            }), 400
+            
         if not user:
             return jsonify({
                 'success': False,

@@ -1,5 +1,6 @@
 from flask import Flask, render_template
 from .extensions import db, login_manager
+import logging
 
 def create_app(config_module='config'):
     app = Flask(__name__)
@@ -21,6 +22,7 @@ def create_app(config_module='config'):
     register_error_handlers(app)
     
     with app.app_context():
+        # 创建数据库表
         db.create_all()
     
     return app
@@ -29,12 +31,7 @@ def initialize_extensions(app):
     db.init_app(app)
     login_manager.init_app(app)
     
-    # 延迟导入防止循环
-    from .models import User
-    
-    @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(int(user_id))
+    # 这里不再需要重复定义load_user，因为models.py中已经定义了
 
 def register_blueprints(app):
     """延迟注册蓝图"""
