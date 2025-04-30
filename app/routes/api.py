@@ -37,26 +37,21 @@ def get_free_usage():
             'message': '必须登录才能获取使用次数信息'
         }), 401
     
-    # 获取免费使用次数信息
-    from app.utils.token_tracker import get_model_free_usage_limit
-    
-    if valid_user_id:
-        # 有效用户，返回实际使用次数
+    try:
+        # 获取免费使用次数信息
         usage_info = get_model_free_usage_info(model_name, valid_user_id)
-    else:
-        # 无效用户，直接返回0/总次数
-        free_limit = get_model_free_usage_limit(model_name)
-        usage_info = {
-            'current': 0,
-            'limit': free_limit,
-            'remaining': 0  # 对于未登录用户或无效用户ID，返回0剩余次数
-        }
-    
-    # 返回结果
-    return jsonify({
-        'success': True,
-        'model': model_name,
-        'current': usage_info['current'],
-        'limit': usage_info['limit'],
-        'remaining': usage_info['remaining']
-    }) 
+        
+        # 返回结果
+        return jsonify({
+            'success': True,
+            'model': model_name,
+            'current': usage_info['current'],
+            'limit': usage_info['limit'],
+            'remaining': usage_info['remaining']
+        })
+    except Exception as e:
+        print(f"获取模型免费使用次数信息失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'获取使用次数信息失败: {str(e)}'
+        }), 500 

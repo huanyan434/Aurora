@@ -29,7 +29,7 @@ def record_token_usage(user_id, prompt_tokens, completion_tokens, model_name):
         # 准备记录数据
         current_time = datetime.now().isoformat()
         new_record = {
-            "user_id": user_id,
+            "user_id": str(user_id),  # 确保 UUID 被转换为字符串
             "timestamp": current_time,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,

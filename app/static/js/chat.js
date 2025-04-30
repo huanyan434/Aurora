@@ -659,7 +659,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 await fetch(`/conversations/${state.currentConversationId}/messages`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: content, role: 'user' })
+                    body: JSON.stringify({ 
+                        content: content, 
+                        is_user: true  // 添加 is_user 参数
+                    })
                 });
             } catch (err) {
                 console.error('持久化用户消息失败:', err);
@@ -2169,9 +2172,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 修改登出函数
     function logout() {
-        showConfirmDialog('确定要退出登录吗？', () => {
+        if (confirm('确定要退出登录吗？')) {
             window.location.href = '/auth/logout';
-        });
+        }
     }
 
     // 添加 CSS 样式
@@ -4347,8 +4350,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         sendButton.title = '余额不足，请充值后使用';
                     }
                     
-                    // 显示余额不足提示
-                    showToast('余额不足，请充值后继续使用', 'warning');
+                    // 余额不足时不弹提示，提示仅在发送时显示
                 } else {
                     // 确保发送按钮启用
                     const sendButton = document.getElementById('send-button');
