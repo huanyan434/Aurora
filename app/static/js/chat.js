@@ -24,20 +24,20 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 预加载关键资源函数
     function preloadResources() {
-        const resourcesToPreload = [
-            '/static/icons/infinity.svg',
-        ];
+        // 只预加载实际在页面加载后几秒内需要使用的资源
+        const criticalResources = [];
         
-        // 创建预加载链接元素
-        resourcesToPreload.forEach(resource => {
-            const preloadLink = document.createElement('link');
-            preloadLink.rel = 'preload';
-            preloadLink.as = resource.endsWith('.svg') ? 'image' : 
-                            resource.endsWith('.png') ? 'image' : 
-                            'style';
-            preloadLink.href = resource;
-            document.head.appendChild(preloadLink);
-        });
+        if (criticalResources.length > 0) {
+            criticalResources.forEach(resource => {
+                const preloadLink = document.createElement('link');
+                preloadLink.rel = 'preload';
+                preloadLink.as = resource.endsWith('.svg') ? 'image' : 
+                                resource.endsWith('.png') ? 'image' : 
+                                'style';
+                preloadLink.href = resource;
+                document.head.appendChild(preloadLink);
+            });
+        }
     }
 
     // ====================== 核心元素 ======================
@@ -4453,6 +4453,12 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // 检查模型免费次数
             const modelUsage = await fetchModelFreeUsageInfo(currentModel);
+            console.log('模型使用信息:', modelUsage);
+            
+            // 如果是无限次数（SVIP），直接允许发送
+            if (modelUsage.limit === -1 || modelUsage.remaining === -1) {
+                return true;
+            }
             
             // 如果还有免费次数，直接允许发送
             if (modelUsage.remaining > 0) {

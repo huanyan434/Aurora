@@ -11,6 +11,7 @@ from app.history import save_history, load_history
 from app.utils.token_tracker import record_token_usage, get_latest_token_usage, get_user_daily_model_usage, get_model_free_usage_limit
 from flask_login import current_user
 from flask import current_app
+from datetime import datetime
 
 # 全局变量，用于存储正在进行的响应
 active_responses = {}
@@ -548,23 +549,42 @@ def generate_thread(
                     print(f"无效的用户ID格式: {user_id}")
                     user = None
                 
-                # 检查是否还有免费次数
-                current_usage = get_user_daily_model_usage(user_id, model)
-                free_limit = get_model_free_usage_limit(model)
+                # 打印详细的用户信息
+                if user:
+                    print(f"用户信息: ID={user.id}, 名称={user.username}, 会员={user.is_member}, 等级={user.member_level}")
+                    print(f"会员截止日期={user.member_until}, 当前时间={datetime.now()}")
+                    print(f"会员是否有效: {user.is_active_member()}")
                 
-                if current_usage >= free_limit:
-                    # 已用完免费次数，需要检查余额
-                    will_charge = True
-                    if user and user.balance <= 0:
-                        response_status[message_id] = 'error'
-                        if message_id in response_queues:
-                            response_queues[message_id].put(
-                                f"<e>您今日免费使用次数已用完，且余额不足，请充值后继续使用</e>")
-                            response_queues[message_id].put(None)
-                            return
+                # 检查用户权限
+                if user:
+                    # SVIP用户：无限使用，不计费
+                    if user.is_member and user.member_level and user.member_level.lower() == 'svip' and user.is_active_member():
+                        print(f"SVIP用户{user.username}(ID:{user.id})允许无限使用所有模型")
+                        will_charge = False  # 不计费
+                    else:
+                        # 非SVIP用户：检查免费次数
+                        current_usage = get_user_daily_model_usage(user_id, model)
+                        free_limit = get_model_free_usage_limit(model, user_id)
+                        
+                        if current_usage >= free_limit:
+                            # 超出免费次数：检查余额
+                            will_charge = True
+                            if user.balance <= 0:
+                                response_status[message_id] = 'error'
+                                if message_id in response_queues:
+                                    response_queues[message_id].put(
+                                        f"<e>您今日免费使用次数已用完，且余额不足，请充值后继续使用</e>")
+                                    response_queues[message_id].put(None)
+                                    return
+                            else:
+                                print(f"用户{user.username}免费次数已用完，将使用余额，当前余额: {user.balance}")
+                        else:
+                            # 还有免费次数
+                            will_charge = False
+                            print(f"用户{user.username}今日使用{model}的第{current_usage+1}次，免费次数上限为{free_limit}")
                 else:
-                    # 还有免费次数，不需要扣费，记录使用情况即可
-                    print(f"用户{user_id}今日使用{model}的第{current_usage+1}次，免费次数上限为{free_limit}")
+                    # 匿名用户，不检查免费次数和余额
+                    print(f"匿名用户请求，不检查权限")
             
             # 保存原始模型名
             model_orig = model
