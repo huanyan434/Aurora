@@ -2807,3 +2807,159 @@ body.dark .au-tooltip {
         background-color: rgba(67, 97, 238, 0.25);
     }
 }
+
+/* 危险按钮样式 */
+.danger-button {
+    padding: 8px 16px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.danger-button:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+.danger-button:disabled {
+    background: #f1a3aa;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.danger-button i {
+    font-size: 16px;
+}
+
+/* 账号管理区域 */
+.account-actions {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 10px;
+}
+
+/* 注销弹窗样式 */
+#deactivate-modal .user-modal-content {
+    max-width: 450px;
+}
+
+.close-deactivate-modal {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+    transition: color 0.2s;
+}
+
+.close-deactivate-modal:hover {
+    color: #343a40;
+}
+
+.deactivate-warning {
+    background-color: rgba(220, 53, 69, 0.1);
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.deactivate-warning i {
+    color: #dc3545;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.warning-text {
+    font-size: 15px;
+    color: #333;
+    margin: 0;
+}
+
+.deactivate-info {
+    margin-bottom: 16px;
+}
+
+.deactivate-info ul {
+    padding-left: 24px;
+    margin-top: 8px;
+}
+
+.deactivate-info li {
+    margin-bottom: 6px;
+}
+
+.countdown-section {
+    background-color: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+#countdown-timer {
+    font-weight: bold;
+    color: #dc3545;
+}
+
+.deactivate-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+#cancel-deactivate-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #6c757d;
+    background: white;
+    color: #6c757d;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#cancel-deactivate-btn:hover {
+    background: #f8f9fa;
+    color: #343a40;
+}
+
+#confirm-deactivate-btn {
+    flex: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+    .deactivate-warning {
+        background-color: rgba(220, 53, 69, 0.2);
+    }
+    
+    .warning-text {
+        color: #e0e0e0;
+    }
+    
+    .countdown-section {
+        background-color: #2d3238;
+        color: #e0e0e0;
+    }
+    
+    #cancel-deactivate-btn {
+        background: #343a40;
+        color: #e0e0e0;
+        border-color: #495057;
+    }
+    
+    #cancel-deactivate-btn:hover {
+        background: #495057;
+    }
+}

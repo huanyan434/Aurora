@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
-from app.models import User
+from app.models import User, Conversation, Message
 from app.utils.auth import hash_password, verify_password
 from app import db
 
@@ -28,9 +28,9 @@ def login():
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        if request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
         email = request.form.get('email', '')
 
         # 验证必填字段
@@ -49,20 +49,19 @@ def signup():
             return render_template('auth/signup.html')
 
         # 创建新用户，使用UUID作为ID并设置默认余额
-        new_user = User(
-            username=username,
-            email=email,
-            balance=10.0  # 设置默认余额为10元
-        )
+            new_user = User(
+                username=username,
+            email=email
+            )
         new_user.set_password(password)
-        
-        db.session.add(new_user)
-        db.session.commit()
-
+            
+            db.session.add(new_user)
+            db.session.commit()
+            
         flash('注册成功，现在可以登录了', 'success')
-        return redirect(url_for('auth.login'))
-    
-    return render_template('auth/signup.html')
+            return redirect(url_for('auth.login'))
+        
+        return render_template('auth/signup.html')
 
 @auth_bp.route('/logout')
 @login_required
@@ -179,3 +178,40 @@ def update_password():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
+
+@auth_bp.route('/deactivate_account', methods=['POST'])
+@login_required
+def deactivate_account():
+    """注销用户账号"""
+    try:
+        user = current_user
+        user_id = user.id
+        
+        # 获取与该用户关联的所有会话
+        conversations = Conversation.query.filter_by(user_id=user_id).all()
+        
+        # 删除每个会话中的所有消息
+        for conversation in conversations:
+            Message.query.filter_by(conversation_id=conversation.id).delete()
+        
+        # 删除所有会话
+        Conversation.query.filter_by(user_id=user_id).delete()
+        
+        # 最后删除用户记录
+        db.session.delete(user)
+        db.session.commit()
+        
+        # 登出用户
+        logout_user()
+        session.clear()
+        
+        return jsonify({
+            'success': True,
+            'message': '账号已成功注销'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'注销账号失败: {str(e)}'
+        }), 500

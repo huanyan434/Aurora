@@ -222,6 +222,16 @@
                         </div>
                     </div>
 
+                    <!-- 注销账号 -->
+                    <div class="user-info-section">
+                        <h4>账号管理</h4>
+                        <div class="account-actions">
+                            <button type="button" id="deactivate-account-btn" class="danger-button">
+                                <i class="bi bi-exclamation-triangle"></i> 注销账号
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- 获取兑换码链接 -->
                     <div class="get-code-section">
                         <a href="https://afdian.com/a/mchyj" target="_blank" class="get-code-link">
@@ -265,6 +275,38 @@
                         <button id="save-password-btn">保存</button>
                         <button id="cancel-password-btn">取消</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 注销账号确认弹窗 -->
+    <div id="deactivate-modal" class="user-modal">
+        <div class="user-modal-content">
+            <div class="user-modal-header">
+                <h3>注销账号确认</h3>
+                <span class="close-deactivate-modal">&times;</span>
+            </div>
+            <div class="user-modal-body">
+                <div class="deactivate-warning">
+                    <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+                    <p class="warning-text">请注意：注销账号将会<strong>永久删除</strong>您的所有数据和会话历史，此操作<strong>不可撤销</strong>。</p>
+                </div>
+                <div class="deactivate-info">
+                    <p>注销后，您将丢失以下内容：</p>
+                    <ul>
+                        <li>所有聊天记录和会话历史</li>
+                        <li>账号关联的会员状态</li>
+                        <li>账号中剩余的余额</li>
+                        <li>所有个人设置和偏好</li>
+                    </ul>
+                </div>
+                <div class="countdown-section">
+                    <p>为确保您理解此操作的严重性，请等待 <span id="countdown-timer">5</span> 秒后再确认。</p>
+                </div>
+                <div class="deactivate-buttons">
+                    <button id="confirm-deactivate-btn" class="danger-button" disabled>确定注销</button>
+                    <button id="cancel-deactivate-btn">取消</button>
                 </div>
             </div>
         </div>

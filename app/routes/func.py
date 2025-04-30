@@ -535,7 +535,18 @@ def generate_thread(
                 from app.models import User
                 from app.utils.token_tracker import get_user_daily_model_usage, get_model_free_usage_limit
                 
-                user = User.query.get(user_id)
+                # 获取用户 - 转换为UUID，如果可能
+                import uuid
+                try:
+                    if isinstance(user_id, str) and not user_id.isdigit():
+                        user_uuid = uuid.UUID(user_id)
+                        user = User.query.get(user_uuid)
+                    else:
+                        user = User.query.get(user_id)
+                except (ValueError, TypeError):
+                    # 如果用户ID不是有效的UUID，继续处理但记录错误
+                    print(f"无效的用户ID格式: {user_id}")
+                    user = None
                 
                 # 检查是否还有免费次数
                 current_usage = get_user_daily_model_usage(user_id, model)
@@ -605,7 +616,19 @@ def generate_thread(
             if user_id != 'anonymous' and will_charge:
                 try:
                     from app.models import User
-                    user = User.query.get(user_id)
+                    # 获取用户 - 转换为UUID，如果可能
+                    import uuid
+                    try:
+                        if isinstance(user_id, str) and not user_id.isdigit():
+                            user_uuid = uuid.UUID(user_id)
+                            user = User.query.get(user_uuid)
+                        else:
+                            user = User.query.get(user_id)
+                    except (ValueError, TypeError):
+                        # 如果用户ID不是有效的UUID，继续处理但记录错误
+                        print(f"无效的用户ID格式: {user_id}")
+                        user = None
+                        
                     if user:
                         # 获取上次API调用的token使用量，从数据库或token记录中获取
                         usage = get_latest_token_usage(user_id)

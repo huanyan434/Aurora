@@ -30,6 +30,12 @@ document.addEventListener('DOMContentLoaded', function () {
         vipCodeInput: document.getElementById('vip-code-input'), // 兑换码输入框
         vipRedeemBtn: document.getElementById('vip-redeem-btn'),   // 兑换按钮
         vipRedeemResult: document.getElementById('vip-redeem-result'), // 兑换结果显示
+        deactivateAccountBtn: document.getElementById('deactivate-account-btn'), // 注销账号按钮
+        deactivateModal: document.getElementById('deactivate-modal'), // 注销确认弹窗
+        closeDeactivateModalBtn: document.querySelector('.close-deactivate-modal'), // 关闭注销弹窗按钮
+        confirmDeactivateBtn: document.getElementById('confirm-deactivate-btn'), // 确认注销按钮
+        cancelDeactivateBtn: document.getElementById('cancel-deactivate-btn'), // 取消注销按钮
+        countdownTimer: document.getElementById('countdown-timer'), // 倒计时显示
     };
     // ====================== 状态管理 ======================
     const state = {
@@ -4126,19 +4132,45 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // 点击确认按钮执行回调
         confirmBtn.addEventListener('click', function() {
-            $('#confirmDialog').modal('hide');
+            modalElement.style.display = 'none';
             if (typeof confirmCallback === 'function') {
                 confirmCallback();
             }
+            setTimeout(() => {
+                if (modalElement.parentNode === document.body) {
+                    document.body.removeChild(modalElement);
+                }
+            }, 300);
         });
         
         // 显示对话框
-        $('#confirmDialog').modal('show');
+        modalElement.style.display = 'block';
         
-        // 处理关闭后清理
-        $('#confirmDialog').on('hidden.bs.modal', function() {
+        // 点击关闭按钮关闭对话框
+        const closeBtn = modalElement.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                modalElement.style.display = 'none';
+                setTimeout(() => {
+                    if (modalElement.parentNode === document.body) {
             document.body.removeChild(modalElement);
-        });
+                    }
+                }, 300);
+            });
+        }
+        
+        // 点击取消按钮关闭对话框
+        const cancelBtn = modalElement.querySelector('.btn-secondary');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                modalElement.style.display = 'none';
+                setTimeout(() => {
+                    if (modalElement.parentNode === document.body) {
+                        document.body.removeChild(modalElement);
+                    }
+                }, 300);
+            });
+        }
     }
 
     // 显示通知消息
@@ -4149,97 +4181,128 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!toastContainer) {
             toastContainer = document.createElement('div');
             toastContainer.id = 'toast-container';
-            toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.position = 'fixed';
+            toastContainer.style.bottom = '20px';
+            toastContainer.style.right = '20px';
             toastContainer.style.zIndex = '1050';
             document.body.appendChild(toastContainer);
         }
         
         // 创建新的toast
         const toastId = 'toast-' + Date.now();
-        const toastHTML = `
-        <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header bg-${type}">
-                <strong class="me-auto text-white">通知</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body">
-                ${message}
-            </div>
-        </div>
-        `;
+        const toast = document.createElement('div');
+        toast.id = toastId;
+        toast.style.backgroundColor = type === 'success' ? '#4caf50' : 
+                                     type === 'warning' ? '#ff9800' : 
+                                     type === 'danger' ? '#f44336' : '#2196f3';
+        toast.style.color = '#fff';
+        toast.style.padding = '12px 20px';
+        toast.style.marginBottom = '10px';
+        toast.style.borderRadius = '4px';
+        toast.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        toast.style.display = 'flex';
+        toast.style.justifyContent = 'space-between';
+        toast.style.alignItems = 'center';
+        toast.style.minWidth = '250px';
+        toast.style.maxWidth = '400px';
+        toast.style.animation = 'fadeIn 0.3s, fadeOut 0.5s 2.5s forwards';
+        
+        // 添加消息内容
+        const messageSpan = document.createElement('span');
+        messageSpan.textContent = message;
+        toast.appendChild(messageSpan);
+        
+        // 添加关闭按钮
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '×';
+        closeButton.style.background = 'none';
+        closeButton.style.border = 'none';
+        closeButton.style.color = '#fff';
+        closeButton.style.fontSize = '20px';
+        closeButton.style.fontWeight = 'bold';
+        closeButton.style.cursor = 'pointer';
+        closeButton.style.marginLeft = '10px';
+        closeButton.onclick = () => {
+            toastContainer.removeChild(toast);
+        };
+        toast.appendChild(closeButton);
         
         // 添加到容器
-        const toastWrapper = document.createElement('div');
-        toastWrapper.innerHTML = toastHTML;
-        toastContainer.appendChild(toastWrapper.firstElementChild);
+        toastContainer.appendChild(toast);
         
-        // 显示toast
-        const toastElement = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastElement, {
-            autohide: true,
-            delay: 3000
-        });
-        toast.show();
+        // 添加动画样式
+        const styleEl = document.createElement('style');
+        styleEl.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(-20px); }
+            }
+        `;
+        document.head.appendChild(styleEl);
         
-        // 监听关闭事件，移除DOM元素
-        toastElement.addEventListener('hidden.bs.toast', function() {
-            toastContainer.removeChild(toastElement);
-        });
+        // 自动移除
+        setTimeout(() => {
+            if (toast.parentNode === toastContainer) {
+                toastContainer.removeChild(toast);
+            }
+        }, 3000);
     }
 
     // 在初始化页面时调用
     document.addEventListener('DOMContentLoaded', function() {
-        // ... existing code ...
-        
         // 初始化VIP兑换码处理
         setupVipCodeHandlers();
+        
+        // 初始化用户表单按钮事件
+        setupUserFormButtonEvents();
         
         // ... existing code ...
     });
 
     // 用户名修改和密码修改按钮的事件处理
     function setupUserFormButtonEvents() {
-        // 用户名编辑按钮
-        const editUsernameBtn = document.querySelector('.edit-username-btn');
-        if (editUsernameBtn) {
-            editUsernameBtn.addEventListener('click', toggleUsernameEdit);
-        }
+        // 编辑用户名按钮
+        document.querySelector('.edit-username-btn')?.addEventListener('click', toggleUsernameEdit);
         
         // 保存用户名按钮
-        const saveUsernameBtn = document.getElementById('save-username-btn');
-        if (saveUsernameBtn) {
-            saveUsernameBtn.addEventListener('click', updateUsername);
-        }
+        document.getElementById('save-username-btn')?.addEventListener('click', updateUsername);
         
-        // 取消用户名编辑按钮
-        const cancelUsernameBtn = document.getElementById('cancel-username-btn');
-        if (cancelUsernameBtn) {
-            cancelUsernameBtn.addEventListener('click', cancelUsernameEdit);
-        }
+        // 取消编辑用户名按钮
+        document.getElementById('cancel-username-btn')?.addEventListener('click', cancelUsernameEdit);
         
-        // 密码修改按钮
-        const changePasswordBtn = document.getElementById('change-password-btn');
-        if (changePasswordBtn) {
-            changePasswordBtn.addEventListener('click', openPasswordModal);
-        }
+        // 修改密码按钮
+        document.getElementById('change-password-btn')?.addEventListener('click', openPasswordModal);
         
-        // 关闭密码模态窗口按钮
-        const closePasswordModalBtn = document.querySelector('.close-password-modal');
-        if (closePasswordModalBtn) {
-            closePasswordModalBtn.addEventListener('click', closePasswordModal);
-        }
+        // 保存新密码按钮
+        document.getElementById('save-password-btn')?.addEventListener('click', updatePassword);
         
-        // 保存密码按钮
-        const savePasswordBtn = document.getElementById('save-password-btn');
-        if (savePasswordBtn) {
-            savePasswordBtn.addEventListener('click', updatePassword);
-        }
+        // 取消修改密码按钮
+        document.getElementById('cancel-password-btn')?.addEventListener('click', closePasswordModal);
         
-        // 取消密码修改按钮
-        const cancelPasswordBtn = document.getElementById('cancel-password-btn');
-        if (cancelPasswordBtn) {
-            cancelPasswordBtn.addEventListener('click', closePasswordModal);
-        }
+        // 关闭密码弹窗按钮
+        document.querySelector('.close-password-modal')?.addEventListener('click', closePasswordModal);
+
+        // VIP兑换码按钮
+        document.getElementById('vip-redeem-btn')?.addEventListener('click', redeemVIPCode);
+        
+        // 余额充值按钮
+        document.getElementById('money-redeem-btn')?.addEventListener('click', redeemMoneyCode);
+        
+        // 注销账号按钮
+        elements.deactivateAccountBtn?.addEventListener('click', openDeactivateModal);
+        
+        // 关闭注销弹窗按钮
+        elements.closeDeactivateModalBtn?.addEventListener('click', closeDeactivateModal);
+        
+        // 取消注销按钮
+        elements.cancelDeactivateBtn?.addEventListener('click', closeDeactivateModal);
+        
+        // 确认注销按钮
+        elements.confirmDeactivateBtn?.addEventListener('click', deactivateAccount);
     }
 
     // 获取用户余额信息函数
@@ -4414,6 +4477,237 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 console.error(`获取模型${modelName}免费使用次数失败:`, error);
             }
+        }
+    }
+
+    // ========= 注销账号相关函数 =========
+    // 打开注销确认弹窗
+    function openDeactivateModal() {
+        if (elements.deactivateModal) {
+            elements.deactivateModal.classList.add('show');
+            startDeactivateCountdown();
+        }
+    }
+    
+    // 关闭注销确认弹窗
+    function closeDeactivateModal() {
+        if (elements.deactivateModal) {
+            elements.deactivateModal.classList.remove('show');
+            // 停止倒计时
+            if (window.deactivateCountdown) {
+                clearInterval(window.deactivateCountdown);
+                window.deactivateCountdown = null;
+            }
+            // 重置按钮状态
+            if (elements.confirmDeactivateBtn) {
+                elements.confirmDeactivateBtn.disabled = true;
+                elements.countdownTimer.textContent = '5';
+            }
+        }
+    }
+    
+    // 开始倒计时
+    function startDeactivateCountdown() {
+        // 确保按钮开始是禁用的
+        if (elements.confirmDeactivateBtn) {
+            elements.confirmDeactivateBtn.disabled = true;
+        }
+        
+        // 初始化倒计时
+        let countdown = 5;
+        if (elements.countdownTimer) {
+            elements.countdownTimer.textContent = countdown;
+        }
+        
+        // 清除可能存在的之前的倒计时
+        if (window.deactivateCountdown) {
+            clearInterval(window.deactivateCountdown);
+        }
+        
+        // 设置新的倒计时
+        window.deactivateCountdown = setInterval(() => {
+            countdown--;
+            if (elements.countdownTimer) {
+                elements.countdownTimer.textContent = countdown;
+            }
+            
+            // 倒计时结束，启用按钮
+            if (countdown <= 0) {
+                clearInterval(window.deactivateCountdown);
+                if (elements.confirmDeactivateBtn) {
+                    elements.confirmDeactivateBtn.disabled = false;
+                }
+            }
+        }, 1000);
+    }
+    
+    // 执行账号注销
+    async function deactivateAccount() {
+        // 确认用户真的想要注销
+        const finalConfirmation = confirm('您确定要注销账号吗？此操作不可撤销，所有数据将被永久删除。');
+        if (!finalConfirmation) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/auth/deactivate_account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // 注销成功，显示成功消息并重定向到登录页
+                alert('账号已成功注销。您将被重定向到登录页面。');
+                window.location.href = '/auth/login';
+            } else {
+                // 注销失败，显示错误消息
+                showToast(data.message || '注销账号失败，请重试', 'error');
+                closeDeactivateModal();
+            }
+        } catch (error) {
+            console.error('注销账号时出错:', error);
+            showToast('注销账号时发生错误，请重试', 'error');
+            closeDeactivateModal();
+        }
+    }
+
+    // 设置VIP兑换码处理函数
+    function setupVipCodeHandlers() {
+        // VIP兑换码输入框回车键处理
+        document.getElementById('vip-code-input')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                redeemVIPCode();
+            }
+        });
+        
+        // 余额充值码输入框回车键处理
+        document.getElementById('money-code-input')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                redeemMoneyCode();
+            }
+        });
+    }
+    
+    // VIP兑换码兑换函数
+    async function redeemVIPCode() {
+        const codeInput = document.getElementById('vip-code-input');
+        const resultDisplay = document.getElementById('vip-redeem-result');
+        const redeemButton = document.getElementById('vip-redeem-btn');
+        
+        if (!codeInput || !resultDisplay || !redeemButton) {
+            console.error('VIP兑换码相关元素未找到');
+            return;
+        }
+        
+        const code = codeInput.value.trim();
+        if (!code) {
+            resultDisplay.textContent = '请输入有效的兑换码';
+            resultDisplay.className = 'redeem-result error';
+            return;
+        }
+        
+        try {
+            // 禁用按钮防止重复提交
+            redeemButton.disabled = true;
+            resultDisplay.textContent = '正在处理...';
+            resultDisplay.className = 'redeem-result';
+            
+            const response = await fetch('/vip/redeem', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                resultDisplay.textContent = data.message || '兑换成功！';
+                resultDisplay.className = 'redeem-result success';
+                codeInput.value = '';
+                
+                // 刷新会员信息
+                await fetchUserMembershipInfo();
+                
+                // 显示成功提示
+                showToast('会员兑换成功！', 'success');
+            } else {
+                resultDisplay.textContent = data.message || '兑换失败，请检查兑换码是否有效';
+                resultDisplay.className = 'redeem-result error';
+            }
+        } catch (error) {
+            console.error('处理VIP兑换码时出错:', error);
+            resultDisplay.textContent = '兑换过程中发生错误，请稍后重试';
+            resultDisplay.className = 'redeem-result error';
+        } finally {
+            // 恢复按钮状态
+            redeemButton.disabled = false;
+        }
+    }
+    
+    // 余额充值码兑换函数
+    async function redeemMoneyCode() {
+        const codeInput = document.getElementById('money-code-input');
+        const resultDisplay = document.getElementById('money-redeem-result');
+        const redeemButton = document.getElementById('money-redeem-btn');
+        
+        if (!codeInput || !resultDisplay || !redeemButton) {
+            console.error('余额充值码相关元素未找到');
+            return;
+        }
+        
+        const code = codeInput.value.trim();
+        if (!code) {
+            resultDisplay.textContent = '请输入有效的充值码';
+            resultDisplay.className = 'redeem-result error';
+            return;
+        }
+        
+        try {
+            // 禁用按钮防止重复提交
+            redeemButton.disabled = true;
+            resultDisplay.textContent = '正在处理...';
+            resultDisplay.className = 'redeem-result';
+            
+            const response = await fetch('/money/redeem', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                resultDisplay.textContent = data.message || '充值成功！';
+                resultDisplay.className = 'redeem-result success';
+                codeInput.value = '';
+                
+                // 刷新余额信息
+                await fetchUserBalanceInfo();
+                
+                // 显示成功提示
+                showToast('余额充值成功！', 'success');
+            } else {
+                resultDisplay.textContent = data.message || '充值失败，请检查充值码是否有效';
+                resultDisplay.className = 'redeem-result error';
+            }
+        } catch (error) {
+            console.error('处理余额充值码时出错:', error);
+            resultDisplay.textContent = '充值过程中发生错误，请稍后重试';
+            resultDisplay.className = 'redeem-result error';
+        } finally {
+            // 恢复按钮状态
+            redeemButton.disabled = false;
         }
     }
 });

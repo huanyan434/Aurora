@@ -9,6 +9,7 @@ import json
 import os
 from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
+import uuid
 
 # 获取dashboard.json的路径
 dashboard_config_path = os.path.join(os.path.dirname(__file__), 'dashboard.json')
@@ -272,7 +273,13 @@ def update_user_membership():
         member_level = data.get('member_level', 'free')
         duration_days = data.get('duration_days', 30)  # 默认30天
         
-        user = User.query.get(user_id)
+        # 转换用户ID为UUID格式
+        try:
+            user_uuid = uuid.UUID(user_id)
+            user = User.query.get(user_uuid)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': '无效的用户ID格式'}), 400
+            
         if not user:
             return jsonify({'success': False, 'message': '用户不存在'}), 404
         
@@ -331,8 +338,13 @@ def add_user_balance():
                 'message': '无效的用户ID或充值金额'
             }), 400
         
-        # 获取用户
-        user = User.query.get(user_id)
+        # 获取用户 - 转换为UUID
+        try:
+            user_uuid = uuid.UUID(user_id)
+            user = User.query.get(user_uuid)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': '无效的用户ID格式'}), 400
+            
         if not user:
             return jsonify({
                 'success': False,
@@ -378,8 +390,13 @@ def reset_user_balance():
                 'message': '无效的用户ID或余额值'
             }), 400
         
-        # 获取用户
-        user = User.query.get(user_id)
+        # 获取用户 - 转换为UUID
+        try:
+            user_uuid = uuid.UUID(user_id)
+            user = User.query.get(user_uuid)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': '无效的用户ID格式'}), 400
+            
         if not user:
             return jsonify({
                 'success': False,

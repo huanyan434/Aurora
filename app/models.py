@@ -62,11 +62,11 @@ class User(UserMixin, db.Model):
         
     def add_balance(self, amount):
         """增加或减少用户余额"""
-        self.balance += amount
+            self.balance += amount
         # 确保余额不会变成负数
         if self.balance < 0:
             self.balance = 0
-        return True
+            return True
         
     def to_dict(self):
         """将用户对象转换为字典"""
