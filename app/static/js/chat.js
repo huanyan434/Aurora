@@ -654,19 +654,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 appendMessage(content, true);
             }
             
-            // 立即持久化用户消息到数据库
-            try {
-                await fetch(`/conversations/${state.currentConversationId}/messages`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        content: content, 
-                        is_user: true  // 添加 is_user 参数
-                    })
-                });
-            } catch (err) {
-                console.error('持久化用户消息失败:', err);
-            }
             
             // 强制滚动到底部
             scrollToBottom(true);
@@ -711,15 +698,11 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // 清除所有资源
             try {
-                if (thinkTimerInterval) {
-                    clearInterval(thinkTimerInterval);
-                    thinkTimerInterval = null;
-                }
+                // 移除对未定义变量的引用
+                state.abortController = null;
             } catch (e) {
                 console.error('清理资源时出错:', e);
             }
-            
-            state.abortController = null;
         }
     }
 
@@ -877,6 +860,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                 currentContent = data.text;
                             }
                             
+                            // 添加调试日志
+                            console.log('当前文本内容:', currentContent);
+                            
                             // 确保消息内容元素存在
                             let contentDiv = aiMessageDiv.querySelector('.message-content');
                             if (!contentDiv) {
@@ -897,21 +883,37 @@ document.addEventListener('DOMContentLoaded', function () {
                                 if (textContent.content) {
                                     textContent = textContent.content;
                                 } else if (textContent.text) {
-                                            // 增加对text对象的支持
                                     textContent = textContent.text;
                                 } else {
                                     textContent = JSON.stringify(textContent);
                                 }
                             }
                                     
-                                    // 处理base64图片标签，不先替换换行符
-                                    // textContent = textContent.replace(/\n/g, '<br>');
-                                    
                                     // 处理base64图片标签
                                     textContent = processMessageContent(textContent, false);
                                     
                                     // 解析并显示
                                     contentDiv.innerHTML = marked.parse(textContent);
+                                    
+                                    // 如果有思考容器，更新其状态
+                                    const thinkContainer = aiMessageDiv.querySelector('.think-container');
+                                    if (thinkContainer) {
+                                        const thinkHeader = thinkContainer.querySelector('.think-header');
+                                        if (thinkHeader) {
+                                            // 检查是否有实际内容
+                                            const hasContent = textContent && textContent.trim().length > 0;
+                                            console.log('文本内容检查:', { hasContent, textContent: textContent.substring(0, 50) });
+                                            
+                                            const headerText = hasContent ? 
+                                                `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
+                                                '思考中...';
+                                            
+                                            thinkHeader.innerHTML = `
+                                                <span>${headerText}<span style="display:inline-block; width:5px;"></span>
+                                                <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
+                                            `;
+                                        }
+                                    }
                         } catch (error) {
                             console.error('处理消息内容时出错:', error);
                             contentDiv.innerHTML = `<p>消息处理错误: ${error.message}</p>`;
@@ -956,7 +958,19 @@ document.addEventListener('DOMContentLoaded', function () {
                                 // 创建思考头部
                                 const thinkHeader = document.createElement('div');
                                 thinkHeader.className = 'think-header';
-                                thinkHeader.innerHTML = `<span>思考中...<span style="display:inline-block; width:5px;"></span><div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>`;
+                                
+                                // 检查是否有实际内容
+                                const hasContent = currentContent && currentContent.trim().length > 0;
+                                console.log('创建思考头部时的内容检查:', { hasContent, currentContent: currentContent ? currentContent.substring(0, 50) : null });
+                                
+                                const headerText = hasContent ? 
+                                    `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
+                                    '思考中...';
+                                
+                                thinkHeader.innerHTML = `
+                                    <span>${headerText}<span style="display:inline-block; width:5px;"></span>
+                                    <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
+                                `;
                                 
                                 // 创建思考内容
                                 const thinkContentDiv = document.createElement('div');
@@ -968,7 +982,6 @@ document.addEventListener('DOMContentLoaded', function () {
                                         if (thinkText.content) {
                                             thinkText = thinkText.content;
                                         } else if (thinkText.text) {
-                                            // 增加对text对象的支持
                                             thinkText = thinkText.text;
                                         } else {
                                             thinkText = JSON.stringify(thinkText);
@@ -984,15 +997,16 @@ document.addEventListener('DOMContentLoaded', function () {
                                     console.error('处理思考内容时出错:', error);
                                     thinkContentDiv.innerHTML = `<p>思考内容解析错误</p>`;
                                 }
+                                
                                 // 移除背景色
                                 thinkContentDiv.style.backgroundColor = 'transparent';
-                                thinkContentDiv.style.lineHeight = '1.3'; // 减小行高
+                                thinkContentDiv.style.lineHeight = '1.3';
                                 
                                 // 组装思考容器
                                 thinkContainer.appendChild(thinkHeader);
                                 thinkContainer.appendChild(thinkContentDiv);
                                 
-                                // 保存思考头部元素引用（全局变量）
+                                // 保存思考头部元素引用
                                 thinkHeaderElement = thinkHeader;
                                 
                                 // 添加点击事件，实现展开/折叠功能
@@ -1008,37 +1022,6 @@ document.addEventListener('DOMContentLoaded', function () {
                                     }
                                 };
                                 
-                                // 解析思考时间标签：<think time=数字>内容</think>
-                        const thinkTimeMatch = currentThink.match(/<think time=(\d+)>/);
-                        let thinkSeconds = 0;
-                        
-                                // 检查是否真正完成了思考（有think标签和时间）
-                                let isThinkingComplete = false;
-                                
-                                if (thinkTimeMatch && thinkTimeMatch[1]) {
-                            // 使用标签中指定的时间
-                            thinkSeconds = parseInt(thinkTimeMatch[1], 10) || 0;
-                                    console.log(`从标签提取思考时间: ${thinkSeconds}秒`);
-                                    
-                                    // 有思考时间且有正文内容，表示思考已完成
-                                    isThinkingComplete = true;
-                                }
-                                
-                                // 根据思考是否完成设置适当的头部
-                                if (isThinkingComplete) {
-                                    // 思考完成，显示时间
-                                    thinkHeader.innerHTML = `
-                                <span>已深度思考（用时 ${thinkSeconds} 秒）<span style="display:inline-block; width:5px;"></span>
-                                <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
-                            `;
-                                } else {
-                                    // 思考尚未完成，显示"思考中..."
-                                    thinkHeader.innerHTML = `
-                                        <span>思考中...<span style="display:inline-block; width:5px;"></span>
-                                        <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
-                                    `;
-                                }
-                                
                                 // 插入到模型信息之后，消息内容之前
                                 const contentDiv = aiMessageDiv.querySelector('.message-content');
                                 if (contentDiv) {
@@ -1046,6 +1029,20 @@ document.addEventListener('DOMContentLoaded', function () {
                                     console.log('思考容器已添加到DOM');
                                 } else {
                                     console.error('找不到消息内容元素，无法插入思考容器');
+                                }
+                            } else {
+                                // 如果容器已存在，更新头部文本
+                                const thinkHeader = thinkContainer.querySelector('.think-header');
+                                if (thinkHeader) {
+                                    // 同样的逻辑应用于更新时
+                                    const headerText = currentContent && currentContent.trim() ? 
+                                        `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
+                                        '思考中...';
+                                    
+                                    thinkHeader.innerHTML = `
+                                        <span>${headerText}<span style="display:inline-block; width:5px;"></span>
+                                        <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
+                                    `;
                                 }
                         }
                         
@@ -1059,7 +1056,6 @@ document.addEventListener('DOMContentLoaded', function () {
                                         if (thinkText.content) {
                                             thinkText = thinkText.content;
                                         } else if (thinkText.text) {
-                                            // 增加对text对象的支持
                                             thinkText = thinkText.text;
                                         } else {
                                             thinkText = JSON.stringify(thinkText);
@@ -4465,13 +4461,30 @@ document.addEventListener('DOMContentLoaded', function () {
                     option.appendChild(freeUsageDisplay);
                 }
                 
-                // 更新显示内容
-                freeUsageDisplay.innerHTML = `
-                    <span class="free-usage-remaining">${usageInfo.remaining}</span>/<span class="free-usage-limit">${usageInfo.limit}</span>
+                // 创建无穷符号SVG
+                const infinitySvg = `
+                    <svg class="infinity-icon" width="24" height="14" viewBox="0 0 24 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                        <path d="M9.12 13.8C7.36 13.8 5.832 13.172 4.536 11.916C3.24 10.62 2.592 9.092 2.592 7.332C2.592 5.572 3.24 4.064 4.536 2.808C5.832 1.512 7.36 0.863999 9.12 0.863999C10.88 0.863999 12.368 1.512 13.584 2.808L12.096 4.296C11.2 3.32 10.176 2.832 9.024 2.832C7.872 2.832 6.892 3.24 6.084 4.056C5.316 4.832 4.932 5.852 4.932 7.116C4.932 8.38 5.316 9.42 6.084 10.236C6.892 11.012 7.872 11.4 9.024 11.4C10.176 11.4 11.2 10.912 12.096 9.936L13.584 11.424C12.368 12.68 10.88 13.8 9.12 13.8Z" fill="currentColor"/>
+                        <path d="M14.88 13.8C13.12 13.8 11.592 13.172 10.296 11.916C9 10.62 8.352 9.092 8.352 7.332C8.352 5.572 9 4.064 10.296 2.808C11.592 1.512 13.12 0.863999 14.88 0.863999C16.64 0.863999 18.128 1.512 19.344 2.808L17.856 4.296C16.96 3.32 15.936 2.832 14.784 2.832C13.632 2.832 12.652 3.24 11.844 4.056C11.076 4.832 10.692 5.852 10.692 7.116C10.692 8.38 11.076 9.42 11.844 10.236C12.652 11.012 13.632 11.4 14.784 11.4C15.936 11.4 16.96 10.912 17.856 9.936L19.344 11.424C18.128 12.68 16.64 13.8 14.88 13.8Z" fill="currentColor"/>
+                    </svg>
                 `;
                 
-                // 如果剩余次数为0，添加警告样式
-                if (usageInfo.remaining <= 0) {
+                // 更新显示内容
+                const isInfinite = usageInfo.limit === -1;
+                freeUsageDisplay.innerHTML = isInfinite ? 
+                    `<span class="free-usage-remaining"><img src="/static/icons/infinity.svg" alt="无限" style="height: 20px; vertical-align: middle;"></span>` : 
+                    `<span class="free-usage-remaining">${usageInfo.remaining}</span>/<span class="free-usage-limit">${usageInfo.limit}</span>`;
+                
+                // 添加样式
+                if (isInfinite) {
+                    freeUsageDisplay.style.color = '#4CAF50'; // 使用绿色表示无限
+                    freeUsageDisplay.style.display = 'inline-flex';
+                    freeUsageDisplay.style.alignItems = 'center';
+                    freeUsageDisplay.style.gap = '2px';
+                }
+                
+                // 如果剩余次数为0且不是无限次数，添加警告样式
+                if (!isInfinite && usageInfo.remaining <= 0) {
                     freeUsageDisplay.classList.add('depleted');
                 } else {
                     freeUsageDisplay.classList.remove('depleted');

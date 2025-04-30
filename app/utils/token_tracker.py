@@ -208,19 +208,21 @@ def get_user_daily_model_usage(user_id, model_name):
         print(f"获取用户每日模型使用次数出错: {e}")
         return 0
 
-def get_model_free_usage_limit(model_name):
+def get_model_free_usage_limit(model_name, user_id=None):
     """
     获取模型的每日免费使用次数
     
     参数:
         model_name: 模型名称
+        user_id: 用户ID，用于检查会员状态
         
     返回:
-        int: 每日免费使用次数限制
+        int/float: 每日免费使用次数限制，SVIP用户返回无限（float('inf')）
     """
     from app.routes.func import model_name_reverse
     model_name = model_name_reverse(model_name)
-    # 定义每个模型的每日免费使用次数
+    
+    # 定义每个模型的每日免费使用次数（普通用户）
     free_usage_limits = {
         # 默认为5次
         "default": 20,
@@ -236,5 +238,32 @@ def get_model_free_usage_limit(model_name):
         "Gemini-2.0-flash": 80,
     }
     
-    # 如果模型名称在定义的限制中，返回对应的限制，否则返回默认值
-    return free_usage_limits.get(model_name, free_usage_limits["default"]) 
+    # 获取基础限制次数
+    base_limit = free_usage_limits.get(model_name, free_usage_limits["default"])
+    
+    # 如果没有提供用户ID，直接返回基础限制
+    if not user_id:
+        return base_limit
+        
+    try:
+        # 导入所需模块
+        from flask import current_app
+        from app.models import User
+        from datetime import datetime
+        
+        # 获取用户信息
+        with current_app.app_context():
+            user = User.query.get(user_id)
+            if user and user.is_member:
+                # 检查会员是否过期
+                if user.member_until and datetime.now() < user.member_until:
+                    # SVIP用户获得无限次数
+                    if user.member_level == 'svip':
+                        return float('inf')
+                    # VIP用户获得3倍免费次数
+                    return base_limit * 3
+    except Exception as e:
+        print(f"检查用户会员状态时出错: {e}")
+        
+    # 默认返回基础限制
+    return base_limit

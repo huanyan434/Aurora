@@ -841,28 +841,38 @@ def get_active_responses():
 
 def get_model_free_usage_info(model_name, user_id=None):
     """获取模型的免费使用次数信息"""
-    from app.utils.token_tracker import get_user_daily_model_usage, get_model_free_usage_limit
-    
-    if not user_id:
-        # 匿名用户
+    try:
+        # 获取今天的使用次数
+        current_usage = get_user_daily_model_usage(user_id, model_name) if user_id else 0
+        # 获取免费使用次数限制（传入用户ID以获取正确的VIP限制）
+        free_limit = get_model_free_usage_limit(model_name, user_id)
+        
+        # 处理无限次数的情况
+        if free_limit == float('inf'):
+            return {
+                'success': True,
+                'current': current_usage,
+                'limit': -1,  # 使用-1表示无限
+                'remaining': -1  # 使用-1表示无限
+            }
+            
+        # 计算剩余免费次数
+        remaining = max(0, free_limit - current_usage)
+        
         return {
-            'current': 0,
-            'limit': get_model_free_usage_limit(model_name),
-            'remaining': get_model_free_usage_limit(model_name)
+            'success': True,
+            'current': current_usage,
+            'limit': free_limit,
+            'remaining': remaining
         }
-    
-    # 获取用户今日使用次数
-    current_usage = get_user_daily_model_usage(user_id, model_name)
-    # 获取免费使用次数限制
-    free_limit = get_model_free_usage_limit(model_name)
-    # 计算剩余免费次数
-    remaining = max(0, free_limit - current_usage)
-    
-    return {
-        'current': current_usage,
-        'limit': free_limit,
-        'remaining': remaining
-    }
+    except Exception as e:
+        print(f"获取用户每日模型使用次数出错: {e}")
+        return {
+            'success': False,
+            'current': 0,
+            'limit': get_model_free_usage_limit(model_name),  # 出错时使用基础限制
+            'remaining': 0
+        }
 
 
 def qwen_parse_image(image_base64):
