@@ -1,4 +1,45 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // 预加载关键资源
+    preloadResources();
+    
+    // ====================== 状态管理 ======================
+    const state = {
+        currentConversationId: null,
+        isSending: false,
+        conversations: [],  // 存储对话列表
+        isDeleting: false,
+        isSidebarCollapsed: document.querySelector('.conversation-sidebar')?.classList.contains('collapsed') || false,
+        currentModel: localStorage.getItem('selectedModel') || 'DeepSeek-R1',  // 从localStorage中获取模型，如果没有则使用默认值
+        isNearBottom: false,
+        abortController: null,  // 添加中断控制器
+        lastUserMessage: null,  // 添加 lastUserMessage 属性
+        selectedImage: null,    // 存储选择的图片
+        currentUser: {          // 当前用户信息
+            id: null,
+            username: null,
+            email: null,
+            member_level: null
+        }
+    };
+    
+    // 预加载关键资源函数
+    function preloadResources() {
+        const resourcesToPreload = [
+            '/static/icons/infinity.svg',
+        ];
+        
+        // 创建预加载链接元素
+        resourcesToPreload.forEach(resource => {
+            const preloadLink = document.createElement('link');
+            preloadLink.rel = 'preload';
+            preloadLink.as = resource.endsWith('.svg') ? 'image' : 
+                            resource.endsWith('.png') ? 'image' : 
+                            'style';
+            preloadLink.href = resource;
+            document.head.appendChild(preloadLink);
+        });
+    }
+
     // ====================== 核心元素 ======================
     const elements = {
         messagesContainer: document.getElementById('messages'),
@@ -37,129 +78,80 @@ document.addEventListener('DOMContentLoaded', function () {
         cancelDeactivateBtn: document.getElementById('cancel-deactivate-btn'), // 取消注销按钮
         countdownTimer: document.getElementById('countdown-timer'), // 倒计时显示
     };
-    // ====================== 状态管理 ======================
-    const state = {
-        currentConversationId: null,
-        conversations: [],  // 存储对话列表
-        isDeleting: false,
-        isSending: false,
-        isSidebarCollapsed: document.querySelector('.conversation-sidebar')?.classList.contains('collapsed') || false,
-        currentModel: localStorage.getItem('selectedModel') || 'DeepSeek-R1',  // 从localStorage中获取模型，如果没有则使用默认值
-        isNearBottom: false,
-        abortController: null,  // 添加中断控制器
-        lastUserMessage: null,  // 添加 lastUserMessage 属性
-        selectedImage: null,    // 存储选择的图片
-        currentUser: {          // 当前用户信息
-            id: null,
-            username: null,
-            email: null,
-            member_level: null
-        },
-        isLoading: true,
-        isSidebarOpen: localStorage.getItem('sidebarState') === 'open' // 立即读取侧边栏状态
-    };
 
     // ====================== 初始化 ======================
     async function init() {
-        console.time('应用初始化总时间');
-        
         try {
-            // 第一优先级：立即应用侧边栏状态 - 不等待任何异步操作
-            applySidebarState();
+            console.log('初始化应用...');
             
-            // 第二优先级：初始化模型选择器
-            setupModelSelector();
-            
-            // 剩余UI元素并行加载
-            const uiPromises = [
-                // 基本UI事件监听
-                new Promise(resolve => {
-                    setupEventListeners();
-                    resolve('事件监听器已设置');
-                }),
+            // 并行执行多个异步任务
+            await Promise.all([
+                // 获取当前用户信息
+                getCurrentUser(),
                 
-                // 用户信息加载
-                getCurrentUser().then(() => '用户信息已加载'),
+                // 加载对话历史
+                loadConversations(),
                 
-                // 对话列表加载
-                loadConversations().then(() => '对话列表已加载'),
-                
-                // Markdown渲染初始化
-                new Promise(resolve => {
-                    startMarkdownObserver();
-                    resolve('Markdown处理器已初始化');
-                }),
-                
-                // 其他UI初始化可以并行进行
-                new Promise(resolve => {
-                    setupUserProfileModal();
-                    setupVipCodeHandlers();
-                    setupScrollListener();
-                    resolve('其他UI组件已初始化');
-                })
-            ];
+                // 其他可以并行加载的任务
+                setupModelSelector()
+            ]);
             
-            // 等待所有UI元素并行加载完成
-            console.time('并行UI加载');
-            const results = await Promise.allSettled(uiPromises);
-            console.timeEnd('并行UI加载');
+            // 验证必要的DOM元素已加载
+            validateElements();
             
-            // 记录加载结果
-            results.forEach((result, index) => {
-                if (result.status === 'fulfilled') {
-                    console.log(`UI组件 ${index+1} 加载成功:`, result.value);
-                } else {
-                    console.error(`UI组件 ${index+1} 加载失败:`, result.reason);
-                }
-            });
+            // 设置事件监听器
+            setupEventListeners();
             
-            // 最后加载当前对话或初始页面
+            // 初始化用户界面元素
+            setupUserProfileModal();
+            setupUserFormButtonEvents();
+            
+            // 加载侧边栏状态
+            await loadSidebarState();
+            
+            // 根据URL参数或最新对话加载内容
             const urlParams = new URLSearchParams(window.location.search);
-            const conversationId = urlParams.get('conversation_id');
+            const conversationId = urlParams.get('conversation');
             
             if (conversationId) {
-                loadConversationHistory(conversationId);
+                // 加载指定的对话
+                await loadConversationHistory(conversationId);
+            } else if (state.conversations && state.conversations.length > 0) {
+                // 加载最新的对话
+                await loadLatestConversation();
             } else {
-                const success = await loadLatestConversation();
-                if (!success) {
-                    showInitialPage();
-                }
+                // 显示初始页面
+                showInitialPage();
             }
             
-            // 检查是否有活跃响应
-            checkActiveResponses();
+            // 获取用户余额信息
+            fetchUserBalanceInfo().catch(err => console.error('加载用户余额信息出错:', err));
             
-            // 完成加载，隐藏加载遮罩
-            state.isLoading = false;
-            const loadingOverlay = document.getElementById('loading-overlay');
-            if (loadingOverlay) {
-                loadingOverlay.style.display = 'none';
-            }
+            // 尝试续流未完成的消息
+            checkActiveResponses().catch(err => console.error('检查活跃响应出错:', err));
             
+            // 优化体验：延迟加载非关键资源
+            setTimeout(() => {
+                // 异步更新模型使用次数
+                updateAllModelsFreeUsage().catch(err => console.error('加载模型免费使用次数出错:', err));
+                
+                // 异步加载其他资源
+                setupScrollListener();
+                startMarkdownObserver();
+                
+                // 初始化完成后添加复制按钮
+                window.addCopyButtonsToAllCodeBlocks();
+                
+                // 确保滚动到底部
+                scrollToBottom(true);
+            }, 200);
+            
+            console.log('应用初始化完成');
         } catch (error) {
-            console.error('初始化过程出错:', error);
-            showToast('加载应用时出错', 'error');
+            console.error('初始化过程中发生错误:', error);
+            // 确保显示初始页面，即使发生错误
+            showInitialPage();
         }
-        
-        console.timeEnd('应用初始化总时间');
-    }
-    
-    // 立即应用侧边栏状态的函数
-    function applySidebarState() {
-        console.time('侧边栏状态应用');
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('main-content');
-        
-        if (sidebar && mainContent) {
-            if (state.isSidebarOpen) {
-                sidebar.classList.remove('closed');
-                mainContent.classList.remove('expanded');
-            } else {
-                sidebar.classList.add('closed');
-                mainContent.classList.add('expanded');
-            }
-        }
-        console.timeEnd('侧边栏状态应用');
     }
 
     // 获取当前用户信息
@@ -2133,37 +2125,42 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // 修改 deleteConversation 函数
+    // 修改删除对话的处理
     async function deleteConversation(conversationId) {
         if (state.isDeleting) return;
         
-        const conversation = state.conversations.find(c => c.id === conversationId);
-        const title = conversation ? conversation.title : '此对话';
-        
-        showConfirmDialog(`确定要删除"${title}"吗？此操作不可恢复。`, async () => {
+        showConfirmDialog('确定要删除这个对话吗？', async () => {
             try {
                 state.isDeleting = true;
+                
                 const response = await fetch(`/conversations/${conversationId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
-                if (response.ok) {
-                    // 从列表中移除
-                    state.conversations = state.conversations.filter(c => c.id !== conversationId);
-                    updateConversationsList();
-                    
-                    // 如果是当前对话，重定向到新页面
-                    if (state.currentConversationId === conversationId) {
-                        window.location.href = '/chat';
-                    }
-                    
-                    showToast('对话已删除', 'success');
-                } else {
-                    showToast('删除对话失败', 'error');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`删除对话失败: ${errorData.error}`);
                 }
-            } catch (error) {
-                console.error('删除对话出错:', error);
-                showToast('删除对话时出错', 'error');
+                
+                // 从列表中移除对话
+                state.conversations = state.conversations.filter(conv => conv.id !== conversationId);
+                
+                // 如果删除的是当前对话，清空消息区域并显示初始页面
+                if (state.currentConversationId === conversationId) {
+                    state.currentConversationId = null;
+                    history.pushState({}, '', '/');
+                    showInitialPage();
+                }
+                
+                // 更新对话列表UI
+                updateConversationsList();
+                
+                                    } catch (error) {
+                console.error('删除对话失败:', error);
+                showError('删除对话失败: ' + error.message);
             } finally {
                 state.isDeleting = false;
             }
@@ -2234,25 +2231,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 修改登出函数
     function logout() {
-        showConfirmDialog('确定要退出登录吗？', async () => {
-            try {
-                const response = await fetch('/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    window.location.href = '/login';
-                } else {
-                    showToast('退出登录失败', 'error');
-                }
-            } catch (error) {
-                console.error('退出登录出错:', error);
-                showToast('退出登录时出错', 'error');
-            }
-        });
+        if (confirm('确定要退出登录吗？')) {
+            window.location.href = '/auth/logout';
+        }
     }
 
     // 添加 CSS 样式
@@ -4640,29 +4621,37 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 执行账号注销
     async function deactivateAccount() {
-        showConfirmDialog('确定要注销账号吗？此操作不可恢复，您的所有数据将被删除。', async () => {
-            try {
-                const response = await fetch('/deactivate-account', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    showToast('账号已注销，即将退出', 'success');
-                    setTimeout(() => {
-                        window.location.href = '/logout';
-                    }, 3000);
-                } else {
-                    const data = await response.json();
-                    showToast(data.message || '注销账号失败', 'error');
-                }
-            } catch (error) {
-                console.error('注销账号时出错:', error);
-                showToast('注销账号时出错', 'error');
+        // 确认用户真的想要注销
+        const finalConfirmation = confirm('您确定要注销账号吗？此操作不可撤销，所有数据将被永久删除。');
+        if (!finalConfirmation) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/auth/deactivate_account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // 注销成功，显示成功消息并重定向到登录页
+                alert('账号已成功注销。您将被重定向到登录页面。');
+                window.location.href = '/auth/login';
+            } else {
+                // 注销失败，显示错误消息
+                showToast(data.message || '注销账号失败，请重试', 'error');
+                closeDeactivateModal();
             }
-        });
+        } catch (error) {
+            console.error('注销账号时出错:', error);
+            showToast('注销账号时发生错误，请重试', 'error');
+            closeDeactivateModal();
+        }
     }
 
     // 设置VIP兑换码处理函数
