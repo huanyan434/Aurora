@@ -137,9 +137,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // 异步加载其他资源
                 setupScrollListener();
-                startMarkdownObserver();
-                
-                // 初始化完成后添加复制按钮
+            startMarkdownObserver();
+            
+            // 初始化完成后添加复制按钮
                 window.addCopyButtonsToAllCodeBlocks();
                 
                 // 确保滚动到底部

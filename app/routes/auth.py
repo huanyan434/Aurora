@@ -28,9 +28,9 @@ def login():
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        if request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
         email = request.form.get('email', '')
 
         # 验证必填字段
@@ -49,19 +49,19 @@ def signup():
             return render_template('auth/signup.html')
 
         # 创建新用户，使用UUID作为ID并设置默认余额
-        new_user = User(
-            username=username,
+            new_user = User(
+                username=username,
             email=email
-        )
+            )
         new_user.set_password(password)
-        
-        db.session.add(new_user)
-        db.session.commit()
-        
+            
+            db.session.add(new_user)
+            db.session.commit()
+            
         flash('注册成功，现在可以登录了', 'success')
-        return redirect(url_for('auth.login'))
-    
-    return render_template('auth/signup.html')
+            return redirect(url_for('auth.login'))
+        
+        return render_template('auth/signup.html')
 
 @auth_bp.route('/logout')
 @login_required

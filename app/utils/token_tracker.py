@@ -128,7 +128,7 @@ def get_token_usage_stats():
             "completion_tokens": 0,
             "records_count": 0,
             "error": str(e)
-        }
+        } 
 
 def get_latest_token_usage(user_id):
     """
