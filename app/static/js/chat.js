@@ -462,36 +462,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const vipRedeemResultEl = document.getElementById('vip-redeem-result');
         if (vipRedeemBtnEl) {
             vipRedeemBtnEl.addEventListener('click', async () => {
-                const code = vipCodeInputEl.value.trim();
-                if (!code) {
-                    vipRedeemResultEl.textContent = '请输入兑换码';
-                    return;
-                }
-                // 如果当前是SVIP，先确认降级提示
-                const proceed = async () => {
-                    try {
-                        const resp = await fetch('/vip/get_vip_token', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ code })
-                        });
-                        const data = await resp.json();
-                        if (!resp.ok) {
-                            vipRedeemResultEl.textContent = data.message;
-                        } else {
-                            vipRedeemResultEl.textContent = `兑换成功：${data.type.toUpperCase()} ${data.days} 天`;
-                            fetchUserMembershipInfo();
-                        }
-                    } catch (error) {
-                        console.error('兑换失败:', error);
-                        vipRedeemResultEl.textContent = '兑换失败，请稍后重试';
-                    }
-                };
-                if (state.currentUser.member_level === 'svip') {
-                    showConfirmDialog('此操作将会把您从SVIP降级为VIP，是否继续？', proceed);
-                } else {
-                    await proceed();
-                }
+                // 调用统一的兑换码处理函数
+                redeemVIPCode();
             });
             // 支持回车提交
             vipCodeInputEl.addEventListener('keypress', (e) => {
@@ -2231,9 +2203,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 修改登出函数
     function logout() {
-        if (confirm('确定要退出登录吗？')) {
+        showConfirmDialog('确定要退出登录吗？', function() {
+            // 直接重定向到退出页面，保持原来的行为
             window.location.href = '/auth/logout';
-        }
+        });
     }
 
     // 添加 CSS 样式
@@ -2652,45 +2625,103 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 添加 showConfirmDialog 函数
-    function showConfirmDialog(messageText, onConfirm) {
-        // 如果对话框元素不存在，创建它
-        if (!elements.confirmDialog) {
-            const dialogElements = createConfirmDialog();
-            elements.confirmDialog = dialogElements.dialog;
-            elements.confirmOk = dialogElements.okBtn;
-            elements.confirmCancel = dialogElements.cancelBtn;
+    function showConfirmDialog(message, confirmCallback) {
+        console.log('显示确认对话框', message);
+        
+        // 移除可能存在的旧对话框
+        const existingModal = document.getElementById('confirmDialog');
+        if (existingModal) {
+            document.body.removeChild(existingModal);
         }
-
-        // 设置消息文本
-        const messageElement = elements.confirmDialog.querySelector('.confirm-message');
-        if (messageElement) {
-            messageElement.textContent = messageText;
+        
+        // 创建模态对话框
+        const modalHTML = `
+        <div class="modal fade" id="confirmDialog" tabindex="-1" role="dialog" aria-labelledby="confirmDialogLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="confirmDialogLabel">确认操作</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        ${message}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" id="confirmDialogConfirmBtn">确认</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // 添加到文档
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHTML;
+        document.body.appendChild(modalContainer.firstElementChild);
+        
+        // 获取对话框元素
+        const modalElement = document.getElementById('confirmDialog');
+        console.log('模态框元素:', modalElement);
+        const confirmBtn = document.getElementById('confirmDialogConfirmBtn');
+        
+        // 设置显示样式
+        modalElement.style.display = 'flex';
+        modalElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        modalElement.style.zIndex = '9999';
+        
+        // 添加show类
+        modalElement.classList.add('show');
+        
+        // 输出调试信息
+        console.log('模态框显示状态:', {
+            display: getComputedStyle(modalElement).display,
+            zIndex: getComputedStyle(modalElement).zIndex,
+            classList: [...modalElement.classList]
+        });
+        
+        // 点击确认按钮执行回调
+        confirmBtn.addEventListener('click', function() {
+            console.log('点击确认按钮');
+            closeModal();
+            if (typeof confirmCallback === 'function') {
+                confirmCallback();
+            }
+        });
+        
+        // 点击关闭按钮关闭对话框
+        const closeBtn = modalElement.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeModal);
         }
-
-        // 显示对话框
-        elements.confirmDialog.classList.add('show');
-
-        // 设置按钮事件
-        const handleConfirm = () => {
-            elements.confirmDialog.classList.remove('show');
-            onConfirm();
-            cleanup();
-        };
-
-        const handleCancel = () => {
-            elements.confirmDialog.classList.remove('show');
-            cleanup();
-        };
-
-        // 清理函数
-        const cleanup = () => {
-            elements.confirmOk.removeEventListener('click', handleConfirm);
-            elements.confirmCancel.removeEventListener('click', handleCancel);
-        };
-
-        // 添加事件监听
-        elements.confirmOk.addEventListener('click', handleConfirm);
-        elements.confirmCancel.addEventListener('click', handleCancel);
+        
+        // 点击取消按钮关闭对话框
+        const cancelBtn = modalElement.querySelector('.btn-secondary');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeModal);
+        }
+        
+        // 点击模态框外部关闭对话框
+        modalElement.addEventListener('click', function(event) {
+            if (event.target === modalElement) {
+                console.log('点击模态框外部');
+                closeModal();
+            }
+        });
+        
+        // 关闭模态框的辅助函数
+        function closeModal() {
+            console.log('关闭模态框');
+            modalElement.classList.remove('show');
+            modalElement.style.display = 'none';
+            setTimeout(() => {
+                if (modalElement.parentNode === document.body) {
+                    document.body.removeChild(modalElement);
+                }
+            }, 300);
+        }
     }
 
     // 添加确认对话框的 CSS 样式
@@ -3409,42 +3440,8 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (vipRedeemBtn && vipCodeInput && vipRedeemResult) {
                 vipRedeemBtn.addEventListener('click', async () => {
-                    const code = vipCodeInput.value.trim();
-                    if (!code) {
-                        vipRedeemResult.textContent = '请输入兑换码';
-                        vipRedeemResult.className = 'redeem-result error';
-                        return;
-                    }
-                    
-                    vipRedeemBtn.disabled = true;
-                    
-                    try {
-                        const response = await fetch('/vip/activate_vip_token', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ code: code })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            vipRedeemResult.textContent = data.message || '兑换成功！';
-                            vipRedeemResult.className = 'redeem-result success';
-                            vipCodeInput.value = '';
-                            
-                            // 刷新会员信息
-                            fetchUserMembershipInfo();
-                        } else {
-                            vipRedeemResult.textContent = data.message || '兑换失败';
-                            vipRedeemResult.className = 'redeem-result error';
-                        }
-                    } catch (error) {
-                        console.error('兑换VIP码时出错:', error);
-                        vipRedeemResult.textContent = '兑换操作失败，请稍后重试';
-                        vipRedeemResult.className = 'redeem-result error';
-                    } finally {
-                        vipRedeemBtn.disabled = false;
-                    }
+                    // 调用统一的兑换码处理函数
+                    redeemVIPCode();
                 });
                 
                 // 支持回车键提交
@@ -3462,42 +3459,8 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (moneyRedeemBtn && moneyCodeInput && moneyRedeemResult) {
                 moneyRedeemBtn.addEventListener('click', async () => {
-                    const code = moneyCodeInput.value.trim();
-                    if (!code) {
-                        moneyRedeemResult.textContent = '请输入充值码';
-                        moneyRedeemResult.className = 'redeem-result error';
-                        return;
-                    }
-                    
-                    moneyRedeemBtn.disabled = true;
-                    
-                    try {
-                        const response = await fetch('/money/redeem_money_token', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ code })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (response.ok) {
-                            moneyRedeemResult.textContent = data.message || `成功充值${data.amount}`;
-                            moneyRedeemResult.className = 'redeem-result success';
-                            moneyCodeInput.value = '';
-                            
-                            // 更新余额显示
-                            fetchUserBalanceInfo();
-                        } else {
-                            moneyRedeemResult.textContent = data.message || '充值失败';
-                            moneyRedeemResult.className = 'redeem-result error';
-                        }
-                    } catch (error) {
-                        console.error('充值失败:', error);
-                        moneyRedeemResult.textContent = '充值操作失败，请稍后重试';
-                        moneyRedeemResult.className = 'redeem-result error';
-                    } finally {
-                        moneyRedeemBtn.disabled = false;
-                    }
+                    // 调用统一的余额充值码处理函数
+                    redeemMoneyCode();
                 });
                 
                 // 支持回车键提交
@@ -3647,42 +3610,8 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (vipRedeemBtn && vipCodeInput && vipRedeemResult) {
                 vipRedeemBtn.addEventListener('click', async () => {
-                    const code = vipCodeInput.value.trim();
-                    if (!code) {
-                        vipRedeemResult.textContent = '请输入兑换码';
-                        vipRedeemResult.className = 'redeem-result error';
-                        return;
-                    }
-                    
-                    vipRedeemBtn.disabled = true;
-                    
-                    try {
-                        const response = await fetch('/vip/activate_vip_token', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ code: code })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            vipRedeemResult.textContent = data.message || '兑换成功！';
-                            vipRedeemResult.className = 'redeem-result success';
-                            vipCodeInput.value = '';
-                            
-                            // 刷新会员信息
-                            fetchUserMembershipInfo();
-                        } else {
-                            vipRedeemResult.textContent = data.message || '兑换失败';
-                            vipRedeemResult.className = 'redeem-result error';
-                        }
-                    } catch (error) {
-                        console.error('兑换VIP码时出错:', error);
-                        vipRedeemResult.textContent = '兑换操作失败，请稍后重试';
-                        vipRedeemResult.className = 'redeem-result error';
-                    } finally {
-                        vipRedeemBtn.disabled = false;
-                    }
+                    // 调用统一的兑换码处理函数
+                    redeemVIPCode();
                 });
                 
                 // 支持回车键提交
@@ -3700,42 +3629,8 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (moneyRedeemBtn && moneyCodeInput && moneyRedeemResult) {
                 moneyRedeemBtn.addEventListener('click', async () => {
-                    const code = moneyCodeInput.value.trim();
-                    if (!code) {
-                        moneyRedeemResult.textContent = '请输入充值码';
-                        moneyRedeemResult.className = 'redeem-result error';
-                        return;
-                    }
-                    
-                    moneyRedeemBtn.disabled = true;
-                    
-                    try {
-                        const response = await fetch('/money/redeem_money_token', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ code })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (response.ok) {
-                            moneyRedeemResult.textContent = data.message || `成功充值${data.amount}`;
-                            moneyRedeemResult.className = 'redeem-result success';
-                            moneyCodeInput.value = '';
-                            
-                            // 更新余额显示
-                            fetchUserBalanceInfo();
-                        } else {
-                            moneyRedeemResult.textContent = data.message || '充值失败';
-                            moneyRedeemResult.className = 'redeem-result error';
-                        }
-                    } catch (error) {
-                        console.error('充值失败:', error);
-                        moneyRedeemResult.textContent = '充值操作失败，请稍后重试';
-                        moneyRedeemResult.className = 'redeem-result error';
-                    } finally {
-                        moneyRedeemBtn.disabled = false;
-                    }
+                    // 调用统一的余额充值码处理函数
+                    redeemMoneyCode();
                 });
                 
                 // 支持回车键提交
@@ -4154,6 +4049,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 显示确认对话框
     function showConfirmDialog(message, confirmCallback) {
+        console.log('显示确认对话框', message);
+        
         // 移除可能存在的旧对话框
         const existingModal = document.getElementById('confirmDialog');
         if (existingModal) {
@@ -4192,46 +4089,60 @@ document.addEventListener('DOMContentLoaded', function () {
         const modalElement = document.getElementById('confirmDialog');
         const confirmBtn = document.getElementById('confirmDialogConfirmBtn');
         
+        // 设置显示样式
+        modalElement.style.display = 'flex';
+        modalElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        modalElement.style.zIndex = '9999';
+        
+        // 添加show类
+        modalElement.classList.add('show');
+        
+        // 输出调试信息
+        console.log('模态框显示状态:', {
+            display: getComputedStyle(modalElement).display,
+            zIndex: getComputedStyle(modalElement).zIndex,
+            classList: [...modalElement.classList]
+        });
+        
         // 点击确认按钮执行回调
         confirmBtn.addEventListener('click', function() {
-            modalElement.style.display = 'none';
+            console.log('点击确认按钮');
+            closeModal();
             if (typeof confirmCallback === 'function') {
                 confirmCallback();
             }
-            setTimeout(() => {
-                if (modalElement.parentNode === document.body) {
-                    document.body.removeChild(modalElement);
-                }
-            }, 300);
         });
-        
-        // 显示对话框
-        modalElement.style.display = 'block';
         
         // 点击关闭按钮关闭对话框
         const closeBtn = modalElement.querySelector('.close');
         if (closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                modalElement.style.display = 'none';
-                setTimeout(() => {
-                    if (modalElement.parentNode === document.body) {
-            document.body.removeChild(modalElement);
-                    }
-                }, 300);
-            });
+            closeBtn.addEventListener('click', closeModal);
         }
         
         // 点击取消按钮关闭对话框
         const cancelBtn = modalElement.querySelector('.btn-secondary');
         if (cancelBtn) {
-            cancelBtn.addEventListener('click', function() {
-                modalElement.style.display = 'none';
-                setTimeout(() => {
-                    if (modalElement.parentNode === document.body) {
-                        document.body.removeChild(modalElement);
-                    }
-                }, 300);
-            });
+            cancelBtn.addEventListener('click', closeModal);
+        }
+        
+        // 点击模态框外部关闭对话框
+        modalElement.addEventListener('click', function(event) {
+            if (event.target === modalElement) {
+                console.log('点击模态框外部');
+                closeModal();
+            }
+        });
+        
+        // 关闭模态框的辅助函数
+        function closeModal() {
+            console.log('关闭模态框');
+            modalElement.classList.remove('show');
+            modalElement.style.display = 'none';
+            setTimeout(() => {
+                if (modalElement.parentNode === document.body) {
+                    document.body.removeChild(modalElement);
+                }
+            }, 300);
         }
     }
 
@@ -4627,37 +4538,36 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 执行账号注销
     async function deactivateAccount() {
-        // 确认用户真的想要注销
-        const finalConfirmation = confirm('您确定要注销账号吗？此操作不可撤销，所有数据将被永久删除。');
-        if (!finalConfirmation) {
-            return;
-        }
+        // 清除倒计时
+        clearInterval(deactivateCountdown);
         
-        try {
-            const response = await fetch('/auth/deactivate_account', {
+        // 使用自定义确认对话框进行最终确认
+        showConfirmDialog('您确定要注销账号吗？此操作不可撤销，所有数据将被永久删除。', async function() {
+            try {
+                const response = await fetch('/user/deactivate', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin'
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                // 注销成功，显示成功消息并重定向到登录页
-                alert('账号已成功注销。您将被重定向到登录页面。');
-                window.location.href = '/auth/login';
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 注销成功，跳转到登录页面
+                    alert('账号已成功注销，即将返回登录页面');
+                    window.location.href = '/';
             } else {
-                // 注销失败，显示错误消息
-                showToast(data.message || '注销账号失败，请重试', 'error');
+                    // 注销失败
+                    alert('账号注销失败：' + (result.message || '未知错误'));
                 closeDeactivateModal();
             }
         } catch (error) {
-            console.error('注销账号时出错:', error);
-            showToast('注销账号时发生错误，请重试', 'error');
+                console.error('注销账号出错：', error);
+                alert('注销账号过程中出现错误，请稍后重试');
             closeDeactivateModal();
         }
+        });
     }
 
     // 设置VIP兑换码处理函数
@@ -4697,54 +4607,91 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         
-        // 检查用户是否是SVIP，如果是则显示确认降级对话框
-        const processRedeem = async () => {
-            try {
-                // 禁用按钮防止重复提交
-                redeemButton.disabled = true;
-                resultDisplay.textContent = '正在处理...';
-                resultDisplay.className = 'redeem-result';
-                
-                const response = await fetch('/vip/activate_vip_token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ code: code })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    resultDisplay.textContent = data.message || '兑换成功！';
-                    resultDisplay.className = 'redeem-result success';
-                    codeInput.value = '';
-                    
-                    // 刷新会员信息
-                    await fetchUserMembershipInfo();
-                    
-                    // 显示成功提示
-                    showToast('会员兑换成功！', 'success');
-                } else {
-                    resultDisplay.textContent = data.message || '兑换失败，请检查兑换码是否有效';
-                    resultDisplay.className = 'redeem-result error';
-                }
-            } catch (error) {
-                console.error('处理VIP兑换码时出错:', error);
-                resultDisplay.textContent = '兑换过程中发生错误，请稍后重试';
+            // 禁用按钮防止重复提交
+            redeemButton.disabled = true;
+        resultDisplay.textContent = '正在验证兑换码...';
+            resultDisplay.className = 'redeem-result';
+            
+        try {
+            // 首先验证兑换码是否有效
+            const checkResponse = await fetch('/vip/check_vip_token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: code })
+            });
+            
+            if (checkResponse.status === 400) {
+                // 兑换码无效返回400
+                resultDisplay.textContent = '兑换码无效或已使用';
                 resultDisplay.className = 'redeem-result error';
-            } finally {
-                // 恢复按钮状态
                 redeemButton.disabled = false;
+                return;
             }
-        };
-        
-        // 如果当前用户是SVIP，显示确认对话框
-        if (state?.currentUser?.member_level === 'svip') {
-            showConfirmDialog('此操作将会把您从SVIP降级为VIP，是否继续？', processRedeem);
-        } else {
-            // 不是SVIP，直接处理
-            await processRedeem();
+            
+            const checkData = await checkResponse.json();
+            
+            if (!checkData.success) {
+                // 其他原因失败
+                resultDisplay.textContent = checkData.message || '兑换码验证失败';
+                resultDisplay.className = 'redeem-result error';
+                redeemButton.disabled = false;
+                return;
+            }
+            
+            // 处理兑换的函数
+            const activateVipToken = async () => {
+                resultDisplay.textContent = '正在处理...';
+                
+                try {
+                    const response = await fetch('/vip/activate_vip_token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ code: code })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                resultDisplay.textContent = data.message || '兑换成功！';
+                resultDisplay.className = 'redeem-result success';
+                codeInput.value = '';
+                
+                // 刷新会员信息
+                await fetchUserMembershipInfo();
+                
+                // 显示成功提示
+                showToast('会员兑换成功！', 'success');
+            } else {
+                resultDisplay.textContent = data.message || '兑换失败，请检查兑换码是否有效';
+                resultDisplay.className = 'redeem-result error';
+            }
+        } catch (error) {
+            console.error('处理VIP兑换码时出错:', error);
+            resultDisplay.textContent = '兑换过程中发生错误，请稍后重试';
+            resultDisplay.className = 'redeem-result error';
+        } finally {
+            // 恢复按钮状态
+                    redeemButton.disabled = false;
+                }
+            };
+                        
+            // 检查是否需要显示降级确认
+            if (state?.currentUser?.member_level === 'svip' && checkData.type === 'vip') {
+                // 用户是SVIP，兑换码是VIP，可能导致降级，显示确认对话框
+                showConfirmDialog('此操作将会把您从SVIP降级为VIP，是否继续？', activateVipToken);
+            } else {
+                // 用户不是SVIP或兑换码不是VIP类型，直接处理
+                await activateVipToken();
+            }
+        } catch (error) {
+            console.error('验证VIP兑换码时出错:', error);
+            resultDisplay.textContent = '验证兑换码过程中发生错误，请稍后重试';
+            resultDisplay.className = 'redeem-result error';
+            redeemButton.disabled = false;
         }
     }
     

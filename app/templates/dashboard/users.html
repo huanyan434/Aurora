@@ -70,6 +70,87 @@
     #userStatusChart {
         margin: 0 auto;
     }
+    .user-card {
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .user-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .user-online {
+        color: #28a745;
+    }
+    
+    .user-offline {
+        color: #dc3545;
+    }
+    
+    .user-stats {
+        font-size: 0.9rem;
+    }
+    
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    
+    .online {
+        background-color: #28a745;
+    }
+    
+    .offline {
+        background-color: #dc3545;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 350px;
+    }
+    
+    /* 自定义确认对话框样式 */
+    #confirmDialog {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+    
+    #confirmDialog .modal-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+    }
+    
+    #confirmDialog .modal-title {
+        color: white;
+        font-weight: 500;
+    }
+    
+    #confirmDialog .close {
+        color: white;
+        opacity: 0.8;
+    }
+    
+    #confirmDialog .close:hover {
+        opacity: 1;
+    }
+    
+    #confirmDialog .modal-body {
+        font-size: 1.1rem;
+        padding: 1.5rem;
+    }
+    
+    #confirmDialog .btn-primary {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+    
+    #confirmDialog .btn-primary:hover {
+        background-color: var(--secondary);
+        border-color: var(--secondary);
+    }
 </style>
 {% endblock %}
 
@@ -848,6 +929,81 @@
         }
     }
     
+    // 自定义确认对话框
+    function showConfirmDialog(message, confirmCallback) {
+        // 检查是否已存在对话框，如果有则移除
+        const existingModal = document.getElementById('confirmDialog');
+        if (existingModal) {
+            document.body.removeChild(existingModal);
+        }
+        
+        // 创建模态对话框
+        const modalHTML = `
+        <div class="modal fade" id="confirmDialog" tabindex="-1" role="dialog" aria-labelledby="confirmDialogLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="confirmDialogLabel">确认操作</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        ${message}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" id="confirmDialogConfirmBtn">确认</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // 添加到文档
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHTML;
+        document.body.appendChild(modalContainer.firstElementChild);
+        
+        // 获取对话框元素
+        const modalElement = document.getElementById('confirmDialog');
+        const confirmBtn = document.getElementById('confirmDialogConfirmBtn');
+        
+        // 显示对话框
+        $(modalElement).modal('show');
+        
+        // 点击确认按钮执行回调
+        confirmBtn.addEventListener('click', function() {
+            $(modalElement).modal('hide');
+            if (typeof confirmCallback === 'function') {
+                confirmCallback();
+            }
+        });
+        
+        // 点击关闭按钮关闭对话框
+        const closeBtn = modalElement.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                $(modalElement).modal('hide');
+            });
+        }
+        
+        // 点击取消按钮关闭对话框
+        const cancelBtn = modalElement.querySelector('.btn-secondary');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                $(modalElement).modal('hide');
+            });
+        }
+        
+        // 移除对话框事件
+        $(modalElement).on('hidden.bs.modal', function() {
+            if (modalElement.parentNode === document.body) {
+                document.body.removeChild(modalElement);
+            }
+        });
+    }
+    
     // 初始化页面
     document.addEventListener('DOMContentLoaded', function() {
         // 初始化图表
@@ -915,10 +1071,10 @@
                 return;
             }
             
-            // 确认是否重置
-            if (confirm(`确定要将用户 ${userId} 的余额重置为 ¥${amount.toFixed(2)} 吗？`)) {
+            // 使用自定义确认对话框
+            showConfirmDialog(`确定要将用户 ${userId} 的余额重置为 ¥${amount.toFixed(2)} 吗？`, function() {
                 resetUserBalance(userId, amount);
-            }
+            });
         });
         
         // 自动刷新
