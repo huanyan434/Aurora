@@ -3057,6 +3057,7 @@ body.dark .au-tooltip {
     border-top: 1px solid #e9ecef;
     border-bottom-right-radius: 0.3rem;
     border-bottom-left-radius: 0.3rem;
+    gap: 12px;
 }
 
 #confirmDialog .btn {
@@ -3081,6 +3082,7 @@ body.dark .au-tooltip {
     color: #fff;
     background-color: #6c757d;
     border-color: #6c757d;
+    margin-right: 10px;
 }
 
 #confirmDialog .btn-secondary:hover {
