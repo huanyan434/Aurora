@@ -2955,7 +2955,12 @@ document.addEventListener('DOMContentLoaded', function () {
             'doubao-1.5-vision-pro': 'Doubao-1.5-vision-pro',
             'gemini-2.5-pro': 'Gemini-2.5-pro',
             'gemini-2.5-flash': 'Gemini-2.5-flash',
-            'gemini-2.0-flash': 'Gemini-2.0-flash'
+            'gemini-2.0-flash': 'Gemini-2.0-flash',
+            'qwen3': 'Qwen3',
+            'qwen2.5-instruct': 'Qwen2.5-Instruct',
+            'qvq': 'QvQ',
+            'qwq': 'QwQ',
+            'qwq-preview': 'QwQ-Preview',
         };
         return modelMap[modelName] || modelName;
     }

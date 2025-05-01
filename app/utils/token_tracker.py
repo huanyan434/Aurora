@@ -236,6 +236,11 @@ def get_model_free_usage_limit(model_name, user_id=None):
         "Gemini-2.5-pro": 80,
         "Gemini-2.5-flash": 80,
         "Gemini-2.0-flash": 80,
+        "Qwen3": 45,
+        "QwQ": 60,
+        "QwQ-Preview": 80,
+        "QvQ-Preview": 45,
+        "Qwen2.5-Instruct": 60,
     }
     
     # 获取基础限制次数

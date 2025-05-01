@@ -895,6 +895,28 @@ body {
     transform: translateY(-10px);
     transition: all 0.2s ease;
     min-width: 300px;
+    max-height: 270px; /* 限制高度，大约显示5个模型选项 */
+    overflow-y: auto; /* 添加垂直滚动条 */
+    scrollbar-width: thin; /* Firefox */
+}
+
+/* 自定义滚动条样式 */
+.model-select-options::-webkit-scrollbar {
+    width: 6px;
+}
+
+.model-select-options::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.model-select-options::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.model-select-options::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .model-select.active .model-select-options {

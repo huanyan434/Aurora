@@ -24,10 +24,12 @@ current_user_id = None
 
 
 def model_name(model: str):
+    # DeepSeek
     if model == "DeepSeek-R1":
         model = "deepseek-ai/DeepSeek-R1"
     elif model == "DeepSeek-V3":
         model = "deepseek-ai/DeepSeek-V3"
+    # Doubao
     elif model == "Doubao-1.5-lite":
         model = "doubao-1-5-lite-32k-250115"
     elif model == "Doubao-1.5-pro":
@@ -36,12 +38,24 @@ def model_name(model: str):
         model = "doubao-1-5-pro-256k-250115"
     elif model == "Doubao-1.5-vision-pro":
         model = "doubao-1-5-vision-pro-32k-250115"
+    # Gemini
     elif model == "Gemini-2.5-pro":
         model = "gemini-2.5-pro-exp-03-25"
     elif model == "Gemini-2.5-flash":
         model = "gemini-2.5-flash-preview-04-17"
     elif model == "Gemini-2.0-flash":
-        model = "gemini-2.0-flash"        
+        model = "gemini-2.0-flash"
+    # Qwen
+    elif model == "Qwen3":
+        model = "Qwen/Qwen3-235B-A22B"
+    elif model == "QwQ":
+        model = "Qwen/QwQ-32B"
+    elif model == "QwQ-Preview":
+        model = "Qwen/QwQ-32B-Preview"
+    elif model == "QvQ":
+        model = "Qwen/QVQ-72B-Preview"
+    elif model == "Qwen2.5-Instruct":
+        model = "Qwen/Qwen2.5-72B-Instruct"
     return model
 def model_name_reverse(model: str):
     if model == "deepseek-ai/DeepSeek-R1":
@@ -62,6 +76,14 @@ def model_name_reverse(model: str):
         model = "Gemini-2.5-flash"
     elif model == "gemini-2.0-flash":
         model = "Gemini-2.0-flash"
+    elif model == "Qwen/Qwen3-235B-A22B":
+        model = "Qwen3"
+    elif model == "Qwen/QwQ-32B":
+        model = "QwQ"
+    elif model == "Qwen/QwQ-32B-Preview":
+        model = "QwQ-Preview"
+    elif model == "Qwen/Qwen2.5-72B-Instruct":
+        model = "Qwen2.5-Instruct"
     return model
 
 def stream_volcano_ark_api(model: str, history: list, response_queue):
