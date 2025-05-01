@@ -3422,7 +3422,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const response = await fetch('/vip/activate_vip_token', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ token: code })
+                            body: JSON.stringify({ code: code })
                         });
                         
                         const data = await response.json();
@@ -3660,7 +3660,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const response = await fetch('/vip/activate_vip_token', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ token: code })
+                            body: JSON.stringify({ code: code })
                         });
                         
                         const data = await response.json();
@@ -4697,43 +4697,54 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         
-        try {
-            // 禁用按钮防止重复提交
-            redeemButton.disabled = true;
-            resultDisplay.textContent = '正在处理...';
-            resultDisplay.className = 'redeem-result';
-            
-            const response = await fetch('/vip/redeem', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ code })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                resultDisplay.textContent = data.message || '兑换成功！';
-                resultDisplay.className = 'redeem-result success';
-                codeInput.value = '';
+        // 检查用户是否是SVIP，如果是则显示确认降级对话框
+        const processRedeem = async () => {
+            try {
+                // 禁用按钮防止重复提交
+                redeemButton.disabled = true;
+                resultDisplay.textContent = '正在处理...';
+                resultDisplay.className = 'redeem-result';
                 
-                // 刷新会员信息
-                await fetchUserMembershipInfo();
+                const response = await fetch('/vip/activate_vip_token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code: code })
+                });
                 
-                // 显示成功提示
-                showToast('会员兑换成功！', 'success');
-            } else {
-                resultDisplay.textContent = data.message || '兑换失败，请检查兑换码是否有效';
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDisplay.textContent = data.message || '兑换成功！';
+                    resultDisplay.className = 'redeem-result success';
+                    codeInput.value = '';
+                    
+                    // 刷新会员信息
+                    await fetchUserMembershipInfo();
+                    
+                    // 显示成功提示
+                    showToast('会员兑换成功！', 'success');
+                } else {
+                    resultDisplay.textContent = data.message || '兑换失败，请检查兑换码是否有效';
+                    resultDisplay.className = 'redeem-result error';
+                }
+            } catch (error) {
+                console.error('处理VIP兑换码时出错:', error);
+                resultDisplay.textContent = '兑换过程中发生错误，请稍后重试';
                 resultDisplay.className = 'redeem-result error';
+            } finally {
+                // 恢复按钮状态
+                redeemButton.disabled = false;
             }
-        } catch (error) {
-            console.error('处理VIP兑换码时出错:', error);
-            resultDisplay.textContent = '兑换过程中发生错误，请稍后重试';
-            resultDisplay.className = 'redeem-result error';
-        } finally {
-            // 恢复按钮状态
-            redeemButton.disabled = false;
+        };
+        
+        // 如果当前用户是SVIP，显示确认对话框
+        if (state?.currentUser?.member_level === 'svip') {
+            showConfirmDialog('此操作将会把您从SVIP降级为VIP，是否继续？', processRedeem);
+        } else {
+            // 不是SVIP，直接处理
+            await processRedeem();
         }
     }
     

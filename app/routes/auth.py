@@ -49,18 +49,16 @@ def signup():
             return render_template('auth/signup.html')
 
         # 创建新用户，使用UUID作为ID并设置默认余额
-            new_user = User(
-                username=username,
-            email=email
-            )
+        new_user = User(
+            username=username,
+        email=email
+        )
         new_user.set_password(password)
             
-            db.session.add(new_user)
-            db.session.commit()
+        db.session.add(new_user)
+        db.session.commit()
             
         flash('注册成功，现在可以登录了', 'success')
-            return redirect(url_for('auth.login'))
-        
         return render_template('auth/signup.html')
 
 @auth_bp.route('/logout')
