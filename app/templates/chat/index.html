@@ -17,12 +17,6 @@
     <script defer src="https://s4.zstatic.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 </head>
 <body>
-    <!-- 侧边栏切换按钮 -->
-    <button class="sidebar-toggle">
-        <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-        </svg>
-    </button>
     <div class="app-container">
         <!-- 遮罩层 -->
         <div class="sidebar-overlay"></div>
@@ -56,7 +50,14 @@
             </div>
         </div>
 
-        <!-- 只保留一个折叠按钮 -->
+        <!-- 侧边栏切换按钮 -->
+        <!-- 移动端侧边栏切换按钮 -->
+        <button class="sidebar-toggle">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+                <path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+        </button>
+        <!-- 桌面端侧边栏切换按钮 -->
         <button class="collapse-btn {{ 'collapsed' if session.get('sidebar_collapsed') else '' }}">
             <svg class="collapse-icon" viewBox="0 0 24 24">
                 <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>

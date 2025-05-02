@@ -4142,12 +4142,12 @@ document.addEventListener('DOMContentLoaded', function () {
         function closeModal() {
             console.log('关闭模态框');
             modalElement.classList.remove('show');
-            modalElement.style.display = 'none';
-            setTimeout(() => {
-                if (modalElement.parentNode === document.body) {
-                    document.body.removeChild(modalElement);
-                }
-            }, 300);
+                modalElement.style.display = 'none';
+                setTimeout(() => {
+                    if (modalElement.parentNode === document.body) {
+                        document.body.removeChild(modalElement);
+                    }
+                }, 300);
         }
     }
 
