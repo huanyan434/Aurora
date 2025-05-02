@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         confirmDeactivateBtn: document.getElementById('confirm-deactivate-btn'), // 确认注销按钮
         cancelDeactivateBtn: document.getElementById('cancel-deactivate-btn'), // 取消注销按钮
         countdownTimer: document.getElementById('countdown-timer'), // 倒计时显示
+        onlineSearchBtn: document.getElementById('online-search-btn'), // 联网搜索按钮
     };
 
     // ====================== 初始化 ======================
@@ -217,6 +218,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     console.log('开始发送消息...');
                     sendMessageHandler();
+                }
+            });
+        }
+
+        // 联网搜索按钮点击事件
+        if (elements.onlineSearchBtn) {
+            elements.onlineSearchBtn.addEventListener('click', function() {
+                this.classList.toggle('active');
+                
+                if (this.classList.contains('active')) {
+                    showNotification('已启用联网搜索功能', 3000);
+                    
+                    // 检查当前是否有文本内容
+                    const content = elements.messageInput.value.trim();
+                    if (!content) {
+                        // 自动聚焦到输入框
+                        elements.messageInput.focus();
+                    }
+                } else {
+                    showNotification('已关闭联网搜索功能', 2000);
                 }
             });
         }
@@ -591,11 +612,22 @@ document.addEventListener('DOMContentLoaded', function () {
     // ====================== 消息发送核心 ======================
     async function sendMessageHandler() {
         console.log('尝试发送消息');
+        // 捕获当前输入内容（创建快照）
         const content = elements.messageInput.value.trim();
+        const contentSnapshot = content; // 保存当前内容的快照
+        
+        const isOnlineSearchEnabled = elements.onlineSearchBtn && 
+                                     elements.onlineSearchBtn.classList.contains('active');
         
         // 检查是否有内容或图片
         if ((!content && !state.selectedImage) || state.isSending) {
             console.log('消息为空或正在发送中');
+            return;
+        }
+        
+        // 当启用联网搜索时，必须有文本内容
+        if (isOnlineSearchEnabled && !content) {
+            showNotification('联网搜索需要输入文本内容', 3000);
             return;
         }
         
@@ -606,10 +638,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        console.log('开始发送消息:', content);
+        console.log('开始发送消息:', contentSnapshot);
         state.isSending = true;
-        state.lastUserMessage = content;  // 保存用户消息
+        state.lastUserMessage = contentSnapshot;  // 保存用户消息
         updateSendButtonState();
+        
+        // 清空输入框
         elements.messageInput.value = '';
         elements.messageInput.style.height = 'auto';
         
@@ -650,7 +684,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // 准备发送数据
             let messageData = {
-                message: content,
+                message: contentSnapshot,  // 使用快照内容
                 conversation_id: state.currentConversationId,
                 model: getSelectedModel(),
                 user_id: state.currentUser.id || 'anonymous'  // 添加用户ID
@@ -757,7 +791,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ====================== AI回复获取 ======================
     async function getAIResponse(messageData, conversationId, aiMessageId) {
-        // 声明所有变量在函数开头，确保它们在作用域中的所有地方可用
+        // 声明所需变量
         let buffer = '';
         let messageCreated = false;
         let aiMessageDiv = document.getElementById(aiMessageId); // 获取已创建的消息元素
@@ -768,34 +802,126 @@ document.addEventListener('DOMContentLoaded', function () {
         let thinkHeaderElement = null;
         
         try {
+            // 添加联网搜索参数
+            const isOnlineSearchEnabled = elements.onlineSearchBtn && 
+                                         elements.onlineSearchBtn.classList.contains('active');
+            
+            // 日志 - 联网搜索状态
+            console.log("联网搜索状态:", isOnlineSearchEnabled);
+            console.log("消息内容:", messageData.message);
+            
+            if (isOnlineSearchEnabled && (!messageData.message || messageData.message.trim() === '')) {
+                showError('联网搜索需要文本内容，请输入问题');
+                throw new Error('联网搜索需要文本内容');
+            }
+            
+            // 创建一个可中断的控制器
             state.abortController = new AbortController();
+            const signal = state.abortController.signal;
             
-            // 确保按钮状态立即更新
+            // 构建请求体
+            const requestBody = {
+                prompt: messageData.message, // 主要参数，用于联网搜索
+                message: messageData.message, // 兼容其他功能
+                conversation_id: conversationId,
+                model_name: messageData.model, // 确保模型名称正确传递
+                model: messageData.model, // 添加model参数
+                has_image: messageData.hasImage || false,
+                image_data: messageData.imageData || null,
+                image_caption: messageData.imageCaption || null,
+                online_search: isOnlineSearchEnabled
+            };
+            
+            // 确保联网搜索时prompt参数有值
+            if (isOnlineSearchEnabled) {
+                if (!requestBody.prompt || requestBody.prompt.trim() === '') {
+                    throw new Error('联网搜索需要提供prompt参数');
+                }
+                console.log("联网搜索prompt:", requestBody.prompt);
+            }
+            
+            // 确保model参数有值
+            if (!requestBody.model) {
+                // 如果没有指定模型，使用默认模型
+                const defaultModel = 'DeepSeek-R1';
+                console.warn("未指定模型，使用默认模型:", defaultModel);
+                requestBody.model = defaultModel;
+                requestBody.model_name = defaultModel;
+            }
+            
+            console.log("请求体完整信息:", JSON.stringify(requestBody));
+            console.log("请求体摘要:", JSON.stringify({
+                prompt: requestBody.prompt ? "已提供" : "未提供",
+                message: requestBody.message ? "已提供" : "未提供",
+                prompt长度: requestBody.prompt ? requestBody.prompt.length : 0,
+                conversation_id: conversationId,
+                model_name: requestBody.model_name,
+                model: requestBody.model,
+                has_image: messageData.hasImage || false,
+                online_search: isOnlineSearchEnabled
+            }));
+            
+            // 更改发送按钮状态为停止按钮
+            state.isSending = true;
             updateSendButtonState();
-            console.log('AI响应开始，已设置中断控制器');
             
-            const isResume = !!messageData.message_id;
-            const fetchUrl = isResume
-                ? `/api/chat/${conversationId}/generate`
-                : '/stream-chat';
-            const fetchBody = isResume
-                ? JSON.stringify({
-                    prompt: messageData.message,
-                    model: messageData.model,
-                    image: messageData.image,
-                    image_type: messageData.image_type,
-                    image_name: messageData.image_name,
-                    message_id: messageData.message_id
-                })
-                : JSON.stringify(messageData);
-            const response = await fetch(fetchUrl, {
+            const serverUrl = `/api/chat/${conversationId}/generate`;
+            console.log("请求URL:", serverUrl);
+            
+            const response = await fetch(serverUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: fetchBody,
-                signal: state.abortController.signal
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody),
+                signal // 传递中断信号
             });
 
-            if (!response.ok) throw new Error('AI服务不可用');
+            if (!response.ok) {
+                // 尝试解析错误响应
+                try {
+                    const errorText = await response.text();
+                    console.error('API错误响应:', errorText);
+                    
+                    // 尝试解析JSON
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        if (errorJson.error && typeof errorJson.error === 'string') {
+                            // 处理具体错误
+                            if (errorJson.error.includes('缺少提示内容') || 
+                                errorJson.error.includes('无法继续') ||
+                                errorJson.error.includes('prompt')) {
+                                showError('联网搜索需要输入有效的问题');
+                                throw new Error('联网搜索需要提供有效问题: ' + errorJson.error);
+                            } 
+                            // 检查是否是模型相关错误
+                            else if (errorJson.error.includes('model') || 
+                                     errorJson.error.includes('模型')) {
+                                showError('模型选择错误: ' + errorJson.error);
+                                throw new Error('模型错误: ' + errorJson.error);
+                            }
+                            else {
+                                throw new Error(errorJson.error);
+                            }
+                        }
+                    } catch (jsonError) {
+                        // 如果不是JSON，直接使用文本
+                        if (errorText.includes('缺少提示内容') || errorText.includes('prompt')) {
+                            showError('联网搜索需要输入有效的问题');
+                            throw new Error('联网搜索需要提供有效问题: ' + errorText);
+                        }
+                        // 检查是否是模型相关错误
+                        else if (errorText.includes('model') || errorText.includes('模型')) {
+                            showError('模型选择错误: ' + errorText);
+                            throw new Error('模型错误: ' + errorText);
+                        }
+                    }
+                } catch (parseError) {
+                    console.error('解析错误响应失败:', parseError);
+                }
+                
+                throw new Error('AI服务不可用，HTTP状态: ' + response.status);
+            }
             // 用户消息已保存到后端，刷新对话列表以立即展示用户消息
             try {
                 await loadConversations();

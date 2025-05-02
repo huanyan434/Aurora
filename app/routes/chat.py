@@ -39,6 +39,7 @@ def stream_chat():
     data = request.get_json()
     user_input = data.get('message')
     model = data.get('model')
+    online_search = data.get('online_search', False)
     conversation_id = data.get('conversation_id', str(uuid.uuid4()))
     message_id = f"ai-{conversation_id}-{int(time.time())}"
     
@@ -73,14 +74,14 @@ def stream_chat():
     
     # 获取图片base64数据
     image_base64 = data.get('image')
-    image_type = data.get('image_type')
-    image_name = data.get('image_name')
+    #image_type = data.get('image_type')
+    #image_name = data.get('image_name')
     
     # 记录请求日志
     print(f"处理请求: 用户ID={user_id}, 模型={model}, 会话ID={conversation_id}")
     
     # 调用generate生成回复，分离文本和图片
-    gen = generate(message_id, user_input, conversation_id, model, image_base64, user_id)
+    gen = generate(message_id, user_input, conversation_id, model, image_base64, user_id, online_search)
     return Response(gen, mimetype='text/event-stream')
 
 @chat_bp.route('/name_conversation/<conversation_id>', methods=['GET'])
@@ -94,7 +95,8 @@ def api_generate(conversation_id):
     """聊天API，使用流式响应返回模型回复"""
     data = request.json
     prompt = data.get('prompt', '')
-    model = data.get('model', 'DeepSeek-V3')
+    model = data.get('model')
+    online_search = data.get('online_search', False)
     image_base64 = data.get('image', None)
     
     # 确保对话ID存在
@@ -113,7 +115,7 @@ def api_generate(conversation_id):
     
     # 启动AI生成并返回流
     return Response(
-        generate(message_id, prompt, conversation_id, model, image_base64, user_id),
+        generate(message_id, prompt, conversation_id, model, image_base64, user_id, online_search),
         mimetype='application/json'
     )
 

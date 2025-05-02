@@ -22,6 +22,46 @@ response_status = {}  # 状态: 'running', 'finished', 'error'
 # 当前用户ID全局变量
 current_user_id = None
 
+global seach_tools
+seach_tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "online_search",
+            "description": "在互联网上搜索信息",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "搜索的关键词",
+                    },
+                    "num": {
+                        "type": "int",
+                        "description": "搜索结果的数量",
+                    },
+                },
+                "required": ["query"],
+            },
+        }
+    }
+]
+global other_tools
+other_tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_time",
+            "description": "获取当前时间",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        }
+    }
+]
+def get_time() -> str:
+    return f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
 def model_name(model: str):
     # DeepSeek
@@ -86,7 +126,7 @@ def model_name_reverse(model: str):
         model = "Qwen2.5-Instruct"
     return model
 
-def stream_volcano_ark_api(model: str, history: list, response_queue):
+def stream_volcano_ark_api(model: str, history: list, response_queue, online_search: bool=False):
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['api_keyA']
     client = OpenAI(
@@ -96,13 +136,23 @@ def stream_volcano_ark_api(model: str, history: list, response_queue):
     )
 
     try:
-        # 创建流式响应
-        response = client.chat.completions.create(
-            model=model,
-            messages=history,
-            stream=True,
-        )
-
+        if online_search:
+            global func
+            func = function_calling(history, seach_tools)
+            # 创建流式响应
+            response = client.chat.completions.create(
+                model=model,
+                messages=func[0],
+                stream=True,
+                tools=seach_tools
+            )
+        else:
+            # 创建流式响应
+            response = client.chat.completions.create(
+                model=model,
+                messages=history,
+                stream=True,
+            )
         # 收集完整响应以便稍后计算token
         reasoning_content = ""
         content = ""
@@ -196,7 +246,7 @@ def stream_volcano_ark_api(model: str, history: list, response_queue):
         return f"发生错误: {str(e)}"
 
 
-def stream_siliconflow_api(model: str, history: list, response_queue):
+def stream_siliconflow_api(model: str, history: list, response_queue, online_search: bool=False):
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['api_keyB']
     client = OpenAI(
@@ -206,12 +256,28 @@ def stream_siliconflow_api(model: str, history: list, response_queue):
     )
 
     try:
-        # 创建流式响应
-        response = client.chat.completions.create(
-            model=model,
-            messages=history,
-            stream=True,
-        )
+        if online_search:
+            global func
+            func = function_calling(history, seach_tools)
+            # 创建流式响应
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{
+                    'role': 'system',
+                    'content': '''- 优先参考「联网」中的信息进行回复。
+- 回复请使用清晰、结构化（序号/分段等）的语言，确保用户轻松理解和使用。
+- 回复时，严格避免提及信息来源或参考资料。'''
+                }] + func[0],
+                stream=True,
+                tools=seach_tools
+            )
+        else:
+            # 创建流式响应
+            response = client.chat.completions.create(
+                model=model,
+                messages=history,
+                stream=True,
+            )
 
         # 收集流式响应内容
         reasoning_content = ""
@@ -290,7 +356,46 @@ def stream_siliconflow_api(model: str, history: list, response_queue):
         response_queue.put(None)
         return f"发生错误: {str(e)}"
 
-def stream_gemini_api(model: str, history: list, response_queue):
+def function_calling(history: list, tools: list):
+    _ = load_dotenv(find_dotenv())
+    api_key = os.environ['api_keyB']
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.siliconflow.cn/v1",
+        timeout=1800,
+    )
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-ai/DeepSeek-V3",
+            messages = [{
+                'role': 'system',
+                'content': '''- 对于需要补充外部信息才能回答的问题，请调用联网搜索工具；
+-  天气类、新闻类、实时信息类等时效性问题，或提到[最近]，[今天]，[本周]，[这个月]，[几号]等时间信息，请调用联网搜索工具。
+-  如果用户问题为闲聊，或问题与联网搜索无关，或问题不需要额外信息帮助回答，请输出「无需检索」；
+- 「历史记录」和「用户问题」无关联时，只通过「用户问题」判断，忽略「历史记录」；'''
+            }] + history,
+            stream=False,
+            tools=tools
+        )
+    except Exception as e:
+        print(f"联网搜索请求出错: {str(e)}")
+    try:
+        func_name = response.choices[0].message.tool_calls[0].function.name
+        func_args = response.choices[0].message.tool_calls[0].function.arguments
+        func_out = eval(f'{func_name}(**{func_args})')
+        history.append({
+                'role': 'tool',
+                'content': f'{func_out}',
+                'tool_call_id': response.choices[0].message.tool_calls[0].id
+            })
+        return history, func_name, func_args, func_out
+    except Exception as e:
+        print(f"联网搜索执行出错: {str(e)}")
+    
+    return history, func_name, func_args, func_out
+
+
+def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False):
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['api_keyC']
     client = OpenAI(
@@ -300,12 +405,23 @@ def stream_gemini_api(model: str, history: list, response_queue):
     )
 
     try:
-        # 创建流式响应
-        response = client.chat.completions.create(
-            model=model,
-            messages=history,
-            stream=True,
-        )
+        if online_search:
+            global func
+            func = function_calling(history, seach_tools)
+            # 创建流式响应
+            response = client.chat.completions.create(
+                model=model,
+                messages=func[0],
+                stream=True,
+                tools=seach_tools
+            )
+        else:
+            # 创建流式响应
+            response = client.chat.completions.create(
+                model=model,
+                messages=history,
+                stream=True,
+            )
 
         # 收集流式响应内容
         reasoning_content = ""
@@ -384,7 +500,18 @@ def stream_gemini_api(model: str, history: list, response_queue):
         response_queue.put(None)
         return f"发生错误: {str(e)}"
 
-def autohistory(history: dict, model: str, response_queue):
+def online_search(query: str, num: int = 10):
+    """在线搜索"""
+    import requests
+    url = "https://duckduckgo.wanyim.cn/search"
+    params = {
+        "q": query,
+        "max_results": num
+    }
+    response = requests.get(url, params=params)
+    return response.json()
+
+def autohistory(history: dict, model: str, response_queue, online_search: bool=False):
     """处理历史并调用对应API生成回复"""    
     # 创建历史记录的深拷贝，处理特殊标记
     his = copy.deepcopy(history)
@@ -403,11 +530,11 @@ def autohistory(history: dict, model: str, response_queue):
     content = ""
     try:
         if "doubao" in api_model:
-            content = stream_volcano_ark_api(api_model, his, response_queue)
+            content = stream_volcano_ark_api(api_model, his, response_queue, online_search)
         elif "gemini" in api_model:
-            content = stream_gemini_api(api_model, his, response_queue)
+            content = stream_gemini_api(api_model, his, response_queue, online_search)
         else:
-            content = stream_siliconflow_api(api_model, his, response_queue)
+            content = stream_siliconflow_api(api_model, his, response_queue, online_search)
     except Exception as e:
         print(f"API调用出错: {str(e)}")
         response_queue.put(f"<e>API调用失败: {str(e)}</e>")
@@ -516,7 +643,8 @@ def generate_thread(
         conversation_id,
         model,
         image_base64=None,
-        user_id=None):
+        user_id=None,
+        online_search=False):
     """生成响应的线程函数"""
     # 初始化队列和状态
     response_queues[message_id] = queue.Queue()
@@ -605,8 +733,12 @@ def generate_thread(
                             will_charge = False
                             print(f"用户{user.username}今日使用{model}的第{current_usage+1}次，免费次数上限为{free_limit}")
                 else:
-                    # 匿名用户，不检查免费次数和余额
-                    print(f"匿名用户请求，不检查权限")
+                    # 匿名用户，不许继续请求
+                    response_status[message_id] = 'error'
+                    if message_id in response_queues:
+                        response_queues[message_id].put(f"<e>匿名用户请求</e>")
+                        response_queues[message_id].put(None)
+                    return
             
             # 保存原始模型名
             model_orig = model
@@ -643,9 +775,21 @@ def generate_thread(
                 print(f"成功保存历史记录，条数: {len(history)}")
             except Exception as e:
                 print(f"保存历史记录出错: {str(e)}")
-            # 使用线程安全的队列接收响应
-            updated_history = autohistory(
-                history, model_orig, response_queues[message_id])
+            
+            if online_search:
+                try:
+                    updated_history = autohistory(
+                    history, model_orig, response_queues[message_id], online_search)
+                except Exception as e:
+                    print(f"联网搜索出错: {str(e)}")
+                    response_status[message_id] = 'error'
+                    if message_id in response_queues:
+                        response_queues[message_id].put(f"<e>联网搜索出错: {str(e)}</e>")
+                        response_queues[message_id].put(None)
+            else:
+                # 使用线程安全的队列接收响应
+                updated_history = autohistory(
+                    history, model_orig, response_queues[message_id], online_search)
 
             # 保存历史记录
             try:
@@ -715,7 +859,8 @@ def generate(
         conversation_id,
         model,
         image_base64=None,
-        user_id=None):
+        user_id=None,
+        online_search=False):
     """启动生成响应的线程，并返回流式响应"""
 
     # 检查是否已有相同message_id的响应正在处理
@@ -758,7 +903,8 @@ def generate(
                 conversation_id,
                 model,
                 image_base64,
-                user_id),
+                user_id,
+                online_search),
             daemon=True).start()
 
         # 返回已启动消息，通知前端请求已开始处理
