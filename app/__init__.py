@@ -18,6 +18,9 @@ def create_app(config_module='config'):
     
     # 注册蓝图
     register_blueprints(app)
+    
+    # 注册无需认证的静态文件
+    register_public_static_files(app)
 
     register_error_handlers(app)
     
@@ -49,6 +52,19 @@ def register_blueprints(app):
     app.register_blueprint(vip_bp, url_prefix='/vip')  # 注册vip蓝图，url前缀为/vip
     app.register_blueprint(money_bp, url_prefix='/money')  # 注册money蓝图，url前缀为/money
     app.register_blueprint(api_bp, url_prefix='/api')  # 注册api蓝图，url前缀为/api
+
+def register_public_static_files(app):
+    """
+    注册可以无需登录即可访问的静态文件路由
+    用于提供必须在未登录状态下可用的文件，如service worker
+    """
+    from flask import send_from_directory
+    import os
+    
+    @app.route('/sw.js')
+    def serve_sw_js():
+        """提供service worker文件，无需登录认证"""
+        return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
 def register_error_handlers(app):
     from flask import jsonify, render_template, request, redirect, url_for

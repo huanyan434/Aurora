@@ -385,9 +385,9 @@ def function_calling(history: list, tools: list):
             func_args = response.choices[0].message.tool_calls[0].function.arguments
             func_out = eval(f'{func_name}(**{func_args})')
             history.append({
-                    'role': 'tool',
-                    'content': f'{func_out}',
-                    'tool_call_id': response.choices[0].message.tool_calls[0].id
+                'role': 'tool',
+                'content': f'{func_out}',
+                'tool_call_id': response.choices[0].message.tool_calls[0].id
                 })
             return history, func_name, func_args, func_out
         except Exception as e:
