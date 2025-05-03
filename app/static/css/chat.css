@@ -3367,7 +3367,7 @@ body.dark .au-tooltip {
 /* 联网搜索按钮 */
 .online-search-button {
     position: absolute;
-    bottom: 9px;
+    bottom: 16px;
     left: 16px;
     background: rgba(200, 200, 200, 0.3);
     border: 1px solid var(--border-color);

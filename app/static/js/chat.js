@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.classList.toggle('active');
                 
                 if (this.classList.contains('active')) {
-                    showNotification('已启用联网搜索功能', 3000);
+                    showNotification('已启用联网搜索功能，请确保输入文本内容', 3000);
                     
                     // 检查当前是否有文本内容
                     const content = elements.messageInput.value.trim();
@@ -603,7 +603,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function fileToBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(',')[1]); // 只取base64部分
+            reader.onload = () => {
+                // 返回完整的base64字符串，不再分割
+                const base64String = reader.result;
+                // 确保返回完整base64字符串，包括MIME类型前缀
+                resolve(base64String.split(',')[1]); // 只取base64部分，去掉MIME前缀
+            };
             reader.onerror = reject;
             reader.readAsDataURL(file);
         });
@@ -826,9 +831,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 conversation_id: conversationId,
                 model_name: messageData.model, // 确保模型名称正确传递
                 model: messageData.model, // 添加model参数
-                has_image: messageData.hasImage || false,
-                image_data: messageData.imageData || null,
-                image_caption: messageData.imageCaption || null,
+                has_image: !!messageData.image, // 根据image字段判断是否有图片
+                image: messageData.image || null, // 直接传递image base64数据
+                image_type: messageData.image_type || null,
+                image_name: messageData.image_name || null,
                 online_search: isOnlineSearchEnabled
             };
             
@@ -857,7 +863,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 conversation_id: conversationId,
                 model_name: requestBody.model_name,
                 model: requestBody.model,
-                has_image: messageData.hasImage || false,
+                has_image: !!messageData.image,
                 online_search: isOnlineSearchEnabled
             }));
             

@@ -378,7 +378,7 @@ def function_calling(history: list, tools: list):
             tools=tools
         )
     except Exception as e:
-        print(f"联网搜索请求出错: {str(e)}")
+        print(f"函数调用请求出错: {str(e)}")
     try:
         func_name = response.choices[0].message.tool_calls[0].function.name
         func_args = response.choices[0].message.tool_calls[0].function.arguments
@@ -390,9 +390,9 @@ def function_calling(history: list, tools: list):
             })
         return history, func_name, func_args, func_out
     except Exception as e:
-        print(f"联网搜索执行出错: {str(e)}")
+        print(f"函数调用执行出错: {str(e)}")
     
-    return history, func_name, func_args, func_out
+    return history, None, None, None
 
 
 def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False):
@@ -766,7 +766,7 @@ def generate_thread(
                 prompt = [{"type": "image_url",
                           "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
                          {"type": "text",
-                          "text": prompt}]
+                          "content": prompt}]
             # 增加用户消息到历史记录
             history.append({"role": "user", "content": prompt})
             # 保存历史记录
@@ -1063,12 +1063,10 @@ def get_model_free_usage_info(model_name, user_id=None):
         }
 
 
-def qwen_parse_image(image_base64):
+def qwen_parse_image(image_base64: str) -> str:
     """使用通义千问API的视觉功能解析图片"""
-    if not image_base64:
-        return None
-
     try:
+        _ = load_dotenv(find_dotenv())
         api_key = os.environ.get('api_keyB')
         if not api_key:
             print("未配置SiliconFlow API密钥，无法处理图片")

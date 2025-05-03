@@ -98,7 +98,6 @@ def api_generate(conversation_id):
     model = data.get('model')
     online_search = data.get('online_search', False)
     image_base64 = data.get('image', None)
-    
     # 确保对话ID存在
     if not conversation_id:
         return jsonify({"error": "缺少对话ID"}), 400
