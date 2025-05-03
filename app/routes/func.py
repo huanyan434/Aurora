@@ -22,13 +22,13 @@ response_status = {}  # 状态: 'running', 'finished', 'error'
 # 当前用户ID全局变量
 current_user_id = None
 
-global seach_tools
-seach_tools = [
+global search_tools
+search_tools = [
     {
         "type": "function",
         "function": {
             "name": "online_search",
-            "description": "在互联网上搜索信息",
+            "description": "联网搜索（在互联网上搜索信息）",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -38,7 +38,7 @@ seach_tools = [
                     },
                     "num": {
                         "type": "int",
-                        "description": "搜索结果的数量",
+                        "description": "搜索结果的数量（默认10条）",
                     },
                 },
                 "required": ["query"],
@@ -126,151 +126,52 @@ def model_name_reverse(model: str):
         model = "Qwen2.5-Instruct"
     return model
 
-def stream_volcano_ark_api(model: str, history: list, response_queue, online_search: bool=False):
-    _ = load_dotenv(find_dotenv())
-    api_key = os.environ['api_keyA']
+def stream_openai_api(api_key: str, url: str, model: str, history: list, response_queue, online_search: bool=False):
     client = OpenAI(
         api_key=api_key,
-        base_url="https://ark.cn-beijing.volces.com/api/v3",
+        base_url=url,
         timeout=1800,
     )
-
+    # 收集流式响应内容
+    reasoning_content = ""
+    content = ""
+    fstrs = True
+    fstct = True
+    search = ""
     try:
         if online_search:
-            global func
-            func = function_calling(history, seach_tools)
-            # 创建流式响应
-            response = client.chat.completions.create(
-                model=model,
-                messages=func[0],
-                stream=True,
-                tools=seach_tools
-            )
-        else:
-            # 创建流式响应
-            response = client.chat.completions.create(
-                model=model,
-                messages=history,
-                stream=True,
-            )
-        # 收集完整响应以便稍后计算token
-        reasoning_content = ""
-        content = ""
-        fstrs = True
-        fstct = True
-        stm = time.time()
-
-        # 统计token的估算值（基于字符数）
-        total_prompt_chars = sum(len(msg.get('content', ''))
-                                 for msg in history)
-        total_completion_chars = 0
-
-        for chunk in response:
-            if hasattr(
-                    chunk.choices[0].delta,
-                    'reasoning_content') and chunk.choices[0].delta.reasoning_content:
-                if fstrs:
-                    fstrs = False
-                reasoning_content += chunk.choices[0].delta.reasoning_content
-                tkt = time.time() - stm
-                response_text = "<think time=" + \
-                    str(int(tkt)) + ">" + reasoning_content + "</think>"
-                response_queue.put(response_text)
-            else:
-                if fstct:
-                    fstct = False
-                    tkt = time.time() - stm
-
-                # 有新内容时添加字符计数
-                if chunk.choices[0].delta.content:
-                    content += chunk.choices[0].delta.content
-                    total_completion_chars += len(
-                        chunk.choices[0].delta.content)
-
-                if not reasoning_content.strip():
-                    response_queue.put(content)
-                else:
-                    response_text = "<think time=" + \
-                        str(int(tkt)) + ">" + reasoning_content + \
-                        "</think>" + content
-                    response_queue.put(response_text)
-
-        # 流式响应完成后估算token并记录
-        chinese_chars_prompt = sum(1 for char in str(
-            history) if '\u4e00' <= char <= '\u9fff')
-        other_chars_prompt = total_prompt_chars - chinese_chars_prompt
-        prompt_tokens = int(chinese_chars_prompt * 0.6) + \
-            int(other_chars_prompt * 0.3)
-
-        chinese_chars_comp = sum(
-            1 for char in content if '\u4e00' <= char <= '\u9fff')
-        other_chars_comp = total_completion_chars - chinese_chars_comp
-        completion_tokens = int(chinese_chars_comp * 0.6) + \
-            int(other_chars_comp * 0.3)
-
-        # 记录token使用，使用全局用户ID
-        global current_user_id
-        user_id = current_user_id if current_user_id else 'anonymous'
-
-        try:
-            from flask import has_app_context
-            if has_app_context():
-                record_token_usage(
-                    user_id=user_id,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    model_name=model
-                )
-            else:
-                from app import create_app
-                app = create_app()
-                with app.app_context():
-                    record_token_usage(
-                        user_id=user_id,
-                        prompt_tokens=prompt_tokens,
-                        completion_tokens=completion_tokens,
-                        model_name=model
-                    )
-        except Exception as e:
-            print(f"记录token使用出错: {str(e)}")
-
-        # 标记响应完成
-        response_queue.put(None)
-        return "<think time=" + \
-            str(int(tkt)) + ">" + reasoning_content + \
-            "</think>" + content
-    except Exception as e:
-        print(f"Volcano API调用出错: {str(e)}")
-        response_queue.put(f"<e>{str(e)}</e>")
-        response_queue.put(None)
-        return f"发生错误: {str(e)}"
-
-
-def stream_siliconflow_api(model: str, history: list, response_queue, online_search: bool=False):
-    _ = load_dotenv(find_dotenv())
-    api_key = os.environ['api_keyB']
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.siliconflow.cn/v1",
-        timeout=1800,
-    )
-
-    try:
-        if online_search:
-            global func
-            func = function_calling(history, seach_tools)
-            # 创建流式响应
-            response = client.chat.completions.create(
-                model=model,
-                messages=[{
-                    'role': 'system',
-                    'content': '''- 优先参考「联网」中的信息进行回复。
+            try:
+                func = function_calling(history, search_tools)
+                if func[1] == "online_search" and func[2] and func[3]:
+                    # 创建流式响应
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=[{
+                            'role': 'system',
+                            'content': '''- 刚刚你已经调用过联网搜索工具。
+- 优先参考「联网」中的信息进行回复。
 - 回复请使用清晰、结构化（序号/分段等）的语言，确保用户轻松理解和使用。
-- 回复时，严格避免提及信息来源或参考资料。'''
-                }] + func[0],
-                stream=True,
-                tools=seach_tools
-            )
+- 回复时，避免提及信息来源或参考资料。'''
+                        }] + func[0],
+                        stream=True
+                    )
+                    search_result = func[3]
+                    search_result = json.loads(search_result)
+                    search_result = search_result['results']
+                    r = []
+                    for result in search_result:
+                        r.append({"herf":result['herf'], "title":result['title']})
+                    search = "<search>" + json.dumps(r) + "</search>"
+                    response_queue.put(search)
+                else:
+                    # 创建流式响应
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=history,
+                        stream=True,
+                    )
+            except Exception as e:
+                print(f"OpenAI 联网搜索出错: {str(e)}")
         else:
             # 创建流式响应
             response = client.chat.completions.create(
@@ -279,11 +180,6 @@ def stream_siliconflow_api(model: str, history: list, response_queue, online_sea
                 stream=True,
             )
 
-        # 收集流式响应内容
-        reasoning_content = ""
-        content = ""
-        fstrs = True
-        fstct = True
         stm = time.time()
 
         for chunk in response:
@@ -296,19 +192,19 @@ def stream_siliconflow_api(model: str, history: list, response_queue, online_sea
                 tkt = time.time() - stm
                 response_text = "<think time=" + \
                     str(int(tkt)) + ">" + reasoning_content + "</think>"
-                response_queue.put(response_text)
+                response_queue.put(search + response_text)
             elif chunk.choices[0].delta.content:
                 if fstct:
                     fstct = False
                     tkt = time.time() - stm
                 content += chunk.choices[0].delta.content
                 if not reasoning_content.strip():
-                    response_queue.put(content)
+                    response_queue.put(search + content)
                 else:
                     response_text = "<think time=" + \
                         str(int(tkt)) + ">" + reasoning_content + \
                         "</think>" + content
-                    response_queue.put(response_text)
+                    response_queue.put(search + response_text)
 
         # 获取token使用信息并记录
         global current_user_id
@@ -347,14 +243,24 @@ def stream_siliconflow_api(model: str, history: list, response_queue, online_sea
 
         # 标记响应完成
         response_queue.put(None)
-        return "<think time=" + \
+        return search + "<think time=" + \
             str(int(tkt)) + ">" + reasoning_content + \
             "</think>" + content
     except Exception as e:
-        print(f"SiliconFlow API调用出错: {str(e)}")
+        print(f"OpenAI API调用出错: {str(e)}")
         response_queue.put(f"<e>{str(e)}</e>")
         response_queue.put(None)
         return f"发生错误: {str(e)}"
+
+def stream_volcano_ark_api(model: str, history: list, response_queue, online_search: bool=False):
+    _ = load_dotenv(find_dotenv())
+    api_key = os.environ['api_keyA']
+    stream_openai_api(api_key, "https://ark.cn-beijing.volces.com/api/v3", model, history, response_queue, online_search)
+
+def stream_siliconflow_api(model: str, history: list, response_queue, online_search: bool=False):
+    _ = load_dotenv(find_dotenv())
+    api_key = os.environ['api_keyB']
+    stream_openai_api(api_key, "https://api.siliconflow.cn/v1", model, history, response_queue, online_search)
 
 def function_calling(history: list, tools: list):
     _ = load_dotenv(find_dotenv())
@@ -369,137 +275,42 @@ def function_calling(history: list, tools: list):
             model="deepseek-ai/DeepSeek-V3",
             messages = [{
                 'role': 'system',
-                'content': '''- 对于需要补充外部信息才能回答的问题，请调用联网搜索工具；
--  天气类、新闻类、实时信息类等时效性问题，或提到[最近]，[今天]，[本周]，[这个月]，[几号]等时间信息，请调用联网搜索工具。
--  如果用户问题为闲聊，或问题与联网搜索无关，或问题不需要额外信息帮助回答，请输出「无需检索」；
-- 「历史记录」和「用户问题」无关联时，只通过「用户问题」判断，忽略「历史记录」；'''
+                'content': '''- 对于需要补充外部信息才能回答的问题（或者需要补充外部信息才能更好地回答的问题），请调用联网搜索工具；
+-  如果用户提问为天气类、新闻类、实时信息类等时效性问题，或提到[最近]，[今天]，[本周]，[这个月]，[几号]等时间信息，请调用联网搜索工具。
+-  如果问题与联网搜索无关，或问题不需要额外信息帮助回答，仅输出「无需检索」'''
             }] + history,
             stream=False,
             tools=tools
         )
     except Exception as e:
         print(f"函数调用请求出错: {str(e)}")
-    if response.choices[0].message.tool_calls[0].function.name and response.choices[0].message.tool_calls[0].function.arguments:
-        try:
-            func_name = response.choices[0].message.tool_calls[0].function.name
-            func_args = response.choices[0].message.tool_calls[0].function.arguments
-            func_out = eval(f'{func_name}(**{func_args})')
-            history.append({
-                'role': 'tool',
-                'content': f'{func_out}',
-                'tool_call_id': response.choices[0].message.tool_calls[0].id
-                })
-            return history, func_name, func_args, func_out
-        except Exception as e:
-            print(f"函数调用执行出错: {str(e)}")
-    else:
-        print("没有工具调用")
-        return history, None, None, None
+        return history, "", "", ""
+    try:
+        if response.choices[0].message.tool_calls:
+            try:
+                func_name = response.choices[0].message.tool_calls[0].function.name
+                func_args = response.choices[0].message.tool_calls[0].function.arguments
+                func_out = eval(f'{func_name}(**{func_args})')
+                history.append({
+                    'role': 'tool',
+                    'content': f'{func_out}',
+                    'tool_call_id': response.choices[0].message.tool_calls[0].id
+                    })
+                return history, func_name, func_args, func_out
+            except Exception as e:
+                print(f"函数调用执行出错: {str(e)}")
+                return history, "", "", ""
+        else:
+            print("没有工具调用")
+            return history, "", "", ""
+    except Exception as e:
+        print(f"函数调用执行出错: {str(e)}")
+        return history, "", "", ""
 
 def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False):
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['api_keyC']
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://gemini-openai.wanyim.cn/v1",
-        timeout=1800,
-    )
-
-    try:
-        if online_search:
-            global func
-            func = function_calling(history, seach_tools)
-            # 创建流式响应
-            response = client.chat.completions.create(
-                model=model,
-                messages=func[0],
-                stream=True,
-                tools=seach_tools
-            )
-        else:
-            # 创建流式响应
-            response = client.chat.completions.create(
-                model=model,
-                messages=history,
-                stream=True,
-            )
-
-        # 收集流式响应内容
-        reasoning_content = ""
-        content = ""
-        fstrs = True
-        fstct = True
-        stm = time.time()
-
-        for chunk in response:
-            if hasattr(
-                    chunk.choices[0].delta,
-                    'reasoning_content') and chunk.choices[0].delta.reasoning_content:
-                if fstrs:
-                    fstrs = False
-                reasoning_content += chunk.choices[0].delta.reasoning_content
-                tkt = time.time() - stm
-                response_text = "<think time=" + \
-                    str(int(tkt)) + ">" + reasoning_content + "</think>"
-                response_queue.put(response_text)
-            elif chunk.choices[0].delta.content:
-                if fstct:
-                    fstct = False
-                    tkt = time.time() - stm
-                content += chunk.choices[0].delta.content
-                if not reasoning_content.strip():
-                    response_queue.put(content)
-                else:
-                    response_text = "<think time=" + \
-                        str(int(tkt)) + ">" + reasoning_content + \
-                        "</think>" + content
-                    response_queue.put(response_text)
-
-        # 获取token使用信息并记录
-        global current_user_id
-        user_id = current_user_id if current_user_id else 'anonymous'
-        complete_response = client.chat.completions.create(
-            model=model,
-            messages=history,
-            stream=False,
-            max_tokens=1
-        )
-        prompt_tokens = complete_response.usage.prompt_tokens if hasattr(
-            complete_response, 'usage') else 0
-        completion_tokens = len(content) // 2
-
-        try:
-            from flask import has_app_context
-            if has_app_context():
-                record_token_usage(
-                    user_id=user_id,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    model_name=model
-                )
-            else:
-                from app import create_app
-                app = create_app()
-                with app.app_context():
-                    record_token_usage(
-                        user_id=user_id,
-                        prompt_tokens=prompt_tokens,
-                        completion_tokens=completion_tokens,
-                        model_name=model
-                    )
-        except Exception as e:
-            print(f"记录token使用出错: {str(e)}")
-
-        # 标记响应完成
-        response_queue.put(None)
-        return "<think time=" + \
-            str(int(tkt)) + ">" + reasoning_content + \
-            "</think>" + content
-    except Exception as e:
-        print(f"Gemini API调用出错: {str(e)}")
-        response_queue.put(f"<e>{str(e)}</e>")
-        response_queue.put(None)
-        return f"发生错误: {str(e)}"
+    stream_openai_api(api_key, "https://gemini.wanyim.cn/v1beta", model, history, response_queue, online_search)
 
 def online_search(query: str, num: int = 10):
     """在线搜索"""
@@ -509,7 +320,7 @@ def online_search(query: str, num: int = 10):
         "q": query,
         "max_results": num
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params)
     return response.json()
 
 def autohistory(history: dict, model: str, response_queue, online_search: bool=False):
