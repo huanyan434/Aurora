@@ -13,8 +13,8 @@
     --dark-color: #212529;
     --gray-color: #6c757d;
     --border-color: rgba(0, 0, 0, 0.1);
-    --user-bubble: #0084ff;
-    --user-text: white;
+    --user-bubble: #eff6ff;
+    --user-text: #262626;
     --ai-bubble: white;
     --ai-text: #333;
     --think-line: #c9c9c9;
@@ -1051,7 +1051,6 @@ body {
 .message-content h6 {
     margin: 1.2em 0 0.6em;
     line-height: 1.4;
-    color: #2c3e50;
 }
 
 .message-content h1 {
@@ -3366,9 +3365,9 @@ body.dark .au-tooltip {
 
 /* 联网搜索按钮 */
 .online-search-button {
-    position: absolute;
-    bottom: 16px;
-    left: 16px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     background: rgba(200, 200, 200, 0.3);
     border: 1px solid var(--border-color);
     color: var(--gray-color);
@@ -3377,9 +3376,10 @@ body.dark .au-tooltip {
     font-size: 12px;
     cursor: pointer;
     transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    margin-bottom: 8px;
+    margin-left: 0;
+    margin-right: auto;
+    align-self: flex-start;
 }
 
 .online-search-button svg {

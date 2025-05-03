@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.classList.toggle('active');
                 
                 if (this.classList.contains('active')) {
-                    showNotification('已启用联网搜索功能，请确保输入文本内容', 3000);
+                    showNotification('已启用联网搜索功能', 3000);
                     
                     // 检查当前是否有文本内容
                     const content = elements.messageInput.value.trim();

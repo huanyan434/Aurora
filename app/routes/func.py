@@ -379,21 +379,22 @@ def function_calling(history: list, tools: list):
         )
     except Exception as e:
         print(f"函数调用请求出错: {str(e)}")
-    try:
-        func_name = response.choices[0].message.tool_calls[0].function.name
-        func_args = response.choices[0].message.tool_calls[0].function.arguments
-        func_out = eval(f'{func_name}(**{func_args})')
-        history.append({
-                'role': 'tool',
-                'content': f'{func_out}',
-                'tool_call_id': response.choices[0].message.tool_calls[0].id
-            })
-        return history, func_name, func_args, func_out
-    except Exception as e:
-        print(f"函数调用执行出错: {str(e)}")
-    
-    return history, None, None, None
-
+    if response.choices[0].message.tool_calls[0].function.name and response.choices[0].message.tool_calls[0].function.arguments:
+        try:
+            func_name = response.choices[0].message.tool_calls[0].function.name
+            func_args = response.choices[0].message.tool_calls[0].function.arguments
+            func_out = eval(f'{func_name}(**{func_args})')
+            history.append({
+                    'role': 'tool',
+                    'content': f'{func_out}',
+                    'tool_call_id': response.choices[0].message.tool_calls[0].id
+                })
+            return history, func_name, func_args, func_out
+        except Exception as e:
+            print(f"函数调用执行出错: {str(e)}")
+    else:
+        print("没有工具调用")
+        return history, None, None, None
 
 def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False):
     _ = load_dotenv(find_dotenv())
