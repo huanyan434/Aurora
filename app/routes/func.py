@@ -126,7 +126,7 @@ def model_name_reverse(model: str):
         model = "Qwen2.5-Instruct"
     return model
 
-def stream_openai_api(api_key: str, url: str, model: str, history: list, response_queue, online_search: bool=False):
+def stream_openai_api(api_key: str, url: str, model: str, history: list, response_queue, online_search: bool=False) -> str:
     client = OpenAI(
         api_key=api_key,
         base_url=url,
@@ -156,12 +156,12 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                         stream=True
                     )
                     search_result = func[3]
-                    search_result = json.loads(search_result)
                     search_result = search_result['results']
                     r = []
                     for result in search_result:
-                        r.append({"herf":result['herf'], "title":result['title']})
+                        r.append({"href":result['href'], "title":result['title']})
                     search = "<search>" + json.dumps(r) + "</search>"
+                    #print(search)
                     response_queue.put(search)
                 else:
                     # 创建流式响应
@@ -242,25 +242,25 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
             print(f"记录token使用出错: {str(e)}")
 
         # 标记响应完成
-        response_queue.put(None)
-        return search + "<think time=" + \
-            str(int(tkt)) + ">" + reasoning_content + \
-            "</think>" + content
+            response_queue.put(None)
+            return search + "<think time=" + \
+                str(int(tkt)) + ">" + reasoning_content + \
+                "</think>" + content
     except Exception as e:
         print(f"OpenAI API调用出错: {str(e)}")
         response_queue.put(f"<e>{str(e)}</e>")
         response_queue.put(None)
         return f"发生错误: {str(e)}"
 
-def stream_volcano_ark_api(model: str, history: list, response_queue, online_search: bool=False):
+def stream_volcano_ark_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['api_keyA']
-    stream_openai_api(api_key, "https://ark.cn-beijing.volces.com/api/v3", model, history, response_queue, online_search)
+    return stream_openai_api(api_key, "https://ark.cn-beijing.volces.com/api/v3", model, history, response_queue, online_search)
 
-def stream_siliconflow_api(model: str, history: list, response_queue, online_search: bool=False):
+def stream_siliconflow_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['api_keyB']
-    stream_openai_api(api_key, "https://api.siliconflow.cn/v1", model, history, response_queue, online_search)
+    return stream_openai_api(api_key, "https://api.siliconflow.cn/v1", model, history, response_queue, online_search)
 
 def function_calling(history: list, tools: list):
     _ = load_dotenv(find_dotenv())
@@ -292,9 +292,9 @@ def function_calling(history: list, tools: list):
                 func_args = response.choices[0].message.tool_calls[0].function.arguments
                 func_out = eval(f'{func_name}(**{func_args})')
                 history.append({
-                    'role': 'tool',
-                    'content': f'{func_out}',
-                    'tool_call_id': response.choices[0].message.tool_calls[0].id
+                'role': 'tool',
+                'content': f'{func_out}',
+                'tool_call_id': response.choices[0].message.tool_calls[0].id
                     })
                 return history, func_name, func_args, func_out
             except Exception as e:
@@ -307,10 +307,10 @@ def function_calling(history: list, tools: list):
         print(f"函数调用执行出错: {str(e)}")
         return history, "", "", ""
 
-def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False):
+def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['api_keyC']
-    stream_openai_api(api_key, "https://gemini.wanyim.cn/v1beta", model, history, response_queue, online_search)
+    return stream_openai_api(api_key, "https://gemini.wanyim.cn/v1beta", model, history, response_queue, online_search)
 
 def online_search(query: str, num: int = 10):
     """在线搜索"""
@@ -332,7 +332,8 @@ def autohistory(history: dict, model: str, response_queue, online_search: bool=F
             i['content'] = parse_base64_blocks(i['content'])
         elif i['role'] == 'assistant':
             i['content'] = parse_think_blocks(
-                parse_model_blocks(i['content']))[1]
+                parse_search_blocks(
+                parse_model_blocks(i['content'])))[1]
 
     # 保存原始模型名并转换为 API 调用格式
     model_orig = model
@@ -354,7 +355,7 @@ def autohistory(history: dict, model: str, response_queue, online_search: bool=F
         content = f"处理请求时出错: {str(e)}"
 
     history.append({"role": "assistant",
-                    "content": f"<model=\"{model_orig}\"/>" + content})
+                    "content": f"<model=\"{model_orig}\"/>" + str(content)})
     return history
 
 
@@ -448,6 +449,25 @@ def parse_model_blocks(text):
 
     return remaining_text.strip()
 
+def parse_search_blocks(text):
+    """解析搜索块，返回剩余文本"""
+    import re
+
+    # 如果输入为None或空字符串，直接返回空字符串
+    if not text:
+        return ""
+
+    # 匹配 <search> 格式
+    think_pattern = r'<search>(.*?)<\\/search>'
+    match = re.search(think_pattern, text, re.DOTALL)
+
+    if not match:
+        return text
+
+    # 获取剩余文本
+    remaining_text = text[:match.start()] + text[match.end():]
+
+    return remaining_text.strip()
 
 def generate_thread(
         message_id,
@@ -767,19 +787,17 @@ def generate(
                 continue
 
             # 解析并格式化响应
-            parsed = parse_think_blocks(response)
-            if parsed[0]:  # 如果返回了思考内容
-                think_block, remaining_text = parsed
-                yield json.dumps({
+            search_match = parse_search_blocks(response)
+            parsed_think = parse_think_blocks(response)
+
+            think_block = parsed_think[0]
+            text_content = parsed_think[1]
+
+            yield json.dumps({
                     "message_id": message_id,
-                    "text": remaining_text,
-                    "think": think_block
-                }) + "\n"
-            else:
-                yield json.dumps({
-                    "message_id": message_id,
-                    "text": response,
-                    "think": None
+                "text": text_content,
+                "think": think_block,
+                "search": search_match # 始终包含search字段
                 }) + "\n"
 
         except queue.Empty:
@@ -791,6 +809,7 @@ def generate(
                     "message_id": message_id,
                     "text": "",
                     "think": None,
+                    "search": None, # 确保完成信号也包含search字段
                     "finished": True
                 }) + "\n"
                 break
@@ -800,6 +819,7 @@ def generate(
                 "message_id": message_id,
                 "text": "",
                 "think": None,
+                "search": None, # 确保心跳信号也包含search字段
                 "heartbeat": True
             }) + "\n"
             continue
@@ -809,6 +829,7 @@ def generate(
                 "message_id": message_id,
                 "text": f"发生错误: {str(e)}",
                 "think": None,
+                "search": None, # 确保错误信号也包含search字段
                 "error": True
             }) + "\n"
             break
@@ -974,7 +995,8 @@ def name_conversation(conversation_id):
             i['content'] = parse_base64_blocks(i['content'])
         if i['role'] == 'assistant':
             i['content'] = parse_think_blocks(
-                parse_model_blocks(i['content']))[1]
+                parse_search_blocks(
+                parse_model_blocks(i['content'])))[1]
 
     # 添加请求获取标题
     title_prompt = "请根据以上对话内容生成一个标题，不要生成其他内容，标题需要简洁明了，不要超过10个字，不要使用markdown格式，不要书名号，不要emoji和konomoji，不要使用特殊字符，不要括号"
