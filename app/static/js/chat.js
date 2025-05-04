@@ -957,6 +957,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     try {
                         const data = JSON.parse(line);
                         console.log('解析的数据:', JSON.stringify(data));
+                        // 处理搜索结果 - 检查 data.search 字段
+                        if (data.search && typeof data.search === 'string') {
+                            handleSearchResults(data.search, aiMessageDiv);
+                        }
                         
                         // 首次接收到消息内容时替换加载动画
                         if ((data.content || data.text || data.think) && !messageCreated) {
@@ -971,7 +975,19 @@ document.addEventListener('DOMContentLoaded', function () {
                                     aiMessageDiv.appendChild(modelInfo);
                                 }
                                 
-                                // 添加消息内容元素
+                                // 搜索结果容器 (初始隐藏)
+                                const searchContainer = document.createElement('div');
+                                searchContainer.className = 'search-results-container';
+                                searchContainer.style.display = 'none';
+                                aiMessageDiv.appendChild(searchContainer);
+                                
+                                // 思考容器 (初始隐藏)
+                                const thinkContainer = document.createElement('div');
+                                thinkContainer.className = 'think-container';
+                                thinkContainer.style.display = 'none';
+                                aiMessageDiv.appendChild(thinkContainer);
+                                
+                                // 主要消息内容容器
                                 const contentDiv = document.createElement('div');
                                 contentDiv.className = 'message-content';
                                 aiMessageDiv.appendChild(contentDiv);
@@ -999,12 +1015,22 @@ document.addEventListener('DOMContentLoaded', function () {
                                     </div>
                                 `;
                                 
-                                // 添加消息内容元素
-                                const contentHtml = '<div class="message-content"></div>';
-                                aiMessageDiv.innerHTML = modelInfoHtml + contentHtml;
+                                // 搜索结果容器 (初始隐藏)
+                                const searchContainer = document.createElement('div');
+                                searchContainer.className = 'search-results-container';
+                                searchContainer.style.display = 'none';
+                                aiMessageDiv.appendChild(searchContainer);
                                 
-                                // 添加到消息容器
-                                elements.messagesContainer.appendChild(aiMessageDiv);
+                                // 思考容器 (初始隐藏)
+                                const thinkContainer = document.createElement('div');
+                                thinkContainer.className = 'think-container';
+                                thinkContainer.style.display = 'none';
+                                aiMessageDiv.appendChild(thinkContainer);
+                                
+                                // 主要消息内容容器
+                                const contentDiv = document.createElement('div');
+                                contentDiv.className = 'message-content';
+                                aiMessageDiv.appendChild(contentDiv);
                                 
                                 messageCreated = true;
                                 
@@ -1798,7 +1824,17 @@ document.addEventListener('DOMContentLoaded', function () {
                         // 添加到消息元素
                         messageDiv.appendChild(modelInfoDiv);
                         
-                        // 提取并渲染有思考内容的折叠块
+                        // 历史消息中的搜索结果，放在 model-info 之后
+                        if (msg.content.includes('<search>')) {
+                            const searchContainer = document.createElement('div');
+                            searchContainer.className = 'search-results-container';
+                            searchContainer.style.display = 'none';
+                            messageDiv.appendChild(searchContainer);
+                            handleSearchResults(msg.content, messageDiv);
+                            content = content.replace(/<search>[\s\S]*?<\/search>/g, '').trim();
+                        }
+                         
+                         // 提取并渲染有思考内容的折叠块
                         const thinkRegex = /<think time=(\d+)>([\s\S]*?)<\/think>/;
                         const thinkMatches = content.match(thinkRegex);
                         if (thinkMatches && thinkMatches[2].trim()) {
@@ -4889,4 +4925,82 @@ document.addEventListener('DOMContentLoaded', function () {
             redeemButton.disabled = false;
         }
     }
+
+    // 处理搜索结果，创建可折叠的搜索结果区域
+    function handleSearchResults(text, messageDiv) {
+        // 从后端数据中提取 <search> 标签内容
+        const match = text.match(/<search>([\s\S]*?)<\/search>/);
+        if (!match || !match[1]) return;
+        let results;
+        try {
+            results = JSON.parse(match[1]);
+        } catch (e) {
+            console.error('解析 search JSON 失败:', e);
+            return;
+        }
+        // 查找预创建的容器
+        const container = messageDiv.querySelector('.search-results-container');
+        if (!container) return;
+        container.innerHTML = '';
+        // 标题头
+        const header = document.createElement('div');
+        header.className = 'search-results-header';
+        header.textContent = `已联网搜索（找到 ${results.length} 个内容）`;
+        header.style.cursor = 'pointer';
+        // 内容区域
+        const contentBox = document.createElement('div');
+        contentBox.className = 'search-results-content';
+        contentBox.style.display = 'block';
+        results.forEach(item => {
+            const link = document.createElement('a');
+            link.href = item.href;
+            link.target = '_blank';
+            link.textContent = item.title;
+            link.className = 'search-result-item';
+            contentBox.appendChild(link);
+        });
+        header.onclick = () => {
+            contentBox.style.display = contentBox.style.display === 'none' ? 'block' : 'none';
+        };
+        container.appendChild(header);
+        container.appendChild(contentBox);
+    }
 });
+
+// 全局处理搜索结果，创建可折叠的搜索结果区域
+function handleSearchResults(text, messageDiv) {
+    const match = text.match(/<search>([\s\S]*?)<\/search>/);
+    if (!match || !match[1]) return;
+    let results;
+    try {
+        results = JSON.parse(match[1]);
+    } catch (e) {
+        console.error('解析 search JSON 失败:', e);
+        return;
+    }
+    const container = messageDiv.querySelector('.search-results-container');
+    if (!container) return;
+    container.innerHTML = '';
+    // 标题
+    const header = document.createElement('div');
+    header.className = 'search-results-header';
+    header.textContent = `已联网搜索（找到 ${results.length} 个内容）`;
+    header.style.cursor = 'pointer';
+    // 内容区域
+    const contentBox = document.createElement('div');
+    contentBox.className = 'search-results-content';
+    contentBox.style.display = 'block';
+    results.forEach(item => {
+        const link = document.createElement('a');
+        link.href = item.href;
+        link.target = '_blank';
+        link.textContent = item.title;
+        link.className = 'search-result-item';
+        contentBox.appendChild(link);
+    });
+    header.onclick = () => {
+        contentBox.style.display = contentBox.style.display === 'none' ? 'block' : 'none';
+    };
+    container.appendChild(header);
+    container.appendChild(contentBox);
+}

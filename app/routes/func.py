@@ -242,10 +242,10 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
             print(f"记录token使用出错: {str(e)}")
 
         # 标记响应完成
-            response_queue.put(None)
-            return search + "<think time=" + \
-                str(int(tkt)) + ">" + reasoning_content + \
-                "</think>" + content
+        response_queue.put(None)
+        return search + "<think time=" + \
+            str(int(tkt)) + ">" + reasoning_content + \
+            "</think>" + content
     except Exception as e:
         print(f"OpenAI API调用出错: {str(e)}")
         response_queue.put(f"<e>{str(e)}</e>")
@@ -450,24 +450,30 @@ def parse_model_blocks(text):
     return remaining_text.strip()
 
 def parse_search_blocks(text):
-    """解析搜索块，返回剩余文本"""
+    """解析搜索块，返回搜索内容和剩余文本"""
     import re
 
-    # 如果输入为None或空字符串，直接返回空字符串
+    # 处理None或空字符串
     if not text:
-        return ""
+        return None, ""
 
-    # 匹配 <search> 格式
+    # 匹配 <think time=数字>内容</think> 格式
     think_pattern = r'<search>(.*?)<\\/search>'
     match = re.search(think_pattern, text, re.DOTALL)
 
     if not match:
-        return text
+        return None, text
 
-    # 获取剩余文本
+    # 提取搜索内容
+    search_content = match.group(1).strip()
+
+    # 构造新的搜索内容格式 - 确保包含完整的标签
+    search_block = f"<search>{search_content}</search>"
+
+    # 获取剩余文本（去除思考块的部分）
     remaining_text = text[:match.start()] + text[match.end():]
 
-    return remaining_text.strip()
+    return search_block, remaining_text.strip()
 
 def generate_thread(
         message_id,
@@ -788,7 +794,8 @@ def generate(
 
             # 解析并格式化响应
             search_match = parse_search_blocks(response)
-            parsed_think = parse_think_blocks(response)
+            remaining_response = parse_search_blocks(response)[1]
+            parsed_think = parse_think_blocks(remaining_response)
 
             think_block = parsed_think[0]
             text_content = parsed_think[1]
@@ -797,7 +804,7 @@ def generate(
                     "message_id": message_id,
                 "text": text_content,
                 "think": think_block,
-                "search": search_match # 始终包含search字段
+                "search": search_match[0]
                 }) + "\n"
 
         except queue.Empty:
