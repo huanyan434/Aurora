@@ -20,7 +20,7 @@ def create_app(config_module='config'):
     register_blueprints(app)
     
     # 注册无需认证的静态文件
-    register_public_static_files(app)
+    #register_public_static_files(app)
 
     register_error_handlers(app)
     
@@ -61,10 +61,10 @@ def register_public_static_files(app):
     from flask import send_from_directory
     import os
     
-    @app.route('/sw.js')
-    def serve_sw_js():
-        """提供service worker文件，无需登录认证"""
-        return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
+    #@app.route('/sw.js')
+    #def serve_sw_js():
+    #    """提供service worker文件，无需登录认证"""
+    #    return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
 def register_error_handlers(app):
     from flask import jsonify, render_template, request, redirect, url_for

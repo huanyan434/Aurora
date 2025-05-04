@@ -1082,6 +1082,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                             }
                                     
+                                    // 如果包含 <search>，先解析搜索结果并移除标签
+                                    if (textContent.includes('<search>')) {
+                                        handleSearchResults(textContent, aiMessageDiv);
+                                        textContent = textContent.replace(/<search>[\s\S]*?<\/search>/g, '').trim();
+                                    }
+                                    
                                     // 处理base64图片标签
                                     textContent = processMessageContent(textContent, false);
                                     

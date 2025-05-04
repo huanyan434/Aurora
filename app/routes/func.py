@@ -333,7 +333,7 @@ def autohistory(history: dict, model: str, response_queue, online_search: bool=F
         elif i['role'] == 'assistant':
             i['content'] = parse_think_blocks(
                 parse_search_blocks(
-                parse_model_blocks(i['content'])))[1]
+                parse_model_blocks(i['content']))[1])[1]
 
     # 保存原始模型名并转换为 API 调用格式
     model_orig = model
@@ -794,7 +794,7 @@ def generate(
 
             # 解析并格式化响应
             search_match = parse_search_blocks(response)
-            remaining_response = parse_search_blocks(response)[1]
+            remaining_response = search_match[1]
             parsed_think = parse_think_blocks(remaining_response)
 
             think_block = parsed_think[0]
@@ -1003,7 +1003,7 @@ def name_conversation(conversation_id):
         if i['role'] == 'assistant':
             i['content'] = parse_think_blocks(
                 parse_search_blocks(
-                parse_model_blocks(i['content'])))[1]
+                parse_model_blocks(i['content']))[1])[1]
 
     # 添加请求获取标题
     title_prompt = "请根据以上对话内容生成一个标题，不要生成其他内容，标题需要简洁明了，不要超过10个字，不要使用markdown格式，不要书名号，不要emoji和konomoji，不要使用特殊字符，不要括号"
