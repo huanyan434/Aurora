@@ -97,9 +97,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 setupModelSelector()
             ]);
             
-            // 验证必要的DOM元素已加载
-            validateElements();
-            
             // 设置事件监听器
             setupEventListeners();
             
@@ -174,14 +171,6 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.error('获取用户信息时出错:', error);
             return null;
-        }
-    }
-
-    function validateElements() {
-        for (const [key, element] of Object.entries(elements)) {
-            if (!element) {
-                console.error(`${key} 元素未找到`);
-            }
         }
     }
 
@@ -1174,42 +1163,16 @@ document.addEventListener('DOMContentLoaded', function () {
                                 // 创建思考内容
                                 const thinkContentDiv = document.createElement('div');
                                 thinkContentDiv.className = 'message-think';
-                                try {
-                                    // 处理思考内容
-                                    let thinkText = currentThink;
-                                    if (typeof thinkText !== 'string') {
-                                        if (thinkText.content) {
-                                            thinkText = thinkText.content;
-                                        } else if (thinkText.text) {
-                                            thinkText = thinkText.text;
-                                        } else {
-                                            thinkText = JSON.stringify(thinkText);
-                                        }
-                                    }
-                                    
-                                    // 替换换行符
-                                    thinkText = thinkText.replace(/\n/g, '<br>');
-                                    
-                                    // 解析并显示
-                                    thinkContentDiv.innerHTML = marked.parse(thinkText);
-                        } catch (error) {
-                                    console.error('处理思考内容时出错:', error);
-                                    thinkContentDiv.innerHTML = `<p>思考内容解析错误</p>`;
-                                }
-                                
-                                // 移除背景色
+                                thinkContentDiv.style.display = 'block';
                                 thinkContentDiv.style.backgroundColor = 'transparent';
                                 thinkContentDiv.style.lineHeight = '1.3';
                                 
-                                // 组装思考容器
-                                thinkContainer.appendChild(thinkHeader);
-                                thinkContainer.appendChild(thinkContentDiv);
+                                // 处理换行符，但不进行markdown解析
+                                const processedThinkContent = thinkContent.replace(/\n/g, '<br>');
+                                thinkContentDiv.innerHTML = processedThinkContent;
                                 
-                                // 保存思考头部元素引用
-                                thinkHeaderElement = thinkHeader;
-                                
-                                // 添加点击事件，实现展开/折叠功能
-                                thinkHeader.onclick = function (event) {
+                                // 切换展示
+                                thinkHeader.onclick = () => {
                                     console.log('点击思考头部');
                                     event.stopPropagation();
                                     if (thinkContentDiv.style.display === 'none') {
@@ -1263,21 +1226,21 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                                 
                                 // 更新头部文本
-                                const headerText = currentContent && currentContent.trim() ? 
-                                    `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
-                                    '思考中...';
-                                
-                                thinkHeader.innerHTML = `
-                                    <span>${headerText}<span style="display:inline-block; width:5px;"></span>
-                                    <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
-                                `;
-                            }
+                                    const headerText = currentContent && currentContent.trim() ? 
+                                        `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
+                                        '思考中...';
+                                    
+                                    thinkHeader.innerHTML = `
+                                        <span>${headerText}<span style="display:inline-block; width:5px;"></span>
+                                        <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
+                                    `;
+                                }
                         
                             // 确保思考容器可见（移除display: none）
                             if (thinkContainer && currentThink && currentThink.trim() !== '') {
                                 thinkContainer.style.display = 'block';
                                 console.log('思考容器显示状态已设置为可见');
-                            }
+                        }
                         
                         // 更新思考内容
                             // 确保思考内容容器存在，若不存在则自动创建
@@ -1884,80 +1847,83 @@ document.addEventListener('DOMContentLoaded', function () {
                             const thinkTime = thinkMatches[1];
                             const thinkContent = thinkMatches[2];
                             // 创建折叠容器
-                const thinkContainer = document.createElement('div');
-                thinkContainer.className = 'think-container';
-                thinkContainer.style.margin = '0.5rem 0';
-                
-                // 创建思考头部
-                const thinkHeader = document.createElement('div');
-                thinkHeader.className = 'think-header';
+                            const thinkContainer = document.createElement('div');
+                            thinkContainer.className = 'think-container';
+                            thinkContainer.style.margin = '0.5rem 0';
+                            
+                            // 创建思考头部
+                            const thinkHeader = document.createElement('div');
+                            thinkHeader.className = 'think-header';
                             thinkHeader.innerHTML = `<span>已深度思考（用时 ${thinkTime} 秒）<span style="display:inline-block; width:5px;"></span><div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>`;
-                        thinkHeader.style.cursor = 'pointer';
-                
-                        // 创建内容区域
-                const thinkContentDiv = document.createElement('div');
-                thinkContentDiv.className = 'message-think';
-                        thinkContentDiv.style.display = 'block';
-                thinkContentDiv.style.backgroundColor = 'transparent';
-                        thinkContentDiv.style.lineHeight = '1.3';
-                        thinkContentDiv.innerHTML = marked.parse(thinkContent);
-                        
-                        // 切换展示
-                        thinkHeader.onclick = () => {
-                            thinkContentDiv.style.display = thinkContentDiv.style.display === 'none' ? 'block' : 'none';
-                        };
-                        
-                        // 组装并添加到消息元素
-                thinkContainer.appendChild(thinkHeader);
-                thinkContainer.appendChild(thinkContentDiv);
-                        messageDiv.appendChild(thinkContainer);
-                
-                        // 更新剩余文本
-                        content = content.replace(thinkRegex, '').trim();
-                    }
-                    
-                    // 移除模型标签
-                    content = content.replace(/<model="[^"]+"\/>/g, '').trim();
-                    
-                    // 添加主要内容
-                    if (content) {
-                        console.log('添加历史消息正文内容');
-                        // 创建内容元素
-                    const contentDiv = document.createElement('div');
-                    contentDiv.className = 'message-content';
-                        
-                        try {
-                            // 处理内容，确保是字符串
-                            let textContent = content;
-                            if (typeof textContent !== 'string') {
-                                if (textContent.content) {
-                                    textContent = textContent.content;
-                                } else {
-                                    textContent = JSON.stringify(textContent);
-                                }
-                            }
+                            thinkHeader.style.cursor = 'pointer';
                             
-                            // 处理base64图片标签，不先替换换行符
-                            // textContent = textContent.replace(/\n/g, '<br>');
+                            // 创建内容区域
+                            const thinkContentDiv = document.createElement('div');
+                            thinkContentDiv.className = 'message-think';
+                            thinkContentDiv.style.display = 'block';
+                            thinkContentDiv.style.backgroundColor = 'transparent';
+                            thinkContentDiv.style.lineHeight = '1.3';
                             
-                            // 处理base64图片标签
-                            textContent = processMessageContent(textContent, false);
+                            // 处理换行符，但不进行markdown解析
+                            const processedThinkContent = thinkContent.replace(/\n/g, '<br>');
+                            thinkContentDiv.innerHTML = processedThinkContent;
                             
-                            // 解析并显示
-                            contentDiv.innerHTML = marked.parse(textContent);
-                        } catch (error) {
-                            console.error('处理历史消息内容时出错:', error);
-                            contentDiv.innerHTML = `<p>${textContent}</p>`;
+                            // 切换展示
+                            thinkHeader.onclick = () => {
+                                thinkContentDiv.style.display = thinkContentDiv.style.display === 'none' ? 'block' : 'none';
+                            };
+                            
+                            // 组装并添加到消息元素
+                            thinkContainer.appendChild(thinkHeader);
+                            thinkContainer.appendChild(thinkContentDiv);
+                            messageDiv.appendChild(thinkContainer);
+                            
+                            // 更新剩余文本
+                            content = content.replace(thinkRegex, '').trim();
                         }
                         
-                        // 添加到消息元素
-                        messageDiv.appendChild(contentDiv);
+                        // 移除模型标签
+                        content = content.replace(/<model="[^"]+"\/>/g, '').trim();
                         
-                        // 添加到消息容器
-                        chatMessages.appendChild(messageDiv);
+                        // 添加主要内容
+                        if (content) {
+                            console.log('添加历史消息正文内容');
+                            // 创建内容元素
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'message-content';
+                            
+                            try {
+                                // 处理内容，确保是字符串
+                                let textContent = content;
+                                if (typeof textContent !== 'string') {
+                                    if (textContent.content) {
+                                        textContent = textContent.content;
+                                    } else {
+                                        textContent = JSON.stringify(textContent);
+                                    }
+                                }
+                                
+                                // 处理base64图片标签，不先替换换行符
+                                // textContent = textContent.replace(/\n/g, '<br>');
+                                
+                                // 处理base64图片标签
+                                textContent = processMessageContent(textContent, false);
+                                
+                                // 解析并显示
+                                contentDiv.innerHTML = marked.parse(textContent);
+                            } catch (error) {
+                                console.error('处理历史消息内容时出错:', error);
+                                contentDiv.innerHTML = `<p>${textContent}</p>`;
+                            }
+                            
+                            // 添加到消息元素
+                            messageDiv.appendChild(contentDiv);
+                            
+                            // 添加到消息容器
+                            chatMessages.appendChild(messageDiv);
+                        }
                     }
-                }
-            });
+                });
             
             // 强制滚动到底部
                     scrollToBottom(true);
