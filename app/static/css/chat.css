@@ -1146,14 +1146,13 @@ body {
 
 /* 链接样式 */
 .message-content a {
-    color: #42b983;
+    color: #333333;
     text-decoration: none;
-    transition: color 0.2s;
 }
 
 .message-content a:hover {
-    color: #3aa876;
-    text-decoration: underline;
+    color: #333333;
+    text-decoration: none;
 }
 
 /* 图片样式 */

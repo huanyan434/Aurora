@@ -1246,39 +1246,42 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         
                         // 更新思考内容
-                            const thinkContentDiv = thinkContainer.querySelector('.message-think');
-                            if (thinkContentDiv) {
-                                try {
-                                    // 处理内容，确保是字符串
-                                    let thinkText = currentThink;
-                                    if (typeof thinkText !== 'string') {
-                                        if (thinkText.content) {
-                                            thinkText = thinkText.content;
-                                        } else if (thinkText.text) {
-                                            thinkText = thinkText.text;
-                                        } else {
-                                            thinkText = JSON.stringify(thinkText);
-                                        }
+                            // 确保思考内容容器存在，若不存在则自动创建
+                            let thinkContentDiv = thinkContainer.querySelector('.message-think');
+                            if (!thinkContentDiv) {
+                                thinkContentDiv = document.createElement('div');
+                                thinkContentDiv.className = 'message-think';
+                                thinkContentDiv.style.backgroundColor = 'transparent';
+                                thinkContentDiv.style.lineHeight = '1.3';
+                                thinkContainer.appendChild(thinkContentDiv);
+                            }
+                            try {
+                                // 处理内容，确保是字符串
+                                let thinkText = currentThink;
+                                if (typeof thinkText !== 'string') {
+                                    if (thinkText.content) {
+                                        thinkText = thinkText.content;
+                                    } else if (thinkText.text) {
+                                        thinkText = thinkText.text;
+                                    } else {
+                                        thinkText = JSON.stringify(thinkText);
                                     }
-                                    
-                                    // 替换换行符
-                                    thinkText = thinkText.replace(/\n/g, '<br>');
-                                    
-                                    // 解析并显示
-                                    thinkContentDiv.innerHTML = marked.parse(thinkText);
-                                    
-                                    console.log('思考内容已更新');
-                                } catch (error) {
-                                    console.error('处理思考内容时出错:', error);
-                                    thinkContentDiv.innerHTML = `<p>思考内容解析错误</p>`;
                                 }
                                 
-                                // 如果容器未被折叠，滚动到可见位置
-                                if (thinkContentDiv.style.display !== 'none' && state.isNearBottom) {
-                        scrollToBottom();
-                        }
-                            } else {
-                                console.error('找不到思考内容元素');
+                                // 替换换行符
+                                thinkText = thinkText.replace(/\n/g, '<br>');
+                                
+                                // 解析并显示
+                                thinkContentDiv.innerHTML = marked.parse(thinkText);
+                                
+                                console.log('思考内容已更新');
+                            } catch (error) {
+                                console.error('处理思考内容时出错:', error);
+                                thinkContentDiv.innerHTML = `<p>思考内容解析错误</p>`;
+                            }
+                            // 如果容器未被折叠，滚动到可见位置
+                            if (thinkContentDiv.style.display !== 'none' && state.isNearBottom) {
+                                scrollToBottom();
                             }
                         }
                         
