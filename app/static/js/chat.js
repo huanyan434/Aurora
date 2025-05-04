@@ -4947,6 +4947,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // 查找预创建的容器
         const container = messageDiv.querySelector('.search-results-container');
         if (!container) return;
+        // 显示搜索结果容器
+        container.style.display = 'block';
         container.innerHTML = '';
         // 标题头
         const header = document.createElement('div');

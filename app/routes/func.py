@@ -186,7 +186,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
             if hasattr(
                     chunk.choices[0].delta,
                     'reasoning_content') and chunk.choices[0].delta.reasoning_content:
-                if fstrs:
+                if fstrs == True:
                     fstrs = False
                 reasoning_content += chunk.choices[0].delta.reasoning_content
                 tkt = time.time() - stm
@@ -194,7 +194,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                     str(int(tkt)) + ">" + reasoning_content + "</think>"
                 response_queue.put(search + response_text)
             elif chunk.choices[0].delta.content:
-                if fstct:
+                if fstct == True:
                     fstct = False
                     tkt = time.time() - stm
                 content += chunk.choices[0].delta.content

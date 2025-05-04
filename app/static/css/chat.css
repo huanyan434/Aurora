@@ -3427,3 +3427,42 @@ body.dark .au-tooltip {
         box-shadow: 0 0 0 1px rgba(77, 107, 248, 0.3);
     }
 }
+
+/* ====================== 搜索结果折叠区域 ====================== */
+.search-results-container {
+    margin: 0.5rem 0 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--ai-bubble);
+    overflow: hidden;
+}
+.search-results-header {
+    padding: 10px 15px;
+    background: var(--light-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--dark-color);
+    cursor: pointer;
+    user-select: none;
+}
+.search-results-content {
+    padding: 10px 15px;
+    background: var(--ai-bubble);
+    display: block;
+}
+.search-result-item {
+    display: block;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-color);
+    color: var(--primary-color);
+    text-decoration: none;
+}
+.search-result-item:first-child {
+    border-top: none;
+}
+.search-result-item:hover {
+    text-decoration: underline;
+}
