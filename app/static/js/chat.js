@@ -1167,9 +1167,13 @@ document.addEventListener('DOMContentLoaded', function () {
                                 thinkContentDiv.style.backgroundColor = 'transparent';
                                 thinkContentDiv.style.lineHeight = '1.3';
                                 
-                                // 处理换行符，但不进行markdown解析
-                                const processedThinkContent = thinkContent.replace(/\n/g, '<br>');
-                                thinkContentDiv.innerHTML = processedThinkContent;
+                                // 处理换行符和粗体语法
+                                let processed = thinkContent;
+                                // 处理换行符
+                                processed = processed.replace(/\n/g, '<br>');
+                                // 只处理粗体语法 (**text** 或 __text__)
+                                processed = processed.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');
+                                thinkContentDiv.innerHTML = processed;
                                 
                                 // 切换展示
                                 thinkHeader.onclick = () => {
@@ -1265,11 +1269,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                         }
                                     }
                                     
-                                    // 替换换行符
+                                    // 处理换行符
                                     thinkText = thinkText.replace(/\n/g, '<br>');
                                     
-                                    // 解析并显示
-                                    thinkContentDiv.innerHTML = marked.parse(thinkText);
+                                    // 处理思考内容的粗体语法
+                                    thinkContentDiv.innerHTML = processThinkContent(thinkText);
                                     
                                     console.log('思考内容已更新');
                                 } catch (error) {
@@ -1692,6 +1696,16 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
+    // 处理思考内容的粗体语法
+    function processThinkContent(content) {
+        if (!content) return '';
+        // 处理换行符
+        let processed = content.replace(/\n/g, '<br>');
+        // 只处理粗体语法 (**text** 或 __text__)
+        processed = processed.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');
+        return processed;
+    }
+
     // 加载对话历史
     function loadConversationHistory(conversationId) {
         if (!conversationId) {
@@ -1847,83 +1861,83 @@ document.addEventListener('DOMContentLoaded', function () {
                             const thinkTime = thinkMatches[1];
                             const thinkContent = thinkMatches[2];
                             // 创建折叠容器
-                            const thinkContainer = document.createElement('div');
-                            thinkContainer.className = 'think-container';
-                            thinkContainer.style.margin = '0.5rem 0';
-                            
-                            // 创建思考头部
-                            const thinkHeader = document.createElement('div');
-                            thinkHeader.className = 'think-header';
+                const thinkContainer = document.createElement('div');
+                thinkContainer.className = 'think-container';
+                thinkContainer.style.margin = '0.5rem 0';
+                
+                // 创建思考头部
+                const thinkHeader = document.createElement('div');
+                thinkHeader.className = 'think-header';
                             thinkHeader.innerHTML = `<span>已深度思考（用时 ${thinkTime} 秒）<span style="display:inline-block; width:5px;"></span><div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>`;
-                            thinkHeader.style.cursor = 'pointer';
-                            
-                            // 创建内容区域
-                            const thinkContentDiv = document.createElement('div');
-                            thinkContentDiv.className = 'message-think';
-                            thinkContentDiv.style.display = 'block';
-                            thinkContentDiv.style.backgroundColor = 'transparent';
-                            thinkContentDiv.style.lineHeight = '1.3';
+                        thinkHeader.style.cursor = 'pointer';
+                
+                        // 创建内容区域
+                const thinkContentDiv = document.createElement('div');
+                thinkContentDiv.className = 'message-think';
+                        thinkContentDiv.style.display = 'block';
+                thinkContentDiv.style.backgroundColor = 'transparent';
+                        thinkContentDiv.style.lineHeight = '1.3';
                             
                             // 处理换行符，但不进行markdown解析
                             const processedThinkContent = thinkContent.replace(/\n/g, '<br>');
                             thinkContentDiv.innerHTML = processedThinkContent;
-                            
-                            // 切换展示
-                            thinkHeader.onclick = () => {
-                                thinkContentDiv.style.display = thinkContentDiv.style.display === 'none' ? 'block' : 'none';
-                            };
-                            
-                            // 组装并添加到消息元素
-                            thinkContainer.appendChild(thinkHeader);
-                            thinkContainer.appendChild(thinkContentDiv);
-                            messageDiv.appendChild(thinkContainer);
-                            
-                            // 更新剩余文本
-                            content = content.replace(thinkRegex, '').trim();
-                        }
                         
-                        // 移除模型标签
-                        content = content.replace(/<model="[^"]+"\/>/g, '').trim();
+                        // 切换展示
+                        thinkHeader.onclick = () => {
+                            thinkContentDiv.style.display = thinkContentDiv.style.display === 'none' ? 'block' : 'none';
+                        };
                         
-                        // 添加主要内容
-                        if (content) {
-                            console.log('添加历史消息正文内容');
-                            // 创建内容元素
-                        const contentDiv = document.createElement('div');
-                        contentDiv.className = 'message-content';
-                            
-                            try {
-                                // 处理内容，确保是字符串
-                                let textContent = content;
-                                if (typeof textContent !== 'string') {
-                                    if (textContent.content) {
-                                        textContent = textContent.content;
-                                    } else {
-                                        textContent = JSON.stringify(textContent);
-                                    }
+                        // 组装并添加到消息元素
+                thinkContainer.appendChild(thinkHeader);
+                thinkContainer.appendChild(thinkContentDiv);
+                        messageDiv.appendChild(thinkContainer);
+                
+                        // 更新剩余文本
+                        content = content.replace(thinkRegex, '').trim();
+                    }
+                    
+                    // 移除模型标签
+                    content = content.replace(/<model="[^"]+"\/>/g, '').trim();
+                    
+                    // 添加主要内容
+                    if (content) {
+                        console.log('添加历史消息正文内容');
+                        // 创建内容元素
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'message-content';
+                        
+                        try {
+                            // 处理内容，确保是字符串
+                            let textContent = content;
+                            if (typeof textContent !== 'string') {
+                                if (textContent.content) {
+                                    textContent = textContent.content;
+                                } else {
+                                    textContent = JSON.stringify(textContent);
                                 }
-                                
-                                // 处理base64图片标签，不先替换换行符
-                                // textContent = textContent.replace(/\n/g, '<br>');
-                                
-                                // 处理base64图片标签
-                                textContent = processMessageContent(textContent, false);
-                                
-                                // 解析并显示
-                                contentDiv.innerHTML = marked.parse(textContent);
-                            } catch (error) {
-                                console.error('处理历史消息内容时出错:', error);
-                                contentDiv.innerHTML = `<p>${textContent}</p>`;
                             }
                             
-                            // 添加到消息元素
-                            messageDiv.appendChild(contentDiv);
+                            // 处理base64图片标签，不先替换换行符
+                            // textContent = textContent.replace(/\n/g, '<br>');
                             
-                            // 添加到消息容器
-                            chatMessages.appendChild(messageDiv);
+                            // 处理base64图片标签
+                            textContent = processMessageContent(textContent, false);
+                            
+                            // 解析并显示
+                            contentDiv.innerHTML = marked.parse(textContent);
+                        } catch (error) {
+                            console.error('处理历史消息内容时出错:', error);
+                            contentDiv.innerHTML = `<p>${textContent}</p>`;
                         }
+                        
+                        // 添加到消息元素
+                        messageDiv.appendChild(contentDiv);
+                        
+                        // 添加到消息容器
+                        chatMessages.appendChild(messageDiv);
                     }
-                });
+                }
+            });
             
             // 强制滚动到底部
                     scrollToBottom(true);
