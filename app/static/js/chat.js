@@ -1086,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     if (textContent.includes('<search>')) {
                                         handleSearchResults(textContent, aiMessageDiv);
                                         textContent = textContent.replace(/<search>[\s\S]*?<\/search>/g, '').trim();
-                                    }
+                            }
                                     
                                     // 处理base64图片标签
                                     textContent = processMessageContent(textContent, false);
@@ -1230,20 +1230,54 @@ document.addEventListener('DOMContentLoaded', function () {
                                     console.error('找不到消息内容元素，无法插入思考容器');
                                 }
                             } else {
-                                // 如果容器已存在，更新头部文本
-                                const thinkHeader = thinkContainer.querySelector('.think-header');
-                                if (thinkHeader) {
-                                    // 同样的逻辑应用于更新时
-                                    const headerText = currentContent && currentContent.trim() ? 
-                                        `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
-                                        '思考中...';
+                                // 如果容器已存在，确保think-header元素存在
+                                let thinkHeader = thinkContainer.querySelector('.think-header');
+                                
+                                // 如果think-header不存在，创建它
+                                if (!thinkHeader) {
+                                    console.log('创建缺失的思考头部');
+                                    thinkHeader = document.createElement('div');
+                                    thinkHeader.className = 'think-header';
                                     
-                                    thinkHeader.innerHTML = `
-                                        <span>${headerText}<span style="display:inline-block; width:5px;"></span>
-                                        <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
-                                    `;
+                                    // 添加点击事件，实现展开/折叠功能
+                                    thinkHeader.onclick = function (event) {
+                                        console.log('点击思考头部');
+                                        event.stopPropagation();
+                                        const thinkContentDiv = thinkContainer.querySelector('.message-think');
+                                        if (thinkContentDiv) {
+                                            if (thinkContentDiv.style.display === 'none') {
+                                                thinkContentDiv.style.display = 'block';
+                                                console.log('思考内容展开');
+                                            } else {
+                                                thinkContentDiv.style.display = 'none';
+                                                console.log('思考内容折叠');
+                                            }
+                                        }
+                                    };
+                                    
+                                    // 插入到思考容器的开头
+                                    thinkContainer.insertBefore(thinkHeader, thinkContainer.firstChild);
+                                    
+                                    // 保存思考头部元素引用
+                                    thinkHeaderElement = thinkHeader;
                                 }
-                        }
+                                
+                                // 更新头部文本
+                                const headerText = currentContent && currentContent.trim() ? 
+                                    `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
+                                    '思考中...';
+                                
+                                thinkHeader.innerHTML = `
+                                    <span>${headerText}<span style="display:inline-block; width:5px;"></span>
+                                    <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
+                                `;
+                            }
+                        
+                            // 确保思考容器可见（移除display: none）
+                            if (thinkContainer && currentThink && currentThink.trim() !== '') {
+                                thinkContainer.style.display = 'block';
+                                console.log('思考容器显示状态已设置为可见');
+                            }
                         
                         // 更新思考内容
                             // 确保思考内容容器存在，若不存在则自动创建
@@ -1255,33 +1289,33 @@ document.addEventListener('DOMContentLoaded', function () {
                                 thinkContentDiv.style.lineHeight = '1.3';
                                 thinkContainer.appendChild(thinkContentDiv);
                             }
-                            try {
-                                // 处理内容，确保是字符串
-                                let thinkText = currentThink;
-                                if (typeof thinkText !== 'string') {
-                                    if (thinkText.content) {
-                                        thinkText = thinkText.content;
-                                    } else if (thinkText.text) {
-                                        thinkText = thinkText.text;
-                                    } else {
-                                        thinkText = JSON.stringify(thinkText);
+                                try {
+                                    // 处理内容，确保是字符串
+                                    let thinkText = currentThink;
+                                    if (typeof thinkText !== 'string') {
+                                        if (thinkText.content) {
+                                            thinkText = thinkText.content;
+                                        } else if (thinkText.text) {
+                                            thinkText = thinkText.text;
+                                        } else {
+                                            thinkText = JSON.stringify(thinkText);
+                                        }
                                     }
+                                    
+                                    // 替换换行符
+                                    thinkText = thinkText.replace(/\n/g, '<br>');
+                                    
+                                    // 解析并显示
+                                    thinkContentDiv.innerHTML = marked.parse(thinkText);
+                                    
+                                    console.log('思考内容已更新');
+                                } catch (error) {
+                                    console.error('处理思考内容时出错:', error);
+                                    thinkContentDiv.innerHTML = `<p>思考内容解析错误</p>`;
                                 }
-                                
-                                // 替换换行符
-                                thinkText = thinkText.replace(/\n/g, '<br>');
-                                
-                                // 解析并显示
-                                thinkContentDiv.innerHTML = marked.parse(thinkText);
-                                
-                                console.log('思考内容已更新');
-                            } catch (error) {
-                                console.error('处理思考内容时出错:', error);
-                                thinkContentDiv.innerHTML = `<p>思考内容解析错误</p>`;
-                            }
-                            // 如果容器未被折叠，滚动到可见位置
-                            if (thinkContentDiv.style.display !== 'none' && state.isNearBottom) {
-                                scrollToBottom();
+                                // 如果容器未被折叠，滚动到可见位置
+                                if (thinkContentDiv.style.display !== 'none' && state.isNearBottom) {
+                        scrollToBottom();
                             }
                         }
                         
@@ -1842,8 +1876,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             handleSearchResults(msg.content, messageDiv);
                             content = content.replace(/<search>[\s\S]*?<\/search>/g, '').trim();
                         }
-                         
-                         // 提取并渲染有思考内容的折叠块
+                        
+                        // 提取并渲染有思考内容的折叠块
                         const thinkRegex = /<think time=(\d+)>([\s\S]*?)<\/think>/;
                         const thinkMatches = content.match(thinkRegex);
                         if (thinkMatches && thinkMatches[2].trim()) {
