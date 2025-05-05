@@ -3567,3 +3567,39 @@ body.dark .au-tooltip {
         background-color: #444;
     }
 }
+
+/* Aurora标题样式 */
+.aurora-title {
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    margin-left: 10px;
+}
+
+.aurora-logo {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+}
+
+.dark-mode-logo {
+    display: none;
+}
+
+.aurora-title span {
+    color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+    .light-mode-logo {
+        display: none;
+    }
+    .dark-mode-logo {
+        display: block;
+    }
+    .aurora-title span {
+        color: #e0e0e0;
+    }
+}
