@@ -135,8 +135,8 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
     # 收集流式响应内容
     reasoning_content = ""
     content = ""
-    fstrs = True
-    fstct = True
+    first_reasoning_character = True
+    first_content_character = True
     search = ""
     try:
         if online_search:
@@ -186,16 +186,16 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
             if hasattr(
                     chunk.choices[0].delta,
                     'reasoning_content') and chunk.choices[0].delta.reasoning_content:
-                if fstrs == True:
-                    fstrs = False
+                if first_reasoning_character == True:
+                    first_reasoning_character = False
                 reasoning_content += chunk.choices[0].delta.reasoning_content
                 think_time = time.time() - start_time
                 response_text = "<think time=" + \
                     str(int(think_time)) + ">" + reasoning_content + "</think>"
                 response_queue.put(search + response_text)
             elif chunk.choices[0].delta.content:
-                if fstct == True:
-                    fstct = False
+                if first_content_character == True:
+                    first_content_character = False
                     think_time = time.time() - start_time
                 content += chunk.choices[0].delta.content
                 if not reasoning_content.strip():
