@@ -1193,8 +1193,8 @@ body {
         --dark-color: #e5e5e5;
         --gray-color: #a0a0a0;
         --border-color: rgba(255, 255, 255, 0.15);
-        --user-bubble: #0084ff;
-        --user-text: white;
+        --user-bubble: #414158;
+        --user-text: #f8faff;
         --ai-bubble: #2a2a2a;
         --ai-text: #e5e5e5;
         --think-line: #555555;
@@ -3464,4 +3464,32 @@ body.dark .au-tooltip {
 }
 .search-result-item:hover {
     text-decoration: underline;
+}
+
+/* 深色模式下的搜索结果样式 */
+@media (prefers-color-scheme: dark) {
+    .search-results-container {
+        border-color: rgba(255, 255, 255, 0.1);
+        background: rgba(45, 45, 45, 0.6);
+    }
+    
+    .search-results-header {
+        background: rgba(60, 60, 60, 0.8);
+        color: #e0e0e0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .search-results-content {
+        background: rgba(45, 45, 45, 0.6);
+        color: #e0e0e0;
+    }
+    
+    .search-result-item {
+        border-top-color: rgba(255, 255, 255, 0.1);
+        color: #8c9dff;
+    }
+    
+    .search-result-item:hover {
+        color: #a0b0ff;
+    }
 }
