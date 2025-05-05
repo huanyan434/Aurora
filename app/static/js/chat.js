@@ -1081,7 +1081,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                     textContent = processMessageContent(textContent, false);
                                     
                                     // 解析并显示
-                                    contentDiv.innerHTML = marked.parse(textContent);
+                                    try {
+                                        contentDiv.innerHTML = marked.parse(textContent);
+                                    } catch (error) {
+                                        console.error('解析Markdown失败:', error);
+                                        contentDiv.innerHTML = textContent;
+                                    }
                                     
                                     // 如果有思考容器，更新其状态
                                     const thinkContainer = aiMessageDiv.querySelector('.think-container');
@@ -1924,7 +1929,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             textContent = processMessageContent(textContent, false);
                             
                             // 解析并显示
-                            contentDiv.innerHTML = marked.parse(textContent);
+                            try {
+                                contentDiv.innerHTML = marked.parse(textContent);
+                            } catch (error) {
+                                console.error('解析Markdown失败:', error);
+                                contentDiv.innerHTML = textContent;
+                            }
                         } catch (error) {
                             console.error('处理历史消息内容时出错:', error);
                             contentDiv.innerHTML = `<p>${textContent}</p>`;
