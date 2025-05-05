@@ -85,16 +85,38 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             console.log('初始化应用...');
             
-            // 并行执行多个异步任务
+            // 获取当前用户信息
+            const userData = await getCurrentUser();
+            
+            // 设置模型选择器 - 对所有用户都设置
+            await setupModelSelector();
+            
+            // 优化未登录场景处理 - 即使未登录也显示主界面
+            if (!userData || !userData.id) {
+                console.log('未登录用户访问，显示初始界面');
+                state.currentUser = { id: null, username: null };
+                
+                // 设置基本事件监听器
+                setupEventListeners();
+                
+                // 直接显示初始界面
+                showInitialPage();
+                
+                // 设置滚动监听和Markdown观察器
+                setupScrollListener();
+                startMarkdownObserver();
+                
+                // 加载完成后显示主界面
+                setTimeout(() => {
+                    showMainUI();
+                }, 200);
+                return; // 不再执行后续登录用户需要的初始化
+            }
+            
+            // 并行执行多个异步任务 - 仅针对已登录用户
             await Promise.all([
-                // 获取当前用户信息
-                getCurrentUser(),
-                
                 // 加载对话历史
-                loadConversations(),
-                
-                // 其他可以并行加载的任务
-                setupModelSelector()
+                loadConversations()
             ]);
             
             // 设置事件监听器
@@ -192,6 +214,10 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const response = await fetch('/api/user/current');
             if (!response.ok) {
+                if (response.status === 401) {
+                    console.log('用户未登录');
+                    return null; // 返回null表示未登录
+                }
                 throw new Error('获取用户信息失败');
             }
             const userData = await response.json();
@@ -205,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return userData;
         } catch (error) {
             console.error('获取用户信息时出错:', error);
-            return null;
+            return null; // 出错时也返回null
         }
     }
 
@@ -641,6 +667,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // ====================== 消息发送核心 ======================
     async function sendMessageHandler() {
         console.log('尝试发送消息');
+        
+        // 检查用户是否登录
+        if (!state.currentUser || !state.currentUser.id) {
+            console.log('用户未登录，重定向到登录页面');
+            showNotification('请先登录后发送消息', 2000);
+            setTimeout(() => {
+                window.location.href = '/auth/login';
+            }, 1000);
+            return;
+        }
+        
         // 捕获当前输入内容（创建快照）
         const content = elements.messageInput.value.trim();
         const contentSnapshot = content; // 保存当前内容的快照
@@ -2141,32 +2178,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.addEventListener('click', closeMenu);
                 }, 0);
             };
-            // 自定义悬浮提示"更多"
-            /* let moreTooltip;
-            moreBtn.addEventListener('mouseenter', () => {
-              const rect = moreBtn.getBoundingClientRect();
-              moreTooltip = document.createElement('div');
-              moreTooltip.className = 'au-tooltip au-tooltip--m au-elevated au-theme';
-              moreTooltip.style.cssText = '--au-rgb-hover: 0 0 0 / 4%; font-size: var(--au-font-size-m); line-height: var(--au-line-height-m); z-index: 0;';
-              moreTooltip.style.position = 'fixed';
-              moreTooltip.style.left = `${rect.left-7}px`;
-              moreTooltip.style.top = `${rect.bottom}px`;
-              moreTooltip.innerText = '更多';
-              // 添加提示箭头
-              const arrowDiv = document.createElement('div');
-              arrowDiv.className = 'au-tooltip__arrow au-tooltip__arrow--soft';
-              arrowDiv.setAttribute('au-floating-placement', 'bottom');
-              arrowDiv.style.cssText = 'left: 16px;';
-              arrowDiv.innerHTML = `<svg class="au-tooltip__soft-arrow" viewBox="0 0 47 13" fill="none" xmlns="http://www.w3.org/2000/svg"><mask id="mask0_0_3329" maskUnits="userSpaceOnUse" x="0" y="0" width="47" height="13" style="mask-type: alpha;"><path fill-rule="evenodd" clip-rule="evenodd" d="M0 0.00316996C1.71249 0.00316996 3.42448 -0.00533022 5.13697 0.0131702C6.77598 0.0311706 8.61044 0.0566711 10.2055 0.658184C11.9284 1.3082 13.0691 2.44472 14.2168 3.78225C15.043 4.74427 16.666 6.79681 17.4563 7.78784C18.1031 8.60035 19.3692 10.2064 20.0605 10.9834C20.9308 11.9609 22.0064 12.9999 23.5005 12.9999C24.9946 12.9999 26.0697 11.9609 26.9395 10.9844C27.6308 10.2079 28.8969 8.60085 29.5442 7.78884C30.3335 6.79781 31.9565 4.74527 32.7832 3.78325C33.9329 2.44572 35.0716 1.3092 36.794 0.659184C38.3896 0.0591711 40.2245 0.0321706 41.8625 0.0141702C43.5755 -0.0043302 45.2875 0.00416998 47 0.00416998" fill="#FF0000"></path></mask><g mask="url(#mask0_0_3329)"><g clip-path="url(#clip0_0_3329)"><g filter="url(#filter0_b_0_3329)"><rect width="47" height="13" fill="currentColor" style="mix-blend-mode: color-dodge;"></rect></g></g></g><defs><filter id="filter0_b_0_3329" x="-50" y="-50" width="147" height="113" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood><feGaussianBlur in="BackgroundImageFix" stdDeviation="25"></feGaussianBlur><feComposite in2="SourceAlpha" operator="in" result="effect1_backgroundBlur_0_3329"></feComposite><feBlend mode="normal" in="SourceGraphic" in2="effect1_backgroundBlur_0_3329" result="shape"></feBlend></filter><clipPath id="clip0_0_3329"><rect width="47" height="13" fill="white"></rect></clipPath></defs></svg>`;
-              moreTooltip.appendChild(arrowDiv);
-              document.body.appendChild(moreTooltip);
-            });
-            moreBtn.addEventListener('mouseleave', () => {
-              if (moreTooltip) {
-                moreTooltip.remove();
-                moreTooltip = null;
-              }
-            });*/
             
             item.appendChild(contentDiv);
             item.appendChild(moreBtn);
@@ -2318,14 +2329,42 @@ document.addEventListener('DOMContentLoaded', function () {
     function showInitialPage() {
         if (!elements.messagesContainer) return;
         
-        elements.messagesContainer.innerHTML = `
-            <div class="initial-page">
-                <div class="welcome-message">
-                    <h1>我是 Aurora，很高兴见到你</h1>
-                    <p>我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~</p>
+        // 根据登录状态显示不同的内容
+        if (state.currentUser && state.currentUser.id) {
+            // 已登录用户显示标准欢迎信息
+            elements.messagesContainer.innerHTML = `
+                <div class="initial-page">
+                    <div class="welcome-message">
+                        <h1>我是 Aurora，很高兴见到你</h1>
+                        <p>我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~</p>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        } else {
+            // 未登录用户显示带有登录提示的欢迎信息
+            elements.messagesContainer.innerHTML = `
+                <div class="initial-page">
+                    <div class="welcome-message">
+                        <h1>欢迎来到 Aurora AI 助手</h1>
+                        <p>我可以帮你写代码、读文件、写作各种创意内容</p>
+                    </div>
+                    <div class="login-prompt">
+                        <p>登录后即可开始与AI助手对话，体验更多高级功能</p>
+                        <button class="login-btn" onclick="window.location.href='/auth/login'">
+                            登录
+                        </button>
+                        <button class="signup-btn" onclick="window.location.href='/auth/signup'">
+                            注册
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // 为未登录用户修改输入框提示文本
+            if (elements.messageInput) {
+                elements.messageInput.placeholder = "登录后即可开始与AI对话...";
+            }
+        }
 
         // 聚焦到输入框
         if (elements.messageInput) {
@@ -2515,97 +2554,120 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 设置模型选择器
     function setupModelSelector() {
-        const modelSelect = document.querySelector('.model-select');
-        const modelHeader = modelSelect.querySelector('.model-select-header');
-        const modelOptions = modelSelect.querySelector('.model-select-options');
-        const selectedModelSpan = modelSelect.querySelector('.selected-model');
-
-        // 添加免费次数提示的样式
-        const freeUsageStyle = document.createElement('style');
-        freeUsageStyle.textContent = `
-            .free-usage-display {
-                display: inline-block;
-                margin-left: 8px;
-                padding: 2px 6px;
-                background-color: rgba(255, 236, 153, 0.7);
-                border-radius: 4px;
-                font-size: 12px;
-                color: #664d03;
+        try {
+            const modelSelect = document.querySelector('.model-select');
+            if (!modelSelect) {
+                console.error('未找到模型选择器元素');
+                return;
             }
-            .free-usage-display.depleted {
-                background-color: rgba(255, 200, 200, 0.7);
-                color: #842029;
-            }
-            .free-usage-remaining {
-                font-weight: bold;
-            }
-        `;
-        document.head.appendChild(freeUsageStyle);
-
-        // 根据localStorage中保存的模型设置初始选中状态
-        const savedModel = state.currentModel;
-        const savedModelOption = modelOptions.querySelector(`.model-option[data-value="${savedModel}"]`);
-        
-        if (savedModelOption) {
-            // 更新显示的文本
-            const savedModelText = savedModelOption.querySelector('span').textContent;
-            selectedModelSpan.textContent = savedModelText;
             
-            // 更新选中状态
-            modelOptions.querySelectorAll('.model-option').forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            savedModelOption.classList.add('selected');
+            const modelHeader = modelSelect.querySelector('.model-select-header');
+            const modelOptions = modelSelect.querySelector('.model-select-options');
+            const selectedModelSpan = modelSelect.querySelector('.selected-model');
             
-            console.log(`从缓存中加载模型设置: ${savedModel}`);
-        }
-
-        // 点击头部显示/隐藏选项
-        modelHeader.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isActive = modelSelect.classList.toggle('active');
-            
-            // 更新所有模型的免费使用次数
-            if (isActive) {
-                updateAllModelsFreeUsage();
+            if (!modelHeader || !modelOptions || !selectedModelSpan) {
+                console.error('模型选择器子元素不完整');
+                return;
             }
-        });
 
-        // 点击选项时更新选中的模型
-        modelOptions.querySelectorAll('.model-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const value = option.getAttribute('data-value');
-                const text = option.querySelector('span').textContent;
-                
+            // 添加免费次数提示的样式
+            const freeUsageStyle = document.createElement('style');
+            freeUsageStyle.textContent = `
+                .free-usage-display {
+                    display: inline-block;
+                    margin-left: 8px;
+                    padding: 2px 6px;
+                    background-color: rgba(255, 236, 153, 0.7);
+                    border-radius: 4px;
+                    font-size: 12px;
+                    color: #664d03;
+                }
+                .free-usage-display.depleted {
+                    background-color: rgba(255, 200, 200, 0.7);
+                    color: #842029;
+                }
+                .free-usage-remaining {
+                    font-weight: bold;
+                }
+            `;
+            document.head.appendChild(freeUsageStyle);
+
+            // 根据localStorage中保存的模型设置初始选中状态
+            const savedModel = state.currentModel;
+            const savedModelOption = modelOptions.querySelector(`.model-option[data-value="${savedModel}"]`);
+            
+            if (savedModelOption) {
                 // 更新显示的文本
-                selectedModelSpan.textContent = text;
+                const savedModelText = savedModelOption.querySelector('span').textContent;
+                selectedModelSpan.textContent = savedModelText;
                 
                 // 更新选中状态
                 modelOptions.querySelectorAll('.model-option').forEach(opt => {
                     opt.classList.remove('selected');
                 });
-                option.classList.add('selected');
+                savedModelOption.classList.add('selected');
                 
-                // 关闭下拉菜单
-                modelSelect.classList.remove('active');
-                
-                // 更新当前选中的模型
-                state.currentModel = value;
-                
-                // 保存到localStorage
-                localStorage.setItem('selectedModel', value);
-                console.log(`模型设置已保存: ${value}`);
-            });
-        });
+                console.log(`从缓存中加载模型设置: ${savedModel}`);
+            }
 
-        // 点击页面其他地方时关闭下拉菜单
-        document.addEventListener('click', () => {
-            modelSelect.classList.remove('active');
-        });
-        
-        // 初始化时更新一次所有模型的免费使用次数
-        updateAllModelsFreeUsage();
+            // 点击头部显示/隐藏选项
+            modelHeader.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isActive = modelSelect.classList.toggle('active');
+                
+                // 更新所有模型的免费使用次数
+                if (isActive && state.currentUser && state.currentUser.id) {
+                    updateAllModelsFreeUsage().catch(err => {
+                        console.error('更新模型免费使用次数失败:', err);
+                    });
+                }
+            });
+
+            // 点击选项时更新选中的模型
+            modelOptions.querySelectorAll('.model-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = option.getAttribute('data-value');
+                    const text = option.querySelector('span').textContent;
+                    
+                    // 更新显示的文本
+                    selectedModelSpan.textContent = text;
+                    
+                    // 更新选中状态
+                    modelOptions.querySelectorAll('.model-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    option.classList.add('selected');
+                    
+                    // 关闭下拉菜单
+                    modelSelect.classList.remove('active');
+                    
+                    // 更新当前选中的模型
+                    state.currentModel = value;
+                    
+                    // 保存到localStorage
+                    localStorage.setItem('selectedModel', value);
+                    console.log(`模型设置已保存: ${value}`);
+                });
+            });
+
+            // 点击页面其他地方时关闭下拉菜单
+            document.addEventListener('click', () => {
+                modelSelect.classList.remove('active');
+            });
+            
+            // 只有登录用户才初始化更新免费使用次数
+            if (state.currentUser && state.currentUser.id) {
+                updateAllModelsFreeUsage().catch(err => {
+                    console.error('初始化模型免费使用次数失败:', err);
+                });
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('设置模型选择器时出错:', error);
+            return false;
+        }
     }
 
     // 获取当前选中的模型
@@ -3175,9 +3237,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 showError('加载对话列表失败: ' + error.message);
             });
     }
-
-    // 移除这行单独的调用，避免重复加载
-    // loadConversationList();
 
     // 获取模型图片名称
     function getModelImageName(modelName) {
@@ -4668,51 +4727,66 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 更新所有模型的免费使用次数显示
     async function updateAllModelsFreeUsage() {
-        const modelOptions = document.querySelectorAll('.model-option');
-        for (const option of modelOptions) {
-            const modelName = option.getAttribute('data-value');
-            try {
-                const usageInfo = await fetchModelFreeUsageInfo(modelName);
-                
-                // 查找或创建免费次数显示元素
-                let freeUsageDisplay = option.querySelector('.free-usage-display');
-                if (!freeUsageDisplay) {
-                    freeUsageDisplay = document.createElement('div');
-                    freeUsageDisplay.className = 'free-usage-display';
-                    option.appendChild(freeUsageDisplay);
-                }
-                
-                // 创建无穷符号SVG
-                const infinitySvg = `
-                    <svg class="infinity-icon" width="24" height="14" viewBox="0 0 24 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
-                        <path d="M9.12 13.8C7.36 13.8 5.832 13.172 4.536 11.916C3.24 10.62 2.592 9.092 2.592 7.332C2.592 5.572 3.24 4.064 4.536 2.808C5.832 1.512 7.36 0.863999 9.12 0.863999C10.88 0.863999 12.368 1.512 13.584 2.808L12.096 4.296C11.2 3.32 10.176 2.832 9.024 2.832C7.872 2.832 6.892 3.24 6.084 4.056C5.316 4.832 4.932 5.852 4.932 7.116C4.932 8.38 5.316 9.42 6.084 10.236C6.892 11.012 7.872 11.4 9.024 11.4C10.176 11.4 11.2 10.912 12.096 9.936L13.584 11.424C12.368 12.68 10.88 13.8 9.12 13.8Z" fill="currentColor"/>
-                        <path d="M14.88 13.8C13.12 13.8 11.592 13.172 10.296 11.916C9 10.62 8.352 9.092 8.352 7.332C8.352 5.572 9 4.064 10.296 2.808C11.592 1.512 13.12 0.863999 14.88 0.863999C16.64 0.863999 18.128 1.512 19.344 2.808L17.856 4.296C16.96 3.32 15.936 2.832 14.784 2.832C13.632 2.832 12.652 3.24 11.844 4.056C11.076 4.832 10.692 5.852 10.692 7.116C10.692 8.38 11.076 9.42 11.844 10.236C12.652 11.012 13.632 11.4 14.784 11.4C15.936 11.4 16.96 10.912 17.856 9.936L19.344 11.424C18.128 12.68 16.64 13.8 14.88 13.8Z" fill="currentColor"/>
-                    </svg>
-                `;
-                
-                // 更新显示内容
-                const isInfinite = usageInfo.limit === -1;
-                freeUsageDisplay.innerHTML = isInfinite ? 
-                    `<span class="free-usage-remaining"><img src="/static/icons/infinity.svg" alt="无限" style="height: 20px; vertical-align: middle;"></span>` : 
-                    `<span class="free-usage-remaining">${usageInfo.remaining}</span>/<span class="free-usage-limit">${usageInfo.limit}</span>`;
-                
-                // 添加样式
-                if (isInfinite) {
-                    freeUsageDisplay.style.color = '#4CAF50'; // 使用绿色表示无限
-                    freeUsageDisplay.style.display = 'inline-flex';
-                    freeUsageDisplay.style.alignItems = 'center';
-                    freeUsageDisplay.style.gap = '2px';
-                }
-                
-                // 如果剩余次数为0且不是无限次数，添加警告样式
-                if (!isInfinite && usageInfo.remaining <= 0) {
-                    freeUsageDisplay.classList.add('depleted');
-                } else {
-                    freeUsageDisplay.classList.remove('depleted');
-                }
-            } catch (error) {
-                console.error(`获取模型${modelName}免费使用次数失败:`, error);
+        try {
+            // 如果用户未登录，则跳过
+            if (!state.currentUser || !state.currentUser.id) {
+                console.log('未登录用户，跳过更新模型免费使用次数');
+                return;
             }
+            
+            const modelOptions = document.querySelectorAll('.model-option');
+            if (!modelOptions || modelOptions.length === 0) {
+                console.warn('未找到模型选项元素，无法更新免费使用次数');
+                return;
+            }
+            
+            for (const option of modelOptions) {
+                const modelName = option.getAttribute('data-value');
+                try {
+                    const usageInfo = await fetchModelFreeUsageInfo(modelName);
+                    
+                    // 查找或创建免费次数显示元素
+                    let freeUsageDisplay = option.querySelector('.free-usage-display');
+                    if (!freeUsageDisplay) {
+                        freeUsageDisplay = document.createElement('div');
+                        freeUsageDisplay.className = 'free-usage-display';
+                        option.appendChild(freeUsageDisplay);
+                    }
+                    
+                    // 创建无穷符号SVG
+                    const infinitySvg = `
+                        <svg class="infinity-icon" width="24" height="14" viewBox="0 0 24 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                            <path d="M9.12 13.8C7.36 13.8 5.832 13.172 4.536 11.916C3.24 10.62 2.592 9.092 2.592 7.332C2.592 5.572 3.24 4.064 4.536 2.808C5.832 1.512 7.36 0.863999 9.12 0.863999C10.88 0.863999 12.368 1.512 13.584 2.808L12.096 4.296C11.2 3.32 10.176 2.832 9.024 2.832C7.872 2.832 6.892 3.24 6.084 4.056C5.316 4.832 4.932 5.852 4.932 7.116C4.932 8.38 5.316 9.42 6.084 10.236C6.892 11.012 7.872 11.4 9.024 11.4C10.176 11.4 11.2 10.912 12.096 9.936L13.584 11.424C12.368 12.68 10.88 13.8 9.12 13.8Z" fill="currentColor"/>
+                            <path d="M14.88 13.8C13.12 13.8 11.592 13.172 10.296 11.916C9 10.62 8.352 9.092 8.352 7.332C8.352 5.572 9 4.064 10.296 2.808C11.592 1.512 13.12 0.863999 14.88 0.863999C16.64 0.863999 18.128 1.512 19.344 2.808L17.856 4.296C16.96 3.32 15.936 2.832 14.784 2.832C13.632 2.832 12.652 3.24 11.844 4.056C11.076 4.832 10.692 5.852 10.692 7.116C10.692 8.38 11.076 9.42 11.844 10.236C12.652 11.012 13.632 11.4 14.784 11.4C15.936 11.4 16.96 10.912 17.856 9.936L19.344 11.424C18.128 12.68 16.64 13.8 14.88 13.8Z" fill="currentColor"/>
+                        </svg>
+                    `;
+                    
+                    // 更新显示内容
+                    const isInfinite = usageInfo.limit === -1;
+                    freeUsageDisplay.innerHTML = isInfinite ? 
+                        `<span class="free-usage-remaining"><img src="/static/icons/infinity.svg" alt="无限" style="height: 20px; vertical-align: middle;"></span>` : 
+                        `<span class="free-usage-remaining">${usageInfo.remaining}</span>/<span class="free-usage-limit">${usageInfo.limit}</span>`;
+                    
+                    // 添加样式
+                    if (isInfinite) {
+                        freeUsageDisplay.style.color = '#4CAF50'; // 使用绿色表示无限
+                        freeUsageDisplay.style.display = 'inline-flex';
+                        freeUsageDisplay.style.alignItems = 'center';
+                        freeUsageDisplay.style.gap = '2px';
+                    }
+                    
+                    // 如果剩余次数为0且不是无限次数，添加警告样式
+                    if (!isInfinite && usageInfo.remaining <= 0) {
+                        freeUsageDisplay.classList.add('depleted');
+                    } else {
+                        freeUsageDisplay.classList.remove('depleted');
+                    }
+                } catch (error) {
+                    console.error(`获取模型${modelName}免费使用次数失败:`, error);
+                }
+            }
+        } catch (error) {
+            console.error('更新模型免费使用次数失败:', error);
         }
     }
 

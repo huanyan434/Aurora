@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://s4.zstatic.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://s4.zstatic.net/ajax/libs/marked/15.0.7/marked.min.js"></script>
     <!-- KaTeX CSS -->
     <link rel="stylesheet" href="https://s4.zstatic.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -68,16 +68,38 @@
             <!-- 用户信息 -->
             <div class="user-profile">
                 <div class="user-avatar">
-                    {{ current_user.username[0].upper() }}
+                    {% if current_user.is_authenticated %}
+                        {{ current_user.username[0].upper() }}
+                    {% else %}
+                        <i class="bi bi-person"></i>
+                    {% endif %}
                 </div>
                 <div class="user-info">
-                    <div class="user-name" id="user-name-display">{{ current_user.username }}</div>
-                    <div class="user-status">在线</div>
+                    <div class="user-name" id="user-name-display">
+                        {% if current_user.is_authenticated %}
+                            {{ current_user.username }}
+                        {% else %}
+                            游客
+                        {% endif %}
+                    </div>
+                    <div class="user-status">
+                        {% if current_user.is_authenticated %}
+                            在线
+                        {% else %}
+                            未登录
+                        {% endif %}
+                    </div>
                 </div>
-                <button class="logout-btn">
+                <button class="logout-btn" {% if not current_user.is_authenticated %}onclick="window.location.href='/auth/login'"{% endif %}>
+                    {% if current_user.is_authenticated %}
                     <svg viewBox="0 0 24 24" width="18" height="18">
                         <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
                     </svg>
+                    {% else %}
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/>
+                    </svg>
+                    {% endif %}
                 </button>
             </div>
         </div>
@@ -219,7 +241,14 @@
                     <div class="user-info-section">
                         <h4>用户信息</h4>
                         <div class="username-display">
-                            <span id="profile-username">{{ current_user.username }}</span>
+                            <span id="profile-username">
+                                {% if current_user.is_authenticated %}
+                                    {{ current_user.username }}
+                                {% else %}
+                                    游客
+                                {% endif %}
+                            </span>
+                            {% if current_user.is_authenticated %}
                             <div class="user-buttons">
                                 <button class="edit-username-btn">
                                     <i class="bi bi-pencil"></i>
@@ -228,14 +257,28 @@
                                     <i class="bi bi-key"></i>
                                 </button>
                             </div>
+                            {% endif %}
                         </div>
+                        {% if current_user.is_authenticated %}
                         <div class="username-edit" style="display: none;">
                             <input type="text" id="username-input" value="{{ current_user.username }}">
                             <button id="save-username-btn">保存</button>
                             <button id="cancel-username-btn">取消</button>
                         </div>
+                        {% else %}
+                        <div class="login-prompt">
+                            <p>请先登录以使用完整功能</p>
+                            <button onclick="window.location.href='/auth/login'" class="login-btn">
+                                <i class="bi bi-box-arrow-in-right"></i> 登录
+                            </button>
+                            <button onclick="window.location.href='/auth/signup'" class="signup-btn">
+                                <i class="bi bi-person-plus"></i> 注册
+                            </button>
+                        </div>
+                        {% endif %}
                     </div>
                     
+                    {% if current_user.is_authenticated %}
                     <!-- 会员信息 -->
                     <div class="user-info-section">
                         <h4>会员状态</h4>
@@ -290,6 +333,7 @@
                             </button>
                         </div>
                     </div>
+                    {% endif %}
 
                     <!-- 获取兑换码链接 -->
                     <div class="get-code-section">

@@ -3493,3 +3493,77 @@ body.dark .au-tooltip {
         color: #a0b0ff;
     }
 }
+
+/* 游客登录注册按钮 */
+.login-prompt {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: rgba(240, 240, 240, 0.6);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.login-prompt p {
+    margin-bottom: 15px;
+    color: #555;
+    font-size: 14px;
+}
+
+.login-btn, .signup-btn {
+    padding: 8px 15px;
+    margin: 0 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.login-btn {
+    background-color: #4361ee;
+    color: white;
+}
+
+.signup-btn {
+    background-color: #fff;
+    color: #4361ee;
+    border: 1px solid #4361ee;
+}
+
+.login-btn:hover {
+    background-color: #3c59d6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.signup-btn:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.login-btn i, .signup-btn i {
+    margin-right: 5px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .login-prompt {
+        background-color: rgba(50, 50, 50, 0.6);
+    }
+    
+    .login-prompt p {
+        color: #ccc;
+    }
+    
+    .signup-btn {
+        background-color: #333;
+        color: #4361ee;
+    }
+    
+    .signup-btn:hover {
+        background-color: #444;
+    }
+}

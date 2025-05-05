@@ -18,7 +18,6 @@ from app.routes.func import generate, get_active_responses
 chat_bp = Blueprint('chat', __name__)
 
 @chat_bp.route('/', methods=['GET'])
-@login_required
 def chat_index():
     return render_template('chat/index.html')
 
@@ -320,31 +319,25 @@ def delete_conversation(conversation_id):
 @chat_bp.route('/api/user/current')
 def get_current_user():
     """获取当前用户信息"""
-    if current_user.is_authenticated:
-        return jsonify({
-            "id": current_user.id,
-            "username": current_user.username,
-            "email": current_user.email,
-            "is_authenticated": True
-        })
-    elif 'user_id' in session:
-        # 从数据库中查找用户
-        user = User.query.get(session['user_id'])
-        if user:
+    try:
+        if current_user.is_authenticated:
             return jsonify({
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "is_authenticated": False
+                'id': str(current_user.id),  # 将UUID转换为字符串
+                'username': current_user.username,
+                'email': current_user.email,
+                'member_level': current_user.member_level if hasattr(current_user, 'member_level') else None
             })
-    
-    # 默认返回匿名用户
-    return jsonify({
-        "id": "anonymous",
-        "username": "匿名用户",
-        "email": "",
-        "is_authenticated": False
-    })
+        else:
+            # 对未登录用户返回空值而不是错误
+            return jsonify({
+                'id': None,
+                'username': None,
+                'email': None,
+                'member_level': None,
+                'is_authenticated': False
+            }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @chat_bp.route('/save-sidebar-state', methods=['POST'])
 def save_sidebar_state():
