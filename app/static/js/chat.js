@@ -167,6 +167,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // 显示主界面，隐藏加载logo
                 showMainUI();
+                
+                // 为最后一条AI消息添加复制按钮，延长等待时间
+                setTimeout(() => {
+                    addCopyButtonToLastAIMessage();
+                    // 添加复制按钮后再次滚动到底部
+                    scrollToBottom(true);
+                }, 500);
             }, 200);
             
             console.log('应用初始化完成');
@@ -1149,6 +1156,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                         textContent = textContent.replace(/<search>[\s\S]*?<\/search>/g, '').trim();
                             }
                                     
+                                    // 保存原始Markdown文本到data-original-text属性，用于复制功能
+                                    contentDiv.setAttribute('data-original-text', textContent);
+                                    
                                     // 处理base64图片标签
                                     textContent = processMessageContent(textContent, false);
                                     
@@ -1380,6 +1390,19 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // 完成响应处理后的代码块
             console.log('AI响应完成');
+
+            // 请求完成，结束流式显示
+            if (state.isSending) {
+                state.isSending = false;
+                updateSendButtonState();
+                
+                // 在AI响应完成后添加复制按钮，使用延迟以确保DOM已更新
+                setTimeout(() => {
+                    addCopyButtonToLastAIMessage();
+                    // 添加复制按钮后再次滚动到底部
+                    scrollToBottom(true);
+                }, 300);
+            }
 
             // 检查当前对话的标题是否为"新对话"，如果是则获取新标题
             if (conversationId) {
@@ -2028,6 +2051,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log('历史记录加载完成，添加复制按钮...');
                 setTimeout(() => {
                     window.addCopyButtonsToAllCodeBlocks();
+                    // 为最后一条AI消息添加复制按钮，延长等待时间
+                    setTimeout(() => {
+                        addCopyButtonToLastAIMessage();
+                        // 添加复制按钮后再次滚动到底部
+                        scrollToBottom(true);
+                    }, 500);
                 }, 300);
             })
             .catch(error => {
@@ -5108,6 +5137,139 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         container.appendChild(header);
         container.appendChild(contentBox);
+    }
+
+    // ====================== 复制消息功能 ======================
+    // 添加复制按钮到最后一条AI消息
+    function addCopyButtonToLastAIMessage() {
+        // 先移除所有现有的复制按钮
+        document.querySelectorAll('.copy-message-btn').forEach(btn => btn.remove());
+        
+        // 获取所有AI消息 - 修正选择器
+        const aiMessages = document.querySelectorAll('.message.ai');
+        if (aiMessages.length === 0) return;
+        
+        // 获取最后一条AI消息
+        const lastAIMessage = aiMessages[aiMessages.length - 1];
+        
+        // 检查是否已经有复制按钮
+        if (lastAIMessage.querySelector('.copy-message-btn')) return;
+        
+        // 创建复制按钮
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-message-btn';
+        copyBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+            </svg>
+            复制消息
+        `;
+        
+        // 添加点击事件
+        copyBtn.addEventListener('click', function() {
+            copyAIMessage(lastAIMessage, this);
+        });
+        
+        // 添加到消息末尾
+        lastAIMessage.appendChild(copyBtn);
+    }
+    
+    // 复制消息内容
+    function copyAIMessage(messageElement, button) {
+        // 获取消息内容
+        const contentElement = messageElement.querySelector('.message-content');
+        if (!contentElement) return;
+        
+        // 尝试从data-original-text属性获取原始内容
+        let textContent = contentElement.getAttribute('data-original-text');
+        
+        // 如果没有原始属性，则从HTML内容中提取并转换回Markdown格式
+        if (!textContent) {
+            const contentClone = contentElement.cloneNode(true);
+            
+            // 处理标题
+            Array.from(contentClone.querySelectorAll('h1, h2, h3, h4, h5, h6')).forEach(heading => {
+                const level = parseInt(heading.tagName.substring(1));
+                const hashes = '#'.repeat(level) + ' ';
+                heading.textContent = hashes + heading.textContent;
+            });
+            
+            // 处理加粗文本
+            Array.from(contentClone.querySelectorAll('strong')).forEach(strong => {
+                strong.textContent = '**' + strong.textContent + '**';
+            });
+            
+            // 处理斜体文本
+            Array.from(contentClone.querySelectorAll('em')).forEach(em => {
+                em.textContent = '*' + em.textContent + '*';
+            });
+            
+            // 处理代码块
+            Array.from(contentClone.querySelectorAll('pre > code')).forEach(code => {
+                const language = code.className.replace('language-', '').trim();
+                code.textContent = '```' + language + '\n' + code.textContent + '\n```';
+            });
+            
+            // 处理行内代码
+            Array.from(contentClone.querySelectorAll('code:not(pre > code)')).forEach(code => {
+                code.textContent = '`' + code.textContent + '`';
+            });
+            
+            // 处理列表
+            Array.from(contentClone.querySelectorAll('ul li')).forEach(li => {
+                li.textContent = '- ' + li.textContent;
+            });
+            
+            Array.from(contentClone.querySelectorAll('ol li')).forEach((li, index) => {
+                li.textContent = (index + 1) + '. ' + li.textContent;
+            });
+            
+            // 处理链接
+            Array.from(contentClone.querySelectorAll('a')).forEach(a => {
+                a.textContent = '[' + a.textContent + '](' + a.href + ')';
+            });
+            
+            // 最后，提取所有文本内容
+            textContent = contentClone.textContent || contentClone.innerText;
+        }
+        
+        // 创建临时文本区域
+        const textarea = document.createElement('textarea');
+        textarea.value = textContent;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        
+        // 选择并复制文本
+        textarea.select();
+        document.execCommand('copy');
+        
+        // 移除临时元素
+        document.body.removeChild(textarea);
+        
+        // 更新按钮状态
+        button.classList.add('copied');
+        button.innerHTML = `
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            已复制
+        `;
+        
+        // 2秒后恢复按钮原状
+        setTimeout(() => {
+            button.classList.remove('copied');
+            button.innerHTML = `
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                </svg>
+                复制消息
+            `;
+        }, 2000);
+        
+        // 显示通知
+        showNotification('消息已复制到剪贴板', 2000);
     }
 });
 

@@ -3597,3 +3597,59 @@ body.dark .au-tooltip {
         color: #e0e0e0;
     }
 }
+
+/* ===== AI消息复制按钮样式 ===== */
+.copy-message-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    margin-top: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: rgba(67, 97, 238, 0.1);
+    color: var(--primary-color);
+    border: 1px solid rgba(67, 97, 238, 0.2);
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: auto;
+}
+
+.copy-message-btn:hover {
+    background-color: rgba(67, 97, 238, 0.2);
+    transform: translateY(-1px);
+}
+
+.copy-message-btn svg {
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    fill: currentColor;
+}
+
+.copy-message-btn.copied {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border-color: rgba(40, 167, 69, 0.2);
+}
+
+/* 深色模式下的复制按钮样式 */
+@media (prefers-color-scheme: dark) {
+    .copy-message-btn {
+        background-color: rgba(77, 107, 248, 0.15);
+        color: #7b8eff;
+        border-color: rgba(77, 107, 248, 0.3);
+    }
+    
+    .copy-message-btn:hover {
+        background-color: rgba(77, 107, 248, 0.25);
+    }
+    
+    .copy-message-btn.copied {
+        background-color: rgba(40, 167, 69, 0.15);
+        color: #40c463;
+        border-color: rgba(40, 167, 69, 0.3);
+    }
+}
