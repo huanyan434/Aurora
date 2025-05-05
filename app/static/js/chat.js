@@ -135,13 +135,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // 异步加载其他资源
                 setupScrollListener();
-            startMarkdownObserver();
-            
-            // 初始化完成后添加复制按钮
+                startMarkdownObserver();
+                
+                // 初始化完成后添加复制按钮
                 window.addCopyButtonsToAllCodeBlocks();
                 
                 // 确保滚动到底部
                 scrollToBottom(true);
+                
+                // 显示主界面，隐藏加载logo
+                showMainUI();
             }, 200);
             
             console.log('应用初始化完成');
@@ -149,7 +152,39 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('初始化过程中发生错误:', error);
             // 确保显示初始页面，即使发生错误
             showInitialPage();
+            // 出错时也显示主界面，隐藏加载logo
+            showMainUI();
         }
+    }
+    
+    // 显示主界面，隐藏加载logo
+    function showMainUI() {
+        // 显示所有隐藏的元素
+        const appContainer = document.getElementById('app-container');
+        if (appContainer) {
+            appContainer.style.display = 'flex'; // 使用flex布局而不是block
+        }
+        
+        // 特别确保chat-main元素显示
+        const chatMain = document.querySelector('.chat-main');
+        if (chatMain) {
+            chatMain.style.display = 'flex';
+            chatMain.style.flexDirection = 'column';
+            chatMain.style.flex = '1';
+        }
+        
+        // 隐藏loading logo
+        const logoContainer = document.getElementById('loading-logo-container');
+        if (logoContainer) {
+            logoContainer.style.opacity = '0';
+            logoContainer.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => {
+                logoContainer.style.display = 'none';
+            }, 300);
+        }
+        
+        // 强制重绘页面布局
+        window.dispatchEvent(new Event('resize'));
     }
 
     // 获取当前用户信息
