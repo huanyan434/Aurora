@@ -33,6 +33,12 @@
             height: auto;
             animation: pulse 1.5s infinite ease-in-out;
         }
+        .loading-logo-dark {
+            width: 150px;
+            height: auto;
+            animation: pulse 1.5s infinite ease-in-out;
+            display: none;
+        }
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -41,12 +47,24 @@
         .hide-on-load {
             display: none;
         }
+        @media (prefers-color-scheme: dark) {
+            .loading-logo-container {
+                background-color: #121212;
+            }
+            .loading-logo {
+                display: none;
+            }
+            .loading-logo-dark {
+                display: block !important;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- 加载中的Logo -->
     <div class="loading-logo-container" id="loading-logo-container">
         <img src="{{ url_for('static', filename='icon.png') }}" alt="Aurora Logo" class="loading-logo">
+        <img src="{{ url_for('static', filename='icon_dark.png') }}" alt="Aurora Logo" class="loading-logo-dark">
     </div>
 
     <div class="app-container hide-on-load" id="app-container">
@@ -72,7 +90,7 @@
             <div class="user-profile">
                 <div class="user-avatar">
                     {% if current_user.is_authenticated %}
-                        {{ current_user.username[0].upper() }}
+                    {{ current_user.username[0].upper() }}
                     {% else %}
                         <i class="bi bi-person"></i>
                     {% endif %}
