@@ -180,7 +180,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                 stream=True,
             )
 
-        stm = time.time()
+        start_time = time.time()
 
         for chunk in response:
             if hasattr(
@@ -189,20 +189,20 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                 if fstrs == True:
                     fstrs = False
                 reasoning_content += chunk.choices[0].delta.reasoning_content
-                tkt = time.time() - stm
+                think_time = time.time() - start_time
                 response_text = "<think time=" + \
-                    str(int(tkt)) + ">" + reasoning_content + "</think>"
+                    str(int(think_time)) + ">" + reasoning_content + "</think>"
                 response_queue.put(search + response_text)
             elif chunk.choices[0].delta.content:
                 if fstct == True:
                     fstct = False
-                    tkt = time.time() - stm
+                    think_time = time.time() - start_time
                 content += chunk.choices[0].delta.content
                 if not reasoning_content.strip():
                     response_queue.put(search + content)
                 else:
                     response_text = "<think time=" + \
-                        str(int(tkt)) + ">" + reasoning_content + \
+                        str(int(think_time)) + ">" + reasoning_content + \
                         "</think>" + content
                     response_queue.put(search + response_text)
 
@@ -244,7 +244,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         # 标记响应完成
         response_queue.put(None)
         return search + "<think time=" + \
-            str(int(tkt)) + ">" + reasoning_content + \
+            str(int(think_time)) + ">" + reasoning_content + \
             "</think>" + content
     except Exception as e:
         print(f"OpenAI API调用出错: {str(e)}")
