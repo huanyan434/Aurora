@@ -3593,12 +3593,6 @@ body.dark .au-tooltip {
 }
 
 @media (prefers-color-scheme: dark) {
-    .light-mode-logo {
-        display: none;
-    }
-    .dark-mode-logo {
-        display: block;
-    }
     .aurora-title span {
         color: #e0e0e0;
     }

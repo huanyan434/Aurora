@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aurora</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon_dark.png') }}" media="(prefers-color-scheme: dark)">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -59,7 +58,6 @@
             <div class="sidebar-header">
                 <div class="aurora-title">
                     <img src="{{ url_for('static', filename='icon.png') }}" alt="Aurora Logo" class="aurora-logo light-mode-logo">
-                    <img src="{{ url_for('static', filename='icon_dark.png') }}" alt="Aurora Logo" class="aurora-logo dark-mode-logo">
                     <span>Aurora</span>
                 </div>
                 <button id="new-chat-btn" class="new-chat-btn">新对话</button>

@@ -2356,9 +2356,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         <button class="signup-btn" onclick="window.location.href='/auth/signup'">
                             注册
                         </button>
-                    </div>
                 </div>
-            `;
+            </div>
+        `;
             
             // 为未登录用户修改输入框提示文本
             if (elements.messageInput) {
