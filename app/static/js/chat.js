@@ -906,6 +906,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 online_search: isOnlineSearchEnabled
             };
             
+            // 添加 message_id，以便后端使用已有的线程续流
+            requestBody.message_id = aiMessageId;
+            
             // 确保联网搜索时prompt参数有值
             if (isOnlineSearchEnabled) {
                 if (!requestBody.prompt || requestBody.prompt.trim() === '') {
@@ -3685,11 +3688,16 @@ document.addEventListener('DOMContentLoaded', function () {
             for (const item of pending) {
                 const { messageData } = item;
                 const mid = messageData.message_id;
+                const convId = messageData.conversation_id;
                 if (active[mid]) {
+                    // 如果当前会话不是该消息所属会话，先加载历史记录
+                    if (state.currentConversationId !== convId) {
+                        await loadConversationHistory(convId);
+                    }
                     // DOM 中如果还没创建加载条则先创建
                     createLoadingMessage(mid, messageData.model);
-                    // 续流
-                    await getAIResponse(messageData, state.currentConversationId, mid);
+                    // 续流到正确的会话
+                    await getAIResponse(messageData, convId, mid);
                     // 移除 pending
                     pending = JSON.parse(localStorage.getItem('pending_ai_messages') || '[]')
                         .filter(i => i.messageData.message_id !== mid);
