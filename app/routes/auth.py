@@ -22,6 +22,7 @@ def login():
         
         login_user(user, remember=remember)
         session['user_id'] = str(user.id)  # 将UUID转换为字符串
+        session.permanent = True  # 设置会话为持久性，使用PERMANENT_SESSION_LIFETIME的值
         return redirect(url_for('chat.chat_index'))
     
     return render_template('auth/login.html')

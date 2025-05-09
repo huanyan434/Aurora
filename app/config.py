@@ -19,7 +19,7 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 最大上传文件大小（16MB）
     
     # 会话配置
-    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
+    PERMANENT_SESSION_LIFETIME = timedelta(days=30)  # 会话过期时间改为30天
     SESSION_COOKIE_SECURE = False  # 在生产环境中设置为True
     SESSION_COOKIE_HTTPONLY = True
     

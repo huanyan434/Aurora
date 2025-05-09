@@ -8,4 +8,4 @@ class Config:
     TESTING = False
     SESSION_COOKIE_SECURE = True  # 如果使用 HTTPS
     SESSION_COOKIE_HTTPONLY = True
-    PERMANENT_SESSION_LIFETIME = 3600  # session 过期时间（秒）
+    PERMANENT_SESSION_LIFETIME = 2592000  # session过期时间（秒），相当于30天
