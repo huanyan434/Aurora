@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.classList.toggle('active');
                 
                 if (this.classList.contains('active')) {
-                    showNotification('已启用联网搜索功能', 3000);
+                    // showNotification('已启用联网搜索功能', 3000);
                     
                     // 检查当前是否有文本内容
                     const content = elements.messageInput.value.trim();
@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         elements.messageInput.focus();
                     }
                 } else {
-                    showNotification('已关闭联网搜索功能', 2000);
+                    // showNotification('已关闭联网搜索功能', 2000);
                 }
             });
         }
@@ -2875,7 +2875,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     copyButton.style.color = '#fff';
                     
                     // 显示提示
-                    showNotification('代码已复制到剪贴板', 1500);
+                    // showNotification('代码已复制到剪贴板', 1500);
                     
                     // 2秒后恢复原状
                     setTimeout(() => {
@@ -2944,7 +2944,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.body.removeChild(textArea);
             
             if (successful) {
-                showNotification('已复制到剪贴板');
+                // showNotification('已复制到剪贴板');
             } else {
                 showNotification('复制失败，请手动复制');
             }
@@ -5170,7 +5170,6 @@ document.addEventListener('DOMContentLoaded', function () {
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
             </svg>
-            复制消息
         `;
         
         // 添加点击事件
@@ -5262,7 +5261,6 @@ document.addEventListener('DOMContentLoaded', function () {
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
             </svg>
-            已复制
         `;
         
         // 2秒后恢复按钮原状
@@ -5272,12 +5270,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                 </svg>
-                复制消息
             `;
         }, 2000);
         
         // 显示通知
-        showNotification('消息已复制到剪贴板', 2000);
+        // showNotification('消息已复制到剪贴板', 2000);
     }
 });
 

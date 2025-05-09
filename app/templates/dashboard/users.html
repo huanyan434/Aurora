@@ -141,15 +141,15 @@
         font-size: 1.1rem;
         padding: 1.5rem;
     }
-    
+
     #confirmDialog .btn-primary {
-        background-color: var(--primary);
-        border-color: var(--primary);
+        background-color: #007bff;
+        border-color: #007bff;
     }
     
     #confirmDialog .btn-primary:hover {
-        background-color: var(--secondary);
-        border-color: var(--secondary);
+        background-color: #005cbe;
+        border-color: #005cbe;
     }
 </style>
 {% endblock %}
@@ -936,68 +936,58 @@
         if (existingModal) {
             document.body.removeChild(existingModal);
         }
-        
+
         // 创建模态对话框
         const modalHTML = `
-        <div class="modal fade" id="confirmDialog" tabindex="-1" role="dialog" aria-labelledby="confirmDialogLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
+        <div class="modal fade" id="confirmDialog" tabindex="-1" aria-labelledby="confirmDialogLabel" aria-modal="true" role="dialog">
+            <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="confirmDialogLabel">确认操作</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         ${message}
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                         <button type="button" class="btn btn-primary" id="confirmDialogConfirmBtn">确认</button>
                     </div>
                 </div>
             </div>
         </div>
         `;
-        
+
         // 添加到文档
         const modalContainer = document.createElement('div');
         modalContainer.innerHTML = modalHTML;
         document.body.appendChild(modalContainer.firstElementChild);
-        
-        // 获取对话框元素
+
+        // 获取对话框元素和确认按钮
         const modalElement = document.getElementById('confirmDialog');
         const confirmBtn = document.getElementById('confirmDialogConfirmBtn');
-        
-        // 显示对话框
-        $(modalElement).modal('show');
-        
-        // 点击确认按钮执行回调
-        confirmBtn.addEventListener('click', function() {
-            $(modalElement).modal('hide');
+
+        // 使用 Bootstrap 5 原生 Modal API 显示模态
+        const bsModal = new bootstrap.Modal(modalElement);
+        bsModal.show();
+
+        // 确认按钮点击回调
+        confirmBtn.addEventListener('click', () => {
+            bsModal.hide();
             if (typeof confirmCallback === 'function') {
                 confirmCallback();
             }
         });
-        
-        // 点击关闭按钮关闭对话框
-        const closeBtn = modalElement.querySelector('.close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                $(modalElement).modal('hide');
+
+        // 关闭和取消按钮点击时隐藏模态框
+        modalElement.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                bsModal.hide();
             });
-        }
-        
-        // 点击取消按钮关闭对话框
-        const cancelBtn = modalElement.querySelector('.btn-secondary');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', function() {
-                $(modalElement).modal('hide');
-            });
-        }
-        
-        // 移除对话框事件
-        $(modalElement).on('hidden.bs.modal', function() {
+        });
+
+        // 隐藏后移除模态框
+        modalElement.addEventListener('hidden.bs.modal', () => {
             if (modalElement.parentNode === document.body) {
                 document.body.removeChild(modalElement);
             }

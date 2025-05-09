@@ -801,6 +801,12 @@ body {
     border: 1px solid var(--glass-border);
     transform: translateY(-20px);
     transition: transform 0.3s ease;
+    /* 从 Dashboard 复制 modal-dialog 样式 */
+    margin: 0 auto;
+    max-width: 500px;
+    width: 95%;
+    pointer-events: auto;
+    transform: none !important;
 }
 
 .confirm-dialog.show .confirm-content {
@@ -3605,7 +3611,6 @@ body.dark .au-tooltip {
     justify-content: center;
     padding: 6px 12px;
     margin-top: 10px;
-    margin-left: auto;
     margin-right: auto;
     background-color: rgba(67, 97, 238, 0.1);
     color: var(--primary-color);
@@ -3625,7 +3630,6 @@ body.dark .au-tooltip {
 .copy-message-btn svg {
     width: 14px;
     height: 14px;
-    margin-right: 6px;
     fill: currentColor;
 }
 
