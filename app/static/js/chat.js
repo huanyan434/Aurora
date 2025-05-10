@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
         cancelDeactivateBtn: document.getElementById('cancel-deactivate-btn'), // 取消注销按钮
         countdownTimer: document.getElementById('countdown-timer'), // 倒计时显示
         onlineSearchBtn: document.getElementById('online-search-btn'), // 联网搜索按钮
+        conversationTitle: document.querySelector('.chat-main .conversation-title'), // 新增：聊天区标题元素
     };
 
     // ====================== 初始化 ======================
@@ -1835,6 +1836,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 更新侧边栏中的活动对话项
         updateActiveConversationInSidebar(conversationId);
+        // 新增：设置聊天区标题
+        if (elements.conversationTitle) {
+            const conv = state.conversations.find(c => c.id === conversationId);
+            elements.conversationTitle.textContent = conv && conv.title ? conv.title : '';
+        }
 
         fetch(`/conversations/${conversationId}/history`)
             .then(response => {

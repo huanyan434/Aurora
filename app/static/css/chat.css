@@ -28,7 +28,7 @@
     
     /* 新增背景色变量 */
     --bg-color: #f5f7fa;
-    --sidebar-bg: rgba(255, 255, 255, 0.95);
+    --sidebar-bg: #F9FBFF;
     --main-bg: rgba(255, 255, 255, 0.95);
 }
 
@@ -109,14 +109,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 15px;
-    margin-bottom: 8px;
+    padding: 8px 9px;
+    margin-bottom: 4px;
     cursor: pointer;
     transition: all 0.3s ease;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.5);
     backdrop-filter: blur(5px);
-    border: 1px solid var(--glass-border);
 }
 
 .conversation-content {
@@ -155,13 +153,11 @@ body {
 }
 
 .conversation-item.active {
-    background: rgba(200, 200, 200, 0.3);
-    /* 淡灰色背景 */
-    border-color: var(--primary-color);
+    background: #DBEAFE;
 }
 
 .conversation-item:hover {
-    border-color: #3c59d6;
+    border-color: #EFF6FF;
 }
 
 .conversation-title {
@@ -273,6 +269,9 @@ body {
     left: 0;
     right: 0;
     height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     background: linear-gradient(to bottom, 
                 rgb(255, 255, 255) 0%, 
                 rgb(255, 255, 255) 76%,
@@ -289,16 +288,14 @@ body {
     right: 0;
     height: 55px;
     background: var(--main-bg);
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 /* overlay 中的对话标题样式 */
-.chat-overlay-d .conversation-title {
+.chat-overlay .conversation-title {
     font-weight: bold;
     color: var(--dark-color);
     margin: 0;
+    z-index: 15;
 }
 
 /* 暗色模式下的顶部渐变 */
@@ -444,6 +441,7 @@ body {
     display: flex;
     align-items: center;
     width: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 #message-input {
@@ -1156,19 +1154,12 @@ body {
         background: #212327;
     }
 
-    .conversation-item {
-        background: #212327;
-        border-color: rgba(255, 255, 255, 0.08);
-    }
-
     .conversation-item:hover {
         background: #333333;
-        border-color: rgba(255, 255, 255, 0.15);
     }
 
     .conversation-item.active {
-        background: rgba(67, 97, 238, 0.25);
-        border-color: var(--primary-color);
+        background: #333333;
     }
 
     .conversation-title {
@@ -1806,166 +1797,6 @@ body {
     margin-right: 8px;
     font-size: 16px;
     color: #666;
-}
-
-/* 确保菜单不超出屏幕边界 */
-.conversation-item {
-    position: relative;
-}
-
-/* 悬浮框 */
-/* .au-tooltip {
-    --tooltip-text-color: #fff;
-    --tooltip-color: #222;
-    --tooltip-box-shadow: 0 6px 16px 0 rgba(0, 0, 0, .08), 0 3px 6px -4px rgba(0, 0, 0, .12), 0 9px 28px 8px rgba(0, 0, 0, .05)
-}
-
-.au-tooltip.au-tooltip--m {
-    --tooltip-font-size: var(--au-font-size-m);
-    --tooltip-line-height: var(--au-line-height-m);
-    --tooltip-padding: 6px 12px;
-    --tooltip-arrow-size: 8px
-}
-
-.au-tooltip.au-tooltip--s {
-    --tooltip-font-size: var(--au-font-size-s);
-    --tooltip-line-height: var(--au-line-height-s);
-    --tooltip-padding: 6px 10px;
-    --tooltip-arrow-size: 6px
-}
-
-body.dark .au-tooltip {
-    --tooltip-text-color: rgb(var(--au-rgb-label-1));
-    --tooltip-color: rgb(var(--au-rgb-elevated));
-    --tooltip-box-shadow: 0 6px 16px 0 rgba(0, 0, 0, .08), 0 3px 6px -4px rgba(0, 0, 0, .12), 0 9px 28px 8px rgba(0, 0, 0, .05)
-}
-
-.au-tooltip.au-tooltip--show-shadow,
-.au-tooltip.au-tooltip--show-shadow__arrow,
-body.dark .au-tooltip {
-    box-shadow: var(--tooltip-box-shadow)
-}
-
-.au-tooltip {
-    padding: var(--tooltip-padding);
-    font-size: var(--tooltip-font-size);
-    line-height: var(--tooltip-line-height);
-    background-color: var(--tooltip-color);
-    color: var(--tooltip-text-color);
-    max-width: var(--au-toast-max-width, calc(100vw - 28px));
-    border-radius: 10px;
-    position: relative
-}
-
-.au-tooltip__arrow {
-    z-index: -1;
-    color: var(--tooltip-color);
-    z-index: 1;
-    justify-content: center;
-    align-items: flex-start;
-    display: flex;
-    position: absolute
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--sharp {
-    width: calc(var(--tooltip-arrow-size)*1.414);
-    height: calc(var(--tooltip-arrow-size)*1.414);
-    background-color: var(--tooltip-color)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--soft {
-    width: calc(var(--tooltip-arrow-size)*2);
-    height: calc(var(--tooltip-arrow-size)*2)
-}
-
-.au-tooltip__soft-arrow {
-    height: var(--tooltip-arrow-size);
-    flex-shrink: 0;
-    transform: translateY(100%)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--sharp[au-floating-placement^=top] {
-    top: 100%;
-    transform: translateY(-50%)rotate(45deg)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--sharp[au-floating-placement^=bottom] {
-    bottom: 100%;
-    transform: translateY(50%)rotate(45deg)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--sharp[au-floating-placement^=left] {
-    left: 100%;
-    transform: translate(-50%)rotate(45deg)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--sharp[au-floating-placement^=right] {
-    right: 100%;
-    transform: translate(50%)rotate(45deg)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=top] {
-    top: 100%;
-    transform: translateY(-50%)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=bottom] {
-    bottom: 100%;
-    transform: translateY(50%)rotate(180deg)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=left] {
-    left: 100%;
-    transform: translate(-50%)rotate(270deg)
-}
-
-.au-tooltip__arrow.au-tooltip__arrow--soft[au-floating-placement^=right] {
-    right: 100%;
-    transform: translate(50%)rotate(90deg)
-}
-.au-elevated {
-    --au-rgb-label-1: var(--au-rgb-neutral-100);
-    --au-rgb-label-2: var(--au-rgb-neutral-400);
-    --au-rgb-label-3: var(--au-rgb-neutral-500);
-    --au-rgb-track: var(--au-rgb-neutral-500);
-    --au-rgb-hover: var(--au-rgb-neutral-600);
-    --au-rgb-header: 40 40 40;
-    --au-rgb-separator: var(--au-rgb-neutral-600);
-    --au-rgb-separator-strong: var(--au-rgb-neutral-500);
-    --au-rgb-input: var(--au-rgb-neutral-600);
-    --au-rgb-input-strong: var(--au-rgb-neutral-600);
-    --au-rgb-input-focus: var(--au-rgb-neutral-700);
-    --au-rgb-tag: var(--au-rgb-neutral-600);
-    --au-rgb-segmented: var(--au-rgb-neutral-600);
-    --au-rgb-segmented-button: var(--au-rgb-neutral-500);
-    --au-rgb-segmented-separator: var(--au-rgb-neutral-500);
-    --au-rgb-thumb: var(--au-rgb-neutral-200)
-}
-.au-theme {
-    --au-input-height-l: 44px;
-    --au-input-height-m: 34px;
-    --au-input-height-s: 30px;
-    --au-input-height-xs: 26px;
-    --au-font-weight-strong: 600;
-    --au-font-size-l: 16px;
-    --au-line-height-l: 28px;
-    --au-font-size-m: 14px;
-    --au-line-height-m: 25px;
-    --au-font-size-sp: 13px;
-    --au-line-height-sp: 23px;
-    --au-font-size-s: 12px;
-    --au-line-height-s: 21px;
-    --au-font-size-xsp: 11px;
-    --au-line-height-xsp: 19.5px;
-    --au-font-size-xs: 10px;
-    --au-line-height-xs: 18px;
-    --au-ease-in-out: cubic-bezier(.4, 0, .2, 1);
-    --au-ease-in: cubic-bezier(.4, 0, 1, 1);
-    --au-ease-out: cubic-bezier(0, 0, .2, 1);
-    --au-font-family-code: Menlo, "Roboto Mono", "Courier New", Courier, monospace, "Inter", sans-serif;
-    --au-transition-duration: .2s;
-    --au-transition-duration-fast: .1s;
-    --au-transition-duration-slow: .3s
 }
 
 /* 自定义独立图片容器样式 */
