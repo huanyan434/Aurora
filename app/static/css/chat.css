@@ -60,6 +60,8 @@ body {
     position: relative;
     z-index: 10;
     transform: translateX(0);
+    opacity: 1;
+    transition: transform 0.3s cubic-bezier(0.00, 0.00, 0.58, 1.00), opacity 0.3s ease-out;
     backdrop-filter: blur(var(--glass-blur));
     box-shadow: var(--glass-shadow);
     flex-shrink: 0;
@@ -287,6 +289,16 @@ body {
     right: 0;
     height: 55px;
     background: var(--main-bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* overlay 中的对话标题样式 */
+.chat-overlay-d .conversation-title {
+    font-weight: bold;
+    color: var(--dark-color);
+    margin: 0;
 }
 
 /* 暗色模式下的顶部渐变 */
@@ -703,6 +715,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: left 0.1s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 20;
     backdrop-filter: blur(var(--glass-blur));
     box-shadow: var(--glass-shadow);
@@ -722,10 +735,14 @@ body {
 
 /* 侧边栏折叠状态 */
 .conversation-sidebar.collapsed {
+    position: absolute;
+    top: 0;
+    left: 0;
     transform: translateX(-280px);
-    width: 0;
+    transition: transform 0.3s cubic-bezier(0.42, 0.00, 1.00, 1.00), opacity 0.3s ease-out;
     border-right: none;
     margin-right: 0;
+    opacity: 0;
 }
 
 .collapse-btn.collapsed {
