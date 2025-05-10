@@ -88,7 +88,6 @@ body {
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
     box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
 }
 
@@ -705,7 +704,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: left 0.1s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 20;
     backdrop-filter: blur(var(--glass-blur));
     box-shadow: var(--glass-shadow);
@@ -1133,7 +1132,7 @@ body {
     .conversation-list {
         background: #212327;
     }
-    
+
     .user-profile{
         background: #212327;
     } 
