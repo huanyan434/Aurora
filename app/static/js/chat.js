@@ -91,6 +91,16 @@ document.addEventListener('DOMContentLoaded', function () {
             // 设置模型选择器 - 对所有用户都设置
             await setupModelSelector();
 
+            // 恢复联网搜索按钮状态
+            const savedSearch = localStorage.getItem('onlineSearchActive');
+            if (elements.onlineSearchBtn) {
+                if (savedSearch === 'true') {
+                    elements.onlineSearchBtn.classList.add('active');
+                } else {
+                    elements.onlineSearchBtn.classList.remove('active');
+                }
+            }
+
             // 优化未登录场景处理 - 即使未登录也显示主界面
             if (!userData || !userData.id) {
                 console.log('未登录用户访问，显示初始界面');
@@ -285,6 +295,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elements.onlineSearchBtn) {
             elements.onlineSearchBtn.addEventListener('click', function () {
                 this.classList.toggle('active');
+                // 保存联网搜索按钮状态到缓存
+                localStorage.setItem('onlineSearchActive', this.classList.contains('active'));
 
                 if (this.classList.contains('active')) {
                     // showNotification('已启用联网搜索功能', 3000);
