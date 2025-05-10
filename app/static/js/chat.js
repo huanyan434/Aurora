@@ -1855,7 +1855,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     chatMain.appendChild(overlay);
                 }
             }
-        }, 500);
+        }, 100);
 
         // 更新侧边栏中的活动对话项
         updateActiveConversationInSidebar(conversationId);
