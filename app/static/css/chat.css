@@ -93,7 +93,6 @@ body {
 }
 
 .new-chat-btn:hover {
-    transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
 }
 
@@ -2986,7 +2985,7 @@ body.dark .au-tooltip {
         color: var(--light-color);
         background-color: var(--main-bg);
     }
-    
+
     #confirmDialog .modal-footer {
         background-color: var(--main-bg);
     }
@@ -2995,7 +2994,7 @@ body.dark .au-tooltip {
         background-color: var(--primary-color);
         border-color: var(--primary-color);
     }
-    
+
     #confirmDialog .btn-primary:hover {
         background-color: var(--primary-color);
         border-color: var(--primary-color);
