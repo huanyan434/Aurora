@@ -19,13 +19,13 @@
     --ai-text: #333;
     --think-line: #c9c9c9;
     --think-text: #353535;
-    
+
     /* 修改亚克力效果变量 */
     --glass-bg: rgba(255, 255, 255, 0.95);
     --glass-border: rgba(0, 0, 0, 0.1);
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
     --glass-blur: 5px;
-    
+
     /* 新增背景色变量 */
     --bg-color: #f5f7fa;
     --sidebar-bg: #F9FBFF;
@@ -257,7 +257,6 @@ body {
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     margin-left: 0;
     position: relative;
-    /* 添加相对定位，用于顶部渐变定位 */
 }
 
 /* 添加顶部白色渐变阴影 */
@@ -271,10 +270,10 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(to bottom, 
-                rgb(255, 255, 255) 0%, 
-                rgb(255, 255, 255) 76%,
-                rgba(255, 255, 255, 0) 100%);
+    background: linear-gradient(to bottom,
+            rgb(255, 255, 255) 0%,
+            rgb(255, 255, 255) 76%,
+            rgba(255, 255, 255, 0) 100%);
     z-index: 14;
     /* 使其索引仅次于模型选择框(z-index: 15) */
     pointer-events: none;
@@ -300,21 +299,40 @@ body {
 /* 暗色模式下的顶部渐变 */
 @media (prefers-color-scheme: dark) {
     .chat-overlay {
-        background: linear-gradient(to bottom, 
-                    #292A2D 0%, 
-                    #292A2D 76%,
-                    rgba(30, 30, 30, 0) 100%);
+        background: linear-gradient(to bottom,
+                #292A2D 0%,
+                #292A2D 76%,
+                rgba(30, 30, 30, 0) 100%);
     }
 }
 
 
 #messages {
     flex: 1;
-    padding: 20px 10%;
+    padding: 38px 0 150px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    scroll-behavior: smooth;
+    max-width: 800px;
+    margin: auto;
+}
+
+.scrollable {
+    padding: 0 16px;
+    position: absolute;
+    top: 55px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    overflow: auto;
+
+    scrollbar-gutter: stable;
+    scrollbar-color: rgba(0, 0, 0, .08) transparent;
+    transition: scrollbar-color 0.1s ease-out;
+}
+
+.scrollable:hover {
+    scrollbar-color: rgba(0, 0, 0, .15) transparent;
 }
 
 /* ===== 消息样式 ===== */
@@ -425,24 +443,6 @@ body {
 }
 
 /* ===== 输入区域 ===== */
-.input-area {
-    display: flex;
-    flex-direction: column;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.6);
-    border-top: 1px solid var(--border-color);
-    position: relative;
-    z-index: 1;
-    min-height: 100px; /* 增加输入区域高度 */
-}
-
-.input-area .input-row {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
 #message-input {
     flex: 1;
     padding: 12px 16px;
@@ -452,7 +452,7 @@ body {
     resize: none;
     max-height: 120px;
     outline: none;
-    background: transparent;
+    background: #F3F4F6;
     color: var(--dark-color);
     transition: all 0.3s ease;
 }
@@ -536,7 +536,7 @@ body {
         color: #ff6b6b;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
+
     .send-button.stop-button:hover {
         background: #3a3a3a;
     }
@@ -634,7 +634,7 @@ body {
     }
 
     #messages {
-        padding: 15px 5%;
+        padding: 15px 0 150px;
     }
 
     .model-select {
@@ -653,7 +653,7 @@ body {
         width: 48px;
         height: 48px;
     }
-    
+
     .send-button.stop-button svg {
         width: 28px;
         height: 28px;
@@ -755,11 +755,11 @@ body {
     .collapse-btn {
         left: 280px;
     }
-    
+
     .collapse-btn.collapsed {
         left: 0;
     }
-    
+
     .conversation-sidebar {
         position: fixed;
         left: 0;
@@ -954,7 +954,7 @@ body {
     .model-option-icon {
         background: white;
     }
-    
+
     .model-select-header img.model-option-icon {
         background: white;
     }
@@ -1145,11 +1145,11 @@ body {
         background: #212327;
     }
 
-    .user-profile{
+    .user-profile {
         background: #212327;
-    } 
+    }
 
-    .sidebar-header{
+    .sidebar-header {
         background: #212327;
     }
 
@@ -1167,7 +1167,7 @@ body {
 
     #message-input {
         color: var(--dark-color);
-        background: rgba(40, 40, 40, 0.7);
+        background: #404045;
         border-color: rgba(255, 255, 255, 0.1);
     }
 
@@ -1222,10 +1222,6 @@ body {
 
     .confirm-cancel:hover {
         background: rgba(255, 255, 255, 0.2);
-    }
-
-    .input-area {
-        background: rgba(255, 255, 255, 0);
     }
 
     /* 深色模式下的消息内容样式 */
@@ -1476,7 +1472,7 @@ body {
         color: #8c9dff;
         background-color: rgba(123, 140, 255, 0.1);
     }
-    
+
     .image-upload-button:hover {
         background-color: rgba(123, 140, 255, 0.25);
     }
@@ -1630,13 +1626,13 @@ body {
         background: rgba(40, 40, 40, 0.7);
         border-color: rgba(255, 255, 255, 0.15);
     }
-    
+
     .remove-image-btn {
         background: rgba(0, 0, 0, 0.7);
         color: #fff;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     }
-    
+
     .remove-image-btn:hover {
         background: rgba(0, 0, 0, 0.9);
     }
@@ -2006,7 +2002,7 @@ body {
         background: #333;
         color: #fff;
     }
-    
+
     #cancel-username-btn:hover {
         background: #444;
     }
@@ -2148,27 +2144,27 @@ body {
     #password-form {
         background: rgba(40, 40, 40, 0.5);
     }
-    
+
     .password-field input {
         background: rgba(30, 30, 30, 0.8);
         color: #fff;
         border-color: #444;
     }
-    
+
     .password-field label {
         color: #eee;
     }
-    
+
     .password-notice {
         background: rgba(40, 40, 40, 0.5);
         color: #bbb;
     }
-    
+
     #cancel-password-btn {
         background: #333;
         color: #fff;
     }
-    
+
     #cancel-password-btn:hover {
         background: #444;
     }
@@ -2277,31 +2273,31 @@ body {
     .user-name {
         color: #fff;
     }
-    
+
     .user-modal-content {
         background-color: #2a2a2a;
     }
-    
+
     .user-info-section h4 {
         color: #fff;
         border-color: #444;
     }
-    
+
     #username-input {
         background: #333;
         color: #fff;
         border-color: #444;
     }
-    
+
     .privilege-item {
         background: rgba(40, 40, 40, 0.5);
         border-color: #444;
     }
-    
+
     .privilege-name {
         color: #eee;
     }
-    
+
     .privilege-description {
         color: #aaa;
     }
@@ -2313,12 +2309,12 @@ body {
         max-width: 450px;
         max-height: 80vh;
     }
-    
+
     .user-modal-body {
         padding: 15px;
         max-height: calc(80vh - 60px);
     }
-    
+
     .privilege-list {
         grid-template-columns: 1fr;
     }
@@ -2635,16 +2631,16 @@ body.dark .au-tooltip {
         border-color: rgba(255, 255, 255, 0.1);
         color: #eee;
     }
-    
+
     .redeem-form input[type="text"]:focus {
         border-color: var(--primary-color);
         box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
     }
-    
+
     .redeem-form button {
         background-color: var(--primary-color);
     }
-    
+
     .redeem-form button:hover {
         background-color: var(--secondary-color);
     }
@@ -2703,25 +2699,25 @@ body.dark .au-tooltip {
         border-color: rgba(255, 255, 255, 0.1);
         color: #eee;
     }
-    
+
     .redeem-input:focus {
         border-color: var(--primary-color);
         box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
     }
-    
+
     .balance-card {
         background: rgba(40, 44, 52, 0.8);
         border-color: rgba(255, 255, 255, 0.1);
     }
-    
+
     .balance-amount {
         color: #7b8eff;
     }
-    
+
     .balance-label {
         color: #adb5bd;
     }
-    
+
     .balance-value {
         color: #7b8eff;
     }
@@ -2764,11 +2760,11 @@ body.dark .au-tooltip {
     .get-code-section {
         border-top-color: rgba(255, 255, 255, 0.1);
     }
-    
+
     .get-code-link {
         background-color: rgba(67, 97, 238, 0.15);
     }
-    
+
     .get-code-link:hover {
         background-color: rgba(67, 97, 238, 0.25);
     }
@@ -2909,22 +2905,22 @@ body.dark .au-tooltip {
     .deactivate-warning {
         background-color: rgba(220, 53, 69, 0.2);
     }
-    
+
     .warning-text {
         color: #e0e0e0;
     }
-    
+
     .countdown-section {
         background-color: #2d3238;
         color: #e0e0e0;
     }
-    
+
     #cancel-deactivate-btn {
         background: #343a40;
         color: #e0e0e0;
         border-color: #495057;
     }
-    
+
     #cancel-deactivate-btn:hover {
         background: #495057;
     }
@@ -2980,7 +2976,7 @@ body.dark .au-tooltip {
     #confirmDialog {
         background-color: rgba(0, 0, 0, 0.5);
     }
-    
+
     #confirmDialog .modal-body {
         color: var(--light-color);
         background-color: var(--main-bg);
@@ -3047,7 +3043,7 @@ body.dark .au-tooltip {
 }
 
 /* 联网搜索激活时的输入框提示样式 */
-.online-search-button.active ~ .input-row #message-input:placeholder-shown {
+.online-search-button.active~.input-row #message-input:placeholder-shown {
     border-color: rgba(67, 97, 238, 0.6);
     box-shadow: 0 0 0 1px rgba(67, 97, 238, 0.25);
 }
@@ -3059,18 +3055,18 @@ body.dark .au-tooltip {
         border-color: rgba(255, 255, 255, 0.1);
         color: #a0a0a0;
     }
-    
+
     .online-search-button:hover {
         background: rgba(80, 80, 80, 0.7);
     }
-    
+
     .online-search-button.active {
         background: rgba(77, 107, 248, 0.25);
         color: #8c9dff;
         border-color: rgba(97, 127, 238, 0.4);
     }
-    
-    .online-search-button.active ~ .input-row #message-input:placeholder-shown {
+
+    .online-search-button.active~.input-row #message-input:placeholder-shown {
         border-color: rgba(77, 107, 248, 0.5);
         box-shadow: 0 0 0 1px rgba(77, 107, 248, 0.3);
     }
@@ -3084,6 +3080,7 @@ body.dark .au-tooltip {
     background: var(--ai-bubble);
     overflow: hidden;
 }
+
 .search-results-header {
     padding: 10px 15px;
     background: var(--light-color);
@@ -3096,11 +3093,13 @@ body.dark .au-tooltip {
     cursor: pointer;
     user-select: none;
 }
+
 .search-results-content {
     padding: 10px 15px;
     background: var(--ai-bubble);
     display: block;
 }
+
 .search-result-item {
     display: block;
     padding: 8px 0;
@@ -3108,9 +3107,11 @@ body.dark .au-tooltip {
     color: var(--primary-color);
     text-decoration: none;
 }
+
 .search-result-item:first-child {
     border-top: none;
 }
+
 .search-result-item:hover {
     text-decoration: underline;
 }
@@ -3121,23 +3122,23 @@ body.dark .au-tooltip {
         border-color: rgba(255, 255, 255, 0.1);
         background: rgba(45, 45, 45, 0.6);
     }
-    
+
     .search-results-header {
         background: rgba(60, 60, 60, 0.8);
         color: #e0e0e0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
+
     .search-results-content {
         background: rgba(45, 45, 45, 0.6);
         color: #e0e0e0;
     }
-    
+
     .search-result-item {
         border-top-color: rgba(255, 255, 255, 0.1);
         color: #8c9dff;
     }
-    
+
     .search-result-item:hover {
         color: #a0b0ff;
     }
@@ -3158,7 +3159,8 @@ body.dark .au-tooltip {
     font-size: 14px;
 }
 
-.login-btn, .signup-btn {
+.login-btn,
+.signup-btn {
     padding: 8px 15px;
     margin: 0 5px;
     border: none;
@@ -3194,7 +3196,8 @@ body.dark .au-tooltip {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.login-btn i, .signup-btn i {
+.login-btn i,
+.signup-btn i {
     margin-right: 5px;
 }
 
@@ -3202,16 +3205,16 @@ body.dark .au-tooltip {
     .login-prompt {
         background-color: rgba(50, 50, 50, 0.6);
     }
-    
+
     .login-prompt p {
         color: #ccc;
     }
-    
+
     .signup-btn {
         background-color: #333;
         color: #4361ee;
     }
-    
+
     .signup-btn:hover {
         background-color: #444;
     }
@@ -3289,14 +3292,64 @@ body.dark .au-tooltip {
         color: #7b8eff;
         border-color: rgba(77, 107, 248, 0.3);
     }
-    
+
     .copy-message-btn:hover {
         background-color: rgba(77, 107, 248, 0.25);
     }
-    
+
     .copy-message-btn.copied {
         background-color: rgba(40, 167, 69, 0.15);
         color: #40c463;
         border-color: rgba(40, 167, 69, 0.3);
     }
+}
+
+#message-input {
+    flex: 1;
+    height: 100%;
+    resize: none;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* 按钮间距 */
+.input-row .online-search-button,
+.input-row .image-upload-button,
+.input-row .send-button {
+    margin: 0 6px;
+    flex-shrink: 0;
+}
+
+/* message-input-wrapper 样式 */
+.message-input-wrapper {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    height: 120px;
+    transform: translateX(-50%);
+    width: calc(100% - 40px);
+    max-width: 800px;
+}
+
+.message-input-wrapper #message-input {
+    width: 100%;
+}
+
+.message-input-wrapper button {
+    position: absolute;
+    bottom: 3px;
+    z-index: 2;
+}
+
+.message-input-wrapper .online-search-button {
+    left: 10px;
+}
+
+.message-input-wrapper .send-button {
+    right: 10px;
+    margin: 0;
+}
+
+.message-input-wrapper .image-upload-button {
+    right: 52px;
 }

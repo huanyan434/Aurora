@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
         countdownTimer: document.getElementById('countdown-timer'), // 倒计时显示
         onlineSearchBtn: document.getElementById('online-search-btn'), // 联网搜索按钮
         conversationTitle: document.querySelector('.chat-main .conversation-title'), // 新增：聊天区标题元素
+        scrollableContainer: document.querySelector('.scrollable'),
     };
 
     // ====================== 初始化 ======================
@@ -1724,7 +1725,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 修改 scrollToBottom 函数，临时禁用平滑滚动直接跳到底部
     function scrollToBottom(force = false) {
-        const container = elements.messagesContainer;
+        const container = elements.scrollableContainer || elements.messagesContainer;
         if (!container) return;
         
             setTimeout(() => {
@@ -1856,7 +1857,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }, 100);
-
+        
         // 更新侧边栏中的活动对话项
         updateActiveConversationInSidebar(conversationId);
         // 新增：设置聊天区标题
@@ -1891,15 +1892,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('找不到消息容器元素');
                     return;
                 }
-
+                
                 // 清空消息容器（已在 fetch 前执行，此处确保）
                 chatMessages.innerHTML = '';
-
+                
                 if (!data.history || !Array.isArray(data.history)) {
                     console.error('无效的历史记录数据格式');
                     return;
                 }
-
+            
                 data.history.forEach(msg => {
                     // 跳过空消息
                     if (!msg.content || !msg.content.trim()) {
@@ -2792,7 +2793,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 添加滚动监听函数
     function setupScrollListener() {
-        const container = elements.messagesContainer;
+        const container = elements.scrollableContainer || elements.messagesContainer;
         container.addEventListener('scroll', () => {
             // 更新是否在底部的状态
             state.isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
