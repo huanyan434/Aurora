@@ -4135,8 +4135,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 创建模态对话框
         const modalHTML = `
-        <div class="modal fade" id="confirmDialog" tabindex="-1" aria-labelledby="confirmDialogLabel" aria-modal="true" role="dialog" style="display: block;">
-            <div class="modal-dialog">
+        <div class="modal fade" id="confirmDialog" tabindex="-1" aria-labelledby="confirmDialogLabel" aria-modal="true" role="dialog">
+            <div class="modal-dialog" style="width: 450px;">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="confirmDialogLabel">确认操作</h5>

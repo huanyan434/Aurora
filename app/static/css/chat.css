@@ -288,26 +288,19 @@ body {
     left: 0;
     right: 0;
     height: 55px;
-    background: rgb(255, 255, 255);
+    background: var(--main-bg);
 }
 
 /* 暗色模式下的顶部渐变 */
 @media (prefers-color-scheme: dark) {
     .chat-overlay {
         background: linear-gradient(to bottom, 
-                    rgba(30, 30, 30, 0.95) 0%, 
-                    rgba(30, 30, 30, 0.95) 76%,
+                    #292A2D 0%, 
+                    #292A2D 76%,
                     rgba(30, 30, 30, 0) 100%);
     }
-
-    .chat-overlay-d {
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 55px;
-        background: rgb(0, 0, 0);
-    }
 }
+
 
 #messages {
     flex: 1;
@@ -1107,9 +1100,9 @@ body {
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-color: #121212;
-        --sidebar-bg: rgba(25, 25, 25, 0.95);
-        --main-bg: rgba(25, 25, 25, 0.95);
-        --glass-bg: rgba(25, 25, 25, 0.95);
+        --sidebar-bg: #212327;
+        --main-bg: #292A2D;
+        --glass-bg: #292A2D;
         --glass-border: rgba(255, 255, 255, 0.15);
         --dark-color: #e5e5e5;
         --gray-color: #a0a0a0;
@@ -1137,13 +1130,25 @@ body {
         color: var(--dark-color);
     }
 
+    .conversation-list {
+        background: #212327;
+    }
+    
+    .user-profile{
+        background: #212327;
+    } 
+
+    .sidebar-header{
+        background: #212327;
+    }
+
     .conversation-item {
-        background: rgba(35, 35, 35, 0.7);
+        background: #212327;
         border-color: rgba(255, 255, 255, 0.08);
     }
 
     .conversation-item:hover {
-        background: rgba(45, 45, 45, 0.8);
+        background: #333333;
         border-color: rgba(255, 255, 255, 0.15);
     }
 
@@ -3084,11 +3089,18 @@ body.dark .au-tooltip {
 /* ===== 确认对话框样式 ===== */
 #confirmDialog {
     background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
 }
 
 #confirmDialog .modal-header {
-    background: linear-gradient(135deg, #007bff, #6c757d);
+    background: #007bff;
     color: white;
+    border-bottom: none;
+}
+
+#confirmDialog .modal-footer {
+    border-top: none;
 }
 
 #confirmDialog .modal-title {
@@ -3116,8 +3128,8 @@ body.dark .au-tooltip {
 }
 
 #confirmDialog .btn-primary:hover {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -3125,17 +3137,13 @@ body.dark .au-tooltip {
         background-color: rgba(0, 0, 0, 0.5);
     }
     
-    #confirmDialog .modal-header {
-        background: linear-gradient(135deg, #007bff, #6c757d);
+    #confirmDialog .modal-body {
         color: var(--light-color);
+        background-color: var(--main-bg);
     }
     
-    #confirmDialog .modal-title {
-        color: var(--light-color);
-    }
-    
-    #confirmDialog .close {
-        color: var(--light-color);
+    #confirmDialog .modal-footer {
+        background-color: var(--main-bg);
     }
 
     #confirmDialog .btn-primary {

@@ -116,27 +116,37 @@
     /* 自定义确认对话框样式 */
     #confirmDialog {
         background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
     }
-    
+
+    #comfirmDialog .modal-dialog {
+        width: 450px;
+    }
+
     #confirmDialog .modal-header {
-        background: linear-gradient(135deg, #007bff, #6c757d);
+        background: #007bff;
         color: white;
+        border-bottom: none;
     }
-    
+
+    #confirmDialog .modal-footer {
+        border-top: none;
+    }
+
     #confirmDialog .modal-title {
         color: white;
         font-weight: 500;
     }
-    
+
     #confirmDialog .close {
         color: white;
         opacity: 0.8;
     }
-    
+
     #confirmDialog .close:hover {
         opacity: 1;
     }
-    
+
     #confirmDialog .modal-body {
         font-size: 1.1rem;
         padding: 1.5rem;
@@ -939,7 +949,7 @@
 
         // 创建模态对话框
         const modalHTML = `
-        <div class="modal fade" id="confirmDialog" tabindex="-1" aria-labelledby="confirmDialogLabel" aria-modal="true" role="dialog" style="display: block;">
+        <div class="modal fade" id="confirmDialog" tabindex="-1" aria-labelledby="confirmDialogLabel" aria-modal="true" role="dialog">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
