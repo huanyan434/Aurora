@@ -3,7 +3,7 @@
 {% block title %}用户管理 - 仪表盘{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="https://s4.zstatic.net/npm/apexcharts@3.35.2/dist/apexcharts.min.css">
+<link rel="stylesheet" href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/apexcharts/3.33.1/apexcharts.min.css">
 <style>
     .online-indicator {
         display: inline-block;
@@ -119,7 +119,7 @@
     }
     
     #confirmDialog .modal-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        background: linear-gradient(135deg, #007bff, #6c757d);
         color: white;
     }
     
@@ -939,7 +939,7 @@
 
         // 创建模态对话框
         const modalHTML = `
-        <div class="modal fade" id="confirmDialog" tabindex="-1" aria-labelledby="confirmDialogLabel" aria-modal="true" role="dialog">
+        <div class="modal fade" id="confirmDialog" tabindex="-1" aria-labelledby="confirmDialogLabel" aria-modal="true" role="dialog" style="display: block;">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
