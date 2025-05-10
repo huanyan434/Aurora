@@ -132,15 +132,17 @@ document.addEventListener('DOMContentLoaded', function () {
             // 根据URL参数或最新对话加载内容
             const urlParams = new URLSearchParams(window.location.search);
             const conversationId = urlParams.get('conversation');
+            const path = window.location.pathname;
 
             if (conversationId) {
                 // 加载指定的对话
                 await loadConversationHistory(conversationId);
-            } else if (state.conversations && state.conversations.length > 0) {
-                // 加载最新的对话
+            } else if (path !== '/' && state.conversations && state.conversations.length > 0) {
+                // 非根路径且存在历史对话，则加载最新对话
                 await loadLatestConversation();
             } else {
-                // 显示初始页面
+                // 根路径或无历史对话，显示欢迎界面
+                state.currentConversationId = null;
                 showInitialPage();
             }
 

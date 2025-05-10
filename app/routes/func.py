@@ -188,7 +188,11 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                     'reasoning_content') and chunk.choices[0].delta.reasoning_content:
                 if first_reasoning_character == True:
                     first_reasoning_character = False
-                reasoning_content += chunk.choices[0].delta.reasoning_content
+                # 去除多余的换行符
+                if chunk.choices[0].delta.reasoning_content[:2] == "\n":
+                    reasoning_content += chunk.choices[0].delta.reasoning_content[2:]
+                else:
+                    reasoning_content += chunk.choices[0].delta.reasoning_content
                 think_time = time.time() - start_time
                 response_text = "<think time=" + \
                     str(int(think_time)) + ">" + reasoning_content + "</think>"
@@ -197,7 +201,16 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                 if first_content_character == True:
                     first_content_character = False
                     think_time = time.time() - start_time
-                content += chunk.choices[0].delta.content
+                # 去除多余的换行符
+                if chunk.choices[0].delta.reasoning_content[:2] == "\n":
+                    reasoning_content += chunk.choices[0].delta.reasoning_content[2:]
+                else:
+                    reasoning_content += chunk.choices[0].delta.reasoning_content
+                if chunk.choices[0].delta.content[:2] == "\n":
+                    content += chunk.choices[0].delta.content[2:]
+                else:
+                    content += chunk.choices[0].delta.content
+
                 if not reasoning_content.strip():
                     response_queue.put(search + content)
                 else:
