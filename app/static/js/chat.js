@@ -1740,13 +1740,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const container = elements.scrollableContainer || elements.messagesContainer;
         if (!container) return;
         
-            setTimeout(() => {
-            // 临时禁用平滑滚动
-            const prevBehavior = container.style.scrollBehavior;
+        setTimeout(() => {
+            // 禁用平滑滚动
             container.style.scrollBehavior = 'auto';
-                container.scrollTop = container.scrollHeight;
-            container.style.scrollBehavior = prevBehavior;
-            }, 0);
+
+            const scrollHeight = container.scrollHeight;
+            const clientHeight = container.clientHeight;
+            const scrollTop = container.scrollTop;
+            const scrollFromBottom = scrollHeight - scrollTop - clientHeight;
+            const isAtBottom = scrollFromBottom <= 160;
+
+            // 当强制滚动、内容未填满或用户已在底部时滚动到底部
+            if (force || scrollHeight <= clientHeight || isAtBottom) {
+                container.scrollTop = scrollHeight;
+            }
+        }, 0);
     }
 
     function focusInput() {
