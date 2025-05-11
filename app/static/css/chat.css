@@ -1155,8 +1155,6 @@ body {
 
     #message-input {
         color: var(--dark-color);
-        background: #404045;
-        border-color: rgba(255, 255, 255, 0.1);
     }
 
     #message-input::placeholder {
@@ -3236,11 +3234,15 @@ body.dark .au-tooltip {
     max-width: 800px;
     border: 1px solid var(--glass-border);
     border-radius: 24px;
-    background: #F3F4F6;
+    background: rgba(243, 244, 246, 0.8);
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--glass-shadow);
 }
 @media (prefers-color-scheme: dark) {
     .message-input-wrapper {
-        background: #404045;
+        background: rgba(64, 64, 69, 0.8);
+        backdrop-filter: blur(var(--glass-blur));
+        box-shadow: var(--glass-shadow);
     }
 }
 .message-input-wrapper #message-input {
@@ -3348,5 +3350,16 @@ body.dark .au-tooltip {
     .preview-image-wrapper img {
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
         border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* 桌面端：侧边栏折叠时同步移动聊天区 */
+@media (min-width: 769px) {
+    .chat-main {
+        transform: translateX(0);
+        transition: transform 0.3s cubic-bezier(0.42, 0.00, 1.00, 1.00);
+    }
+    .conversation-sidebar.collapsed + .chat-main {
+        transform: translateX(-280px);
     }
 }

@@ -3100,7 +3100,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 </svg>
             `;
             elements.sendButton.classList.add('stop-button');
-            elements.sendButton.title = "停止生成";
             console.log('切换为停止按钮，可点击状态');
             
             // 确保按钮总是可点击的
