@@ -5100,42 +5100,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const initialPage = chatMain?.querySelector('.initial-page');
         const wrapper = document.querySelector('.message-input-wrapper');
         const preview = document.getElementById('image-preview-container');
-        const input = document.querySelector('.input-area');
         if (!chatMain || !initialPage || !wrapper) return;
-        const chatRect = chatMain.getBoundingClientRect();
-        const pageRect = initialPage.getBoundingClientRect();
-        const margin = 16; // 输入框与欢迎区域间距
-        const bottomOffset = (chatRect.bottom - pageRect.bottom) + margin;
-        input.style.position = 'relative';
-        input.style.top = `18rem`;
-        // 设置输入框底部位置
-        // wrapper.style.bottom = `265px`;
+        // 设置输入框位置
         wrapper.style.position = 'relative';
-        wrapper.style.width = '680px';
+        wrapper.style.maxWidth = '680px';
         // 同步图片预览容器位置，置于输入框上方
-        if (preview) {
-            const wrapperHeight = wrapper.getBoundingClientRect().height;
-            // preview.style.bottom = `370px`;
-            preview.style.position = 'relative';
-            preview.style.width = '680px';
-        }
+        preview.style.position = 'relative';
+        preview.style.maxWidth = '680px';
     }
     // 还原输入框和图片预览位置
     function resetInputPosition() {
-        const input = document.querySelector('.input-area');
-        if (input) {
-            input.style.removeProperty('position');
-            input.style.removeProperty('top');
-        }
         const wrapper = document.querySelector('.message-input-wrapper');
         if (wrapper) {
-            wrapper.style.removeProperty('bottom');
-            wrapper.style.removeProperty('width');
+            wrapper.style.removeProperty('position');
+            wrapper.style.removeProperty('max-width');
         }
         const preview = document.getElementById('image-preview-container');
         if (preview) {
-            preview.style.removeProperty('bottom');
-            preview.style.removeProperty('width');
+            preview.style.removeProperty('position');
+            preview.style.removeProperty('max-width');
         }
     }
     // 窗口大小变化时重新计算位置

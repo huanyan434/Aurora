@@ -3226,6 +3226,11 @@ body.dark .au-tooltip {
     flex-shrink: 0;
 }
 
+.input-area {
+    position: relative;
+    top: 18rem;
+}
+
 /* message-input-wrapper 样式 */
 .message-input-wrapper {
     position: absolute;
