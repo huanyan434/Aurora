@@ -624,6 +624,7 @@ document.addEventListener('DOMContentLoaded', function () {
             reader.onload = function (e) {
                 elements.previewImage.src = e.target.result;
                 elements.imagePreviewContainer.style.display = 'block';
+                updateMessagesPadding();
             };
             reader.readAsDataURL(file);
             
@@ -645,6 +646,7 @@ document.addEventListener('DOMContentLoaded', function () {
         state.selectedImage = null;
         elements.previewImage.src = '';
         elements.imagePreviewContainer.style.display = 'none';
+        updateMessagesPadding();
         updateSendButtonState();
     }
 
@@ -690,7 +692,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // ====================== 消息发送核心 ======================
     async function sendMessageHandler() {
         console.log('尝试发送消息');
-
         // 检查用户是否登录
         if (!state.currentUser || !state.currentUser.id) {
             console.log('用户未登录，重定向到登录页面');
@@ -735,7 +736,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // 清空输入框
         elements.messageInput.value = '';
         elements.messageInput.style.height = 'auto';
-        
+        // 清除首次页面布局时添加的输入框和预览框样式，使其恢复默认位置
+        resetInputPosition();
+
         // 隐藏图片预览（如果有）
         if (state.selectedImage) {
             elements.imagePreviewContainer.style.display = 'none';
@@ -1838,6 +1841,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // 设置当前对话 ID
         state.currentConversationId = conversationId;
         
+        // 清除首次页面布局时添加的输入框和预览框样式，使其恢复默认位置
+        resetInputPosition();
+        
         // 新增：如果获取历史记录超过 0.5 秒，显示加载动画
         const chatMain = document.querySelector('.chat-main');
         let loadingTimer = setTimeout(() => {
@@ -2424,14 +2430,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // 根据登录状态显示不同的内容
         if (state.currentUser && state.currentUser.id) {
             // 已登录用户显示标准欢迎信息
-        elements.messagesContainer.innerHTML = `
-            <div class="initial-page">
-                <div class="welcome-message">
-                    <h1>我是 Aurora，很高兴见到你</h1>
-                    <p>我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~</p>
+            elements.messagesContainer.innerHTML = `
+                <div class="initial-page">
+                    <div class="welcome-message">
+                        <h1>我是 Aurora，很高兴见到你</h1>
+                        <p>我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~</p>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
         } else {
             // 未登录用户显示带有登录提示的欢迎信息
             elements.messagesContainer.innerHTML = `
@@ -2462,6 +2468,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elements.messageInput) {
             elements.messageInput.focus();
         }
+        // 初始页面时更新输入框和预览位置
+        updateInitialInputPosition();
     }
 
     // 修改删除对话的处理
@@ -2585,7 +2593,7 @@ document.addEventListener('DOMContentLoaded', function () {
         align-items: center;
         justify-content: center;
         height: 100%;
-        padding: 2rem;
+        padding: 8rem 2rem;
         text-align: center;
     }
 
@@ -5073,6 +5081,65 @@ document.addEventListener('DOMContentLoaded', function () {
         // 显示通知
         // showNotification('消息已复制到剪贴板', 2000);
     }
+
+    // 添加 updateMessagesPadding 函数，更新 messages 容器 padding
+    function updateMessagesPadding() {
+        const container = elements.messagesContainer;
+        const preview = elements.imagePreviewContainer;
+        if (!container) return;
+        if (preview && preview.style.display !== 'none') {
+            container.style.padding = '38px 0 225px';
+        } else {
+            container.style.padding = '38px 0 150px';
+        }
+    }
+
+    // 添加更新初始页面输入框和图片预览位置的函数
+    function updateInitialInputPosition() {
+        const chatMain = document.querySelector('.chat-main');
+        const initialPage = chatMain?.querySelector('.initial-page');
+        const wrapper = document.querySelector('.message-input-wrapper');
+        const preview = document.getElementById('image-preview-container');
+        const input = document.querySelector('.input-area');
+        if (!chatMain || !initialPage || !wrapper) return;
+        const chatRect = chatMain.getBoundingClientRect();
+        const pageRect = initialPage.getBoundingClientRect();
+        const margin = 16; // 输入框与欢迎区域间距
+        const bottomOffset = (chatRect.bottom - pageRect.bottom) + margin;
+        input.style.position = 'relative';
+        input.style.top = `18rem`;
+        // 设置输入框底部位置
+        // wrapper.style.bottom = `265px`;
+        wrapper.style.position = 'relative';
+        wrapper.style.width = '680px';
+        // 同步图片预览容器位置，置于输入框上方
+        if (preview) {
+            const wrapperHeight = wrapper.getBoundingClientRect().height;
+            // preview.style.bottom = `370px`;
+            preview.style.position = 'relative';
+            preview.style.width = '680px';
+        }
+    }
+    // 还原输入框和图片预览位置
+    function resetInputPosition() {
+        const input = document.querySelector('.input-area');
+        if (input) {
+            input.style.removeProperty('position');
+            input.style.removeProperty('top');
+        }
+        const wrapper = document.querySelector('.message-input-wrapper');
+        if (wrapper) {
+            wrapper.style.removeProperty('bottom');
+            wrapper.style.removeProperty('width');
+        }
+        const preview = document.getElementById('image-preview-container');
+        if (preview) {
+            preview.style.removeProperty('bottom');
+            preview.style.removeProperty('width');
+        }
+    }
+    // 窗口大小变化时重新计算位置
+    window.addEventListener('resize', updateInitialInputPosition);
 });
 
 // 全局处理搜索结果，创建可折叠的搜索结果区域

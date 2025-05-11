@@ -9,6 +9,8 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    # 支持 next 参数，用于登录后重定向
+    next_url = request.args.get('next') or request.form.get('next')
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -23,9 +25,11 @@ def login():
         login_user(user, remember=remember)
         session['user_id'] = str(user.id)  # 将UUID转换为字符串
         session.permanent = True  # 设置会话为持久性，使用PERMANENT_SESSION_LIFETIME的值
-        return redirect(url_for('chat.chat_index'))
+        # 登录后重定向到 next 或 默认聊天首页
+        return redirect(next_url or url_for('chat.chat_index'))
     
-    return render_template('auth/login.html')
+    # GET 请求渲染登录页面，并传入 next 参数
+    return render_template('auth/login.html', next=next_url)
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():

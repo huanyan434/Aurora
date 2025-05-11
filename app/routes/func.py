@@ -202,10 +202,8 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                     first_content_character = False
                     think_time = time.time() - start_time
                 # 去除多余的换行符
-                if chunk.choices[0].delta.reasoning_content[:2] == "\n":
-                    reasoning_content += chunk.choices[0].delta.reasoning_content[2:]
-                else:
-                    reasoning_content += chunk.choices[0].delta.reasoning_content
+                if reasoning_content[:2] == "\n":
+                    reasoning_content += reasoning_content[2:]
                 if chunk.choices[0].delta.content[:2] == "\n":
                     content += chunk.choices[0].delta.content[2:]
                 else:
@@ -641,7 +639,8 @@ def generate_thread(
                 # 使用线程安全的队列接收响应
                 updated_history = autohistory(
                     history, model_orig, response_queues[message_id], online_search)
-
+            # 标记响应完成
+            response_status[message_id] = 'finished'
             # 保存历史记录
             try:
                 save_history(conversation_id, updated_history)
@@ -691,9 +690,6 @@ def generate_thread(
                 except Exception as e:
                     print(f"扣费过程中出错: {str(e)}")
                     # 不中断用户体验，只记录错误
-
-            # 标记响应完成
-            response_status[message_id] = 'finished'
 
         except Exception as e:
             print(f"生成响应时出错: {str(e)}")

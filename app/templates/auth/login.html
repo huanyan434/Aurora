@@ -25,6 +25,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('auth.login') }}">
+            {%- if next %}<input type="hidden" name="next" value="{{ next }}">{%- endif %}
             <div class="form-group">
                 <label for="email">邮箱地址</label>
                 <input type="email" id="email" name="email" required 
@@ -72,6 +73,27 @@
                 }, 300);
             });
         }
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const emailInput = document.getElementById('email');
+            const rememberCheckbox = document.querySelector('input[name="remember"]');
+            const loginForm = document.querySelector('form');
+            // 页面加载时填充保存的用户名
+            const savedUsername = localStorage.getItem('remembered_username');
+            if (savedUsername) {
+                emailInput.value = savedUsername;
+                rememberCheckbox.checked = true;
+            }
+            // 提交时根据复选框决定保存或清除用户名
+            loginForm.addEventListener('submit', function() {
+                if (rememberCheckbox.checked) {
+                    localStorage.setItem('remembered_username', emailInput.value);
+                } else {
+                    localStorage.removeItem('remembered_username');
+                }
+            });
+        });
     </script>
 </body>
 </html>
