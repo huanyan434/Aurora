@@ -3364,3 +3364,18 @@ body.dark .au-tooltip {
         transform: translateX(-280px);
     }
 }
+
+/* 移动端：body 及应用容器高度仅限可见区域，避免填充100% */
+@media (max-width: 768px) {
+    html,
+    body {
+        height: auto !important;
+        max-height: 100vh !important;
+        overflow: visible;
+    }
+    .app-container {
+        height: auto !important;
+        max-height: 100vh !important;
+        overflow: visible;
+    }
+}
