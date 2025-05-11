@@ -80,6 +80,8 @@ document.addEventListener('DOMContentLoaded', function () {
         onlineSearchBtn: document.getElementById('online-search-btn'), // 联网搜索按钮
         conversationTitle: document.querySelector('.chat-main .conversation-title'), // 新增：聊天区标题元素
         scrollableContainer: document.querySelector('.scrollable'),
+        // 内部侧边栏切换按钮元素
+        sidebarInsideToggle: document.querySelector('.sidebar-toggle-inside'),
     };
 
     // ====================== 初始化 ======================
@@ -328,6 +330,8 @@ document.addEventListener('DOMContentLoaded', function () {
             elements.messageInput.addEventListener('input', function () {
                 this.style.height = 'auto';
                 this.style.height = (this.scrollHeight) + 'px';
+                // 输入内容变化时更新发送按钮状态
+                updateSendButtonState();
             });
 
             // 添加粘贴事件监听器，用于检测和上传粘贴的图片
@@ -418,6 +422,11 @@ document.addEventListener('DOMContentLoaded', function () {
         // 添加遮罩层点击事件
         if (elements.sidebarOverlay) {
             elements.sidebarOverlay.addEventListener('click', closeMobileSidebar);
+        }
+
+        // 内部侧边栏切换按钮点击事件（移动端）
+        if (elements.sidebarInsideToggle) {
+            elements.sidebarInsideToggle.addEventListener('click', closeMobileSidebar);
         }
 
         // 图片上传按钮点击事件
@@ -2427,40 +2436,20 @@ document.addEventListener('DOMContentLoaded', function () {
     function showInitialPage() {
         if (!elements.messagesContainer) return;
         
-        // 根据登录状态显示不同的内容
         if (state.currentUser && state.currentUser.id) {
-            // 已登录用户显示标准欢迎信息
             elements.messagesContainer.innerHTML = `
                 <div class="initial-page">
                     <div class="welcome-message">
-                        <h1>我是 Aurora，很高兴见到你</h1>
+                        <h1>我是 Aurora，很高兴见到你！</h1>
                         <p>我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~</p>
                     </div>
                 </div>
             `;
         } else {
-            // 未登录用户显示带有登录提示的欢迎信息
-            elements.messagesContainer.innerHTML = `
-                <div class="initial-page">
-                    <div class="welcome-message">
-                        <h1>欢迎来到 Aurora AI 助手</h1>
-                        <p>我可以帮你写代码、读文件、写作各种创意内容</p>
-                    </div>
-                    <div class="login-prompt">
-                        <p>登录后即可开始与AI助手对话，体验更多高级功能</p>
-                        <button class="login-btn" onclick="window.location.href='/auth/login'">
-                            登录
-                        </button>
-                        <button class="signup-btn" onclick="window.location.href='/auth/signup'">
-                            注册
-                        </button>
-                </div>
-            </div>
-        `;
 
             // 为未登录用户修改输入框提示文本
             if (elements.messageInput) {
-                elements.messageInput.placeholder = "登录后即可开始与AI对话...";
+                elements.messageInput.placeholder = "登录后即可开始与 Aurora 对话...";
             }
         }
 
@@ -2600,7 +2589,7 @@ document.addEventListener('DOMContentLoaded', function () {
     .welcome-message {
         margin-bottom: 2rem;
     }
-
+    
     .welcome-message h1 {
         font-size: 2rem;
         margin-bottom: 1rem;
@@ -2612,32 +2601,18 @@ document.addEventListener('DOMContentLoaded', function () {
         color: #666;
     }
 
-    .quick-actions {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .action-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        border: none;
-        border-radius: 8px;
-        background: #4361ee;
-        color: white;
-        cursor: pointer;
-        transition: background 0.2s ease;
-    }
-
-    .action-btn:hover {
-        background: #3651d4;
-    }
-
-    .action-btn .icon {
-        width: 20px;
-        height: 20px;
-        fill: currentColor;
+    @media (max-width: 768px) {
+        /* 靠左显示 */
+        .initial-page {
+            text-align: left;
+            padding: 12rem 28px;
+        }
+        .welcome-message h1 {
+            font-size: 1.2rem;
+        }
+        .welcome-message p {
+            font-size: 1rem;
+        }
     }
     `;
 
@@ -3103,15 +3078,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function toggleMobileSidebar() {
         elements.sidebar.classList.toggle('show');
         elements.sidebarOverlay.classList.toggle('show');
-        elements.sidebarToggle.classList.toggle('show');
-        state.isSidebarCollapsed = !state.isSidebarCollapsed;
     }
 
     // 关闭移动端侧边栏
     function closeMobileSidebar() {
         elements.sidebar.classList.remove('show');
         elements.sidebarOverlay.classList.remove('show');
-        elements.sidebarToggle.classList.remove('show');
         state.isSidebarCollapsed = true;
     }
 
@@ -5098,9 +5070,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateInitialInputPosition() {
         const chatMain = document.querySelector('.chat-main');
         const initialPage = chatMain?.querySelector('.initial-page');
+        const inputArea = document.querySelector('.input-area');
         const wrapper = document.querySelector('.message-input-wrapper');
         const preview = document.getElementById('image-preview-container');
-        if (!chatMain || !initialPage || !wrapper) return;
+        if (!chatMain || !initialPage || !wrapper || !preview || !inputArea) return;
+        // 设置输入区域
+        inputArea.style.position = 'relative';
         // 设置输入框位置
         wrapper.style.position = 'relative';
         wrapper.style.maxWidth = '680px';
@@ -5110,6 +5085,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // 还原输入框和图片预览位置
     function resetInputPosition() {
+        const inputArea = document.querySelector('.input-area');
+        if (inputArea) {
+            inputArea.style.removeProperty('position');
+        }
         const wrapper = document.querySelector('.message-input-wrapper');
         if (wrapper) {
             wrapper.style.removeProperty('position');
@@ -5123,6 +5102,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // 窗口大小变化时重新计算位置
     window.addEventListener('resize', updateInitialInputPosition);
+    // 移动端视图时自动展开侧边栏
+    window.addEventListener('resize', function () {
+        if (window.innerWidth <= 768) {
+            if (elements.sidebar) {
+                elements.sidebar.classList.remove('collapsed');
+            }
+            if (elements.collapseBtn) {
+                elements.collapseBtn.classList.remove('collapsed');
+            }
+        }
+    });
 });
 
 // 全局处理搜索结果，创建可折叠的搜索结果区域

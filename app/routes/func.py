@@ -138,6 +138,8 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
     first_reasoning_character = True
     first_content_character = True
     search = ""
+    completion_tokens = 0
+    prompt_tokens = 0
     try:
         if online_search:
             try:
@@ -183,6 +185,8 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         start_time = time.time()
 
         for chunk in response:
+            prompt_tokens = chunk.usage.prompt_tokens
+            completion_tokens += chunk.usage.completion_tokens
             if hasattr(
                     chunk.choices[0].delta,
                     'reasoning_content') and chunk.choices[0].delta.reasoning_content:
@@ -216,19 +220,12 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                         str(int(think_time)) + ">" + reasoning_content + \
                         "</think>" + content
                     response_queue.put(search + response_text)
-
+        # 标记响应完成
+        response_queue.put(None)
+        
         # 获取token使用信息并记录
         global current_user_id
         user_id = current_user_id if current_user_id else 'anonymous'
-        complete_response = client.chat.completions.create(
-            model=model,
-            messages=history,
-            stream=False,
-            max_tokens=1
-        )
-        prompt_tokens = complete_response.usage.prompt_tokens if hasattr(
-            complete_response, 'usage') else 0
-        completion_tokens = len(content) // 2
 
         try:
             from flask import has_app_context
@@ -252,8 +249,6 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         except Exception as e:
             print(f"记录token使用出错: {str(e)}")
 
-        # 标记响应完成
-        response_queue.put(None)
         return search + "<think time=" + \
             str(int(think_time)) + ">" + reasoning_content + \
             "</think>" + content
@@ -771,7 +766,7 @@ def generate(
                 continue
 
             # 从队列获取响应
-            response = response_queues[message_id].get(timeout=30)  # 30秒超时
+            response = response_queues[message_id].get(timeout=10)  # 10秒超时
 
             # 如果收到None，表示响应结束
             if response is None:
@@ -810,7 +805,7 @@ def generate(
             text_content = parsed_think[1]
 
             yield json.dumps({
-                    "message_id": message_id,
+                "message_id": message_id,
                 "text": text_content,
                 "think": think_block,
                 "search": search_match[0]

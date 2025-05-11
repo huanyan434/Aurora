@@ -292,8 +292,17 @@ body {
 .chat-overlay .conversation-title {
     font-weight: bold;
     color: var(--dark-color);
-    margin: 0;
     z-index: 15;
+    position: absolute;
+    top: 23px;
+    font-size: 17px;
+}
+
+/* 移动端标题不显示 */
+@media (max-width: 768px) {
+    .chat-overlay .conversation-title {
+        display: none;
+    }
 }
 
 /* 暗色模式下的顶部渐变 */
@@ -503,28 +512,19 @@ body {
 }
 
 .send-button.stop-button {
-    background: white;
-    color: #ff4d4f;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    cursor: pointer;
-    pointer-events: auto;
-    z-index: 10;
+    background: none;
+    color: var(--primary-color);
+    border: none;
+    box-shadow: none;
 }
 
 .send-button.stop-button:hover {
-    background: #f5f5f5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background-color: rgba(67, 97, 238, 0.1);
     transform: scale(1.05);
 }
 
-.send-button.stop-button svg {
-    width: 24px;
-    height: 24px;
-}
-
 .send-button.stop-button rect {
-    transform: scale(0.8) translate(5px, 5px);
+    transform: none;
 }
 
 /* 深色模式下的停止按钮样式 */
@@ -548,22 +548,35 @@ body {
     display: none;
     align-items: center;
     justify-content: center;
+    background: var(--glass-bg);
+    border: none;
     width: 40px;
     height: 40px;
-    z-index: 901;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
+    z-index: 899;
     padding: 0;
     cursor: pointer;
     backdrop-filter: blur(var(--glass-blur));
-    box-shadow: var(--glass-shadow);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-toggle:hover {
     background: rgba(255, 255, 255, 0.9);
     transform: scale(1.05);
+}
+
+/* 内部侧边栏切换按钮，默认隐藏 */
+.sidebar-toggle-inside {
+    display: none;
+    position: absolute;
+    background: var(--glass-bg);
+    border: none;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    backdrop-filter: blur(var(--glass-blur));
 }
 
 /* ===== 响应式设计 ===== */
@@ -589,37 +602,7 @@ body {
     }
 
     .sidebar-toggle {
-        position: fixed;
-        left: 16px;
-        top: 16px;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        z-index: 901;
-        background: var(--glass-bg);
-        border: 1px solid var(--glass-border);
-        border-radius: 8px;
-        padding: 0;
-        cursor: pointer;
-        backdrop-filter: blur(var(--glass-blur));
-        box-shadow: var(--glass-shadow);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* 当侧边栏展开时，按钮也跟着移动 */
-    body:has(.conversation-sidebar.show) .sidebar-toggle {
-        left: 16px;
-        /* 保持左侧位置不变 */
-        transform: translateX(280px);
-        /* 跟随侧边栏移动 */
-    }
-
-    /* 如果浏览器不支持:has，使用JS添加的类来控制 */
-    .sidebar-toggle.show {
-        left: 16px;
-        transform: translateX(280px);
     }
 
     .sidebar-toggle:hover {
@@ -638,7 +621,7 @@ body {
     .model-select {
         position: fixed !important;
         margin: 0 !important;
-        left: 65px !important;
+        left: 50px !important;
         top: 15px !important;
     }
 
@@ -655,6 +638,13 @@ body {
     .send-button.stop-button svg {
         width: 28px;
         height: 28px;
+    }
+
+    /* 移动端：显示内部切换按钮并定位到侧边栏右上角 */
+    .conversation-sidebar .sidebar-toggle-inside {
+        display: flex;
+        top: 16px;
+        right: 16px;
     }
 }
 
@@ -3227,8 +3217,12 @@ body.dark .au-tooltip {
 }
 
 .input-area {
-    position: relative;
     top: 18rem;
+}
+@media (max-width: 768px) {
+    .input-area {
+        top: 21rem;
+    }
 }
 
 /* message-input-wrapper 样式 */
