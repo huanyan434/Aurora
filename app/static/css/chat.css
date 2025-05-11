@@ -3237,6 +3237,7 @@ body.dark .au-tooltip {
     background: rgba(243, 244, 246, 0.8);
     backdrop-filter: blur(var(--glass-blur));
     box-shadow: var(--glass-shadow);
+    z-index: 102;
 }
 @media (prefers-color-scheme: dark) {
     .message-input-wrapper {
