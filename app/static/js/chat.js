@@ -3288,7 +3288,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log('无法定位特定元素，重新渲染整个对话列表');
                 updateConversationsList();
             }
-            
+
+            // 新增：如果当前正在查看的对话就是此对话，则更新聊天主界面标题
+            if (elements.conversationTitle && state.currentConversationId === conversationId) {
+                console.log('更新聊天主界面标题:', title);
+                elements.conversationTitle.textContent = title;
+            }
+
             // 直接发送请求更新对话标题到服务器（使用现有接口）
             fetch(`/conversations/${conversationId}/update_title`, {
                 method: 'POST',

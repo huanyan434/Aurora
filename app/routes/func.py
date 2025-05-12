@@ -185,8 +185,9 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         start_time = time.time()
 
         for chunk in response:
-            prompt_tokens = chunk.usage.prompt_tokens
-            completion_tokens += chunk.usage.completion_tokens
+            if not "gemini" in model:
+                prompt_tokens = chunk.usage.prompt_tokens
+                completion_tokens += chunk.usage.completion_tokens
             if hasattr(
                     chunk.choices[0].delta,
                     'reasoning_content') and chunk.choices[0].delta.reasoning_content:
@@ -316,7 +317,7 @@ def function_calling(history: list, tools: list):
 def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['api_keyC']
-    return stream_openai_api(api_key, "https://gemini.wanyim.cn/v1beta", model, history, response_queue, online_search)
+    return stream_openai_api(api_key, "https://gemini-openai.wanyim.cn/v1", model, history, response_queue, online_search)
 
 def online_search(query: str, num: int = 10):
     """在线搜索"""

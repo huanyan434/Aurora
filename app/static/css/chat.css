@@ -3374,7 +3374,6 @@ body.dark .au-tooltip {
         overflow: visible;
     }
     .app-container {
-        height: auto !important;
         max-height: 100vh !important;
         overflow: visible;
     }
