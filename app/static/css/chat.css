@@ -32,6 +32,17 @@
     --main-bg: rgba(255, 255, 255, 0.95);
 }
 
+/* body 及应用容器高度仅限可见区域，避免填充100% */
+
+html,
+body,
+.app-container {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: visible;
+}
+
+
 /* ===== 基础布局 ===== */
 html,
 body {
@@ -3362,19 +3373,5 @@ body.dark .au-tooltip {
     }
     .conversation-sidebar.collapsed + .chat-main {
         transform: translateX(-280px);
-    }
-}
-
-/* 移动端：body 及应用容器高度仅限可见区域，避免填充100% */
-@media (max-width: 768px) {
-    html,
-    body {
-        height: auto !important;
-        max-height: 100vh !important;
-        overflow: visible;
-    }
-    .app-container {
-        max-height: 100vh !important;
-        overflow: visible;
     }
 }
