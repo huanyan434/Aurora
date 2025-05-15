@@ -527,6 +527,8 @@ body {
     color: var(--primary-color);
     border: none;
     box-shadow: none;
+    width: 40px;
+    height: 40px;
 }
 
 .send-button.stop-button:hover {
@@ -541,13 +543,14 @@ body {
 /* 深色模式下的停止按钮样式 */
 @media (prefers-color-scheme: dark) {
     .send-button.stop-button {
-        background: #2a2a2a;
-        color: #ff6b6b;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: none;
+        color: var(--primary-color);
+        border: none;
+        box-shadow: none;
     }
 
     .send-button.stop-button:hover {
-        background: #3a3a3a;
+        background-color: rgba(67, 97, 238, 0.1);
     }
 }
 
@@ -638,17 +641,17 @@ body {
 
     /* 移动端下的停止按钮样式优化 */
     .send-button.stop-button {
-        background: white;
-        color: #ff4d4f;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        width: 48px;
-        height: 48px;
+        background: none;
+        color: var(--primary-color);
+        border: none;
+        box-shadow: none;
+        width: 40px;
+        height: 40px;
     }
 
     .send-button.stop-button svg {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
     }
 
     /* 移动端：显示内部切换按钮并定位到侧边栏右上角 */
