@@ -19,13 +19,13 @@
     --ai-text: #333;
     --think-line: #c9c9c9;
     --think-text: #353535;
-
+    
     /* 修改亚克力效果变量 */
     --glass-bg: rgba(255, 255, 255, 0.95);
     --glass-border: rgba(0, 0, 0, 0.1);
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
     --glass-blur: 5px;
-
+    
     /* 新增背景色变量 */
     --bg-color: #f5f7fa;
     --sidebar-bg: #F9FBFF;
@@ -281,10 +281,10 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(to bottom,
-            rgb(255, 255, 255) 0%,
-            rgb(255, 255, 255) 76%,
-            rgba(255, 255, 255, 0) 100%);
+    background: linear-gradient(to bottom, 
+                rgb(255, 255, 255) 0%, 
+                rgb(255, 255, 255) 76%,
+                rgba(255, 255, 255, 0) 100%);
     z-index: 14;
     /* 使其索引仅次于模型选择框(z-index: 15) */
     pointer-events: none;
@@ -319,10 +319,10 @@ body {
 /* 暗色模式下的顶部渐变 */
 @media (prefers-color-scheme: dark) {
     .chat-overlay {
-        background: linear-gradient(to bottom,
+        background: linear-gradient(to bottom, 
                 #292A2D 0%,
                 #292A2D 76%,
-                rgba(30, 30, 30, 0) 100%);
+                    rgba(30, 30, 30, 0) 100%);
     }
 }
 
@@ -548,7 +548,7 @@ body {
         border: none;
         box-shadow: none;
     }
-
+    
     .send-button.stop-button:hover {
         background-color: rgba(67, 97, 238, 0.1);
     }
@@ -648,7 +648,7 @@ body {
         width: 40px;
         height: 40px;
     }
-
+    
     .send-button.stop-button svg {
         width: 24px;
         height: 24px;
@@ -757,11 +757,11 @@ body {
     .collapse-btn {
         left: 280px;
     }
-
+    
     .collapse-btn.collapsed {
         left: 0;
     }
-
+    
     .conversation-sidebar {
         position: fixed;
         left: 0;
@@ -956,7 +956,7 @@ body {
     .model-option-icon {
         background: white;
     }
-
+    
     .model-select-header img.model-option-icon {
         background: white;
     }
@@ -1472,7 +1472,7 @@ body {
         color: #8c9dff;
         background-color: rgba(123, 140, 255, 0.1);
     }
-
+    
     .image-upload-button:hover {
         background-color: rgba(123, 140, 255, 0.25);
     }
@@ -1928,7 +1928,7 @@ body {
         background: #333;
         color: #fff;
     }
-
+    
     #cancel-username-btn:hover {
         background: #444;
     }
@@ -2070,27 +2070,27 @@ body {
     #password-form {
         background: rgba(40, 40, 40, 0.5);
     }
-
+    
     .password-field input {
         background: rgba(30, 30, 30, 0.8);
         color: #fff;
         border-color: #444;
     }
-
+    
     .password-field label {
         color: #eee;
     }
-
+    
     .password-notice {
         background: rgba(40, 40, 40, 0.5);
         color: #bbb;
     }
-
+    
     #cancel-password-btn {
         background: #333;
         color: #fff;
     }
-
+    
     #cancel-password-btn:hover {
         background: #444;
     }
@@ -2199,31 +2199,31 @@ body {
     .user-name {
         color: #fff;
     }
-
+    
     .user-modal-content {
         background-color: #2a2a2a;
     }
-
+    
     .user-info-section h4 {
         color: #fff;
         border-color: #444;
     }
-
+    
     #username-input {
         background: #333;
         color: #fff;
         border-color: #444;
     }
-
+    
     .privilege-item {
         background: rgba(40, 40, 40, 0.5);
         border-color: #444;
     }
-
+    
     .privilege-name {
         color: #eee;
     }
-
+    
     .privilege-description {
         color: #aaa;
     }
@@ -2235,12 +2235,12 @@ body {
         max-width: 450px;
         max-height: 80vh;
     }
-
+    
     .user-modal-body {
         padding: 15px;
         max-height: calc(80vh - 60px);
     }
-
+    
     .privilege-list {
         grid-template-columns: 1fr;
     }
@@ -2557,16 +2557,16 @@ body.dark .au-tooltip {
         border-color: rgba(255, 255, 255, 0.1);
         color: #eee;
     }
-
+    
     .redeem-form input[type="text"]:focus {
         border-color: var(--primary-color);
         box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
     }
-
+    
     .redeem-form button {
         background-color: var(--primary-color);
     }
-
+    
     .redeem-form button:hover {
         background-color: var(--secondary-color);
     }
@@ -2625,25 +2625,25 @@ body.dark .au-tooltip {
         border-color: rgba(255, 255, 255, 0.1);
         color: #eee;
     }
-
+    
     .redeem-input:focus {
         border-color: var(--primary-color);
         box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
     }
-
+    
     .balance-card {
         background: rgba(40, 44, 52, 0.8);
         border-color: rgba(255, 255, 255, 0.1);
     }
-
+    
     .balance-amount {
         color: #7b8eff;
     }
-
+    
     .balance-label {
         color: #adb5bd;
     }
-
+    
     .balance-value {
         color: #7b8eff;
     }
@@ -2686,11 +2686,11 @@ body.dark .au-tooltip {
     .get-code-section {
         border-top-color: rgba(255, 255, 255, 0.1);
     }
-
+    
     .get-code-link {
         background-color: rgba(67, 97, 238, 0.15);
     }
-
+    
     .get-code-link:hover {
         background-color: rgba(67, 97, 238, 0.25);
     }
@@ -2831,22 +2831,22 @@ body.dark .au-tooltip {
     .deactivate-warning {
         background-color: rgba(220, 53, 69, 0.2);
     }
-
+    
     .warning-text {
         color: #e0e0e0;
     }
-
+    
     .countdown-section {
         background-color: #2d3238;
         color: #e0e0e0;
     }
-
+    
     #cancel-deactivate-btn {
         background: #343a40;
         color: #e0e0e0;
         border-color: #495057;
     }
-
+    
     #cancel-deactivate-btn:hover {
         background: #495057;
     }
@@ -2971,17 +2971,17 @@ body.dark .au-tooltip {
         border-color: rgba(255, 255, 255, 0.1);
         color: #a0a0a0;
     }
-
+    
     .online-search-button:hover {
         background: rgba(80, 80, 80, 0.7);
     }
-
+    
     .online-search-button.active {
         background: rgba(77, 107, 248, 0.25);
         color: #8c9dff;
         border-color: rgba(97, 127, 238, 0.4);
     }
-
+    
     .online-search-button.active~.input-row #message-input:placeholder-shown {
         border-color: rgba(77, 107, 248, 0.5);
         box-shadow: 0 0 0 1px rgba(77, 107, 248, 0.3);
@@ -3038,23 +3038,23 @@ body.dark .au-tooltip {
         border-color: rgba(255, 255, 255, 0.1);
         background: rgba(45, 45, 45, 0.6);
     }
-
+    
     .search-results-header {
         background: rgba(60, 60, 60, 0.8);
         color: #e0e0e0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-
+    
     .search-results-content {
         background: rgba(45, 45, 45, 0.6);
         color: #e0e0e0;
     }
-
+    
     .search-result-item {
         border-top-color: rgba(255, 255, 255, 0.1);
         color: #8c9dff;
     }
-
+    
     .search-result-item:hover {
         color: #a0b0ff;
     }
@@ -3172,21 +3172,14 @@ body.dark .au-tooltip {
     align-items: center;
     justify-content: center;
     padding: 6px 12px;
-    margin-top: 10px;
     margin-right: auto;
-    background-color: rgba(67, 97, 238, 0.1);
-    color: var(--primary-color);
-    border: 1px solid rgba(67, 97, 238, 0.2);
-    border-radius: 16px;
+    background: none;
+    color: rgb(241, 241, 241);
+    border: none;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s ease;
     width: auto;
-}
-
-.copy-message-btn:hover {
-    background-color: rgba(67, 97, 238, 0.2);
-    transform: translateY(-1px);
 }
 
 .copy-message-btn svg {
@@ -3196,27 +3189,13 @@ body.dark .au-tooltip {
 }
 
 .copy-message-btn.copied {
-    background-color: rgba(40, 167, 69, 0.1);
     color: #28a745;
-    border-color: rgba(40, 167, 69, 0.2);
 }
 
 /* 深色模式下的复制按钮样式 */
 @media (prefers-color-scheme: dark) {
-    .copy-message-btn {
-        background-color: rgba(77, 107, 248, 0.15);
-        color: #7b8eff;
-        border-color: rgba(77, 107, 248, 0.3);
-    }
-
-    .copy-message-btn:hover {
-        background-color: rgba(77, 107, 248, 0.25);
-    }
-
     .copy-message-btn.copied {
-        background-color: rgba(40, 167, 69, 0.15);
         color: #40c463;
-        border-color: rgba(40, 167, 69, 0.3);
     }
 }
 

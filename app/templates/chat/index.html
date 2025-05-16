@@ -220,8 +220,8 @@
             </div>
             <!-- 消息区域 -->
             <div class="scrollable">
-                <div id="messages" class="messages">
-                    <!-- 消息内容将通过 JavaScript 动态添加 -->
+            <div id="messages" class="messages">
+                <!-- 消息内容将通过 JavaScript 动态添加 -->
                 </div>
             </div>
 
@@ -236,7 +236,7 @@
                 </div>
                 <div class="message-input-wrapper">
                     <textarea 
-                        id="message-input"
+                        id="message-input" 
                         placeholder="给 Aurora 发送消息..."
                         rows="1"
                     ></textarea>
@@ -248,19 +248,19 @@
                             <span>联网搜索</span>
                         </button>
                         <button class="image-upload-button" type="button">
-                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
-                            </svg>
-                        </button>
-                        <button class="send-button" type="button">
-                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
-                            </svg>
-                        </button>
-                    </div>
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+                        </svg>
+                    </button>
+                    <button class="send-button" type="button">
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+                        </svg>
+                    </button>
                 </div>
-                <input id="image-upload" type="file" accept="image/*" style="display:none" />
             </div>
+                <input id="image-upload" type="file" accept="image/*" style="display:none" />
+        </div>
         
         <!-- 会员信息弹窗 -->
         <div id="user-profile-modal" class="user-modal">

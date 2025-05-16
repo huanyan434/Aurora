@@ -183,13 +183,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // 显示主界面，隐藏加载logo
                 showMainUI();
-
-                // 为最后一条AI消息添加复制按钮，延长等待时间
-                setTimeout(() => {
-                    addCopyButtonToLastAIMessage();
-                    // 添加复制按钮后再次滚动到底部
-                    scrollToBottom(true);
-                }, 500);
             }, 200);
             
             console.log('应用初始化完成');
@@ -747,7 +740,7 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.messageInput.style.height = 'auto';
         // 清除首次页面布局时添加的输入框和预览框样式，使其恢复默认位置
         resetInputPosition();
-
+        
         // 隐藏图片预览（如果有）
         if (state.selectedImage) {
             elements.imagePreviewContainer.style.display = 'none';
@@ -781,6 +774,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // 更新 URL
                 updateUrl(data.id);
+                // 新增：更新聊天主界面标题为新对话
+                if (elements.conversationTitle) {
+                    elements.conversationTitle.textContent = data.title || '新对话';
+                }
             }
 
             // 准备发送数据
@@ -1429,7 +1426,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // 在AI响应完成后添加复制按钮，使用延迟以确保DOM已更新
                 setTimeout(() => {
-                    addCopyButtonToLastAIMessage();
+                    attachCopyButtonsToAIMessages();
                     // 添加复制按钮后再次滚动到底部
                     scrollToBottom(true);
                 }, 300);
@@ -1740,7 +1737,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const container = elements.scrollableContainer || elements.messagesContainer;
         if (!container) return;
         
-        setTimeout(() => {
+            setTimeout(() => {
             // 禁用平滑滚动
             container.style.scrollBehavior = 'auto';
 
@@ -1754,7 +1751,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (force || scrollHeight <= clientHeight || isAtBottom) {
                 container.scrollTop = scrollHeight;
             }
-        }, 0);
+            }, 0);
     }
 
     function focusInput() {
@@ -2131,10 +2128,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 // 历史记录加载完成后，添加复制按钮
                 console.log('历史记录加载完成，添加复制按钮...');
                 setTimeout(() => {
-                    window.addCopyButtonsToAllCodeBlocks();
+                    attachCopyButtonsToAIMessages();
                     // 为最后一条AI消息添加复制按钮，延长等待时间
                     setTimeout(() => {
-                        addCopyButtonToLastAIMessage();
+                        attachCopyButtonsToAIMessages();
                         // 添加复制按钮后再次滚动到底部
                         scrollToBottom(true);
                     }, 500);
@@ -2444,15 +2441,20 @@ document.addEventListener('DOMContentLoaded', function () {
     function showInitialPage() {
         if (!elements.messagesContainer) return;
         
+        // 新增：切换到欢迎界面时清空聊天区标题
+        if (elements.conversationTitle) {
+            elements.conversationTitle.textContent = '';
+        }
+        
         if (state.currentUser && state.currentUser.id) {
-            elements.messagesContainer.innerHTML = `
-                <div class="initial-page">
-                    <div class="welcome-message">
+        elements.messagesContainer.innerHTML = `
+            <div class="initial-page">
+                <div class="welcome-message">
                         <h1>我是 Aurora，很高兴见到你！</h1>
-                        <p>我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~</p>
-                    </div>
+                    <p>我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~</p>
                 </div>
-            `;
+            </div>
+        `;
         } else {
 
             // 为未登录用户修改输入框提示文本
@@ -2597,7 +2599,7 @@ document.addEventListener('DOMContentLoaded', function () {
     .welcome-message {
         margin-bottom: 2rem;
     }
-    
+
     .welcome-message h1 {
         font-size: 2rem;
         margin-bottom: 1rem;
@@ -3294,7 +3296,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log('更新聊天主界面标题:', title);
                 elements.conversationTitle.textContent = title;
             }
-
+            
             // 直接发送请求更新对话标题到服务器（使用现有接口）
             fetch(`/conversations/${conversationId}/update_title`, {
                 method: 'POST',
@@ -5126,6 +5128,35 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+
+    // 新增函数：将复制按钮添加到所有模型消息
+    function attachCopyButtonsToAIMessages() {
+        const aiMessages = document.querySelectorAll('.message.ai');
+        aiMessages.forEach((msg, idx) => {
+            if (msg.dataset.copyAttached) return;
+            msg.style.position = 'relative';
+            const btn = document.createElement('button');
+            btn.className = 'copy-message-btn';
+            btn.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg>';
+            btn.style.color = 'transparent'
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                copyAIMessage(msg, btn);
+            });
+            msg.appendChild(btn);
+            msg.dataset.copyAttached = 'true';
+
+            // 为所有消息添加 hover 事件，使用 color 隐藏/显示按钮
+            let hideTimeout;
+            msg.addEventListener('mouseenter', () => {
+                clearTimeout(hideTimeout);
+                btn.style.color = 'rgb(241, 241, 241)';
+            });
+            msg.addEventListener('mouseleave', () => {
+                hideTimeout = setTimeout(() => { btn.style.color = 'transparent'; }, 10);
+            });
+        });
+    }
 });
 
 // 全局处理搜索结果，创建可折叠的搜索结果区域
