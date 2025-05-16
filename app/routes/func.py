@@ -185,7 +185,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         start_time = time.time()
 
         for chunk in response:
-            if not "gemini" in model:
+            if "deepseek" in model or "qwen" in model:
                 prompt_tokens = chunk.usage.prompt_tokens
                 completion_tokens += chunk.usage.completion_tokens
             if hasattr(
