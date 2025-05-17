@@ -163,6 +163,20 @@ document.addEventListener('DOMContentLoaded', function () {
             // 获取用户余额信息
             fetchUserBalanceInfo().catch(err => console.error('加载用户余额信息出错:', err));
             
+            // 初始化时如果有未完成的AI请求，立即在当前会话创建加载动画容器
+            try {
+                const pendingInit = JSON.parse(localStorage.getItem('pending_ai_messages') || '[]');
+                pendingInit.forEach(item => {
+                    const { messageData } = item;
+                    if (messageData.conversation_id === state.currentConversationId) {
+                        console.log('初始化检测到未完成请求，添加加载动画:', messageData.message_id);
+                        createLoadingMessage(messageData.message_id, messageData.model);
+                    }
+                });
+            } catch(e) {
+                console.error('初始化时加载未完成AI请求失败:', e);
+            }
+            
             // 尝试续流未完成的消息
             checkActiveResponses().catch(err => console.error('检查活跃响应出错:', err));
             
@@ -1097,43 +1111,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             } else {
                                 console.error('找不到加载中的AI消息元素，ID:', aiMessageId);
                                 
-                                // 创建新消息元素（备用方案）
-                                aiMessageDiv = document.createElement('div');
-                                aiMessageDiv.className = 'message ai';
-                                aiMessageDiv.id = aiMessageId;
-                                
-                                // 添加模型信息
-                                const imageName = getModelImageName(modelName);
-                                const modelInfoHtml = `
-                                    <div class="model-info">
-                                    <img src="/static/models/${imageName}.png" alt="${modelName}" class="model-avatar" onerror="this.src='/static/models/default.png';">
-                                    <div class="model-name"><strong>${modelName}</strong></div>
-                                    </div>
-                                `;
-                                
-                                // 搜索结果容器 (初始隐藏)
-                                const searchContainer = document.createElement('div');
-                                searchContainer.className = 'search-results-container';
-                                searchContainer.style.display = 'none';
-                                aiMessageDiv.appendChild(searchContainer);
-                                
-                                // 思考容器 (初始隐藏)
-                                const thinkContainer = document.createElement('div');
-                                thinkContainer.className = 'think-container';
-                                thinkContainer.style.display = 'none';
-                                aiMessageDiv.appendChild(thinkContainer);
-                                
-                                // 主要消息内容容器
-                                const contentDiv = document.createElement('div');
-                                contentDiv.className = 'message-content';
-                                aiMessageDiv.appendChild(contentDiv);
-                                
+                                // 备用方案：使用 createLoadingMessage 创建消息容器并添加加载动画
+                                aiMessageDiv = createLoadingMessage(aiMessageId, modelName);
                                 messageCreated = true;
-                                
-                                // 强制滚动到底部，确保看到新消息
-                                scrollToBottom(true);
-                                
-                                console.log('找不到加载消息，创建了新的AI消息元素', aiMessageId);
+                                console.log('使用 createLoadingMessage 创建了新的 AI 消息元素', aiMessageId);
                             }
                         }
                         
@@ -2437,13 +2418,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (elements.conversationTitle) {
             elements.conversationTitle.textContent = '';
         }
-        
+        /* 获取时间（仅小时） */
+        const now = new Date();
+        const hours = now.getHours();
+        if (hours < 12) {
+            greeting = 'Good morning, Aurora';
+        } else if (hours < 18) {
+            greeting = 'Good afternoon, Aurora';
+        } else {
+            greeting = 'Good evening, Aurora';
+        }
         if (state.currentUser && state.currentUser.id) {
         elements.messagesContainer.innerHTML = `
             <div class="initial-page">
                 <div class="welcome-message">
-                        <h1>我是 Aurora，很高兴见到你！</h1>
-                    <p>我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~</p>
+                        <h1>${greeting}</h1>
                 </div>
             </div>
         `;
@@ -2584,7 +2573,7 @@ document.addEventListener('DOMContentLoaded', function () {
         align-items: center;
         justify-content: center;
         height: 100%;
-        padding: 8rem 2rem;
+        padding: 10.3rem 2rem;
         text-align: center;
     }
 
@@ -2598,30 +2587,19 @@ document.addEventListener('DOMContentLoaded', function () {
         color: #333;
     }
 
-    .welcome-message p {
-        font-size: 1.1rem;
-        color: #666;
-    }
-
     @media (max-width: 768px) {
         /* 靠左显示 */
         .initial-page {
             text-align: left;
-            padding: 12rem 28px;
+            padding: 13rem 28px;
         }
         .welcome-message h1 {
-            font-size: 1.2rem;
-        }
-        .welcome-message p {
-            font-size: 1rem;
+            font-size: 1.8rem;
         }
     }
 
     @media (prefers-color-scheme: dark) {
         .welcome-message h1 {
-            color: #e0e0e0;
-        }
-        .welcome-message p {
             color: #e0e0e0;
         }
     }
@@ -3478,26 +3456,31 @@ document.addEventListener('DOMContentLoaded', function () {
             const resp = await fetch('/api/chat/active_responses');
             if (!resp.ok) return;
             const active = await resp.json();
-            let pending = JSON.parse(localStorage.getItem('pending_ai_messages') || '[]');
+            const pending = JSON.parse(localStorage.getItem('pending_ai_messages') || '[]');
+            const newPending = [];
             for (const item of pending) {
                 const { messageData } = item;
                 const mid = messageData.message_id;
                 const convId = messageData.conversation_id;
                 if (active[mid]) {
-                    // 如果当前会话不是该消息所属会话，先加载历史记录
+                    // 活跃响应：续流处理
                     if (state.currentConversationId !== convId) {
                         await loadConversationHistory(convId);
                     }
-                    // DOM 中如果还没创建加载条则先创建
                     createLoadingMessage(mid, messageData.model);
-                    // 续流到正确的会话
                     await getAIResponse(messageData, convId, mid);
-                    // 移除 pending
-                    pending = JSON.parse(localStorage.getItem('pending_ai_messages') || '[]')
-                        .filter(i => i.messageData.message_id !== mid);
-                    localStorage.setItem('pending_ai_messages', JSON.stringify(pending));
+                    // 不保留在 pending 中
+                } else {
+                    // 已完成或不活跃的请求：刷新历史以显示完整回复
+                    if (state.currentConversationId === convId) {
+                        console.log('检查到已完成的AI请求，刷新历史记录:', mid);
+                        await loadConversationHistory(convId);
+                    }
+                    // 不保留在 pending 中
                 }
             }
+            // 清空所有已处理的 pending
+            localStorage.setItem('pending_ai_messages', JSON.stringify(newPending));
         } catch (e) {
             console.error('续流失败:', e);
         }
