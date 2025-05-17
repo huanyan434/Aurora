@@ -3174,7 +3174,7 @@ body.dark .au-tooltip {
     padding: 6px 12px;
     margin-right: auto;
     background: none;
-    color: rgb(241, 241, 241);
+    color: var(--dark-color);
     border: none;
     font-size: 13px;
     cursor: pointer;
@@ -3194,6 +3194,9 @@ body.dark .au-tooltip {
 
 /* 深色模式下的复制按钮样式 */
 @media (prefers-color-scheme: dark) {
+    /* .copy-message-btn {
+        color: rgb(241, 241, 241);
+    } */
     .copy-message-btn.copied {
         color: #40c463;
     }

@@ -2624,6 +2624,15 @@ document.addEventListener('DOMContentLoaded', function () {
             font-size: 1rem;
         }
     }
+
+    @media (prefers-color-scheme: dark) {
+        .welcome-message h1 {
+            color: #e0e0e0;
+        }
+        .welcome-message p {
+            color: #e0e0e0;
+        }
+    }
     `;
 
     document.head.appendChild(style);
@@ -3072,7 +3081,6 @@ document.addEventListener('DOMContentLoaded', function () {
             'doubao-1.5-pro': 'Doubao-1.5-pro',
             'doubao-1.5-pro-256k': 'Doubao-1.5-pro-256k',
             'doubao-1.5-vision-pro': 'Doubao-1.5-vision-pro',
-            'gemini-2.5-pro': 'Gemini-2.5-pro',
             'gemini-2.5-flash': 'Gemini-2.5-flash',
             'gemini-2.0-flash': 'Gemini-2.0-flash',
             'qwen3': 'Qwen3',
@@ -5145,16 +5153,23 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             msg.appendChild(btn);
             msg.dataset.copyAttached = 'true';
-
-            // 为所有消息添加 hover 事件，使用 color 隐藏/显示按钮
-            let hideTimeout;
-            msg.addEventListener('mouseenter', () => {
-                clearTimeout(hideTimeout);
-                btn.style.color = 'rgb(241, 241, 241)';
-            });
-            msg.addEventListener('mouseleave', () => {
-                hideTimeout = setTimeout(() => { btn.style.color = 'transparent'; }, 10);
-            });
+         
+            // 最后一条 AI 消息复制按钮常显，其余消息默认隐藏并悬停可见
+            const lastIndex = aiMessages.length - 1;
+            if (idx === lastIndex) {
+                btn.style.removeProperty('color')
+            } else {
+                btn.style.color = 'transparent';
+                let hideTimeout;
+                msg.addEventListener('mouseenter', () => {
+                    clearTimeout(hideTimeout);
+                    // 删除后加的 style
+                    btn.style.removeProperty('color')
+                });
+                msg.addEventListener('mouseleave', () => {
+                    hideTimeout = setTimeout(() => { btn.style.color = 'transparent'; }, 10);
+                });
+            }
         });
     }
 });
