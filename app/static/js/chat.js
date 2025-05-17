@@ -1423,11 +1423,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (state.isSending) {
                 state.isSending = false;
                 updateSendButtonState();
-                    
-                attachCopyButtonsToAIMessages();
-                // 添加复制按钮后再次滚动到底部
-                scrollToBottom(true);
+
             }
+
+            attachCopyButtonsToAIMessages();
+            // 添加复制按钮后再次滚动到底部
+            scrollToBottom(true);
 
             // 检查当前对话的标题是否为"新对话"，如果是则获取新标题
             if (conversationId) {
@@ -2120,7 +2121,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             
                 // 加载完历史记录后，立即跳转到底部
-                    scrollToBottom(true);
+                scrollToBottom(true);
                 
                 // 历史记录加载完成后，添加复制按钮
                 console.log('历史记录加载完成，添加复制按钮...');
@@ -4939,39 +4940,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ====================== 复制消息功能 ======================
-    // 添加复制按钮到最后一条AI消息
-    function addCopyButtonToLastAIMessage() {
-        // 先移除所有现有的复制按钮
-        document.querySelectorAll('.copy-message-btn').forEach(btn => btn.remove());
-
-        // 获取所有AI消息 - 修正选择器
-        const aiMessages = document.querySelectorAll('.message.ai');
-        if (aiMessages.length === 0) return;
-
-        // 获取最后一条AI消息
-        const lastAIMessage = aiMessages[aiMessages.length - 1];
-
-        // 检查是否已经有复制按钮
-        if (lastAIMessage.querySelector('.copy-message-btn')) return;
-
-        // 创建复制按钮
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'copy-message-btn';
-        copyBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-            </svg>
-        `;
-
-        // 添加点击事件
-        copyBtn.addEventListener('click', function () {
-            copyAIMessage(lastAIMessage, this);
-        });
-
-        // 添加到消息末尾
-        lastAIMessage.appendChild(copyBtn);
-    }
-
     // 复制消息内容
     function copyAIMessage(messageElement, button) {
         // 获取消息内容
@@ -5130,10 +5098,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 新增函数：将复制按钮添加到所有模型消息
     function attachCopyButtonsToAIMessages() {
+        // 添加复制按钮到所有模型消息
         const aiMessages = document.querySelectorAll('.message.ai');
         aiMessages.forEach((msg, idx) => {
             if (msg.dataset.copyAttached) return;
             msg.style.position = 'relative';
+            // 如果存在复制按钮，则删除
+            const btn_old = msg.querySelector('.copy-message-btn');
+            if (btn_old) {
+                btn_old.remove();
+            }
             const btn = document.createElement('button');
             btn.className = 'copy-message-btn';
             btn.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg>';
@@ -5143,7 +5117,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 copyAIMessage(msg, btn);
             });
             msg.appendChild(btn);
-            msg.dataset.copyAttached = 'true';
          
             // 最后一条 AI 消息复制按钮常显，其余消息默认隐藏并悬停可见
             const lastIndex = aiMessages.length - 1;
@@ -5160,6 +5133,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 msg.addEventListener('mouseleave', () => {
                     hideTimeout = setTimeout(() => { btn.style.color = 'transparent'; }, 10);
                 });
+                msg.dataset.copyAttached = 'true';
             }
         });
     }
