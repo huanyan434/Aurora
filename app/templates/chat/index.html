@@ -257,127 +257,127 @@
             </div>
                 <input id="image-upload" type="file" accept="image/*" style="display:none" />
         </div>
-        
-        <!-- 会员信息弹窗 -->
-        <div id="user-profile-modal" class="user-modal">
-            <div class="user-modal-content">
-                <div class="user-modal-header">
-                    <h3>个人信息</h3>
-                    <span class="close-modal">&times;</span>
-                </div>
-                <div class="user-modal-body">
-                    <!-- 用户名修改 -->
-                    <div class="user-info-section">
-                        <h4>用户信息</h4>
-                        <div class="username-display">
-                            <span id="profile-username">
-                                {% if current_user.is_authenticated %}
-                                    {{ current_user.username }}
-                                {% else %}
-                                    游客
-                                {% endif %}
-                            </span>
-                            {% if current_user.is_authenticated %}
-                            <div class="user-buttons">
-                                <button class="edit-username-btn">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button id="change-password-btn" class="edit-password-btn">
-                                    <i class="bi bi-key"></i>
-                                </button>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% if current_user.is_authenticated %}
-                        <div class="username-edit" style="display: none;">
-                            <input type="text" id="username-input" value="{{ current_user.username }}">
-                            <button id="save-username-btn">保存</button>
-                            <button id="cancel-username-btn">取消</button>
-                        </div>
-                        {% else %}
-                        <div class="login-prompt">
-                            <p>请先登录以使用完整功能</p>
-                            <button onclick="window.location.href='/auth/login'" class="login-btn">
-                                <i class="bi bi-box-arrow-in-right"></i> 登录
-                            </button>
-                            <button onclick="window.location.href='/auth/signup'" class="signup-btn">
-                                <i class="bi bi-person-plus"></i> 注册
-                            </button>
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    {% if current_user.is_authenticated %}
-                    <!-- 会员信息 -->
-                    <div class="user-info-section">
-                        <h4>会员状态</h4>
-                        <div id="membership-info">
-                            <div class="loading-spinner">加载中...</div>
-                        </div>
-                    </div>
-                    
-                    <!-- 会员权益 -->
-                    <div class="user-info-section">
-                        <h4>会员权益</h4>
-                        <div id="membership-privileges">
-                            <!-- 会员权益列表将通过JavaScript动态添加 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 余额信息 -->
-                    <div class="user-info-section" id="balance-section">
-                        <h4>余额信息</h4>
-                        <div id="balance-display">
-                            <div class="loading-spinner">加载中...</div>
-                        </div>
-                        <!-- 余额充值 -->
-                        <div class="redeem-section">
-                            <h4>充值码兑换</h4>
-                            <div class="redeem-form">
-                                <input type="text" id="money-code-input" placeholder="输入充值码" class="redeem-input" />
-                                <button type="button" id="money-redeem-btn" class="redeem-button">充值</button>
-                            </div>
-                            <div id="money-redeem-result" class="redeem-result"></div>
-                        </div>
-                    </div>
-
-                    <!-- 兑换兑换码 -->
-                    <div class="user-info-section">
-                        <h4>会员兑换</h4>
-                        <div class="redeem-section">
-                            <div class="redeem-form">
-                                <input type="text" id="vip-code-input" placeholder="输入会员兑换码" class="redeem-input" />
-                                <button type="button" id="vip-redeem-btn" class="redeem-button">兑换</button>
-                            </div>
-                            <div id="vip-redeem-result" class="redeem-result"></div>
-                        </div>
-                    </div>
-
-                    <!-- 注销账号 -->
-                    <div class="user-info-section">
-                        <h4>账号管理</h4>
-                        <div class="account-actions">
-                            <button type="button" id="deactivate-account-btn" class="danger-button">
-                                <i class="bi bi-exclamation-triangle"></i> 注销账号
-                            </button>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- 获取兑换码链接 -->
-                    <div class="get-code-section">
-                        <a href="https://afdian.com/a/mchyj" target="_blank" class="get-code-link">
-                            <i class="bi bi-gift"></i> 获取兑换码
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- JavaScript - 直接加载 -->
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 
+    <!-- 会员信息弹窗 -->
+    <div id="user-profile-modal" class="user-modal">
+        <div class="user-modal-content">
+            <div class="user-modal-header">
+                <h3>个人信息</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="user-modal-body">
+                <!-- 用户名修改 -->
+                <div class="user-info-section">
+                    <h4>用户信息</h4>
+                    <div class="username-display">
+                        <span id="profile-username">
+                            {% if current_user.is_authenticated %}
+                                {{ current_user.username }}
+                            {% else %}
+                                游客
+                            {% endif %}
+                        </span>
+                        {% if current_user.is_authenticated %}
+                        <div class="user-buttons">
+                            <button class="edit-username-btn">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button id="change-password-btn" class="edit-password-btn">
+                                <i class="bi bi-key"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if current_user.is_authenticated %}
+                    <div class="username-edit" style="display: none;">
+                        <input type="text" id="username-input" value="{{ current_user.username }}">
+                        <button id="save-username-btn">保存</button>
+                        <button id="cancel-username-btn">取消</button>
+                    </div>
+                    {% else %}
+                    <div class="login-prompt">
+                        <p>请先登录以使用完整功能</p>
+                        <button onclick="window.location.href='/auth/login'" class="login-btn">
+                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                        </button>
+                        <button onclick="window.location.href='/auth/signup'" class="signup-btn">
+                            <i class="bi bi-person-plus"></i> 注册
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if current_user.is_authenticated %}
+                <!-- 会员信息 -->
+                <div class="user-info-section">
+                    <h4>会员状态</h4>
+                    <div id="membership-info">
+                        <div class="loading-spinner">加载中...</div>
+                    </div>
+                </div>
+                
+                <!-- 会员权益 -->
+                <div class="user-info-section">
+                    <h4>会员权益</h4>
+                    <div id="membership-privileges">
+                        <!-- 会员权益列表将通过JavaScript动态添加 -->
+                    </div>
+                </div>
+                
+                <!-- 余额信息 -->
+                <div class="user-info-section" id="balance-section">
+                    <h4>余额信息</h4>
+                    <div id="balance-display">
+                        <div class="loading-spinner">加载中...</div>
+                    </div>
+                    <!-- 余额充值 -->
+                    <div class="redeem-section">
+                        <h4>充值码兑换</h4>
+                        <div class="redeem-form">
+                            <input type="text" id="money-code-input" placeholder="输入充值码" class="redeem-input" />
+                            <button type="button" id="money-redeem-btn" class="redeem-button">充值</button>
+                        </div>
+                        <div id="money-redeem-result" class="redeem-result"></div>
+                    </div>
+                </div>
+
+                <!-- 兑换兑换码 -->
+                <div class="user-info-section">
+                    <h4>会员兑换</h4>
+                    <div class="redeem-section">
+                        <div class="redeem-form">
+                            <input type="text" id="vip-code-input" placeholder="输入会员兑换码" class="redeem-input" />
+                            <button type="button" id="vip-redeem-btn" class="redeem-button">兑换</button>
+                        </div>
+                        <div id="vip-redeem-result" class="redeem-result"></div>
+                    </div>
+                </div>
+
+                <!-- 注销账号 -->
+                <div class="user-info-section">
+                    <h4>账号管理</h4>
+                    <div class="account-actions">
+                        <button type="button" id="deactivate-account-btn" class="danger-button">
+                            <i class="bi bi-exclamation-triangle"></i> 注销账号
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 获取兑换码链接 -->
+                <div class="get-code-section">
+                    <a href="https://afdian.com/a/mchyj" target="_blank" class="get-code-link">
+                        <i class="bi bi-gift"></i> 获取兑换码
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- 密码修改弹窗 -->
     <div id="password-modal" class="user-modal">
         <div class="user-modal-content">

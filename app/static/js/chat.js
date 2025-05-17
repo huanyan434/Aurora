@@ -1423,13 +1423,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (state.isSending) {
                 state.isSending = false;
                 updateSendButtonState();
-
-                // 在AI响应完成后添加复制按钮，使用延迟以确保DOM已更新
-                setTimeout(() => {
-                    attachCopyButtonsToAIMessages();
-                    // 添加复制按钮后再次滚动到底部
-                    scrollToBottom(true);
-                }, 300);
+                    
+                attachCopyButtonsToAIMessages();
+                // 添加复制按钮后再次滚动到底部
+                scrollToBottom(true);
             }
 
             // 检查当前对话的标题是否为"新对话"，如果是则获取新标题
@@ -2127,15 +2124,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // 历史记录加载完成后，添加复制按钮
                 console.log('历史记录加载完成，添加复制按钮...');
-                setTimeout(() => {
-                    attachCopyButtonsToAIMessages();
-                    // 为最后一条AI消息添加复制按钮，延长等待时间
-                    setTimeout(() => {
-                        attachCopyButtonsToAIMessages();
-                        // 添加复制按钮后再次滚动到底部
-                        scrollToBottom(true);
-                    }, 500);
-                }, 300);
+                attachCopyButtonsToAIMessages();
+                // 添加复制按钮后再次滚动到底部
+                scrollToBottom(true);
             })
             .catch(error => {
                 // 请求失败，也要清理加载动画
