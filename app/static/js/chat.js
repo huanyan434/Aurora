@@ -47,7 +47,6 @@ document.addEventListener('DOMContentLoaded', function () {
         sendButton: document.querySelector('.send-button'),
         newChatBtn: document.getElementById('new-chat-btn'),
         conversationsList: document.getElementById('conversations-list'),
-        collapseBtn: document.querySelector('.collapse-btn'),
         sidebar: document.querySelector('.conversation-sidebar'),
         sidebarToggle: document.querySelector('.sidebar-toggle'),
         sidebarOverlay: document.querySelector('.sidebar-overlay'),
@@ -423,7 +422,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 添加侧边栏切换按钮事件
         if (elements.sidebarToggle) {
-            elements.sidebarToggle.addEventListener('click', toggleMobileSidebar);
+            elements.sidebarToggle.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    toggleMobileSidebar();
+                } else {
+                    toggleSidebar();
+                    // 新增：桌面端折叠/展开后调整模型选择位置
+                    const modelSelectEl = document.querySelector('.model-select');
+                    if (modelSelectEl) {
+                        if (state.isSidebarCollapsed) {
+                            const computedLeft = window.getComputedStyle(modelSelectEl).left;
+                            const leftValue = parseFloat(computedLeft) || 0;
+                            modelSelectEl.style.left = (leftValue + 40) + 'px';
+                        } else {
+                            modelSelectEl.style.left = '';
+                        }
+                    }
+                }
+            });
         }
 
         // 添加遮罩层点击事件
@@ -433,7 +449,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 内部侧边栏切换按钮点击事件（移动端）
         if (elements.sidebarInsideToggle) {
-            elements.sidebarInsideToggle.addEventListener('click', closeMobileSidebar);
+            elements.sidebarInsideToggle.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    toggleMobileSidebar();
+                } else {
+                    toggleSidebar();
+                }
+            });
         }
 
         // 图片上传按钮点击事件
@@ -2102,7 +2124,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             
                 // 加载完历史记录后，立即跳转到底部
-                scrollToBottom(true);
+                    scrollToBottom(true);
                 
                 // 历史记录加载完成后，添加复制按钮
                 console.log('历史记录加载完成，添加复制按钮...');
@@ -2325,7 +2347,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // 添加初始化标记，启用过渡动画
             requestAnimationFrame(() => {
                 elements.sidebar.classList.add('initialized');
-                elements.collapseBtn.classList.add('initialized');
+                elements.sidebarToggle.classList.add('initialized');
             });
 
             // 添加登出按钮事件监听
@@ -2421,12 +2443,25 @@ document.addEventListener('DOMContentLoaded', function () {
         /* 获取时间（仅小时） */
         const now = new Date();
         const hours = now.getHours();
-        if (hours < 12) {
-            greeting = 'Good morning, Aurora';
-        } else if (hours < 18) {
-            greeting = 'Good afternoon, Aurora';
+        const user_name = state.currentUser.username;
+        const user_name_cn = user_name.match(/[\u4e00-\u9fa5]/);
+        // const user_name_cn = null;
+        if (user_name_cn) {
+            if (hours < 12) {
+                greeting = '早上好，' + user_name;
+            } else if (hours < 18) {
+                greeting = '下午好，' + user_name;
+            } else {
+                greeting = '晚上好，' + user_name;
+            }
         } else {
-            greeting = 'Good evening, Aurora';
+            if (hours < 12) {
+                greeting = 'Good morning, ' + user_name;
+            } else if (hours < 18) {
+                greeting = 'Good afternoon, ' + user_name;
+            } else {
+                greeting = 'Good evening, ' + user_name;
+            }
         }
         if (state.currentUser && state.currentUser.id) {
         elements.messagesContainer.innerHTML = `
@@ -2500,7 +2535,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         requestAnimationFrame(() => {
             elements.sidebar.classList.toggle('collapsed');
-            elements.collapseBtn.classList.toggle('collapsed');
+            elements.sidebarToggle.classList.toggle('collapsed');
             
             // 发送请求到服务器保存折叠状态
             fetch('/save-sidebar-state', {
@@ -2515,6 +2550,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error('保存侧边栏状态失败:', error);
             });
         });
+        // 新增：桌面端折叠/展开时调整模型选择位置
+        if (window.innerWidth > 768) {
+            const modelSelectEl = document.querySelector('.model-select');
+            if (modelSelectEl) {
+                if (state.isSidebarCollapsed) {
+                    const computedLeft = window.getComputedStyle(modelSelectEl).left;
+                    const leftValue = parseFloat(computedLeft) || 0;
+                    modelSelectEl.style.left = (leftValue + 45) + 'px';
+                } else {
+                    modelSelectEl.style.left = '';
+                }
+            }
+        }
     }
 
     // 创建确认对话框
@@ -3524,12 +3572,25 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (state.isSidebarCollapsed) {
                 elements.sidebar.classList.add('collapsed');
-                elements.collapseBtn.classList.add('collapsed');
+                elements.sidebarToggle.classList.add('collapsed');
             } else {
                 elements.sidebar.classList.remove('collapsed');
-                elements.collapseBtn.classList.remove('collapsed');
+                elements.sidebarToggle.classList.remove('collapsed');
             }
             
+            // 新增：桌面端初始加载时调整模型选择位置
+            if (window.innerWidth > 768) {
+                const modelSelectEl = document.querySelector('.model-select');
+                if (modelSelectEl) {
+                    if (state.isSidebarCollapsed) {
+                        const computedLeft = window.getComputedStyle(modelSelectEl).left;
+                        const leftValue = parseFloat(computedLeft) || 0;
+                        modelSelectEl.style.left = (leftValue + 45) + 'px';
+                    } else {
+                        modelSelectEl.style.left = '';
+                    }
+                }
+            }
             console.log('已加载侧边栏状态:', data.isOpen ? '打开' : '关闭');
         } catch (error) {
             console.error('加载侧边栏状态时出错:', error);
@@ -5073,8 +5134,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (elements.sidebar) {
                 elements.sidebar.classList.remove('collapsed');
             }
-            if (elements.collapseBtn) {
-                elements.collapseBtn.classList.remove('collapsed');
+            if (elements.sidebarToggle) {
+                elements.sidebarToggle.classList.remove('collapsed');
             }
         }
     });
