@@ -4238,7 +4238,6 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="custom-confirm-dialog__content">
                 <div class="custom-confirm-dialog__header">
                     <h5 id="customConfirmDialogLabel">确认操作</h5>
-                    <span class="custom-confirm-dialog__close">&times;</span>
                 </div>
                 <div class="custom-confirm-dialog__body">
                     ${message}

@@ -10,7 +10,7 @@
     --primary-color: #4361ee;
     --secondary-color: #3f37c9;
     --light-color: #f8f9fa;
-    --dark-color: #212529;
+    --dark-color: #1d1d20;
     --gray-color: #6c757d;
     --border-color: rgba(0, 0, 0, 0.1);
     --user-bubble: #eff6ff;
@@ -157,10 +157,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 9px;
-    height: 42px;
-    border-radius: 8px;
-    backdrop-filter: blur(5px);
+    padding: .44rem .69rem;
+    height: 36.15px;
+    border-radius: .5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .conversation-content {
@@ -208,9 +209,18 @@ body {
 }
 
 .conversation-title {
-    font-weight: 500;
     color: var(--dark-color);
-    margin-bottom: 4px;
+    display: flex;
+    height: 1.38rem;
+    max-width: 13.88rem;
+    align-items: center;
+    align-self: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: 400;
+    line-height: 1.38rem;
 }
 
 
@@ -2877,9 +2887,9 @@ body.dark .au-tooltip {
     display: flex;
     align-items: center;
     gap: 4px;
-    background: rgba(200, 200, 200, 0.3);
+    background: transparent;
     border: 1px solid var(--border-color);
-    color: var(--dark-color);
+    color: #262626;
     border-radius: 16px;
     padding: 4px 12px;
     font-size: 14px;
@@ -2907,19 +2917,13 @@ body.dark .au-tooltip {
 /* 联网搜索激活时的输入框提示样式 */
 .online-search-button.active~.input-row #message-input:placeholder-shown {
     border-color: rgba(67, 97, 238, 0.6);
-    box-shadow: 0 0 0 1px rgba(67, 97, 238, 0.25);
 }
 
 /* 深色模式下的联网搜索按钮 */
 @media (prefers-color-scheme: dark) {
     .online-search-button {
-        background: rgba(70, 70, 70, 0.5);
         border-color: rgba(255, 255, 255, 0.1);
         color: #a0a0a0;
-    }
-    
-    .online-search-button:hover {
-        background: rgba(80, 80, 80, 0.7);
     }
     
     .online-search-button.active {
@@ -2930,7 +2934,6 @@ body.dark .au-tooltip {
     
     .online-search-button.active~.input-row #message-input:placeholder-shown {
         border-color: rgba(77, 107, 248, 0.5);
-        box-shadow: 0 0 0 1px rgba(77, 107, 248, 0.3);
     }
 }
 
@@ -3334,7 +3337,7 @@ body.dark .au-tooltip {
 
 .custom-confirm-dialog__content {
     background-color: #E6E6E6;
-    border-radius: 30px;
+    border-radius: 35px;
     padding: 20px;
     max-width: 600px;
     width: 90%;
@@ -3345,18 +3348,12 @@ body.dark .au-tooltip {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
-}
-
-.custom-confirm-dialog__close {
-    cursor: pointer;
-    font-size: 24px;
-    line-height: 1;
+    margin: 8px 0 16px 16px;
 }
 
 .custom-confirm-dialog__body {
     color: var(--dark-color);
-    margin-bottom: 20px;
+    margin: 0 0 25px 16px;
 }
 
 .custom-confirm-dialog__footer {
