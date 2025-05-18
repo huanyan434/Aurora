@@ -3307,3 +3307,100 @@ body.dark .au-tooltip {
         transform: translateX(-280px);
     }
 }
+
+/* 已移除原有 .modal-dialog 样式块，避免与 Bootstrap 冲突 */
+
+/* 新增自定义确认对话框样式 */
+.custom-confirm-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.custom-confirm-dialog.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.custom-confirm-dialog__content {
+    background-color: #E6E6E6;
+    border-radius: 30px;
+    padding: 20px;
+    max-width: 600px;
+    width: 90%;
+    box-sizing: border-box;
+}
+
+.custom-confirm-dialog__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.custom-confirm-dialog__close {
+    cursor: pointer;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.custom-confirm-dialog__body {
+    color: var(--dark-color);
+    margin-bottom: 20px;
+}
+
+.custom-confirm-dialog__footer {
+    display: flex;
+    justify-content: space-between;
+}
+
+.custom-confirm-dialog__btn {
+    flex: 1;
+    margin: 0 8px;
+    padding: 10px 0;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px;
+    border: none;
+}
+
+.custom-confirm-dialog__btn--cancel {
+    background: transparent;
+    color: var(--dark-color);
+    border: 1px solid var(--dark-color);
+}
+
+.custom-confirm-dialog__btn--confirm {
+    background-color: #ff4d4f;
+    color: #fff;
+}
+
+/* 深色模式适配：自定义确认对话框 */
+@media (prefers-color-scheme: dark) {
+    .custom-confirm-dialog {
+        background-color: rgba(0, 0, 0, 0.7);
+    }
+    .custom-confirm-dialog__content {
+        background-color: var(--main-bg);
+    }
+    .custom-confirm-dialog__header h5,
+    .custom-confirm-dialog__close,
+    .custom-confirm-dialog__body,
+    .custom-confirm-dialog__btn--cancel {
+        color: var(--light-color);
+    }
+    .custom-confirm-dialog__btn--cancel {
+        color: var(--light-color);
+        border: 1px solid var(--light-color);
+    }
+}

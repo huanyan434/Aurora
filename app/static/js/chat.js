@@ -4227,27 +4227,25 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('显示确认对话框', message);
         
         // 移除可能存在的旧对话框
-        const existingModal = document.getElementById('confirmDialog');
+        const existingModal = document.getElementById('customConfirmDialog');
         if (existingModal) {
             document.body.removeChild(existingModal);
         }
         
         // 创建模态对话框
         const modalHTML = `
-        <div class="modal fade" id="confirmDialog" tabindex="-1" aria-labelledby="confirmDialogLabel" aria-modal="true" role="dialog">
-            <div class="modal-dialog" style="width: 450px;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="confirmDialogLabel">确认操作</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        ${message}
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-primary" id="confirmDialogConfirmBtn">确认</button>
-                    </div>
+        <div id="customConfirmDialog" class="custom-confirm-dialog" tabindex="-1" aria-labelledby="customConfirmDialogLabel" aria-modal="true" role="dialog">
+            <div class="custom-confirm-dialog__content">
+                <div class="custom-confirm-dialog__header">
+                    <h5 id="customConfirmDialogLabel">确认操作</h5>
+                    <span class="custom-confirm-dialog__close">&times;</span>
+                </div>
+                <div class="custom-confirm-dialog__body">
+                    ${message}
+                </div>
+                <div class="custom-confirm-dialog__footer">
+                    <button type="button" class="custom-confirm-dialog__btn custom-confirm-dialog__btn--cancel" id="customConfirmDialogCancelBtn">取消</button>
+                    <button type="button" class="custom-confirm-dialog__btn custom-confirm-dialog__btn--confirm" id="customConfirmDialogConfirmBtn">确认</button>
                 </div>
             </div>
         </div>
@@ -4259,8 +4257,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.appendChild(modalContainer.firstElementChild);
         
         // 获取对话框元素
-        const modalElement = document.getElementById('confirmDialog');
-        const confirmBtn = document.getElementById('confirmDialogConfirmBtn');
+        const modalElement = document.getElementById('customConfirmDialog');
+        const confirmBtn = document.getElementById('customConfirmDialogConfirmBtn');
         
         // 设置显示样式
         // modalElement.style.display = 'flex';
@@ -4269,13 +4267,6 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // 添加show类
         modalElement.classList.add('show');
-        
-        // 输出调试信息
-        console.log('模态框显示状态:', {
-            display: getComputedStyle(modalElement).display,
-            zIndex: getComputedStyle(modalElement).zIndex,
-            classList: [...modalElement.classList]
-        });
         
         // 点击确认按钮执行回调
         confirmBtn.addEventListener('click', function () {
@@ -4287,13 +4278,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         
         // 点击关闭按钮关闭对话框
-        const closeBtn = modalElement.querySelector('.close');
+        const closeBtn = modalElement.querySelector('.custom-confirm-dialog__close');
         if (closeBtn) {
             closeBtn.addEventListener('click', closeModal);
         }
         
         // 点击取消按钮关闭对话框
-        const cancelBtn = modalElement.querySelector('.btn-secondary');
+        const cancelBtn = document.getElementById('customConfirmDialogCancelBtn');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', closeModal);
         }
