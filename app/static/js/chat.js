@@ -1873,7 +1873,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     overlay.style.left = '50%';
                     overlay.style.transform = 'translate(-50%, -50%)';
                     overlay.style.zIndex = '1000';
-                    overlay.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">加载中...</span></div>';
+                    overlay.innerHTML = '<div class="history-spinner" role="status"></div>';
                     chatMain.appendChild(overlay);
                 }
             }
@@ -2213,22 +2213,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.stopPropagation(); // 阻止冒泡，避免触发对话点击事件
                 
                 // 删除所有已存在的下拉菜单
-                document.querySelectorAll('.dropdown-menu').forEach(menu => menu.remove());
+                document.querySelectorAll('.conversation-dropdown-menu').forEach(menu => menu.remove());
                 
                 // 创建下拉菜单
                 const dropdownMenu = document.createElement('div');
-                dropdownMenu.className = 'dropdown-menu';
+                dropdownMenu.className = 'conversation-dropdown-menu';
                 dropdownMenu.innerHTML = `
-                    <div class="dropdown-item rename-item">
-                        <svg class="dropdown-icon" viewBox="0 0 24 24" width="16" height="16">
-                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
-                        </svg>
+                    <div class="conversation-dropdown-item rename-item">
                         <span>重命名</span>
                     </div>
-                    <div class="dropdown-item delete-item">
-                        <svg class="dropdown-icon" viewBox="0 0 24 24" width="16" height="16">
-                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                        </svg>
+                    <div class="conversation-dropdown-item delete-item">
                         <span>删除</span>
                     </div>
                 `;
@@ -2257,7 +2251,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const titleElement = conversationItem.querySelector('.conversation-title');
                         if (titleElement) {
                             // 调用内联编辑函数
-                            makeConversationTitleEditable(conv.id, titleElement, conv.title || '新对话');
+                            makeConversationTitleEditable(conv.id, titleElement);
                         }
                     }
                 };
@@ -2633,6 +2627,7 @@ document.addEventListener('DOMContentLoaded', function () {
         font-size: 2rem;
         margin-bottom: 1rem;
         color: #333;
+        font-weight: 500;
     }
 
     @media (max-width: 768px) {
@@ -3898,14 +3893,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const displayEl = document.querySelector('.username-display');
         const editEl = document.querySelector('.username-edit');
         const usernameInput = document.getElementById('username-input');
-        const currentUsername = document.getElementById('profile-username').textContent;
+        const currentUsername = document.getElementById('profile-username').textContent.trim();
 
         if (displayEl && editEl && usernameInput) {
             displayEl.style.display = 'none';
             editEl.style.display = 'flex';
             usernameInput.value = currentUsername;
             usernameInput.focus();
-            usernameInput.select();
         }
     }
 
@@ -4000,9 +3994,10 @@ document.addEventListener('DOMContentLoaded', function () {
      * 将对话标题转换为可编辑的输入框
      * @param {string} conversationId - 对话ID
      * @param {HTMLElement} titleElement - 标题元素
-     * @param {string} currentTitle - 当前标题内容
      */
-    function makeConversationTitleEditable(conversationId, titleElement, currentTitle) {
+    function makeConversationTitleEditable(conversationId, titleElement) {
+        // 获取当前标题
+        const currentTitle = titleElement.textContent;
         // 保存原始标题内容和样式
         const originalTitle = currentTitle;
         const originalDisplay = titleElement.style.display;
@@ -4012,20 +4007,13 @@ document.addEventListener('DOMContentLoaded', function () {
         inputElement.type = 'text';
         inputElement.value = originalTitle;
         inputElement.className = 'conversation-title-edit';
-        inputElement.style.width = '100%';
-        inputElement.style.boxSizing = 'border-box';
-        inputElement.style.padding = '4px 8px';
-        inputElement.style.border = '1px solid #ccc';
-        inputElement.style.borderRadius = '4px';
-        inputElement.style.fontSize = '14px';
         
         // 隐藏原标题元素
         titleElement.style.display = 'none';
         // 将输入框插入到标题元素后面
         titleElement.parentNode.insertBefore(inputElement, titleElement.nextSibling);
-        // 自动聚焦输入框并选择全部文本
+        // 自动聚焦输入框
         inputElement.focus();
-        inputElement.select();
         
         // 处理回车键提交
         inputElement.addEventListener('keydown', function (e) {
@@ -4238,10 +4226,10 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="custom-confirm-dialog__content">
                 <div class="custom-confirm-dialog__header">
                     <h5 id="customConfirmDialogLabel">确认操作</h5>
-                </div>
+                    </div>
                 <div class="custom-confirm-dialog__body">
-                    ${message}
-                </div>
+                        ${message}
+                    </div>
                 <div class="custom-confirm-dialog__footer">
                     <button type="button" class="custom-confirm-dialog__btn custom-confirm-dialog__btn--cancel" id="customConfirmDialogCancelBtn">取消</button>
                     <button type="button" class="custom-confirm-dialog__btn custom-confirm-dialog__btn--confirm" id="customConfirmDialogConfirmBtn">确认</button>

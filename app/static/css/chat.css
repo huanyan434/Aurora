@@ -61,7 +61,7 @@ body,
 html,
 body {
     height: 100%;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     background: var(--bg-color);
     color: var(--dark-color);
 }
@@ -513,8 +513,7 @@ body {
 #message-input {
     flex: 1;
     padding: 0 16px;
-    /*border: 1px solid var(--glass-border);
-    border-radius: 24px;*/
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
     border: none;
     font-size: 15px;
     min-height: 52px;
@@ -663,7 +662,7 @@ body {
     .chat-main {
         margin-left: 0 !important;
     }
-    
+
     #messages {
         padding: 15px 0 150px;
     }
@@ -740,7 +739,7 @@ body {
 }
 
 /* 移动端适配 */
-@media (max-width: 768px) {    
+@media (max-width: 768px) {
     .conversation-sidebar {
         position: fixed;
         left: 0;
@@ -1629,7 +1628,7 @@ body {
 }
 
 /* 下拉菜单 */
-.dropdown-menu {
+.conversation-dropdown-menu {
     position: absolute;
     right: 0;
     top: 100%;
@@ -1647,13 +1646,14 @@ body {
     overflow: hidden;
 }
 
-.dropdown-menu.show {
+.conversation-dropdown-menu.show {
     display: block;
     animation: fadeIn 0.2s ease;
 }
 
-.dropdown-item {
-    padding: 10px 15px;
+.conversation-dropdown-item {
+    position: relative; /* 新增，确保伪元素相对定位 */
+    padding: 0.25rem 2.4rem;
     cursor: pointer;
     transition: background 0.2s;
     color: #333;
@@ -1662,21 +1662,35 @@ body {
     align-items: center;
 }
 
-.dropdown-item:hover {
+.conversation-dropdown-item:hover {
     background: rgba(67, 97, 238, 0.1);
 }
 
-/* 添加图标样式 */
-.dropdown-icon {
-    margin-right: 8px;
-    color: #666;
-    min-width: 16px;
-}
-
-.dropdown-item i {
+.conversation-dropdown-item i {
     margin-right: 8px;
     font-size: 16px;
     color: #666;
+}
+
+.conversation-dropdown-item:before {
+    font-family: "iconfont";
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #666;
+}
+
+.conversation-dropdown-item.rename-item:before {
+    content: "\e6f8";
+}
+
+.conversation-dropdown-item.delete-item:before {
+    content: "\e710";
 }
 
 /* 自定义独立图片容器样式 */
@@ -1802,6 +1816,7 @@ body {
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
+    padding-left: .5rem;
 }
 
 .username-display span {
@@ -1848,10 +1863,16 @@ body {
 
 #username-input {
     flex: 1;
-    padding: 8px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 100%;
+    font-family: inherit;
+    background: transparent;
+}
+#username-input:focus {
+    border: none;
+    outline: none;
 }
 
 #save-username-btn {
@@ -2347,20 +2368,17 @@ body.dark .au-tooltip {
 .conversation-title-edit {
     width: 100%;
     box-sizing: border-box;
-    padding: 4px 8px;
-    border: 1px solid #3a7adc;
-    border-radius: 4px;
-    font-size: 14px;
-    background-color: #fff;
-    color: #333;
-    transition: border-color 0.2s;
+    border: none;
+    font-size: 100%;
+    background-color: transparent;
+    color: var(--dark-color);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(58, 122, 220, 0.2);
+    font-family: inherit;
 }
 
 .conversation-title-edit:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+    border: none;
+    outline: none;
 }
 
 /* VIP 兑换输入和按钮样式 */
@@ -3336,10 +3354,10 @@ body.dark .au-tooltip {
 }
 
 .custom-confirm-dialog__content {
-    background-color: #E6E6E6;
+    background-color: #FFFFFF;
     border-radius: 35px;
     padding: 20px;
-    max-width: 600px;
+    max-width: 500px;
     width: 90%;
     box-sizing: border-box;
 }
@@ -3349,6 +3367,10 @@ body.dark .au-tooltip {
     align-items: center;
     justify-content: space-between;
     margin: 8px 0 16px 16px;
+}
+
+#customConfirmDialogLabel {
+    font-size: 20px;
 }
 
 .custom-confirm-dialog__body {
@@ -3367,7 +3389,7 @@ body.dark .au-tooltip {
     padding: 10px 0;
     border-radius: 999px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 17px;
     border: none;
 }
 
@@ -3400,4 +3422,18 @@ body.dark .au-tooltip {
         color: var(--light-color);
         border: 1px solid var(--light-color);
     }
+}
+
+/* 自定义历史加载动画 */
+@keyframes history-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.history-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(67, 97, 238, 0.3);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: history-spin 1s linear infinite;
 }
