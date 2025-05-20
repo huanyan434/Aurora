@@ -320,7 +320,7 @@ def delete_conversation(conversation_id):
 def get_current_user():
     """获取当前用户信息"""
     try:
-    if current_user.is_authenticated:
+        if current_user.is_authenticated:
             return jsonify({
                 'id': str(current_user.id),  # 将UUID转换为字符串
                 'username': current_user.username,
@@ -329,7 +329,7 @@ def get_current_user():
             })
         else:
             # 对未登录用户返回空值而不是错误
-    return jsonify({
+            return jsonify({
                 'id': None,
                 'username': None,
                 'email': None,
