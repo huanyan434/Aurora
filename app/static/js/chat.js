@@ -549,31 +549,31 @@ document.addEventListener('DOMContentLoaded', function () {
         // 编辑用户名按钮点击事件
         const editUsernameBtn = document.querySelector('.edit-username-btn');
         let editUsernameTooltip;
-        editUsernameBtn.addEventListener('mouseenter', () => {
-            const rect = editUsernameBtn.getBoundingClientRect();
-            editUsernameTooltip = document.createElement('div');
-            editUsernameTooltip.className = 'au-tooltip au-tooltip--m au-elevated au-theme';
-            editUsernameTooltip.style.cssText = '--au-rgb-hover: 0 0 0 / 4%; font-size: var(--au-font-size-m); line-height: var(--au-line-height-m); z-index: 0;';
-            editUsernameTooltip.style.position = 'fixed';
-            editUsernameTooltip.style.left = `${rect.left - 27}px`;
-            editUsernameTooltip.style.top = `${rect.top - 47}px`;
-            editUsernameTooltip.innerText = '修改用户名';
-            // 添加提示箭头
-            const arrowDiv = document.createElement('div');
-            arrowDiv.className = 'au-tooltip__arrow au-tooltip__arrow--soft';
-            arrowDiv.setAttribute('au-floating-placement', 'top');
-            arrowDiv.style.cssText = 'left: 39px;';
-            arrowDiv.innerHTML = `<svg class="au-tooltip__soft-arrow" viewBox="0 0 47 13" fill="none" xmlns="http://www.w3.org/2000/svg"><mask id="mask0_0_3329" maskUnits="userSpaceOnUse" x="0" y="0" width="47" height="13" style="mask-type: alpha;"><path fill-rule="evenodd" clip-rule="evenodd" d="M0 0.00316996C1.71249 0.00316996 3.42448 -0.00533022 5.13697 0.0131702C6.77598 0.0311706 8.61044 0.0566711 10.2055 0.658184C11.9284 1.3082 13.0691 2.44472 14.2168 3.78225C15.043 4.74427 16.666 6.79681 17.4563 7.78784C18.1031 8.60035 19.3692 10.2064 20.0605 10.9834C20.9308 11.9609 22.0064 12.9999 23.5005 12.9999C24.9946 12.9999 26.0697 11.9609 26.9395 10.9844C27.6308 10.2079 28.8969 8.60085 29.5442 7.78884C30.3335 6.79781 31.9565 4.74527 32.7832 3.78325C33.9329 2.44572 35.0716 1.3092 36.794 0.659184C38.3896 0.0591711 40.2245 0.0321706 41.8625 0.0141702C43.5755 -0.0043302 45.2875 0.00416998 47 0.00416998" fill="#FF0000"></path></mask><g mask="url(#mask0_0_3329)"><g clip-path="url(#clip0_0_3329)"><g filter="url(#filter0_b_0_3329)"><rect width="47" height="13" fill="currentColor" style="mix-blend-mode: color-dodge;"></rect></g></g></g><defs><filter id="filter0_b_0_3329" x="-50" y="-50" width="147" height="113" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood><feGaussianBlur in="BackgroundImageFix" stdDeviation="25"></feGaussianBlur><feComposite in2="SourceAlpha" operator="in" result="effect1_backgroundBlur_0_3329"></feComposite><feBlend mode="normal" in="SourceGraphic" in2="effect1_backgroundBlur_0_3329" result="shape"></feBlend></filter><clipPath id="clip0_0_3329"><rect width="47" height="13" fill="white"></rect></clipPath></defs></svg>`;
-            editUsernameTooltip.appendChild(arrowDiv);
-            document.body.appendChild(editUsernameTooltip);
-        });
-        editUsernameBtn.addEventListener('mouseleave', () => {
-            if (editUsernameTooltip) {
-                editUsernameTooltip.remove();
-                editUsernameTooltip = null;
-            }
-        });
         if (editUsernameBtn) {
+            editUsernameBtn.addEventListener('mouseenter', () => {
+                const rect = editUsernameBtn.getBoundingClientRect();
+                editUsernameTooltip = document.createElement('div');
+                editUsernameTooltip.className = 'au-tooltip au-tooltip--m au-elevated au-theme';
+                editUsernameTooltip.style.cssText = '--au-rgb-hover: 0 0 0 / 4%; font-size: var(--au-font-size-m); line-height: var(--au-line-height-m); z-index: 0;';
+                editUsernameTooltip.style.position = 'fixed';
+                editUsernameTooltip.style.left = `${rect.left - 27}px`;
+                editUsernameTooltip.style.top = `${rect.top - 47}px`;
+                editUsernameTooltip.innerText = '修改用户名';
+                // 添加提示箭头
+                const arrowDiv = document.createElement('div');
+                arrowDiv.className = 'au-tooltip__arrow au-tooltip__arrow--soft';
+                arrowDiv.setAttribute('au-floating-placement', 'top');
+                arrowDiv.style.cssText = 'left: 39px;';
+                arrowDiv.innerHTML = `<svg class="au-tooltip__soft-arrow" viewBox="0 0 47 13" fill="none" xmlns="http://www.w3.org/2000/svg"><mask id="mask0_0_3329" maskUnits="userSpaceOnUse" x="0" y="0" width="47" height="13" style="mask-type: alpha;"><path fill-rule="evenodd" clip-rule="evenodd" d="M0 0.00316996C1.71249 0.00316996 3.42448 -0.00533022 5.13697 0.0131702C6.77598 0.0311706 8.61044 0.0566711 10.2055 0.658184C11.9284 1.3082 13.0691 2.44472 14.2168 3.78225C15.043 4.74427 16.666 6.79681 17.4563 7.78784C18.1031 8.60035 19.3692 10.2064 20.0605 10.9834C20.9308 11.9609 22.0064 12.9999 23.5005 12.9999C24.9946 12.9999 26.0697 11.9609 26.9395 10.9844C27.6308 10.2079 28.8969 8.60085 29.5442 7.78884C30.3335 6.79781 31.9565 4.74527 32.7832 3.78325C33.9329 2.44572 35.0716 1.3092 36.794 0.659184C38.3896 0.0591711 40.2245 0.0321706 41.8625 0.0141702C43.5755 -0.0043302 45.2875 0.00416998 47 0.00416998" fill="#FF0000"></path></mask><g mask="url(#mask0_0_3329)"><g clip-path="url(#clip0_0_3329)"><g filter="url(#filter0_b_0_3329)"><rect width="47" height="13" fill="currentColor" style="mix-blend-mode: color-dodge;"></rect></g></g></g><defs><filter id="filter0_b_0_3329" x="-50" y="-50" width="147" height="113" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood><feGaussianBlur in="BackgroundImageFix" stdDeviation="25"></feGaussianBlur><feComposite in2="SourceAlpha" operator="in" result="effect1_backgroundBlur_0_3329"></feComposite><feBlend mode="normal" in="SourceGraphic" in2="effect1_backgroundBlur_0_3329" result="shape"></feBlend></filter><clipPath id="clip0_0_3329"><rect width="47" height="13" fill="white"></rect></clipPath></defs></svg>`;
+                editUsernameTooltip.appendChild(arrowDiv);
+                document.body.appendChild(editUsernameTooltip);
+            });
+            editUsernameBtn.addEventListener('mouseleave', () => {
+                if (editUsernameTooltip) {
+                    editUsernameTooltip.remove();
+                    editUsernameTooltip = null;
+                }
+            });
             editUsernameBtn.addEventListener('click', toggleUsernameEdit);
         }
 
@@ -2437,7 +2437,8 @@ document.addEventListener('DOMContentLoaded', function () {
         /* 获取时间（仅小时） */
         const now = new Date();
         const hours = now.getHours();
-        const user_name = state.currentUser.username;
+        // 确保用户名为字符串，避免 null 或 undefined 导致错误
+        const user_name = state.currentUser.username || '';
         const user_name_cn = user_name.match(/[\u4e00-\u9fa5]/);
         // const user_name_cn = null;
         if (user_name_cn) {
