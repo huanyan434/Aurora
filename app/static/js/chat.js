@@ -5084,6 +5084,12 @@ document.addEventListener('DOMContentLoaded', function () {
         preview.style.position = 'relative';
         preview.style.maxWidth = '680px';
     }
+    // 当点击message-input-wrapper的bottom-buttons的时候，聚焦到message-input
+    document.querySelector('.message-input-wrapper').addEventListener('click', function(e) {
+        if (e.target.classList.contains('bottom-buttons')) {
+            document.querySelector('.message-input').focus();
+        }
+    });
     // 还原输入框和图片预览位置
     function resetInputPosition() {
         const inputArea = document.querySelector('.input-area');
