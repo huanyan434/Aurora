@@ -2616,8 +2616,9 @@ document.addEventListener('DOMContentLoaded', function () {
         align-items: center;
         justify-content: center;
         height: 100%;
-        padding: 10.3rem 2rem;
-        text-align: center;
+        padding: 2rem 2rem;
+        font-weight: 200;
+        margin-top: 8rem;
     }
 
     .welcome-message {
@@ -2634,8 +2635,8 @@ document.addEventListener('DOMContentLoaded', function () {
     @media (max-width: 768px) {
         /* 靠左显示 */
         .initial-page {
-            text-align: left;
-            padding: 13rem 28px;
+            align-items: baseline;
+            margin-left: 1.6rem;
         }
         .welcome-message h1 {
             font-size: 1.8rem;
