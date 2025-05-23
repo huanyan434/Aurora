@@ -809,7 +809,6 @@ body {
 .model-select-options {
     position: absolute;
     top: calc(100% + 5px);
-    width: calc(100% + 100px);
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     border-radius: 8px;
@@ -820,7 +819,7 @@ body {
     visibility: hidden;
     transform: translateY(-10px);
     transition: all 0.2s ease;
-    min-width: 300px;
+    min-width: 20.5rem;
     max-height: 270px;
     /* 限制高度，大约显示5个模型选项 */
     overflow-y: auto;
