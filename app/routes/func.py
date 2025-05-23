@@ -257,17 +257,17 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
 
 def stream_volcano_ark_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
-    api_key = os.environ['api_keyA']
+    api_key = os.environ['volcengine_key']
     return stream_openai_api(api_key, "https://ark.cn-beijing.volces.com/api/v3", model, history, response_queue, online_search)
 
 def stream_siliconflow_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
-    api_key = os.environ['api_keyB']
+    api_key = os.environ['siliconflow_key']
     return stream_openai_api(api_key, "https://api.siliconflow.cn/v1", model, history, response_queue, online_search)
 
 def function_calling(history: list, tools: list):
     _ = load_dotenv(find_dotenv())
-    api_key = os.environ['api_keyB']
+    api_key = os.environ['siliconflow_key']
     client = OpenAI(
         api_key=api_key,
         base_url="https://api.siliconflow.cn/v1",
@@ -312,7 +312,7 @@ def function_calling(history: list, tools: list):
 
 def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
-    api_key = os.environ['api_keyC']
+    api_key = os.environ['gemini_key']
     return stream_openai_api(api_key, "https://gemini-openai.wanyim.cn/v1", model, history, response_queue, online_search)
 
 def online_search(query: str, num: int = 10):
