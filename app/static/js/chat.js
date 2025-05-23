@@ -1410,14 +1410,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
             
-            // 不再需要清除计时器，因为我们不再使用计时器
-            // if (thinkTimerInterval) {
-            //     clearInterval(thinkTimerInterval);
-            // }
-            
-            // 不再保存内容到服务器，避免重复保存
-            // 后端已经处理了正常完成的消息保存
-            console.log('AI响应正常完成，后端已自动保存内容');
+            if (thinkTimerInterval) {
+                clearInterval(thinkTimerInterval);
+            }
             
             // 完成响应处理后的代码块
             console.log('AI响应完成');
