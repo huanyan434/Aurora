@@ -3189,11 +3189,6 @@ body.dark .au-tooltip {
 .input-area {
     top: 18rem;
 }
-@media (max-width: 768px) {
-    .input-area {
-        top: 16rem;
-    }
-}
 
 /* message-input-wrapper 样式 */
 .message-input-wrapper {

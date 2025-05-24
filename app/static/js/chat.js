@@ -2631,7 +2631,6 @@ document.addEventListener('DOMContentLoaded', function () {
         /* 靠左显示 */
         .initial-page {
             align-items: baseline;
-            margin-left: 1.6rem;
         }
         .welcome-message h1 {
             font-size: 1.8rem;
