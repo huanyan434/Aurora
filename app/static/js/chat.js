@@ -5084,7 +5084,13 @@ document.addEventListener('DOMContentLoaded', function () {
         preview.style.position = 'relative';
         preview.style.maxWidth = '680px';
     }
-    // 当点击 bottom-buttons 的时候，聚焦到 message-input 输入框
+    // 当点击 message-input-wrapper 或 bottom-buttons 的时候，聚焦到 message-input 输入框
+    document.querySelector('.message-input-wrapper').addEventListener('click', () => {
+        const elementIsInFocus = (el) => (el === document.activeElement);
+        if (elementIsInFocus(document.getElementById('message-input')) == false) {
+            document.getElementById('message-input').focus();   
+        }
+    })
     document.querySelector('.bottom-buttons').addEventListener('click', () => {
         const elementIsInFocus = (el) => (el === document.activeElement);
         if (elementIsInFocus(document.getElementById('message-input')) == false) {
