@@ -693,6 +693,10 @@ body {
         width: 24px;
         height: 24px;
     }
+
+    .sidebar-togggle {
+        left: 15px;
+    }
 }
 
 /* ===== 动画效果 ===== */
