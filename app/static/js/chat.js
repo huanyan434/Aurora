@@ -1519,7 +1519,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (thinkHeaderElement && currentThink) {
                             // 解析思考时间标签
                             const thinkTimeMatch = currentThink.match(/<think time=(\d+)>/);
-                            let thinkSeconds = 0;
+                            var thinkSeconds = 0;
                             
                             // 检查是否真正完成了思考
                             let isThinkingComplete = false;

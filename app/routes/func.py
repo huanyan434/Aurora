@@ -18,6 +18,11 @@ active_responses = {}
 response_queues = {}
 response_locks = {}
 response_status = {}  # 状态: 'running', 'finished', 'error'
+_ = load_dotenv(find_dotenv())
+api = os.environ['api'].spilit(',')
+volcano_api = api[0]
+siliconflow_api = api[1]
+gemini_api = api[2]
 
 # 当前用户ID全局变量
 current_user_id = None
@@ -258,19 +263,19 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
 def stream_volcano_ark_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['volcengine_key']
-    return stream_openai_api(api_key, "https://ark.cn-beijing.volces.com/api/v3", model, history, response_queue, online_search)
+    return stream_openai_api(api_key, volcano_api, model, history, response_queue, online_search)
 
 def stream_siliconflow_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['siliconflow_key']
-    return stream_openai_api(api_key, "https://api.siliconflow.cn/v1", model, history, response_queue, online_search)
+    return stream_openai_api(api_key, siliconflow_api, model, history, response_queue, online_search)
 
 def function_calling(history: list, tools: list):
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['siliconflow_key']
     client = OpenAI(
         api_key=api_key,
-        base_url="https://api.siliconflow.cn/v1",
+        base_url=siliconflow_api,
         timeout=1800,
     )
     try:
@@ -313,7 +318,31 @@ def function_calling(history: list, tools: list):
 def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['gemini_key']
-    return stream_openai_api(api_key, "https://gemini-openai.wanyim.cn/v1", model, history, response_queue, online_search)
+    # 轮询    
+    if os.environ['gkeys'] == "True":
+        index_num = 0
+        try:
+            index_num_file = open("index_num.log", "r")
+            index_num = int(index_num_file.read()) + 1
+            index_num_file.close()
+        except:
+            ...
+        try:
+            api_key = api_key.split(",")
+            if index_num > len(api_key):
+                index_num = 0
+        except Exception as e:
+            print(f"Gemini Api Key 格式错误:{str(e)}")
+            response_queue.put(f"<e>Gemini Api Key 格式错误:{str(e)}</e>")
+            response_queue.put(None)
+            return f"发生错误:{str(e)}"
+        key = api_key[index_num]
+        index_num_file = open("index_num.log", "w")
+        index_num_file.write(str(index_num))
+        index_num_file.close()
+    else:
+        key = api_key
+    return stream_openai_api(key, gemini_api, model, history, response_queue, online_search)
 
 def online_search(query: str, num: int = 10):
     """在线搜索"""
