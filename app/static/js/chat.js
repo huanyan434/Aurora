@@ -433,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (state.isSidebarCollapsed) {
                             const computedLeft = window.getComputedStyle(modelSelectEl).left;
                             const leftValue = parseFloat(computedLeft) || 0;
-                            modelSelectEl.style.left = (leftValue + 40) + 'px';
+                            modelSelectEl.style.left = (leftValue + 31) + 'px';
                         } else {
                             modelSelectEl.style.left = '';
                         }
@@ -5084,12 +5084,14 @@ document.addEventListener('DOMContentLoaded', function () {
         preview.style.position = 'relative';
         preview.style.maxWidth = '680px';
     }
-    // 当点击message-input-wrapper的bottom-buttons的时候，聚焦到message-input
-    document.querySelector('.message-input-wrapper').addEventListener('click', function(e) {
-        if (e.target.classList.contains('bottom-buttons')) {
-            document.querySelector('.message-input').focus();
+    // 当点击 bottom-buttons 的时候，聚焦到 message-input 输入框
+    document.querySelector('.bottom-buttons').addEventListener('click', () => {
+        const elementIsInFocus = (el) => (el === document.activeElement);
+        if (elementIsInFocus(document.getElementById('message-input')) == false) {
+            document.getElementById('message-input').focus();   
         }
-    });
+    })
+    
     // 还原输入框和图片预览位置
     function resetInputPosition() {
         const inputArea = document.querySelector('.input-area');

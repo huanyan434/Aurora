@@ -91,7 +91,7 @@ body {
 }
 
 .sidebar-header {
-    padding: 16px 16px 8px 16px;
+    padding: 16px 16px 0 16px;
     background: rgba(255, 255, 255, 0.1);
     position: relative;
 }
@@ -146,7 +146,7 @@ body {
     overflow-y: auto;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE 10+ */
-    padding: 8px;
+    padding: 0 8px 8px 8px;
 }
 .conversation-list::-webkit-scrollbar {
     display: none; /* Chrome, Safari */
@@ -600,8 +600,8 @@ body {
 /* ===== 侧边栏切换按钮 ===== */
 .sidebar-toggle {
     position: fixed;
-    left: 16px;
-    top: 16px;
+    left: 24px;
+    top: 14.5px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -612,7 +612,6 @@ body {
     z-index: 8;
     padding: 0;
     cursor: pointer;
-    backdrop-filter: blur(var(--glass-blur));
 }
 
 /* 内部侧边栏切换按钮，默认隐藏 */
@@ -630,7 +629,13 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 1001;
-    backdrop-filter: blur(var(--glass-blur));
+}
+
+.sidebar-toggle-icon {
+    font-size: 24px;
+}
+.sidebar-toggle-icon:before {
+    content: "\e723";
 }
 
 @media (prefers-color-scheme: dark) {
@@ -3195,11 +3200,10 @@ body.dark .au-tooltip {
     transform: translateX(-50%);
     width: calc(100% - 40px);
     max-width: 800px;
-    /* border: 1px solid var(--glass-border); */
     border-radius: 24px;
     background: rgba(243, 244, 246, 0.8);
     backdrop-filter: blur(var(--glass-blur));
-    /* box-shadow: var(--glass-shadow); */
+    cursor: text;
     z-index: 102;
 }
 @media (prefers-color-scheme: dark) {
@@ -3215,6 +3219,9 @@ body.dark .au-tooltip {
 
 .message-input-wrapper .bottom-buttons {
     height: 60px;
+}
+.message-input-wrapper .bottom-buttons:hover {
+    cursor: text;
 }
 
 .message-input-wrapper .bottom-buttons button {

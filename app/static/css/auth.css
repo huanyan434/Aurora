@@ -40,13 +40,9 @@ body {
     padding: 2.5rem;
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    width: 100%;
-    max-width: 420px;
+    width: 45%;
+    max-width: 480px;
     transition: all 0.3s ease;
-}
-
-.auth-container:hover {
-    transform: translateY(-2px);
 }
 
 /* 标题样式 */
@@ -151,12 +147,7 @@ body {
 
 .submit-btn:hover {
     background: #4361ee;
-    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(76, 110, 245, 0.2);
-}
-
-.submit-btn:active {
-    transform: translateY(0);
 }
 
 /* 错误消息样式 */
