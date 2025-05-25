@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // 添加侧边栏切换按钮事件
         if (elements.sidebarToggle) {
             elements.sidebarToggle.addEventListener('click', () => {
-                if (window.scrollWidth <= 768) {
+                if (window.innerWidth <= 768) {
                     toggleMobileSidebar();
                 } else {
                     toggleSidebar();
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // 内部侧边栏切换按钮点击事件（移动端）
         if (elements.sidebarInsideToggle) {
             elements.sidebarInsideToggle.addEventListener('click', () => {
-                if (window.scrollWidth <= 768) {
+                if (window.innerWidth <= 768) {
                     toggleMobileSidebar();
                 } else {
                     toggleSidebar();
@@ -2424,7 +2424,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // 修改 showInitialPage 函数
     function showInitialPage() {
         if (!elements.messagesContainer) return;
-        
+        console.log('未找到消息容器元素')
         // 新增：切换到欢迎界面时清空聊天区标题
         if (elements.conversationTitle) {
             elements.conversationTitle.textContent = '';
@@ -2433,7 +2433,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const now = new Date();
         const hours = now.getHours();
         // 确保用户名为字符串，避免 null 或 undefined 导致错误
-        const user_name = state.currentUser.username || '';
+        const user_name = state.currentUser.username || 'User';
         const user_name_cn = user_name.match(/[\u4e00-\u9fa5]/);
         // const user_name_cn = null;
         if (user_name_cn) {
@@ -2462,7 +2462,13 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         `;
         } else {
-
+            elements.messagesContainer.innerHTML = `
+                <div class="initial-page">
+                    <div class="welcome-message">
+                            <h1>${greeting}</h1>
+                    </div>
+                </div>
+            `;
             // 为未登录用户修改输入框提示文本
             if (elements.messageInput) {
                 elements.messageInput.placeholder = "登录后即可开始与 Aurora 对话...";
@@ -2541,15 +2547,14 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
         // 新增：桌面端折叠/展开时调整模型选择位置
-        if (window.scrollWidth > 768) {
+        if (window.innerWidth > 768) {
             const modelSelectEl = document.querySelector('.model-select');
             if (modelSelectEl) {
+                modelSelectEl.style.removeProperty('left');
                 if (state.isSidebarCollapsed) {
                     const computedLeft = window.getComputedStyle(modelSelectEl).left;
                     const leftValue = parseFloat(computedLeft) || 0;
                     modelSelectEl.style.left = (leftValue + 45) + 'px';
-                } else {
-                    modelSelectEl.style.left = '';
                 }
             }
         }
@@ -3530,12 +3535,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 全局复制按钮添加函数，可以从控制台调用
     window.addCopyButtonsToAllCodeBlocks = function () {
-        console.log('手动添加复制按钮到所有代码块...');
-        const allContainers = document.querySelectorAll('.message-content');
-        console.log('找到消息内容容器数量:', allContainers.length);
-        
+        const allContainers = document.querySelectorAll('.message-content');        
         allContainers.forEach((container, index) => {
-            console.log(`处理第${index + 1}个消息容器`);
             addCopyButtonsToCodeBlocks(container);
         });
         
@@ -3544,7 +3545,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 在页面完全加载后运行复制按钮添加
     window.addEventListener('load', function () {
-        console.log('页面完全加载，运行复制按钮添加...');
         setTimeout(window.addCopyButtonsToAllCodeBlocks, 500);
     });
 
@@ -3570,15 +3570,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             // 新增：桌面端初始加载时调整模型选择位置
-            if (window.scrollWidth > 768) {
+            if (window.innerWidth > 768) {
                 const modelSelectEl = document.querySelector('.model-select');
                 if (modelSelectEl) {
+                    modelSelectEl.style.removeProperty('left');
                     if (state.isSidebarCollapsed) {
                         const computedLeft = window.getComputedStyle(modelSelectEl).left;
                         const leftValue = parseFloat(computedLeft) || 0;
                         modelSelectEl.style.left = (leftValue + 45) + 'px';
-                    } else {
-                        modelSelectEl.style.left = '';
                     }
                 }
             }
@@ -5118,7 +5117,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('resize', updateInitialInputPosition);
     // 移动端视图时自动展开侧边栏
     window.addEventListener('resize', function () {
-        if (window.scrollWidth <= 768) {
+        if (window.innerWidth <= 768) {
             if (elements.sidebar) {
                 elements.sidebar.classList.remove('collapsed');
             }

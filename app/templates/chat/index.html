@@ -9,13 +9,13 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://s4.zstatic.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Markdown JS -->
-    <script src="https://s4.zstatic.net/ajax/libs/marked/15.0.7/marked.min.js"></script>
+    <script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
     <!-- KaTeX CSS -->
-    <link rel="stylesheet" href="https://s4.zstatic.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/katex.min.css') }}">
     <!-- KaTeX JS -->
-    <script defer src="https://s4.zstatic.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="{{ url_for('static', filename='js/katex.min.js') }}"></script>
     <!-- KaTeX Auto-render Extension -->
-    <script defer src="https://s4.zstatic.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script defer src="{{ url_for('static', filename='js/auto-render.min.js') }}"></script>
     <style>
         .loading-logo-container {
             position: fixed;

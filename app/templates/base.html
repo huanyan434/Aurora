@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Aurora{% endblock %}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
-    <link rel="stylesheet" href="https://s4.zstatic.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://s4.zstatic.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://s4.zstatic.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     {% block styles %}{% endblock %}
 </head>
 <body>
