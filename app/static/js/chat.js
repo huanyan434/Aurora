@@ -734,9 +734,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!state.currentUser || !state.currentUser.id) {
             console.log('用户未登录，重定向到登录页面');
             showNotification('请先登录后发送消息', 2000);
-            setTimeout(() => {
-                window.location.href = '/auth/login';
-            }, 1000);
+            window.location.href = '/auth/login';
             return;
         }
 
@@ -952,6 +950,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // 创建一个可中断的控制器
             state.abortController = new AbortController();
             const signal = state.abortController.signal;
+            // 更改发送按钮状态为停止按钮
+            state.isSending = true;
+            updateSendButtonState();
+            
             
             // 构建请求体
             const requestBody = {
@@ -998,10 +1000,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 has_image: !!messageData.image,
                 online_search: isOnlineSearchEnabled
             }));
-            
-            // 更改发送按钮状态为停止按钮
-            state.isSending = true;
-            updateSendButtonState();
             
             const serverUrl = `/api/chat/${conversationId}/generate`;
             console.log("请求URL:", serverUrl);
@@ -1421,7 +1419,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (state.isSending) {
                 state.isSending = false;
                 updateSendButtonState();
-
             }
 
             attachCopyButtonsToAIMessages();
@@ -1462,59 +1459,28 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('清除计时器时出错:', e);
                 }
                 
-                // 添加中断提示
+                // 请求 /stop 接口，用 POST 方法，发送要中断的 message_id
+                const response = await fetch('/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message_id: aiMessageId })
+                });
+
+                if (response.ok) {
+                    console.log('请求已中断');
+                } else {
+                    console.error('中断请求失败:', response.statusText);
+                }
+
+                // 处理中断
                 try {
+                    attachCopyButtonsToAIMessages();
+                    // 添加复制按钮后再次滚动到底部
+                    scrollToBottom(true);
                     const aiMessageDiv = document.getElementById(aiMessageId);
                     if (aiMessageDiv) {
-                        const contentDiv = aiMessageDiv.querySelector('.message-content');
-                        if (contentDiv) {
-                            // 如果内容为空，或者只有部分内容
-                            if (!currentContent || currentContent.trim() === '') {
-                                contentDiv.innerHTML = '<div class="interrupt-note">用户已中断此次响应</div>';
-                            } else {
-                                // 处理内容，确保是字符串
-                                let textContent = currentContent;
-                                if (typeof textContent !== 'string') {
-                                    if (textContent.content) {
-                                        textContent = textContent.content;
-                                    } else if (textContent.text) {
-                                        // 增加对text对象的支持
-                                        textContent = textContent.text;
-                                    } else {
-                                        textContent = JSON.stringify(textContent);
-                                    }
-                                }
-                                
-                                // 不再替换换行符为<br>，保留原始格式以便正确解析代码块
-                                // textContent = textContent.replace(/\n/g, '<br>');
-                                
-                                // 处理base64图片
-                                textContent = processMessageContent(textContent, false);
-                                
-                                // 确保内容已经显示
-                                try {
-                                    const formattedContent = marked.parse(textContent);
-                                    contentDiv.innerHTML = formattedContent + '<div class="interrupt-note">用户已中断此次响应</div>';
-                                } catch (error) {
-                                    console.error('处理中断内容时出错:', error);
-                                    contentDiv.innerHTML = `<p>${textContent}</p><div class="interrupt-note">用户已中断此次响应</div>`;
-                                }
-                            }
-                            
-                            // 更新本地内容变量
-                            if (!currentContent || currentContent.trim() === '') {
-                                currentContent = '<div class="interrupt-note">用户已中断此次响应</div>';
-                            } else {
-                                currentContent += '\n\n用户已中断此次响应';
-                            }
-
-                            // 修复变量不一致问题：确保正确引用变量
-                            let finalContent = currentContent;
-                            if (finalContent.indexOf('用户已中断此次响应') === -1) {
-                                finalContent += '\n\n用户已中断此次响应';
-                            }
-                        }
-                        
                         // 更新思考头部文本（如果存在）
                         if (thinkHeaderElement && currentThink) {
                             // 解析思考时间标签
@@ -1547,14 +1513,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                             console.log('思考头部已更新');
                         }
-                        
-                        // 保存当前内容
-                        await saveCurrentContent(
-                            conversationId,
-                            finalContent || currentContent, // 使用finalContent或fallback到currentContent
-                            currentThink,
-                            getSelectedModel()
-                        );
                     }
                 } catch (error) {
                     console.error('保存当前内容时出错:', error);
@@ -1633,27 +1591,22 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ====================== UI操作 ======================
-    function appendMessage(content, isUser = false, modelName = null) {
+    function appendMessage(content, isUser = false) {
         const messageDiv = document.createElement('div');
         messageDiv.className = isUser ? 'message user' : 'message ai';
 
         // 用户消息直接使用现有逻辑
         if (isUser) {
             // 处理换行和 HTML 标签
-            const cleanContent = typeof content === 'string' ? 
-                content.replace(/\n/g, '\n') :  // 替换换行符为 \n 而非 <br>，以便和历史记录的解析保持一致
-                content.content?.replace(/\n/g, '\n') || '';
-            
+            // const processedContent = content.replace(/\n/g, '<br>') // 替换换行符为 <br>
+
             // 处理特殊标签（显示时）
-            const processedContent = processMessageContent(cleanContent, true);
-            
-            // 使用 marked.parse() 解析 Markdown 内容
-            const parsedContent = marked.parse(processedContent);
-            
+            // const processedContent = processMessageContent(cleanContent, true);
+                        
             // 创建消息内容元素
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            contentDiv.innerHTML = parsedContent;
+            contentDiv.innerHTML = content;
             
             // 添加到消息元素
             messageDiv.appendChild(contentDiv);
@@ -2090,13 +2043,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                     textContent = JSON.stringify(textContent);
                                 }
                             }
-                            
-                            // 处理base64图片标签，不先替换换行符
-                            // textContent = textContent.replace(/\n/g, '<br>');
-                            
+                                                        
                             // 处理base64图片标签
                             textContent = processMessageContent(textContent, false);
                             
+                            // textContent = textContent.replace(/\n/g, '<br>');
                             // 解析并显示
                                 try {
                             contentDiv.innerHTML = marked.parse(textContent);
@@ -2357,68 +2308,6 @@ document.addEventListener('DOMContentLoaded', function () {
         showInitialPage();
         // 清空当前对话 ID
         state.currentConversationId = null;
-    }
-
-    // 修改发送消息的函数
-    function sendMessage() {
-        const input = elements.messageInput.value.trim();
-        if (!input) return;
-
-        // 获取当前对话 ID
-        const currentConversationId = state.currentConversationId;
-        
-        // 如果是新对话，创建新对话
-        if (!currentConversationId) {
-            createNewConversation(input).then(newConversation => {
-                if (newConversation) {
-                state.currentConversationId = newConversation.id;
-                    // 显示用户消息
-                    const userMessageDiv = document.createElement('div');
-                    userMessageDiv.className = 'message user';
-                    userMessageDiv.innerHTML = `<div class="message-content">${input}</div>`;
-                    elements.messagesContainer.appendChild(userMessageDiv);
-
-                    // 清空输入框
-                    elements.messageInput.value = '';
-
-                    // 生成 AI 消息的 ID
-                    const aiMessageId = 'ai-' + Date.now();
-
-                    // 创建加载中的AI消息
-                    const modelName = getSelectedModel();
-                    createLoadingMessage(aiMessageId, modelName);
-
-                    // 获取 AI 回复
-                    getAIResponse(input, newConversation.id, aiMessageId);
-
-                    // 滚动到底部
-                    scrollToBottom();
-                }
-            });
-            return;
-        }
-
-        // 显示用户消息
-        const userMessageDiv = document.createElement('div');
-        userMessageDiv.className = 'message user';
-        userMessageDiv.innerHTML = `<div class="message-content">${input}</div>`;
-        elements.messagesContainer.appendChild(userMessageDiv);
-
-        // 清空输入框
-        elements.messageInput.value = '';
-
-        // 生成 AI 消息的 ID
-        const aiMessageId = 'ai-' + Date.now();
-
-        // 创建加载中的AI消息
-        const modelName = getSelectedModel();
-        createLoadingMessage(aiMessageId, modelName);
-
-        // 获取 AI 回复
-        getAIResponse(input, currentConversationId, aiMessageId);
-
-        // 滚动到底部
-        scrollToBottom();
     }
 
     // 修改 showInitialPage 函数
@@ -2814,42 +2703,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // 更新是否在底部的状态
             state.isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
         });
-    }
-
-    // 添加模型选择的处理函数
-    function handleModelSelection() {
-        const modelInputs = document.querySelectorAll('.model-options input[type="radio"]');
-        let selectedModel = 'gpt-3.5'; // 默认模型
-
-        modelInputs.forEach(input => {
-            input.addEventListener('change', (e) => {
-                selectedModel = e.target.value;
-                // 可以在这里添加模型切换的其他逻辑
-                console.log('Selected model:', selectedModel);
-            });
-        });
-
-        // 在发送消息时获取选中的模型
-        function getSelectedModel() {
-            return selectedModel;
-        }
-
-        // 修改发送消息的函数，加入模型参数
-        async function sendMessage(message) {
-            const model = getSelectedModel();
-            // ... 其他发送消息的代码 ...
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: message,
-                    model: model
-                })
-            });
-            // ... 其他处理代码 ...
-        }
     }
 
     // 调用初始化函数

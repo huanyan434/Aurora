@@ -18,6 +18,7 @@ active_responses = {}
 response_queues = {}
 response_locks = {}
 response_status = {}  # 状态: 'running', 'finished', 'error'
+
 _ = load_dotenv(find_dotenv())
 api = os.environ['api'].split(',')
 volcano_api = api[0]
@@ -1061,3 +1062,42 @@ def name_conversation(conversation_id):
             break
 
     return content
+
+
+def stop_message(message_id: str):
+    """中断指定消息ID的响应"""
+    if message_id in active_responses:
+        # 获取线程对象
+        thread = active_responses[message_id]
+        
+        # 更新响应状态为已结束
+        response_status[message_id] = 'finished'
+        
+        # 向队列发送结束信号
+        if message_id in response_queues:
+            response_queues[message_id].put(None)
+            
+        # 等待线程结束（设置超时时间为1秒）
+        if isinstance(thread, threading.Thread) and thread.is_alive():
+            thread.join(timeout=1)
+            
+            # 如果线程仍在运行，强制结束（不推荐，但在这种场景下可以接受）
+            if thread.is_alive():
+                import ctypes
+                thread_id = thread.ident
+                if thread_id:
+                    try:
+                        ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread_id), ctypes.py_object(SystemExit))
+                    except Exception as e:
+                        print(f"强制终止线程失败: {str(e)}")
+        
+        # 清理相关资源
+        if message_id in active_responses:
+            del active_responses[message_id]
+        if message_id in response_queues:
+            del response_queues[message_id]
+        if message_id in response_locks:
+            del response_locks[message_id]
+            
+        return True
+    return False

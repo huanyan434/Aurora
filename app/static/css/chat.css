@@ -437,11 +437,10 @@ body {
 }
 
 /* 确保 Markdown 内容在用户消息中也是左对齐的 */
-.message.user .message-content p,
-.message.user .message-content ul,
-.message.user .message-content ol {
+.message.user .message-content p {
     margin: 0.4em 0;
     text-align: left;
+    white-space: pre-wrap;
 }
 
 /* AI消息 - 居中自适应 */

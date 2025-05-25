@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 import json
 import time
 import uuid
-from app.routes.func import generate, get_active_responses
+from app.routes.func import generate, get_active_responses, stop_message
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -116,6 +116,19 @@ def api_generate(conversation_id):
         generate(message_id, prompt, conversation_id, model, image_base64, user_id, online_search),
         mimetype='application/json'
     )
+
+@chat_bp.route('/stop', methods=['POST'])
+@login_required
+def stop_generation():
+    """停止生成响应"""
+    data = request.get_json()
+    message_id = data.get('message_id')
+    if not message_id:
+        return jsonify({'success': False, 'error': 'Missing message_id'}), 400
+    
+    from app.routes.func import stop_message
+    success = stop_message(message_id)
+    return jsonify({'success': success})
 
 @chat_bp.route('/api/chat/active_responses', methods=['GET'])
 def api_active_responses():
