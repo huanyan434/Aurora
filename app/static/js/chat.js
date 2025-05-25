@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // 添加侧边栏切换按钮事件
         if (elements.sidebarToggle) {
             elements.sidebarToggle.addEventListener('click', () => {
-                if (window.innerWidth <= 768) {
+                if (window.scrollWidth <= 768) {
                     toggleMobileSidebar();
                 } else {
                     toggleSidebar();
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // 内部侧边栏切换按钮点击事件（移动端）
         if (elements.sidebarInsideToggle) {
             elements.sidebarInsideToggle.addEventListener('click', () => {
-                if (window.innerWidth <= 768) {
+                if (window.scrollWidth <= 768) {
                     toggleMobileSidebar();
                 } else {
                     toggleSidebar();
@@ -2541,7 +2541,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
         // 新增：桌面端折叠/展开时调整模型选择位置
-        if (window.innerWidth > 768) {
+        if (window.scrollWidth > 768) {
             const modelSelectEl = document.querySelector('.model-select');
             if (modelSelectEl) {
                 if (state.isSidebarCollapsed) {
@@ -3570,7 +3570,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             // 新增：桌面端初始加载时调整模型选择位置
-            if (window.innerWidth > 768) {
+            if (window.scrollWidth > 768) {
                 const modelSelectEl = document.querySelector('.model-select');
                 if (modelSelectEl) {
                     if (state.isSidebarCollapsed) {
@@ -5118,7 +5118,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('resize', updateInitialInputPosition);
     // 移动端视图时自动展开侧边栏
     window.addEventListener('resize', function () {
-        if (window.innerWidth <= 768) {
+        if (window.scrollWidth <= 768) {
             if (elements.sidebar) {
                 elements.sidebar.classList.remove('collapsed');
             }
