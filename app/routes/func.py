@@ -84,6 +84,10 @@ def model_name(model: str):
         model = "doubao-1-5-pro-256k-250115"
     elif model == "Doubao-1.5-vision-pro":
         model = "doubao-1-5-vision-pro-32k-250115"
+    elif model == "Doubao-1.5-thinking-pro":
+        model = "doubao-1-5-thinking-pro-250415"
+    elif model == "Doubao-1.5-thinking-vision-pro":
+        model = "doubao-1-5-thinking-vision-pro-250428"
     # Gemini
     elif model == "Gemini-2.5-flash":
         model = "gemini-2.5-flash-preview-04-17"
@@ -114,6 +118,10 @@ def model_name_reverse(model: str):
         model = "Doubao-1.5-pro-256k"
     elif model == "doubao-1-5-vision-pro-32k-250115":
         model = "Doubao-1.5-vision-pro"
+    elif model == "doubao-1-5-thinking-pro-250415":
+        model = "Doubao-1.5-thinking-pro"
+    elif model == "doubao-1-5-thinking-vision-pro-250428":
+        model = "Doubao-1.5-thinking-vision-pro"
     elif model == "gemini-2.5-flash-preview-04-17":
         model = "Gemini-2.5-flash"
     elif model == "gemini-2.0-flash":

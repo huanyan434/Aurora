@@ -1513,6 +1513,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                             console.log('思考头部已更新');
                         }
+                        // 保存当前内容
+                        await saveCurrentContent(
+                            conversationId,
+                            currentContent,
+                            currentThink ? currentThink.replace(/<think time=\d+>|<\/think>/g, "") : "",
+                            getSelectedModel()
+                        )
                     }
                 } catch (error) {
                     console.error('保存当前内容时出错:', error);
@@ -2940,23 +2947,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 获取模型图片名称
     function getModelImageName(modelName) {
-        // 使用正确的大小写形式
-        const modelMap = {
-            'deepseek-r1': 'DeepSeek-R1',
-            'deepseek-v3': 'DeepSeek-V3',
-            'doubao-1.5-lite': 'Doubao-1.5-lite',
-            'doubao-1.5-pro': 'Doubao-1.5-pro',
-            'doubao-1.5-pro-256k': 'Doubao-1.5-pro-256k',
-            'doubao-1.5-vision-pro': 'Doubao-1.5-vision-pro',
-            'gemini-2.5-flash': 'Gemini-2.5-flash',
-            'gemini-2.0-flash': 'Gemini-2.0-flash',
-            'qwen3': 'Qwen3',
-            'qwen2.5-instruct': 'Qwen2.5-Instruct',
-            'qvq': 'QvQ',
-            'qwq': 'QwQ',
-            'qwq-preview': 'QwQ-Preview',
-        };
-        return modelMap[modelName] || modelName;
+        if (modelName.includes('DeepSeek')) {
+            return 'DeepSeek';
+        } else if (modelName.includes('Doubao')) {
+            return 'Doubao';
+        } else if (modelName.includes('Gemini')) {
+            return 'Gemini';
+        } else if (modelName.includes('Qwen') || modelName.includes('QwQ') || modelName.includes('QwQ')) {
+            return 'Qwen';
+        } else {
+            return modelName;
+        }
     }
 
     // 切换移动端侧边栏
