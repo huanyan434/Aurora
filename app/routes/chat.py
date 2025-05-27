@@ -2,7 +2,6 @@ from flask import Blueprint, render_template, jsonify, request, stream_with_cont
 from flask_login import login_required, current_user
 from app.models import Conversation, Message, User
 from app import db
-from app.utils.ai_parser import parse_ai_response
 from datetime import datetime
 from uuid import UUID
 #from app.history import save_history, load_history
