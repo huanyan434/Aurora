@@ -224,7 +224,7 @@ def get_model_free_usage_limit(model_name, user_id=None):
     
     # 定义每个模型的每日免费使用次数（普通用户）
     free_usage_limits = {
-        # 默认为5次
+        # 默认
         "default": 20,
         # 具体模型可以有不同限制
         "DeepSeek-R1": 25,
