@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app as app
-from app.models.user import User, UserLog
-from app.models.database import db
+from app.models import User, UserLog
+from app.models import db
 from app.utils.auth import admin_required
 
 dashboard_bp = Blueprint('dashboard', __name__)
