@@ -20,10 +20,15 @@ response_locks = {}
 response_status = {}  # 状态: 'running', 'finished', 'error'
 
 _ = load_dotenv(find_dotenv())
-api = os.environ['api'].split(',')
-volcano_api = api[0]
-siliconflow_api = api[1]
-gemini_api = api[2]
+try:
+    api = os.environ['api'].split(',')
+    volcano_api = api[0]
+    siliconflow_api = api[1]
+    gemini_api = api[2]
+except Exception as e:
+    volcano_api = ''
+    siliconflow_api = ''
+    gemini_api = ''
 
 # 当前用户ID全局变量
 current_user_id = None

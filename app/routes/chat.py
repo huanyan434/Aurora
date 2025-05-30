@@ -4,7 +4,6 @@ from app.models import Conversation, Message, User
 from app import db
 from datetime import datetime
 from uuid import UUID
-#from app.history import save_history, load_history
 import os
 import base64
 from werkzeug.utils import secure_filename
