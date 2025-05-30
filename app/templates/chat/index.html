@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aurora</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="stylesheet" href="/static/css/chat.css">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://s4.zstatic.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap-icons.min.css">
     <!-- Markdown JS -->
-    <script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
+    <script src="/static/js/marked.min.js"></script>
     <!-- KaTeX CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/katex.min.css') }}">
+    <link rel="stylesheet" href="/static/css/katex.min.css">
     <!-- KaTeX JS -->
-    <script defer src="{{ url_for('static', filename='js/katex.min.js') }}"></script>
+    <script defer src="/static/js/katex.min.js"></script>
     <!-- KaTeX Auto-render Extension -->
-    <script defer src="{{ url_for('static', filename='js/auto-render.min.js') }}"></script>
+    <script defer src="/static/js/auto-render.min.js"></script>
     <style>
         .loading-logo-container {
             position: fixed;
@@ -64,8 +64,8 @@
 <body>
     <!-- 加载中的Logo -->
     <div class="loading-logo-container" id="loading-logo-container">
-        <img src="{{ url_for('static', filename='icon.png') }}" alt="Aurora Logo" class="loading-logo">
-        <img src="{{ url_for('static', filename='icon_dark.png') }}" alt="Aurora Logo" class="loading-logo-dark">
+        <img src="/static/icon.png" alt="Aurora Logo" class="loading-logo">
+        <img src="/static/icon_dark.png" alt="Aurora Logo" class="loading-logo-dark">
     </div>
 
     <div class="app-container hide-on-load" id="app-container">
@@ -76,7 +76,7 @@
         <div class="conversation-sidebar {{ 'collapsed' if session.get('sidebar_collapsed') else '' }}">
             <div class="sidebar-header">
                 <div class="aurora-title">
-                    <img src="{{ url_for('static', filename='icon.png') }}" alt="Aurora Logo" class="aurora-logo light-mode-logo">
+                    <img src="/static/icon.png" alt="Aurora Logo" class="aurora-logo light-mode-logo">
                     <span>Aurora</span>
                 </div>
                 <button id="new-chat-btn" class="new-chat-btn">
@@ -152,63 +152,63 @@
                 </div>
                 <div class="model-select-options">
                     <div class="model-option" data-value="DeepSeek-R1">
-                        <img src="{{ url_for('static', filename='models/DeepSeek.png') }}" alt="DeepSeek-R1" class="model-option-icon">
+                        <img src="/static/models/DeepSeek.png" alt="DeepSeek-R1" class="model-option-icon">
                         <span>DeepSeek-R1</span>
                     </div>
                     <div class="model-option" data-value="DeepSeek-V3">
-                        <img src="{{ url_for('static', filename='models/DeepSeek.png') }}" alt="DeepSeek-V3" class="model-option-icon">
+                        <img src="/static/models/DeepSeek.png" alt="DeepSeek-V3" class="model-option-icon">
                         <span>DeepSeek-V3</span>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-lite">
-                        <img src="{{ url_for('static', filename='models/Doubao.png') }}" alt="Doubao-1.5-lite" class="model-option-icon">
+                        <img src="/static/models/Doubao.png" alt="Doubao-1.5-lite" class="model-option-icon">
                         <span>Doubao-1.5-lite</span>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-pro">
-                        <img src="{{ url_for('static', filename='models/Doubao.png') }}" alt="Doubao-1.5-pro" class="model-option-icon">
+                        <img src="/static/models/Doubao.png" alt="Doubao-1.5-pro" class="model-option-icon">
                         <span>Doubao-1.5-pro</span>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-pro-256k">
-                        <img src="{{ url_for('static', filename='models/Doubao.png') }}" alt="Doubao-1.5-pro-256k" class="model-option-icon">
+                        <img src="/static/models/Doubao.png" alt="Doubao-1.5-pro-256k" class="model-option-icon">
                         <span>Doubao-1.5-pro-256k</span>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-vision-pro">
-                        <img src="{{ url_for('static', filename='models/Doubao.png') }}" alt="Doubao-1.5-vision-pro" class="model-option-icon">
+                        <img src="/static/models/Doubao.png" alt="Doubao-1.5-vision-pro" class="model-option-icon">
                         <span>Doubao-1.5-vision-pro</span>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-thinking-pro">
-                        <img src="{{ url_for('static', filename='models/Doubao.png') }}" alt="Doubao-1.5-pro" class="model-option-icon">
+                        <img src="/static/models/Doubao.png" alt="Doubao-1.5-pro" class="model-option-icon">
                         <span>Doubao-1.5-thinking-pro</span>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-thinking-vision-pro">
-                        <img src="{{ url_for('static', filename='models/Doubao.png') }}" alt="Doubao-1.5-vision-lite" class="model-option-icon">
+                        <img src="/static/models/Doubao.png" alt="Doubao-1.5-vision-lite" class="model-option-icon">
                         <span>Doubao-1.5-thinking-vision-pro</span>
                     </div>
                     <div class="model-option" data-value="Gemini-2.5-flash">
-                        <img src="{{ url_for('static', filename='models/Gemini.png') }}" alt="Gemini-2.5-flash" class="model-option-icon">
+                        <img src="/static/models/Gemini.png" alt="Gemini-2.5-flash" class="model-option-icon">
                         <span>Gemini-2.5-flash</span>
                     </div>
                     <div class="model-option" data-value="Gemini-2.0-flash">
-                        <img src="{{ url_for('static', filename='models/Gemini.png') }}" alt="Gemini-2.0-flash" class="model-option-icon">
+                        <img src="/static/models/Gemini.png" alt="Gemini-2.0-flash" class="model-option-icon">
                         <span>Gemini-2.0-flash</span>
                     </div>
                     <div class="model-option" data-value="Qwen3">
-                        <img src="{{ url_for('static', filename='models/Qwen.png') }}" alt="Qwen3" class="model-option-icon">
+                        <img src="/static/models/Qwen.png" alt="Qwen3" class="model-option-icon">
                         <span>Qwen3</span>
                     </div>
                     <div class="model-option" data-value="QwQ">
-                        <img src="{{ url_for('static', filename='models/Qwen.png') }}" alt="QwQ" class="model-option-icon">
+                        <img src="/static/models/Qwen.png" alt="QwQ" class="model-option-icon">
                         <span>QwQ</span>
                     </div>
                     <div class="model-option" data-value="QwQ-Preview">
-                        <img src="{{ url_for('static', filename='models/Qwen.png') }}" alt="QwQ-Preview" class="model-option-icon">
+                        <img src="/static/models/Qwen.png" alt="QwQ-Preview" class="model-option-icon">
                         <span>QwQ-Preview</span>
                     </div>
                     <div class="model-option" data-value="QvQ">
-                        <img src="{{ url_for('static', filename='models/Qwen.png') }}" alt="QvQ" class="model-option-icon">
+                        <img src="/static/models/Qwen.png" alt="QvQ" class="model-option-icon">
                         <span>QvQ</span>
                     </div>
                     <div class="model-option" data-value="Qwen2.5-Instruct">
-                        <img src="{{ url_for('static', filename='models/Qwen.png') }}" alt="Qwen2.5-Instruct" class="model-option-icon">
+                        <img src="/static/models/Qwen.png" alt="Qwen2.5-Instruct" class="model-option-icon">
                         <span>Qwen2.5-Instruct</span>
                     </div>
                 </div>
@@ -257,7 +257,7 @@
     </div>
 
     <!-- JavaScript - 直接加载 -->
-    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+    <script src="/static/js/chat.js"></script>
         
         <!-- 会员信息弹窗 -->
         <div id="user-profile-modal" class="user-modal">
