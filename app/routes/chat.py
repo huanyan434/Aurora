@@ -1,14 +1,10 @@
-from flask import Blueprint, render_template, jsonify, request, stream_with_context, Response, session, abort, url_for
+from flask import Blueprint, render_template, jsonify, request, Response, session, abort, url_for
 from flask_login import login_required, current_user
-from app.models import Conversation, Message, User
+from app.models import Conversation, Message
 from app import db
 from datetime import datetime
 from uuid import UUID
-import os
-import base64
-from werkzeug.utils import secure_filename
 
-import json
 import time
 import uuid
 from app.routes.func import generate, get_active_responses, stop_message
@@ -52,17 +48,17 @@ def stream_chat():
                 id=conversation_id,
                 title="新对话",
                 user_id=user_id or 'anonymous',
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(),
+                updated_at=datetime.now()
             )
             db.session.add(conversation)
-        conversation.updated_at = datetime.utcnow()
+        conversation.updated_at = datetime.now()
         # 保存用户消息
         user_message = Message(
             conversation_id=conversation_id,
             role="user",
             content=user_input,
-            created_at=datetime.utcnow()
+            created_at=datetime.now()
         )
         db.session.add(user_message)
         db.session.commit()
@@ -124,7 +120,6 @@ def stop_generation():
     if not message_id:
         return jsonify({'success': False, 'error': 'Missing message_id'}), 400
     
-    from app.routes.func import stop_message
     success = stop_message(message_id)
     return jsonify({'success': success})
 
@@ -238,8 +233,8 @@ def create_conversation():
             id=conversation_id,
             title="新对话",
             user_id=user_id,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(),
+            updated_at=datetime.now()
         )
         db.session.add(conversation)
         db.session.commit()
