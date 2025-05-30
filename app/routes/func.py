@@ -1,7 +1,6 @@
 from openai import OpenAI
 from dotenv import load_dotenv, find_dotenv
 import os
-import re
 import json
 import time
 import copy

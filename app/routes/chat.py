@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, request, Response, session, abort, url_for
+from flask import Blueprint, render_template, jsonify, request, Response, session, abort
 from flask_login import login_required, current_user
 from app.models import Conversation, Message
 from app import db

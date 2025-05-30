@@ -87,7 +87,7 @@ def register_routes(app):
         try:
             session['user_id'] = user.id
             session.permanent = True
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now()
             db.session.commit()
             return jsonify({
                 'user': user.to_dict()

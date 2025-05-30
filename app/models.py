@@ -29,7 +29,7 @@ class User(UserMixin, db.Model):
             return False
         if not self.member_until:
             return False
-        return datetime.utcnow() < self.member_until
+        return datetime.now() < self.member_until
 
     def get_member_status(self):
         """获取会员状态信息"""
@@ -45,7 +45,7 @@ class User(UserMixin, db.Model):
         expired = True
         
         if self.member_until:
-            now = datetime.utcnow()
+            now = datetime.now()
             if now < self.member_until:
                 # 计算剩余天数
                 days_left = (self.member_until - now).days
@@ -83,8 +83,8 @@ class Conversation(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)  # 使用UUID
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user.id'))
     title = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 确保是DateTime类型
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)  # 确保是DateTime类型
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     messages = db.relationship('Message', backref='conversation', lazy='dynamic')
 
     def to_dict(self):
@@ -101,9 +101,9 @@ class Message(db.Model):
     content = db.Column(db.Text)
     is_user = db.Column(db.Boolean)
     role = db.Column(db.String(20))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.now)
     conversation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('conversation.id'))  # 修改为UUID类型
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
 @login_manager.user_loader
 def load_user(user_id):

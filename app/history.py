@@ -63,7 +63,7 @@ def save_history(conversation_id, history, user_id=None):
                 conversation_id=conversation_id,
                 role=msg["role"],
                 content=msg["content"],
-                created_at=datetime.utcnow()
+                created_at=datetime.now()
             ))
         
         db.session.commit()
@@ -183,10 +183,10 @@ def replace_history(conversation_id):
                 conversation_id=conversation_id,
                 role=msg["role"],
                 content=msg["content"],
-                created_at=datetime.utcnow()
+                created_at=datetime.now()
             ))
         
-        conv.updated_at = datetime.utcnow()
+        conv.updated_at = datetime.now()
         db.session.commit()
         return jsonify({"success": True})
     except Exception as e:
@@ -224,12 +224,12 @@ def add_message(conversation_id):
             conversation_id=conversation_id,
             role='user' if data['is_user'] else 'assistant',  # 添加角色字段
             content=data['content'],
-            created_at=datetime.utcnow()
+            created_at=datetime.now()
         )
         
         # 4. 保存到数据库
         db.session.add(msg)
-        conv.updated_at = datetime.utcnow()  # 更新对话时间
+        conv.updated_at = datetime.now()  # 更新对话时间
         db.session.commit()
         
         return jsonify({
@@ -304,7 +304,7 @@ def update_conversation_title(conversation_id):
         
         # 更新标题
         conversation.title = new_title
-        conversation.updated_at = datetime.utcnow()
+        conversation.updated_at = datetime.now()
         db.session.commit()
         
         return jsonify({'success': True})

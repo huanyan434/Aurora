@@ -189,7 +189,7 @@ def get_users():
         users = User.query.all()
         
         # 确定哪些用户在线（最近10分钟有活动）
-        recent_time = datetime.utcnow() - timedelta(minutes=10)
+        recent_time = datetime.now() - timedelta(minutes=10)
         
         # 获取最近活跃的会话
         recent_conversations = Conversation.query.filter(
@@ -249,7 +249,7 @@ def count_active_users():
     """使用最近的消息活动来判断用户是否在线"""
     try:
         # 通过最近的消息活动判断
-        recent_time = datetime.utcnow() - timedelta(minutes=10)  # 10分钟内活跃
+        recent_time = datetime.now() - timedelta(minutes=10)  # 10分钟内活跃
         # 查询最近活跃的用户数量
         active_users = db.session.query(Message.conversation_id).\
             filter(Message.created_at > recent_time).\
@@ -288,7 +288,7 @@ def update_user_membership():
         # 如果设置为会员
         if is_member:
             user.member_level = member_level
-            now = datetime.utcnow()
+            now = datetime.now()
             
             # 如果用户已经是会员并且还未过期，则在现有到期时间基础上延长
             if user.is_member and user.member_until and user.member_until > now:

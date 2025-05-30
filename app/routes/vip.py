@@ -199,8 +199,8 @@ def get_vip_token():
     user = current_user
     user.is_member = True
     user.member_level = target['type']
-    user.member_since = datetime.utcnow()
-    user.member_until = datetime.utcnow() + timedelta(days=target['days'])
+    user.member_since = datetime.now()
+    user.member_until = datetime.now() + timedelta(days=target['days'])
     db.session.commit()
     return jsonify({'success': True, 'type': target['type'], 'days': target['days']}), 200
 
@@ -273,13 +273,13 @@ def activate_vip_token():
     days = days_override if days_override else target['days']
     
     # 如果用户已是会员，则延长会员时间
-    if user.is_member and user.member_until > datetime.utcnow():
+    if user.is_member and user.member_until > datetime.now():
         user.member_until = user.member_until + timedelta(days=days)
     else:
         user.is_member = True
         user.member_level = target['type']
-        user.member_since = datetime.utcnow()
-        user.member_until = datetime.utcnow() + timedelta(days=days)
+        user.member_since = datetime.now()
+        user.member_until = datetime.now() + timedelta(days=days)
     
     db.session.commit()
     
