@@ -4932,6 +4932,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // 同步图片预览容器位置，置于输入框上方
         preview.style.position = 'relative';
         preview.style.maxWidth = '680px';
+        preview.style.bottom = '7px';
     }
     // 当点击 message-input-wrapper 或 bottom-buttons 的时候，聚焦到 message-input 输入框
     document.querySelector('.message-input-wrapper').addEventListener('click', () => {
@@ -4962,6 +4963,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (preview) {
             preview.style.removeProperty('position');
             preview.style.removeProperty('max-width');
+            preview.style.removeProperty('bottom');
         }
     }
     // 窗口大小变化时重新计算位置
