@@ -2514,7 +2514,7 @@ document.addEventListener('DOMContentLoaded', function () {
         height: 100%;
         padding: 2rem 2rem;
         font-weight: 200;
-        margin-top: 8rem;
+        margin-top: calc(25dvh - 50px);
     }
 
     .welcome-message {
@@ -2532,9 +2532,10 @@ document.addEventListener('DOMContentLoaded', function () {
         /* 靠左显示 */
         .initial-page {
             align-items: baseline;
+            margin-top: calc(27dvh - 50px);
         }
         .welcome-message h1 {
-            font-size: 1.8rem;
+            font-size: calc(150% + 9px);
         }
     }
 

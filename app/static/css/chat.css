@@ -3187,7 +3187,13 @@ body.dark .au-tooltip {
 }
 
 .input-area {
-    top: 18rem;
+    top: 43%;
+}
+
+@media (max-width: 768px) {
+    .input-area {
+        top: calc(35dvh + 60px);
+    }
 }
 
 /* message-input-wrapper 样式 */
