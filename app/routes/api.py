@@ -8,14 +8,14 @@ api_bp = Blueprint('api', __name__)
 @login_required
 def get_free_usage():
     """获取模型的免费使用次数信息"""
-    model_name = model_name_func(request.args.get('model'))
+    #model_name = model_name_func(request.args.get('model'))
     user_id = request.args.get('user_id')
     
-    if not model_name:
-        return jsonify({
-            'success': False,
-            'message': '缺少模型名称参数'
-        }), 400
+    #if not model_name:
+    #    return jsonify({
+    #        'success': False,
+    #        'message': '缺少模型名称参数'
+    #    }), 400
     
     # 验证用户ID
     valid_user_id = None
@@ -39,15 +39,35 @@ def get_free_usage():
     
     try:
         # 获取免费使用次数信息
-        usage_info = get_model_free_usage_info(model_name, valid_user_id)
+        model_list = [
+            "DeepSeek-R1",
+            "DeepSeek-V3",
+            "Doubao-1.5-lite", 
+            "Doubao-1.5-pro",
+            "Doubao-1.5-pro-256k",
+            "Doubao-1.5-vision-pro",
+            "Doubao-1.5-thinking-pro",
+            "Doubao-1.5-thinking-vision-pro",
+            "Gemini-2.5-flash",
+            "Gemini-2.0-flash",
+            "Qwen3",
+            "QwQ",
+            "QwQ-Preview",
+            "QvQ",
+            "Qwen2.5-Instruct"
+        ]
+        usage_info = {}
+        for model_name in model_list:
+            usage_info.update({model_name: get_model_free_usage_info(model_name, valid_user_id)})
+        
         
         # 返回结果
         return jsonify({
             'success': True,
-            'model': model_name,
-            'current': usage_info['current'],
-            'limit': usage_info['limit'],
-            'remaining': usage_info['remaining']
+            'usage_info': usage_info
+            #'current': usage_info['current'],
+            #'limit': usage_info['limit'],
+            #'remaining': usage_info['remaining']
         })
     except Exception as e:
         print(f"获取模型免费使用次数信息失败: {str(e)}")

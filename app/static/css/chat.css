@@ -60,7 +60,6 @@ body,
 /* ===== 基础布局 ===== */
 html,
 body {
-    height: 100%;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     background: var(--main-bg);
     color: var(--dark-color);
@@ -68,7 +67,6 @@ body {
 
 .app-container {
     display: flex;
-    height: 100vh;
     position: relative;
     backdrop-filter: blur(var(--glass-blur));
     overflow: hidden;

@@ -240,7 +240,7 @@ def get_model_free_usage_limit(model_name, user_id=None):
         "Qwen3": 45,
         "QwQ": 60,
         "QwQ-Preview": 80,
-        "QvQ-Preview": 45,
+        "QvQ": 45,
         "Qwen2.5-Instruct": 60,
     }
     

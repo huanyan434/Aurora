@@ -40,8 +40,8 @@ body {
     padding: 2.5rem;
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    width: 45%;
-    max-width: 480px;
+    width: 49.44%;
+    /* max-width: 61.8%; */
     transition: all 0.3s ease;
 }
 

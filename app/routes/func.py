@@ -950,7 +950,7 @@ def qwen_parse_image(image_base64: str) -> str:
     """使用通义千问API的视觉功能解析图片"""
     try:
         _ = load_dotenv(find_dotenv())
-        api_key = os.environ.get('api_keyB')
+        api_key = os.environ.get('siliconflow_key')
         if not api_key:
             print("未配置SiliconFlow API密钥，无法处理图片")
             return "无法解析图片，请检查API配置"
@@ -958,7 +958,7 @@ def qwen_parse_image(image_base64: str) -> str:
         # 初始化客户端
         client = OpenAI(
             api_key=api_key,
-            base_url="https://api.siliconflow.cn/v1",
+            base_url=siliconflow_api,
             timeout=60
         )
 

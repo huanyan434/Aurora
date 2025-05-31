@@ -24,7 +24,7 @@
             <p>请登录您的账号</p>
         </div>
 
-        <form method="POST" action="{{ url_for('auth.login">
+        <form method="POST" action="{{ url_for('auth.login') }}">
             {%- if next %}<input type="hidden" name="next" value="{{ next }}">{%- endif %}
             <div class="form-group">
                 <label for="email">邮箱地址</label>
@@ -48,7 +48,7 @@
         </form>
         
         <div class="auth-footer">
-            还没有账号？<a href="{{ url_for('auth.signup">立即注册</a>
+            还没有账号？<a href="{{ url_for('auth.signup') }}">立即注册</a>
         </div>
     </div>
     
