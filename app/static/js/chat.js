@@ -121,6 +121,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // 加载完成后显示主界面
                 setTimeout(() => {
+                    // 退出登录按钮不可见
+                    logoutBtn.style.display = 'none';
+                    // 显示主界面
                     showMainUI();
                 }, 200);
                 return; // 不再执行后续登录用户需要的初始化
