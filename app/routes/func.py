@@ -49,7 +49,7 @@ search_tools = [
                     },
                     "num": {
                         "type": "int",
-                        "description": "搜索结果的数量（默认10条）",
+                        "description": "搜索结果的数量（默认50条）",
                     },
                 },
                 "required": ["query"],
@@ -173,7 +173,6 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                         stream=True
                     )
                     search_result = func[3]
-                    search_result = search_result['results']
                     r = []
                     for result in search_result:
                         r.append({"href":result['href'], "title":result['title']})
