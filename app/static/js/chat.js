@@ -99,9 +99,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (elements.onlineSearchBtn) {
                 if (savedSearch === 'true') {
                     elements.onlineSearchBtn.classList.add('active');
+                    elements.imageUploadButton.disabled = true;
+                    elements.imageUploadButton.style.opacity = '0.5';
+                    elements.imageUploadButton.style.cursor = 'not-allowed';
                 } else {
                     elements.onlineSearchBtn.classList.remove('active');
-                }
+                    elements.imageUploadButton.disabled = false;
+                    elements.imageUploadButton.style.opacity = '';
+                    elements.imageUploadButton.style.cursor = '';
+                  }
             }
 
             // 优化未登录场景处理 - 即使未登录也显示主界面
@@ -305,26 +311,60 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // 联网搜索按钮点击事件
+        // 联网搜索按钮点击事件
         if (elements.onlineSearchBtn) {
             elements.onlineSearchBtn.addEventListener('click', function () {
                 this.classList.toggle('active');
                 // 保存联网搜索按钮状态到缓存
                 localStorage.setItem('onlineSearchActive', this.classList.contains('active'));
-                
+
+                // 处理图片上传按钮状态
+                if (elements.imageUploadButton) {
+                    if (this.classList.contains('active')) {
+                        elements.imageUploadButton.disabled = true;
+                        elements.imageUploadButton.style.opacity = '0.5';
+                        elements.imageUploadButton.style.cursor = 'not-allowed';
+                    } else {
+                        elements.imageUploadButton.disabled = false;
+                        elements.imageUploadButton.style.opacity = '';
+                        elements.imageUploadButton.style.cursor = '';
+                    }
+                }
+
                 if (this.classList.contains('active')) {
-                    // showNotification('已启用联网搜索功能', 3000);
-                    
                     // 检查当前是否有文本内容
                     const content = elements.messageInput.value.trim();
                     if (!content) {
                         // 自动聚焦到输入框
                         elements.messageInput.focus();
                     }
-                } else {
-                    // showNotification('已关闭联网搜索功能', 2000);
                 }
             });
         }
+
+        // 图片上传事件处理
+        if (elements.imageUploadInput) {
+            elements.imageUploadInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0 && elements.onlineSearchBtn) {
+                    elements.onlineSearchBtn.classList.remove('active');
+                    elements.onlineSearchBtn.disabled = true;
+                    elements.onlineSearchBtn.style.opacity = '0.5';
+                    elements.onlineSearchBtn.style.cursor = 'not-allowed';
+                    localStorage.setItem('onlineSearchActive', 'false');
+                }
+            });
+        }
+
+        // 发送消息后重置按钮状态
+        elements.sendButton?.addEventListener('click', function() {
+            setTimeout(() => {
+                if (elements.onlineSearchBtn) {
+                    elements.onlineSearchBtn.disabled = false;
+                    elements.onlineSearchBtn.style.opacity = '';
+                    elements.onlineSearchBtn.style.cursor = '';
+                }
+            }, 100);
+        });
 
         // 输入框回车事件
         if (elements.messageInput) {
@@ -658,8 +698,15 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleImageSelect(event) {
         const file = event.target.files[0];
         if (file && file.type.startsWith('image/')) {
+            // 如果联网搜索已启用，不允许选择图片
+            if (elements.onlineSearchBtn && elements.onlineSearchBtn.classList.contains('active')) {
+                showNotification('请先关闭联网搜索', 3000);
+                event.target.value = '';
+                return;
+            }
+
             state.selectedImage = file;
-            
+
             // 显示图片预览
             const reader = new FileReader();
             reader.onload = function (e) {
@@ -668,27 +715,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateMessagesPadding();
             };
             reader.readAsDataURL(file);
-            
+
             // 更新发送按钮状态
             updateSendButtonState();
-            
-            // 提示用户可以添加描述或直接发送
+
+            // 禁用联网搜索按钮
+            if (elements.onlineSearchBtn) {
+                elements.onlineSearchBtn.disabled = true;
+                elements.onlineSearchBtn.style.opacity = '0.5';
+                elements.onlineSearchBtn.style.cursor = 'not-allowed';
+            }
+
             showNotification('图片已选择', 3000);
         } else if (file) {
             showError('请选择有效的图片文件');
         }
-        
+
         // 重置input，允许再次选择同一文件
         event.target.value = '';
     }
     
-    // 移除选择的图片
     function removeSelectedImage() {
         state.selectedImage = null;
         elements.previewImage.src = '';
         elements.imagePreviewContainer.style.display = 'none';
         updateMessagesPadding();
         updateSendButtonState();
+
+        // 检查是否没有其他图片在预览容器中
+        if (elements.imagePreviewContainer.style.display === 'none') {
+            // 重新启用联网搜索按钮
+            if (elements.onlineSearchBtn) {
+                elements.onlineSearchBtn.disabled = false;
+                elements.onlineSearchBtn.style.opacity = '';
+                elements.onlineSearchBtn.style.cursor = '';
+            }
+        }
     }
 
     // 显示通知
@@ -1107,12 +1169,6 @@ document.addEventListener('DOMContentLoaded', function () {
                                 if (modelInfo) {
                                     aiMessageDiv.appendChild(modelInfo);
                                 }
-                                
-                                // 搜索结果容器 (初始隐藏)
-                                const searchContainer = document.createElement('div');
-                                searchContainer.className = 'search-results-container';
-                                searchContainer.style.display = 'none';
-                                aiMessageDiv.appendChild(searchContainer);
                                 
                                 // 思考容器 (初始隐藏)
                                 const thinkContainer = document.createElement('div');
@@ -4768,44 +4824,58 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // 处理搜索结果，创建可折叠的搜索结果区域
     function handleSearchResults(text, messageDiv) {
-        // 从后端数据中提取 <search> 标签内容
+        // 先尝试提取搜索结果
         const match = text.match(/<search>([\s\S]*?)<\/search>/);
         if (!match || !match[1]) return;
+
         let results;
         try {
             results = JSON.parse(match[1]);
         } catch (e) {
-            console.error('解析 search JSON 失败:', e);
+            console.error('解析搜索结果失败:', e);
             return;
         }
-        // 查找预创建的容器
-        const container = messageDiv.querySelector('.search-results-container');
-        if (!container) return;
-        // 显示搜索结果容器
-        container.style.display = 'block';
-        container.innerHTML = '';
-        // 标题头
+
+        // 创建或获取搜索结果容器
+        let container = messageDiv.querySelector('.search-results-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'search-results-container';
+            // 将容器插入到消息div的最前面
+            messageDiv.insertBefore(container, messageDiv.firstChild);
+        }
+        container.innerHTML = ''; // 清空现有内容
+
+        // 创建标题头
         const header = document.createElement('div');
         header.className = 'search-results-header';
         header.textContent = `已联网搜索（找到 ${results.length} 个内容）`;
         header.style.cursor = 'pointer';
-        // 内容区域
+
+        // 创建内容区域（默认折叠）
         const contentBox = document.createElement('div');
         contentBox.className = 'search-results-content';
-        contentBox.style.display = 'block';
-        results.forEach(item => {
-            const link = document.createElement('a');
-            link.href = item.href;
-            link.target = '_blank';
-            link.textContent = item.title;
-            link.className = 'search-result-item';
-            contentBox.appendChild(link);
-        });
+        contentBox.style.display = 'none'; // 默认折叠
+
+        // 添加搜索结果
+        if (results.length > 0) {
+            results.forEach(item => {
+                const link = document.createElement('a');
+                link.href = item.href;
+                link.target = '_blank';
+                link.textContent = item.title;
+                link.className = 'search-result-item';
+                contentBox.appendChild(link);
+            });
+        }
+
+        // 添加点击切换显示/隐藏功能
         header.onclick = () => {
             contentBox.style.display = contentBox.style.display === 'none' ? 'block' : 'none';
         };
+
+        // 添加到容器
         container.appendChild(header);
         container.appendChild(contentBox);
     }
@@ -4886,21 +4956,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.removeChild(textarea);
 
         // 更新按钮状态
-        button.classList.add('copied');
-        button.innerHTML = `
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-            </svg>
-        `;
+        button.className = `copy-message-btn copied-icon iconfont`
 
         // 2秒后恢复按钮原状
         setTimeout(() => {
-            button.classList.remove('copied');
-            button.innerHTML = `
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                </svg>
-            `;
+            button.className = `copy-message-btn copy-icon iconfont`
         }, 2000);
 
         // 显示通知
@@ -4996,8 +5056,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn_old.remove();
             }
             const btn = document.createElement('button');
-            btn.className = 'copy-message-btn';
-            btn.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg>';
+            btn.className = 'copy-message-btn copy-icon iconfont';
             btn.style.color = 'transparent'
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();

@@ -3152,20 +3152,22 @@ body.dark .au-tooltip {
     background: none;
     color: var(--dark-color);
     border: none;
-    font-size: 13px;
+    font-size: 20px;
     cursor: pointer;
     transition: all 0.2s ease;
     width: auto;
 }
 
-.copy-message-btn svg {
-    width: 14px;
-    height: 14px;
-    fill: currentColor;
+.copy-icon:before {
+    content: "\e6d9";
 }
 
-.copy-message-btn.copied {
+.copied-icon {
     color: #28a745;
+}
+
+.copied-icon:before {
+    content: "\e608";
 }
 
 /* 深色模式下的复制按钮样式 */
@@ -3173,7 +3175,7 @@ body.dark .au-tooltip {
     /* .copy-message-btn {
         color: rgb(241, 241, 241);
     } */
-    .copy-message-btn.copied {
+    .copied-icon:before {
         color: #40c463;
     }
 }
