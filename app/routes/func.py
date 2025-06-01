@@ -11,6 +11,7 @@ from app.utils.token_tracker import record_token_usage, get_latest_token_usage, 
 from flask_login import current_user
 from flask import current_app
 from datetime import datetime
+from app.utils.search import search
 
 # 全局变量，用于存储正在进行的响应
 active_responses = {}
@@ -359,14 +360,7 @@ def stream_gemini_api(model: str, history: list, response_queue, online_search: 
 
 def online_search(query: str, num: int = 10):
     """在线搜索"""
-    import requests
-    url = "https://duckduckgo.wanyim.cn/search"
-    params = {
-        "q": query,
-        "max_results": num
-    }
-    response = requests.get(url, params)
-    return response.json()
+    return search(query, num)
 
 def autohistory(history: dict, model: str, response_queue, online_search: bool=False):
     """处理历史并调用对应API生成回复"""    
