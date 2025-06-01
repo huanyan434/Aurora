@@ -1,6 +1,6 @@
 /instance
 __pycache__
-/venv
+/.venv
 .env
 .vscode
 *.log
