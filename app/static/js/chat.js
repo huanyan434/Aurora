@@ -4364,16 +4364,16 @@ document.addEventListener('DOMContentLoaded', function () {
             const currentModel = getSelectedModel();
             
             // 检查模型免费次数
-            const modelUsage = await fetchModelFreeUsageInfo(currentModel);
+            const modelUsage = await fetchModelFreeUsageInfo()[currentModel];
             console.log('模型使用信息:', modelUsage);
             
             // 如果是无限次数（SVIP），直接允许发送
-            if (modelUsage.limit === -1 || modelUsage.remaining === -1) {
+            if (modelUsage['limit'] === -1 || modelUsage['remaining'] === -1) {
                 return true;
             }
             
             // 如果还有免费次数，直接允许发送
-            if (modelUsage.remaining > 0) {
+            if (modelUsage['remaining'] > 0) {
                 return true;
             }
             
