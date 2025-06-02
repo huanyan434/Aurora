@@ -6,8 +6,6 @@ import time
 import json
 import os
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
-import base64
 
 def create_app():
     app = Flask(__name__)
