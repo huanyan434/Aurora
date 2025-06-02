@@ -183,16 +183,6 @@ body {
     text-decoration: underline;
 }
 
-.alert {
-    background: #ebf8ff;
-    color: #2c5282;
-    padding: 1rem;
-    border-radius: 12px;
-    margin-bottom: 1.5rem;
-    border: 1px solid #bee3f8;
-    font-size: 0.95rem;
-}
-
 /* 响应式设计 */
 @media (max-width: 480px) {
     .auth-container {
@@ -202,27 +192,6 @@ body {
     .auth-header h1 {
         font-size: 1.75rem;
     }
-}
-
-/* 添加闪烁消息样式 */
-.flash-message {
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-    border-radius: 12px;
-    font-size: 0.95rem;
-    text-align: center;
-}
-
-.flash-message.error {
-    background: #fff5f5;
-    color: #e53e3e;
-    border: 1px solid #feb2b2;
-}
-
-.flash-message.success {
-    background: #f0fff4;
-    color: #2f855a;
-    border: 1px solid #9ae6b4;
 }
 
 /* 加载动画 */
@@ -263,12 +232,16 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     animation: slideDown 0.3s ease-out;
+}
+
+.popup-alert.danger {
+    color: #e53e3e;
     border-left: 4px solid #e53e3e;
 }
 
-.popup-alert.error {
-    background: #fff5f5;
-    color: #e53e3e;
+.popup-alert.success {
+    color: #2f855a;
+    border-left: 4px solid #2f855a;
 }
 
 @keyframes slideDown {

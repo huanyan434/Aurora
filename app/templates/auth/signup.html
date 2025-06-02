@@ -14,10 +14,10 @@
             <p>请填写以下信息完成注册</p>
         </div>
         
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="alert">
-                    {% for message in messages %}
+                <div class="popup-alert {{ category }}">
+                    {% for category, message in messages %}
                         {{ message }}
                     {% endfor %}
                 </div>

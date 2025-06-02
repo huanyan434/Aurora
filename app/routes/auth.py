@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, Conversation, Message
 from app.utils.auth import hash_password, verify_password
@@ -19,7 +18,7 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if not user or not verify_password(user.password_hash, password):
-            flash('请检查登录信息并重试')
+            flash('请检查登录信息并重试', 'danger')
             return redirect(url_for('auth.login'))
         
         login_user(user, remember=remember)
@@ -38,9 +37,7 @@ def signup():
         password = request.form.get('password')
         email = request.form.get('email')
     else:
-        username = request.args.get('username')
-        password = request.args.get('password')
-        email = request.args.get('email')
+        return render_template('auth/signup.html')
 
     # 验证必填字段
     if not username or not password:
@@ -60,7 +57,7 @@ def signup():
     # 创建新用户，使用UUID作为ID并设置默认余额
     new_user = User(
         username=username,
-    email=email
+        email=email
     )
     new_user.set_password(password)
         
