@@ -1600,7 +1600,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.05);
+    background: transparent;
     position: relative;
 }
 
@@ -1617,8 +1617,6 @@ body {
 .more-options-btn:hover {
     opacity: 1 !important;
     /* 确保鼠标悬停在按钮上时总是显示 */
-    background: rgba(0, 0, 0, 0.1);
-    transform: scale(1.1);
 }
 
 .more-options-btn .dots {
@@ -1644,8 +1642,8 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     z-index: 100;
-    min-width: 120px;
-    max-width: 150px;
+    /* min-width: 120px; */
+    max-width: 130px;
     /* 限制最大宽度 */
     width: auto;
     /* 使用自动宽度 */
@@ -1668,6 +1666,7 @@ body {
     font-size: 14px;
     display: flex;
     align-items: center;
+    height: 35px;
 }
 
 .conversation-dropdown-item:hover {

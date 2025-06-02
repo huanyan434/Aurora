@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // 加载完成后显示主界面
                 setTimeout(() => {
                     // 退出登录按钮不可见
-                    logoutBtn.style.display = 'none';
+                    elements.logoutBtn.style.display = 'none';
                     // 显示主界面
                     showMainUI();
                 }, 200);
@@ -2246,7 +2246,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const btnRect = moreBtn.getBoundingClientRect();
                 dropdownMenu.style.position = 'fixed';
                 dropdownMenu.style.top = `${btnRect.bottom + 5}px`;
-                dropdownMenu.style.left = `${btnRect.left - 100}px`; // 菜单左对齐，宽度约100px
+                dropdownMenu.style.left = `${btnRect.left - 90}px`; // 菜单左对齐，宽度约100px
                 
                 // 显示菜单
                 dropdownMenu.classList.add('show');
@@ -3166,7 +3166,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         messageDiv.innerHTML = modelInfoHtml + loadingHtml;
         elements.messagesContainer.appendChild(messageDiv);
-                        scrollToBottom(true);
+        scrollToBottom(true);
         
         return messageDiv;
     }
