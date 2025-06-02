@@ -4423,7 +4423,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const currentModel = getSelectedModel();
             
             // 检查模型免费次数
-            const modelUsage = await fetchModelFreeUsageInfo()[currentModel];
+            let modelUsage = await fetchModelFreeUsageInfo();
+            modelUsage = modelUsage[currentModel];
             console.log('模型使用信息:', modelUsage);
             
             // 如果是无限次数（SVIP），直接允许发送
@@ -4456,9 +4457,9 @@ document.addEventListener('DOMContentLoaded', function () {
             let url = `/api/model/free_usage`;
             
             // 如果有当前用户信息，添加user_id参数
-            /* if (state.currentUser && state.currentUser.id) {
-                url += `&user_id=${state.currentUser.id}`;
-            } */
+            if (state.currentUser && state.currentUser.id) {
+                url += `?user_id=${state.currentUser.id}`;
+            }
             
             const response = await fetch(url);
             if (!response.ok) {
@@ -4503,7 +4504,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
         const usage_Info = await fetchModelFreeUsageInfo();
-        console.log(usage_Info)
         for (const option of modelOptions) {
             const modelName = option.getAttribute('data-value');
             try {
