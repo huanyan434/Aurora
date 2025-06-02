@@ -34,10 +34,10 @@
 
 @font-face {
   font-family: "iconfont"; /* Project id 4808287 */
-  src: url('//at.alicdn.com/t/a/font_4808287_4twco1lu99y.woff2?t=1747206285745') format('woff2'),
-       url('//at.alicdn.com/t/a/font_4808287_4twco1lu99y.woff?t=1747206285745') format('woff'),
-       url('//at.alicdn.com/t/a/font_4808287_4twco1lu99y.ttf?t=1747206285745') format('truetype'),
-       url('//at.alicdn.com/t/a/font_4808287_4twco1lu99y.svg?t=1747206285745#iconfont') format('svg');
+  src: url('/static/iconfont/font_4808287_4twco1lu99y.woff2?t=1747206285745') format('woff2'),
+       url('/static/iconfont/font_4808287_4twco1lu99y.woff?t=1747206285745') format('woff'),
+       url('/static/iconfont/font_4808287_4twco1lu99y.ttf?t=1747206285745') format('truetype'),
+       url('/static/iconfont/font_4808287_4twco1lu99y.svg?t=1747206285745') format('svg');
 }
 
 .iconfont {
