@@ -1160,10 +1160,6 @@ body {
         color: var(--think-text);
     }
 
-    .think-header {
-        color: var(--think-text);
-    }
-
     .think-header:hover {
         background-color: rgba(255, 255, 255, 0.08);
     }
@@ -1304,14 +1300,15 @@ body {
 
 /* 添加思考时间显示和折叠功能的样式 */
 .think-header {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    padding: 8px 12px;
-    color: #666;
+    padding: 10px 15px;
+    color: var(--dark-color);
+    background: var(--light-color);
     font-size: 0.9rem;
     cursor: pointer;
     user-select: none;
-    border-radius: 6px;
+    border-radius: 10px;
     margin-bottom: 4px;
     transition: background-color 0.2s ease;
 }
@@ -2964,9 +2961,7 @@ body.dark .au-tooltip {
 
 /* ====================== 搜索结果折叠区域 ====================== */
 .search-results-container {
-    margin: 0.5rem 0 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    margin: 0.5rem 0 0.5rem;
     background: var(--ai-bubble);
     overflow: hidden;
 }
@@ -2974,7 +2969,7 @@ body.dark .au-tooltip {
 .search-results-header {
     padding: 10px 15px;
     background: var(--light-color);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: space-between;
     font-size: 14px;
@@ -2982,12 +2977,18 @@ body.dark .au-tooltip {
     color: var(--dark-color);
     cursor: pointer;
     user-select: none;
+    border-radius: 10px;
+}
+
+.search-results-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .search-results-content {
     padding: 10px 15px;
     background: var(--ai-bubble);
     display: block;
+    border-left: 1px solid var(--border-color);
 }
 
 .search-result-item {
@@ -2995,6 +2996,11 @@ body.dark .au-tooltip {
     padding: 8px 0;
     border-top: 1px solid var(--border-color);
     color: var(--primary-color);
+    text-decoration: none;
+}
+
+a:link {
+    color: black;
     text-decoration: none;
 }
 
@@ -3009,14 +3015,11 @@ body.dark .au-tooltip {
 /* 深色模式下的搜索结果样式 */
 @media (prefers-color-scheme: dark) {
     .search-results-container {
-        border-color: rgba(255, 255, 255, 0.1);
         background: rgba(45, 45, 45, 0.6);
     }
     
-    .search-results-header {
-        background: rgba(60, 60, 60, 0.8);
-        color: #e0e0e0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    .search-results-header:hover {
+        background-color: rgba(255, 255, 255, 0.08);
     }
     
     .search-results-content {
