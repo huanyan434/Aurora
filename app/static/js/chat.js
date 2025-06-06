@@ -694,8 +694,98 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ====================== 图片处理 ======================
-    function handleImageSelect(event) {
+// ====================== 图片处理 ======================
+
+// 检测是否为iOS设备
+function isIOSDevice() {
+    return [
+        'iPad Simulator',
+        'iPhone Simulator',
+        'iPod Simulator',
+        'iPad',
+        'iPhone',
+        'iPod'
+    ].includes(navigator.platform)
+ (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+}
+
+async function compressImage(file, maxSizeInBytes = 3 * 1024 * 1024) {
+    // 只在 iOS 设备上进行压缩
+    if (!isIOS()) {
+        return file;
+    }
+
+    // 如果文件已经小于最大大小，直接返回
+    if (file.size <= maxSizeInBytes) {
+        return file;
+    }
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+
+        reader.onload = function(e) {
+            const img = new Image();
+            img.src = e.target.result;
+
+            img.onload = function() {
+                // 创建canvas进行图片处理 
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // 如果图片尺寸超过2048，按比例缩小
+                const maxDimension = 2048;
+                if (width > maxDimension || height > maxDimension) {
+                    const ratio = Math.min(maxDimension / width, maxDimension / height);
+                    width *= ratio;
+                    height *= ratio;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 从0.9开始尝试不同的压缩质量
+                let quality = 0.9;
+                let compressed = canvas.toDataURL('image/jpeg', quality);
+
+                // 压缩循环：如果大小仍然超过限制且质量可以继续降低
+                while (compressed.length > maxSizeInBytes * 1.33 && quality > 0.1) {
+                    quality -= 0.1;
+                    compressed = canvas.toDataURL('image/jpeg', quality);
+                }
+
+                // 将base64转回File对象
+                const binaryString = atob(compressed.split(',')[1]);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                // 创建新的File对象
+                const compressedFile = new File(
+                    [bytes.buffer], 
+                    file.name, 
+                    { type: 'image/jpeg' }
+                );
+
+                resolve(compressedFile);
+            };
+
+            img.onerror = function() {
+                reject(new Error('图片处理失败'));
+            };
+        };
+
+        reader.onerror = function() {
+            reject(new Error('文件读取失败'));
+        };
+    });
+}
+
+async function handleImageSelect(event) {
         const file = event.target.files[0];
         if (file && file.type.startsWith('image/')) {
             // 如果联网搜索已启用，不允许选择图片
@@ -704,9 +794,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 event.target.value = '';
                 return;
             }
-
-            state.selectedImage = file;
-
+            
+            state.selectedImage = await compressImage(file);
+            
             // 显示图片预览
             const reader = new FileReader();
             reader.onload = function (e) {
@@ -714,7 +804,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 elements.imagePreviewContainer.style.display = 'block';
                 updateMessagesPadding();
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(state.selectedImage);
 
             // 更新发送按钮状态
             updateSendButtonState();
@@ -733,7 +823,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 重置input，允许再次选择同一文件
         event.target.value = '';
-    }
+}
     
     function removeSelectedImage() {
         state.selectedImage = null;
