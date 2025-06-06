@@ -9,16 +9,13 @@
 ```bash
 git clone <项目仓库地址>
 ```
+
 2. 进入项目目录：
 ```bash
 cd Aurora-main
 ```
-3. 创建并激活虚拟环境（可选但推荐）：
-```bash
-python -m venv venv
-source venv/bin/activate  # 对于Windows用户使用 `venv\Scripts\activate`
-```
-4. 创建.env文件：
+
+3. 创建.env文件：
 在项目根目录下创建一个名为 `.env` 的文件，并在其中添加以下环境变量：
 ```plaintext
 api=your_volcano_api_key,your_siliconflow_api_key,your_gemini_api_key
@@ -29,11 +26,11 @@ gemini_api_key=your_gemini_api_key
 请将 `your_volcano_api`、`your_siliconflow_api`、`your_gemini_api` 分别替换为实际的火山方舟、硅基流动、Gemini的API，
 将 `your_volcano_api_key`、`your_siliconflow_api_key`、`your_gemini_api_key` 分别替换为实际的火山方舟、硅基流动、Gemini的API密钥。
 
-5. 运行初始化脚本：
+4. 运行初始化脚本：
 ```bash
 ./init.sh  # 对于Windows用户使用 `init.bat`
 ```
-6. 启动应用程序：
+5. 启动应用程序：
 ```bash
 ./start.sh  # 对于Windows用户使用 `start.bat`
 ```
