@@ -7,7 +7,7 @@
 # 本地部署
 1. 克隆项目仓库：
 ```bash
-git clone <项目仓库地址>
+git clone https://github.com/huanyan434/Aurora.git
 ```
 
 2. 进入项目目录：
