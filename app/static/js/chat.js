@@ -1095,7 +1095,7 @@ async function handleImageSelect(event) {
         try {
             // 添加联网搜索参数
             const isOnlineSearchEnabled = elements.onlineSearchBtn && 
-                                         elements.onlineSearchBtn.classList.contains('active');
+            elements.onlineSearchBtn.classList.contains('active');
             
             // 日志 - 联网搜索状态
             console.log("联网搜索状态:", isOnlineSearchEnabled);
@@ -1781,17 +1781,6 @@ async function handleImageSelect(event) {
         return messageDiv;
     }
 
-    function updateMessageContent(messageId, newContent) {
-        const messageEl = document.getElementById(messageId);
-        if (messageEl) {
-            const contentEl = messageEl.querySelector('.message-content');
-            if (contentEl) {
-                contentEl.innerHTML += newContent; // 使用 innerHTML 以支持 HTML 内容
-                scrollToBottom();
-            }
-        }
-    }
-
     // ====================== 工具函数 ======================
     function escapeHtml(text) {
         return text
@@ -1800,12 +1789,6 @@ async function handleImageSelect(event) {
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
-    }
-
-    function formatContent(text) {
-        if (!text) return '';
-        // 将 <br> 转换为实际的换行符
-        return text.replace(/<br>/g, '\n');
     }
 
     // 处理消息内容中的特殊标签
@@ -2087,8 +2070,8 @@ async function handleImageSelect(event) {
                             if (textContent) {
                                 const messageDiv = document.createElement('div');
                                 messageDiv.className = 'message user';
-                        const contentDiv = document.createElement('div');
-                        contentDiv.className = 'message-content';
+                                const contentDiv = document.createElement('div');
+                                contentDiv.className = 'message-content';
                         
                                 // 处理特殊标签
                                 const processedContent = processMessageContent(textContent, true, true);
@@ -2104,11 +2087,11 @@ async function handleImageSelect(event) {
                             
                             // 处理特殊标签
                             const processedContent = processMessageContent(msg.content, true, true);
-                        contentDiv.innerHTML = marked.parse(processedContent);
-                        
-                        // 添加到消息元素
-                        messageDiv.appendChild(contentDiv);
-                        chatMessages.appendChild(messageDiv);
+                            contentDiv.innerHTML = marked.parse(processedContent);
+                            
+                            // 添加到消息元素
+                            messageDiv.appendChild(contentDiv);
+                            chatMessages.appendChild(messageDiv);
                         }
                     } else {
                         let content = msg.content;
@@ -2124,8 +2107,8 @@ async function handleImageSelect(event) {
                         const modelInfoDiv = document.createElement('div');
                         modelInfoDiv.className = 'model-info';
                         modelInfoDiv.innerHTML = `
-                        <div class="model-avatar"><img src="/static/models/${imageName}.png" alt="${modelName}" onerror="this.src='/static/models/default.png';"></div>
-                        <div class="model-name"><strong>${modelName}</strong></div>
+                            <div class="model-avatar"><img src="/static/models/${imageName}.png" alt="${modelName}" onerror="this.src='/static/models/default.png';"></div>
+                            <div class="model-name"><strong>${modelName}</strong></div>
                         `;
                         
                         // 添加到消息元素
@@ -2182,49 +2165,54 @@ async function handleImageSelect(event) {
                             // 更新剩余文本
                             content = content.replace(thinkRegex, '').trim();
                     }
-                    
-                    // 移除模型标签
-                    content = content.replace(/<model="[^"]+"\/>/g, '').trim();
-                    
+                                        
                     // 添加主要内容
                     if (content) {
                         console.log('添加历史消息正文内容');
                     // 创建内容元素
                     const contentDiv = document.createElement('div');
                     contentDiv.className = 'message-content';
-                        
-                        try {
-                            // 处理内容，确保是字符串
-                            let textContent = content;
-                            if (typeof textContent !== 'string') {
-                                if (textContent.content) {
-                                    textContent = textContent.content;
-                                } else {
-                                    textContent = JSON.stringify(textContent);
-                                }
-                            }
-                                                        
+                    // 处理内容，确保是字符串
+                    let textContent = content;
+                    if (typeof textContent !== 'string') {
+                        if (textContent.content) {
+                            textContent = textContent.content;
+                        } else {
+                            textContent = JSON.stringify(textContent);
+                        }
+                    }
+
+                    if (msg.role === 'user') {
+                        contentDiv.innerHTML = textContent;
+                    } else {
+                        // 移除模型标签
+                        content = content.replace(/<model="[^"]+"\/>/g, '').trim();
+
+                        try {                           
                             // 处理base64图片标签
                             textContent = processMessageContent(textContent, false);
                             
                             // textContent = textContent.replace(/\n/g, '<br>');
                             // 解析并显示
+                            
+                                
                             try {
                                 contentDiv.innerHTML = marked.parse(textContent);
                             } catch (error) {
                                 console.error('解析Markdown失败:', error);
                                 contentDiv.innerHTML = textContent;
                             }
+                            
                         } catch (error) {
                             console.error('处理历史消息内容时出错:', error);
                             contentDiv.innerHTML = `<p>${textContent}</p>`;
                         }
-                        
-                        // 添加到消息元素
-                        messageDiv.appendChild(contentDiv);
-                        
-                        // 添加到消息容器
-                        chatMessages.appendChild(messageDiv);
+                    }
+                    // 添加到消息元素
+                    messageDiv.appendChild(contentDiv);
+                    
+                    // 添加到消息容器
+                    chatMessages.appendChild(messageDiv);
                     }
                 }
             });
