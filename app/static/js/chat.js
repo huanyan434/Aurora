@@ -698,27 +698,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // 检测是否为iOS设备
 function isIOSDevice() {
-    return [
-        'iPad Simulator',
-        'iPhone Simulator',
-        'iPod Simulator',
-        'iPad',
-        'iPhone',
-        'iPod'
-    ].includes(navigator.platform)
- (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+    // 使用正则表达式匹配 iOS 设备的 userAgent
+    const iosRegex = /iPad|iPhone|iPod/i;
+    
+    // 主要检测方法
+    const isIosDevice = (
+        // 检查是否匹配 iOS 设备
+        iosRegex.test(navigator.userAgent) ||
+        // iPad在iOS13后会显示为Mac
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
+    );
+
+    return isIosDevice;
 }
 
 async function compressImage(file, maxSizeInBytes = 3 * 1024 * 1024) {
     // 只在 iOS 设备上进行压缩
-    if (!isIOS()) {
+    if (!isIOSDevice()) {
         return file;
     }
-
     // 如果文件已经小于最大大小，直接返回
     if (file.size <= maxSizeInBytes) {
         return file;
     }
+
+    console.log('开始压缩图片');
 
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1820,7 +1824,7 @@ async function handleImageSelect(event) {
         let imageElements = [];
         processedContent = processedContent.replace(/<base64>(.*?)<\/base64>/g, (match, base64Content) => {
             // 创建图片元素
-            const imgHtml = `<img src="data:image/png;base64,${base64Content}" alt="嵌入图片" class="embedded-image" style="max-width: 100%; border-radius: 8px; margin: 10px 0;" />`;
+            const imgHtml = `<img src="data:image/png;base64,${base64Content}" alt="嵌入图片" class="embedded-image" style="max-width: 100%; border-radius: 8px;" />`;
             imageElements.push(imgHtml);
             return ''; // 先删除图片标签
         });
@@ -2120,8 +2124,8 @@ async function handleImageSelect(event) {
                         const modelInfoDiv = document.createElement('div');
                         modelInfoDiv.className = 'model-info';
                         modelInfoDiv.innerHTML = `
-                                <img src="/static/models/${imageName}.png" alt="${modelName}" class="model-avatar" onerror="this.src='/static/models/default.png';">
-                                <div class="model-name"><strong>${modelName}</strong></div>
+                        <div class="model-avatar"><img src="/static/models/${imageName}.png" alt="${modelName}" onerror="this.src='/static/models/default.png';"></div>
+                        <div class="model-name"><strong>${modelName}</strong></div>
                         `;
                         
                         // 添加到消息元素
@@ -2832,26 +2836,6 @@ async function handleImageSelect(event) {
     // 添加一个计时器管理对象
     const thinkTimers = {};
 
-    function startThinkTimer(aiMessageId) {
-        const thinkHeader = document.getElementById(`${aiMessageId}-think-header`);
-        if (!thinkHeader) return;
-
-        let startTime = Date.now();
-        thinkTimers[aiMessageId] = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            thinkHeader.innerHTML = `
-                思考中...（${elapsed} 秒）
-                <div class="triangle"></div>
-            `;
-        }, 1000);
-    }
-
-    function stopThinkTimer(aiMessageId) {
-        if (thinkTimers[aiMessageId]) {
-            clearInterval(thinkTimers[aiMessageId]);
-            delete thinkTimers[aiMessageId];
-        }
-    }
 
     // 添加滚动监听函数
     function setupScrollListener() {
@@ -2961,7 +2945,7 @@ async function handleImageSelect(event) {
                     copyButton.style.color = '#fff';
                     
                     // 显示提示
-                    // showNotification('代码已复制到剪贴板', 1500);
+                    // showNotification('已复制到剪贴板', 1500);
                     
                     // 2秒后恢复原状
                     setTimeout(() => {
@@ -3235,13 +3219,13 @@ async function handleImageSelect(event) {
         messageDiv.id = aiMessageId;
         
         // 创建模型信息
-                        const imageName = getModelImageName(modelName);
-                        const modelInfoHtml = `
-                            <div class="model-info">
-                            <img src="/static/models/${imageName}.png" alt="${modelName}" class="model-avatar" onerror="this.src='/static/models/default.png';">
-                            <div class="model-name"><strong>${modelName}</strong></div>
-                            </div>
-                        `;
+        const imageName = getModelImageName(modelName);
+        const modelInfoHtml = `
+            <div class="model-info">
+            <div class="model-avatar"><img src="/static/models/${imageName}.png" alt="${modelName}" onerror="this.src='/static/models/default.png';"></div>
+            <div class="model-name"><strong>${modelName}</strong></div>
+            </div>
+        `;
                         
         // 创建加载动画
         const loadingHtml = `
@@ -4514,7 +4498,7 @@ async function handleImageSelect(event) {
             
             // 检查模型免费次数
             let modelUsage = await fetchModelFreeUsageInfo();
-            modelUsage = modelUsage[currentModel];
+            modelUsage = modelUsage['usage_info'][currentModel];
             console.log('模型使用信息:', modelUsage);
             
             // 如果是无限次数（SVIP），直接允许发送

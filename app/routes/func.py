@@ -962,9 +962,9 @@ def qwen_parse_image(image_base64: str) -> str:
                                  {"type": "text",
                                   "text": "请详细描述这张图片的内容，不要使用markdown格式，不要书名号。"}]}]
 
-        # 发送请求 - 使用Qwen/Qwen2.5-VL-32B-Instruct作为视觉模型
+        # 发送请求 - 使用Qwen作为视觉模型
         response = client.chat.completions.create(
-            model="Qwen/Qwen2.5-VL-32B-Instruct",
+            model="Pro/Qwen/Qwen2.5-VL-7B-Instruct",
             messages=messages,
             max_tokens=1000
         )

@@ -40,6 +40,11 @@
        url('/static/iconfont/font_4808287_4twco1lu99y.svg?t=1747206285745') format('svg');
 }
 
+@font-face {
+    font-family: "Crystal-Medium";
+    src: url('/static/fonts/Crystal-Medium.ttf') format('truetype');
+}
+
 .iconfont {
     font-family: "iconfont" !important;
     font-size: 16px;
@@ -459,11 +464,21 @@ body {
 .model-avatar {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
+    border-radius: 50px;
+    background: white;
     position: absolute;
     left: -50px;
     top: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.model-avatar img {
+    width: 34px;
+    height: 34px;
+    border-radius: 50px;
+    object-fit: container;
 }
 
 .model-name {
@@ -542,7 +557,7 @@ body {
 }
 
 .send-button:hover {
-    background-color: rgba(67, 97, 238, 0.1);
+    background: rgba(67, 97, 238, 0.1);
     transform: scale(1.05);
 }
 
@@ -572,7 +587,7 @@ body {
 }
 
 .send-button.stop-button:hover {
-    background-color: rgba(67, 97, 238, 0.1);
+    background: rgba(67, 97, 238, 0.1);
     transform: scale(1.05);
 }
 
@@ -590,7 +605,7 @@ body {
     }
     
     .send-button.stop-button:hover {
-        background-color: rgba(67, 97, 238, 0.1);
+        background: rgba(67, 97, 238, 0.1);
     }
 }
 
@@ -769,7 +784,7 @@ body {
     position: absolute;
     left: 16px;
     top: 14px;
-    z-index: 15;
+    z-index: 103;
 }
 
 .model-select-header {
@@ -1004,7 +1019,7 @@ body {
 
 /* 代码块样式 */
 .message-content pre {
-    background-color: #f6f8fa;
+    background: #f6f8fa;
     border-radius: 6px;
     padding: 1em;
     margin: 1em 0;
@@ -1015,13 +1030,13 @@ body {
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 0.9em;
     padding: 0.2em 0.4em;
-    background-color: #f6f8fa;
+    background: #f6f8fa;
     border-radius: 3px;
 }
 
 .message-content pre code {
     padding: 0;
-    background-color: transparent;
+    background: transparent;
 }
 
 /* 引用块样式 */
@@ -1029,7 +1044,7 @@ body {
     margin: 1em 0;
     padding: 0.5em 1em;
     border-left: 4px solid #42b983;
-    background-color: #f8f8f8;
+    background: #f8f8f8;
     color: #666;
 }
 
@@ -1048,7 +1063,7 @@ body {
 }
 
 .message-content th {
-    background-color: #f6f8fa;
+    background: #f6f8fa;
     font-weight: 600;
 }
 
@@ -1160,8 +1175,12 @@ body {
         color: var(--think-text);
     }
 
+    .think-header{
+        background: var(--light-color);
+    }
+
     .think-header:hover {
-        background-color: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.08);
     }
 
     .select-selected {
@@ -1207,17 +1226,17 @@ body {
     }
 
     .message-content pre {
-        background-color: var(--code-bg);
+        background: var(--code-bg);
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .message-content code {
-        background-color: var(--code-bg);
+        background: var(--code-bg);
         color: #e0e0e0;
     }
 
     .message-content blockquote {
-        background-color: var(--quote-bg);
+        background: var(--quote-bg);
         border-left: 4px solid var(--quote-border);
         color: #c0c0c0;
     }
@@ -1232,7 +1251,7 @@ body {
     }
 
     .message-content th {
-        background-color: var(--table-header);
+        background: var(--table-header);
     }
 
     .message-content a {
@@ -1248,7 +1267,7 @@ body {
     }
 
     .message-content .hljs {
-        background-color: var(--code-bg);
+        background: var(--code-bg);
         color: #e0e0e0;
     }
 
@@ -1314,7 +1333,7 @@ body {
 }
 
 .think-header:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.05);
 }
 
 .think-header .triangle {
@@ -1339,26 +1358,6 @@ body {
 .think-container {
     margin-top: 2px;
 }
-
-.model-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-right: 10px;
-}
-
-.model-info {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.model-name {
-    font-size: 14px;
-    color: #666;
-}
-
 /* ===== 侧边栏遮罩层 ===== */
 .sidebar-overlay {
     display: none;
@@ -1382,7 +1381,7 @@ body {
 .interrupt-note {
     margin-top: 8px;
     padding: 4px 8px;
-    background-color: #fff3cd;
+    background: #fff3cd;
     color: #856404;
     border-radius: 4px;
     font-size: 0.85rem;
@@ -1392,7 +1391,7 @@ body {
 /* 暗色模式下的中断提示 */
 @media (prefers-color-scheme: dark) {
     .interrupt-note {
-        background-color: #332d00;
+        background: #332d00;
         color: #ffeb99;
     }
 }
@@ -1415,7 +1414,7 @@ body {
 }
 
 .image-upload-button:hover {
-    background-color: rgba(67, 97, 238, 0.1);
+    background: rgba(67, 97, 238, 0.1);
     transform: scale(1.05);
 }
 
@@ -1433,11 +1432,11 @@ body {
 @media (prefers-color-scheme: dark) {
     .image-upload-button {
         color: #8c9dff;
-        background-color: rgba(123, 140, 255, 0.1);
+        background: rgba(123, 140, 255, 0.1);
     }
     
     .image-upload-button:hover {
-        background-color: rgba(123, 140, 255, 0.25);
+        background: rgba(123, 140, 255, 0.25);
     }
 }
 
@@ -1503,7 +1502,7 @@ body {
 /* 图片上传进度样式 */
 .image-upload-progress {
     height: 5px;
-    background-color: var(--primary-color);
+    background: var(--primary-color);
     width: 0%;
     transition: width 0.3s ease;
     border-radius: 5px;
@@ -1550,7 +1549,7 @@ body {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: var(--primary-color);
+    background: var(--primary-color);
     margin: 0 3px;
     opacity: 0.6;
     animation: loadingDot 1.4s infinite ease-in-out both;
@@ -1625,7 +1624,7 @@ body {
 .more-options-btn .dot {
     width: 4px;
     height: 4px;
-    background-color: #666;
+    background: #666;
     border-radius: 50%;
     margin: 0 1px;
 }
@@ -1658,7 +1657,7 @@ body {
     position: relative; /* 新增，确保伪元素相对定位 */
     padding: 0.25rem 2.4rem;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background-color 0.2s;
     color: #333;
     font-size: 14px;
     display: flex;
@@ -1744,7 +1743,7 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(5px);
     overflow: auto;
 }
@@ -1757,7 +1756,7 @@ body {
 }
 
 .user-modal-content {
-    background-color: var(--main-bg);
+    background: var(--main-bg);
     padding: 0;
     border-radius: 12px;
     width: 500px;
@@ -1851,7 +1850,7 @@ body {
 
 .edit-username-btn:hover,
 .edit-password-btn:hover {
-    background-color: rgba(67, 97, 238, 0.1);
+    background: rgba(67, 97, 238, 0.1);
     transform: scale(1.1);
 }
 
@@ -2185,7 +2184,7 @@ body {
     }
     
     .user-modal-content {
-        background-color: #2a2a2a;
+        background: #2a2a2a;
     }
     
     .user-info-section h4 {
@@ -2294,7 +2293,7 @@ body.dark .au-tooltip {
     padding: var(--tooltip-padding);
     font-size: var(--tooltip-font-size);
     line-height: var(--tooltip-line-height);
-    background-color: var(--tooltip-color);
+    background: var(--tooltip-color);
     color: var(--tooltip-text-color);
     max-width: var(--au-toast-max-width, calc(100vw - 28px));
     border-radius: 10px;
@@ -2314,7 +2313,7 @@ body.dark .au-tooltip {
 .au-tooltip__arrow.au-tooltip__arrow--sharp {
     width: calc(var(--tooltip-arrow-size)*1.414);
     height: calc(var(--tooltip-arrow-size)*1.414);
-    background-color: var(--tooltip-color)
+    background: var(--tooltip-color)
 }
 
 .au-tooltip__arrow.au-tooltip__arrow--soft {
@@ -2374,7 +2373,7 @@ body.dark .au-tooltip {
     box-sizing: border-box;
     border: none;
     font-size: 100%;
-    background-color: transparent;
+    background: transparent;
     color: var(--dark-color);
     outline: none;
     font-family: inherit;
@@ -2407,7 +2406,7 @@ body.dark .au-tooltip {
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
     box-shadow: 0 2px 8px rgba(67, 97, 238, 0.3);
 }
 
@@ -2484,7 +2483,7 @@ body.dark .au-tooltip {
     font-size: 14px;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
-    background-color: #fff;
+    background: #fff;
     color: #333;
     height: 36px;
 }
@@ -2500,7 +2499,7 @@ body.dark .au-tooltip {
     border-radius: 6px;
     font-size: 14px;
     cursor: pointer;
-    background-color: var(--primary-color);
+    background: var(--primary-color);
     color: white;
     transition: background-color 0.2s, transform 0.2s;
     height: 36px;
@@ -2508,7 +2507,7 @@ body.dark .au-tooltip {
 }
 
 .redeem-form button:hover {
-    background-color: var(--secondary-color);
+    background: var(--secondary-color);
     transform: translateY(-1px);
 }
 
@@ -2534,7 +2533,7 @@ body.dark .au-tooltip {
 /* 暗色模式适配 */
 @media (prefers-color-scheme: dark) {
     .redeem-form input[type="text"] {
-        background-color: rgba(30, 30, 30, 0.8);
+        background: rgba(30, 30, 30, 0.8);
         border-color: rgba(255, 255, 255, 0.1);
         color: #eee;
     }
@@ -2545,11 +2544,11 @@ body.dark .au-tooltip {
     }
     
     .redeem-form button {
-        background-color: var(--primary-color);
+        background: var(--primary-color);
     }
     
     .redeem-form button:hover {
-        background-color: var(--secondary-color);
+        background: var(--secondary-color);
     }
 }
 
@@ -2563,7 +2562,7 @@ body.dark .au-tooltip {
     font-size: 14px;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
-    background-color: #fff;
+    background: #fff;
     color: #333;
     height: 36px;
 }
@@ -2579,7 +2578,7 @@ body.dark .au-tooltip {
     border-radius: 6px;
     font-size: 14px;
     cursor: pointer;
-    background-color: var(--primary-color);
+    background: var(--primary-color);
     color: white;
     transition: background-color 0.2s, transform 0.2s;
     height: 36px;
@@ -2588,7 +2587,7 @@ body.dark .au-tooltip {
 }
 
 .redeem-button:hover {
-    background-color: var(--secondary-color);
+    background: var(--secondary-color);
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(67, 97, 238, 0.3);
 }
@@ -2602,7 +2601,7 @@ body.dark .au-tooltip {
 /* 暗色模式适配 */
 @media (prefers-color-scheme: dark) {
     .redeem-input {
-        background-color: rgba(30, 30, 30, 0.8);
+        background: rgba(30, 30, 30, 0.8);
         border-color: rgba(255, 255, 255, 0.1);
         color: #eee;
     }
@@ -2650,11 +2649,11 @@ body.dark .au-tooltip {
     padding: 8px 16px;
     border-radius: 20px;
     transition: all 0.2s;
-    background-color: rgba(67, 97, 238, 0.08);
+    background: rgba(67, 97, 238, 0.08);
 }
 
 .get-code-link:hover {
-    background-color: rgba(67, 97, 238, 0.15);
+    background: rgba(67, 97, 238, 0.15);
     transform: translateY(-1px);
 }
 
@@ -2669,11 +2668,11 @@ body.dark .au-tooltip {
     }
     
     .get-code-link {
-        background-color: rgba(67, 97, 238, 0.15);
+        background: rgba(67, 97, 238, 0.15);
     }
     
     .get-code-link:hover {
-        background-color: rgba(67, 97, 238, 0.25);
+        background: rgba(67, 97, 238, 0.25);
     }
 }
 
@@ -2735,7 +2734,7 @@ body.dark .au-tooltip {
 }
 
 .deactivate-warning {
-    background-color: rgba(220, 53, 69, 0.1);
+    background: rgba(220, 53, 69, 0.1);
     padding: 16px;
     border-radius: 8px;
     margin-bottom: 16px;
@@ -2770,7 +2769,7 @@ body.dark .au-tooltip {
 }
 
 .countdown-section {
-    background-color: #f8f9fa;
+    background: #f8f9fa;
     padding: 12px;
     border-radius: 6px;
     margin-bottom: 16px;
@@ -2810,7 +2809,7 @@ body.dark .au-tooltip {
 
 @media (prefers-color-scheme: dark) {
     .deactivate-warning {
-        background-color: rgba(220, 53, 69, 0.2);
+        background: rgba(220, 53, 69, 0.2);
     }
     
     .warning-text {
@@ -2818,7 +2817,7 @@ body.dark .au-tooltip {
     }
     
     .countdown-section {
-        background-color: #2d3238;
+        background: #2d3238;
         color: #e0e0e0;
     }
     
@@ -2835,7 +2834,7 @@ body.dark .au-tooltip {
 
 /* ===== 确认对话框样式 ===== */
 #confirmDialog {
-    background-color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
 }
@@ -2870,36 +2869,36 @@ body.dark .au-tooltip {
 }
 
 #confirmDialog .btn-primary {
-    background-color: var(--primary-color);
+    background: var(--primary-color);
     border-color: var(--primary-color);
 }
 
 #confirmDialog .btn-primary:hover {
-    background-color: var(--secondary-color);
+    background: var(--secondary-color);
     border-color: var(--secondary-color);
 }
 
 @media (prefers-color-scheme: dark) {
     #confirmDialog {
-        background-color: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.5);
     }
 
     #confirmDialog .modal-body {
         color: var(--light-color);
-        background-color: var(--main-bg);
+        background: var(--main-bg);
     }
 
     #confirmDialog .modal-footer {
-        background-color: var(--main-bg);
+        background: var(--main-bg);
     }
 
     #confirmDialog .btn-primary {
-        background-color: var(--primary-color);
+        background: var(--primary-color);
         border-color: var(--primary-color);
     }
 
     #confirmDialog .btn-primary:hover {
-        background-color: var(--primary-color);
+        background: var(--primary-color);
         border-color: var(--primary-color);
     }
 }
@@ -2981,7 +2980,7 @@ body.dark .au-tooltip {
 }
 
 .search-results-header:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.05);
 }
 
 .search-results-content {
@@ -3019,7 +3018,7 @@ a:link {
     }
     
     .search-results-header:hover {
-        background-color: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.08);
     }
     
     .search-results-content {
@@ -3041,7 +3040,7 @@ a:link {
 .login-prompt {
     margin-top: 15px;
     padding: 15px;
-    background-color: rgba(240, 240, 240, 0.6);
+    background: rgba(240, 240, 240, 0.6);
     border-radius: 8px;
     text-align: center;
 }
@@ -3067,24 +3066,24 @@ a:link {
 }
 
 .login-btn {
-    background-color: #4361ee;
+    background: #4361ee;
     color: white;
 }
 
 .signup-btn {
-    background-color: #fff;
+    background: #fff;
     color: #4361ee;
     border: 1px solid #4361ee;
 }
 
 .login-btn:hover {
-    background-color: #3c59d6;
+    background: #3c59d6;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .signup-btn:hover {
-    background-color: #f8f9fa;
+    background: #f8f9fa;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
@@ -3096,7 +3095,7 @@ a:link {
 
 @media (prefers-color-scheme: dark) {
     .login-prompt {
-        background-color: rgba(50, 50, 50, 0.6);
+        background: rgba(50, 50, 50, 0.6);
     }
 
     .login-prompt p {
@@ -3104,12 +3103,12 @@ a:link {
     }
 
     .signup-btn {
-        background-color: #333;
+        background: #333;
         color: #4361ee;
     }
 
     .signup-btn:hover {
-        background-color: #444;
+        background: #444;
     }
 }
 
@@ -3122,6 +3121,7 @@ a:link {
     margin-bottom: 10px;
     margin-left: 10px;
     margin-top: 4px;
+    font-family: "Crystal-Medium";
 }
 
 .aurora-logo {
@@ -3306,7 +3306,6 @@ a:link {
 
 .remove-image-btn:hover {
     background: rgba(0, 0, 0, 0.8);
-    transform: scale(1.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -3351,7 +3350,7 @@ a:link {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3367,7 +3366,7 @@ a:link {
 }
 
 .custom-confirm-dialog__content {
-    background-color: #FFFFFF;
+    background: #FFFFFF;
     border-radius: 35px;
     padding: 20px;
     max-width: 500px;
@@ -3413,17 +3412,17 @@ a:link {
 }
 
 .custom-confirm-dialog__btn--confirm {
-    background-color: #5344c4;
+    background: #5344c4;
     color: #fff;
 }
 
 /* 深色模式适配：自定义确认对话框 */
 @media (prefers-color-scheme: dark) {
     .custom-confirm-dialog {
-        background-color: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.7);
     }
     .custom-confirm-dialog__content {
-        background-color: var(--main-bg);
+        background: var(--main-bg);
     }
     .custom-confirm-dialog__header h5,
     .custom-confirm-dialog__close,
