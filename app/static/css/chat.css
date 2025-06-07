@@ -1176,7 +1176,7 @@ body {
     }
 
     .think-header{
-        background: var(--light-color);
+        background: #1d1d20 !important;
     }
 
     .think-header:hover {
