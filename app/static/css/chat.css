@@ -472,19 +472,19 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    border: 1px solid var(--gray-color);
 }
 
 .model-avatar img {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 50px;
-    object-fit: container;
+    object-fit: contain;
 }
 
 .model-name {
     font-size: 14px;
-    color: #666;
-    margin-bottom: 5px;
+    color: rgba(0, 0, 0, 0.8);
 }
 
 /* 思考内容样式 */
@@ -597,6 +597,10 @@ body {
 
 /* 深色模式下的停止按钮样式 */
 @media (prefers-color-scheme: dark) {
+    .model-name {
+        color: rgba(255, 255, 255, 0.8)
+    }
+
     .send-button.stop-button {
         background: none;
         color: var(--primary-color);
@@ -1348,11 +1352,6 @@ body {
 
 .think-header.collapsed .triangle {
     transform: rotate(-90deg);
-}
-
-.model-name {
-    font-weight: bold;
-    margin-bottom: 2px;
 }
 
 .think-container {
