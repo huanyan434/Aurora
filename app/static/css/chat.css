@@ -812,7 +812,8 @@ body {
         /* 移动端字体小2px */
     }
     .model-select-options {
-        max-width: 18.5rem;
+        max-width: calc(100dvw - 35px) !important;
+        left: -30px;
     }
 }
 
@@ -847,7 +848,8 @@ body {
     visibility: hidden;
     transform: translateY(-10px);
     transition: all 0.2s ease;
-    min-width: 20.5rem;
+    width: 24rem;
+    max-width: calc(300% - 2rem);
     max-height: 270px;
     /* 限制高度，大约显示5个模型选项 */
     overflow-y: auto;
