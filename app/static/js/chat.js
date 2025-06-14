@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
             setupUserFormButtonEvents();
             
             // 加载侧边栏状态
-            await loadSidebarState();
+            loadSidebarState();
             
             // 根据URL参数或最新对话加载内容
             const urlParams = new URLSearchParams(window.location.search);
@@ -2565,17 +2565,8 @@ async function handleImageSelect(event) {
             elements.sidebarToggle.classList.toggle('collapsed');
             
             // 发送请求到服务器保存折叠状态
-            fetch('/save-sidebar-state', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    isOpen: !state.isSidebarCollapsed
-                })
-            }).catch(error => {
-                console.error('保存侧边栏状态失败:', error);
-            });
+            // 保存到本地存储
+            localStorage.setItem('sidebarState', state.isSidebarCollapsed);
         });
         // 新增：桌面端折叠/展开时调整模型选择位置
         if (window.innerWidth > 768) {
@@ -3463,17 +3454,11 @@ async function handleImageSelect(event) {
     });
 
     // 加载侧边栏状态
-    async function loadSidebarState() {
+    function loadSidebarState() {
         try {
-            const response = await fetch('/get-sidebar-state');
-            if (!response.ok) {
-                throw new Error('获取侧边栏状态失败');
-            }
-            
-            const data = await response.json();
-            
-            // 根据服务器返回状态设置侧边栏
-            state.isSidebarCollapsed = !data.isOpen;
+            // 从本地存储读取状态
+            const savedState = localStorage.getItem('sidebarState');
+            state.isSidebarCollapsed = savedState === 'true';
             
             if (state.isSidebarCollapsed) {
                 elements.sidebar.classList.add('collapsed');
@@ -3495,7 +3480,6 @@ async function handleImageSelect(event) {
                     }
                 }
             }
-            console.log('已加载侧边栏状态:', data.isOpen ? '打开' : '关闭');
         } catch (error) {
             console.error('加载侧边栏状态时出错:', error);
             // 默认保持现有状态或使用默认状态
