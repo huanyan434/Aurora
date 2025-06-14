@@ -558,64 +558,54 @@ def generate_thread(
             
             # 检查用户余额和免费次数（如果是登录用户）
             will_charge = False
-            if user_id != 'anonymous':
-                from app.models import User
-                from app.utils.token_tracker import get_user_daily_model_usage, get_model_free_usage_limit
-                
-                # 获取用户 - 转换为UUID，如果可能
-                import uuid
-                try:
-                    if isinstance(user_id, str) and not user_id.isdigit():
-                        user_uuid = uuid.UUID(user_id)
-                        user = User.query.get(user_uuid)
-                    else:
-                        user = User.query.get(user_id)
-                except (ValueError, TypeError):
-                    # 如果用户ID不是有效的UUID，继续处理但记录错误
-                    print(f"无效的用户ID格式: {user_id}")
-                    user = None
-                
-                # 打印详细的用户信息
-                if user:
-                    print(f"用户信息: ID={user.id}, 名称={user.username}, 会员={user.is_member}, 等级={user.member_level}")
-                    print(f"会员截止日期={user.member_until}, 当前时间={datetime.now()}")
-                    print(f"会员是否有效: {user.is_active_member()}")
-                
-                # 检查用户权限
-                if user:
-                    # SVIP用户：无限使用，不计费
-                    if user.is_member and user.member_level and user.member_level.lower() == 'svip' and user.is_active_member():
-                        print(f"SVIP用户{user.username}(ID:{user.id})允许无限使用所有模型")
-                        will_charge = False  # 不计费
-                    else:
-                        # 非SVIP用户：检查免费次数
-                        current_usage = get_user_daily_model_usage(user_id, model)
-                        free_limit = get_model_free_usage_limit(model, user_id)
-                        
-                        if current_usage >= free_limit:
-                            # 超出免费次数：检查余额
-                            will_charge = True
-                            if user.balance <= 0:
-                                response_status[message_id] = 'error'
-                                if message_id in response_queues:
-                                    response_queues[message_id].put(
-                                        f"<e>您今日免费使用次数已用完，且余额不足，请充值后继续使用</e>")
-                                    response_queues[message_id].put(None)
-                                    return
-                            else:
-                                print(f"用户{user.username}免费次数已用完，将使用余额，当前余额: {user.balance}")
-                        else:
-                            # 还有免费次数
-                            will_charge = False
-                            print(f"用户{user.username}今日使用{model}的第{current_usage+1}次，免费次数上限为{free_limit}")
-                else:
-                    # 匿名用户，不许继续请求
-                    response_status[message_id] = 'error'
-                    if message_id in response_queues:
-                        response_queues[message_id].put(f"<e>匿名用户请求</e>")
-                        response_queues[message_id].put(None)
-                    return
+            from app.models import User
+            from app.utils.token_tracker import get_user_daily_model_usage, get_model_free_usage_limit
             
+            # 获取用户 - 转换为UUID，如果可能
+            import uuid
+            try:
+                if isinstance(user_id, str) and not user_id.isdigit():
+                    user_uuid = uuid.UUID(user_id)
+                    user = User.query.get(user_uuid)
+                else:
+                    user = User.query.get(user_id)
+            except (ValueError, TypeError):
+                # 如果用户ID不是有效的UUID，继续处理但记录错误
+                print(f"无效的用户ID格式: {user_id}")
+                user = None
+            
+            # 打印详细的用户信息
+            if user:
+                print(f"用户信息: ID={user.id}, 名称={user.username}, 会员={user.is_member}, 等级={user.member_level}")
+                print(f"会员截止日期={user.member_until}, 当前时间={datetime.now()}")
+                print(f"会员是否有效: {user.is_active_member()}")
+            
+
+                # SVIP用户：无限使用，不计费
+                if user.is_member and user.member_level and user.member_level.lower() == 'svip' and user.is_active_member():
+                    print(f"SVIP用户{user.username}(ID:{user.id})允许无限使用所有模型")
+                    will_charge = False  # 不计费
+                else:
+                    # 非SVIP用户：检查免费次数
+                    current_usage = get_user_daily_model_usage(user_id, model)
+                    free_limit = get_model_free_usage_limit(model, user_id)
+                    
+                    if current_usage >= free_limit:
+                        # 超出免费次数：检查余额
+                        will_charge = True
+                        if user.balance <= 0:
+                            response_status[message_id] = 'error'
+                            if message_id in response_queues:
+                                response_queues[message_id].put(
+                                    f"<e>您今日免费使用次数已用完，且余额不足，请充值后继续使用</e>")
+                                response_queues[message_id].put(None)
+                                return
+                        else:
+                            print(f"用户{user.username}免费次数已用完，将使用余额，当前余额: {user.balance}")
+                    else:
+                        # 还有免费次数
+                        will_charge = False
+                        print(f"用户{user.username}今日使用{model}的第{current_usage+1}次，免费次数上限为{free_limit}")
             # 保存原始模型名
             model_orig = model
             # 转换模型名为API所需格式
