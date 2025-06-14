@@ -2933,7 +2933,7 @@ async function handleImageSelect(event) {
                     copyButton.style.color = '#fff';
                     
                     // 显示提示
-                    // showNotification('已复制到剪贴板', 1500);
+                    showNotification('已复制到剪贴板', 1500);
                     
                     // 2秒后恢复原状
                     setTimeout(() => {
@@ -2948,7 +2948,7 @@ async function handleImageSelect(event) {
                     copyButton.style.color = '#fff';
                     
                     // 显示失败提示
-                    showNotification('复制失败，请手动复制', 1500);
+                    showNotification('复制失败，请重试', 1500);
                     
                     // 2秒后恢复原状
                     setTimeout(() => {
@@ -3004,68 +3004,14 @@ async function handleImageSelect(event) {
             if (successful) {
                 // showNotification('已复制到剪贴板');
             } else {
-                showNotification('复制失败，请手动复制');
+                showNotification('复制失败，请重试');
             }
         } catch (err) {
             console.error('备用复制方法失败:', err);
-            showNotification('复制失败，请手动复制');
+            showNotification('复制失败，请重试');
         }
     }
 
-    // 加载对话列表
-    function loadConversationList() {
-        console.log('加载对话列表...');
-        fetch('/conversations')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`获取对话列表失败: ${response.status} ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                const conversationList = document.getElementById('conversations-list');
-                if (!conversationList) {
-                    console.error('找不到对话列表容器元素');
-                    return;
-                }
-                
-                conversationList.innerHTML = '';  // 清空现有列表
-                
-                if (!Array.isArray(data)) {
-                    console.error('无效的对话列表数据格式');
-                    return;
-                }
-                
-                // 按照创建时间倒序排列对话列表
-                data.sort((a, b) => {
-                    // 如果有created_at字段，按时间排序
-                    if (a.created_at && b.created_at) {
-                        return new Date(b.created_at) - new Date(a.created_at);
-                    }
-                    // 如果没有时间字段，保持原有顺序
-                    return 0;
-                });
-                
-                // 更新state中的对话列表
-                state.conversations = data;
-                
-                // 更新UI
-                updateConversationsList();
-                
-                // 确保在加载完后更新活动状态
-                if (state.currentConversationId) {
-                    setTimeout(() => {
-                        updateActiveConversationInSidebar(state.currentConversationId);
-                    }, 100);
-                }
-
-                console.log('对话列表加载完成，共', data.length, '个对话');
-            })
-            .catch(error => {
-                console.error('加载对话列表失败:', error);
-                showError('加载对话列表失败: ' + error.message);
-            });
-    }
 
     // 获取模型图片名称
     function getModelImageName(modelName) {
