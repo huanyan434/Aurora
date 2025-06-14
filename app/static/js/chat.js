@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', function () {
             member_level: null
         }
     };
+
+    var lastMessageTime = 0;  // 上次发送消息的时间戳
+
     
     // 预加载关键资源函数
     function preloadResources() {
@@ -889,11 +892,35 @@ async function handleImageSelect(event) {
     // ====================== 消息发送核心 ======================
     async function sendMessageHandler() {
         console.log('尝试发送消息');
+        // !重要!
+        // 检查是否有内容或图片 | 发送中
+        if ((!elements.messageInput.value && !state.selectedImage) || state.isSending) {
+            console.log('消息为空或正在发送中');
+            return;
+        }
+        state.isSending = true;
+
+
+        // 获取当前时间戳
+        const currentTime = Date.now();
+        // 检查时间间隔
+        if (currentTime - lastMessageTime < 10000) { 
+            const time = Math.round(parseFloat((10000 - (currentTime - lastMessageTime)) / 1000)).toString();
+            showNotification("发送消息太快啦，请等待 " + time + " 秒后重试~");
+            state.isSending = false;
+            return; 
+        }
+        // 更新最后发送时间
+        lastMessageTime = Date.now();
+        console.log('已更新发送时间');
+
+
         // 检查用户是否登录
         if (!state.currentUser || !state.currentUser.id) {
             console.log('用户未登录，重定向到登录页面');
             showNotification('请先登录后发送消息', 2000);
             window.location.href = '/auth/login';
+            state.isSending = false;
             return;
         }
 
@@ -904,15 +931,11 @@ async function handleImageSelect(event) {
         const isOnlineSearchEnabled = elements.onlineSearchBtn && 
                                      elements.onlineSearchBtn.classList.contains('active');
         
-        // 检查是否有内容或图片
-        if ((!content && !state.selectedImage) || state.isSending) {
-            console.log('消息为空或正在发送中');
-            return;
-        }
         
         // 当启用联网搜索时，必须有文本内容
-        if (isOnlineSearchEnabled && !content) {
+        if (isOnlineSearchEnabled && !elements.messageInput.value) {
             showNotification('联网搜索需要输入文本内容', 3000);
+            state.isSending = false;
             return;
         }
         
@@ -920,11 +943,11 @@ async function handleImageSelect(event) {
         const balanceOk = await checkBalanceBeforeSend();
         if (!balanceOk) {
             console.log('余额不足，无法发送消息');
+            state.isSending = false;
             return;
         }
 
         console.log('开始发送消息:', contentSnapshot);
-        state.isSending = true;
         state.lastUserMessage = contentSnapshot;  // 保存用户消息
         updateSendButtonState();
         
@@ -1037,7 +1060,7 @@ async function handleImageSelect(event) {
             pending = JSON.parse(localStorage.getItem('pending_ai_messages') || '[]');
             pending = pending.filter(item => item.messageData.message_id !== aiMessageId);
             localStorage.setItem('pending_ai_messages', JSON.stringify(pending));
-            
+
             // 清除已选择的图片
             state.selectedImage = null;
             
