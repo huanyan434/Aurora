@@ -81,22 +81,22 @@ def model_name(model: str):
     elif model == "DeepSeek-V3":
         model = "deepseek-ai/DeepSeek-V3"
     # Doubao
-    elif model == "Doubao-1.5-lite":
+    elif model == "Doubao-1.5-Lite":
         model = "doubao-1-5-lite-32k-250115"
-    elif model == "Doubao-1.5-pro":
+    elif model == "Doubao-1.5-Pro":
         model = "doubao-1-5-pro-32k-250115"
-    elif model == "Doubao-1.5-pro-256k":
+    elif model == "Doubao-1.5-Pro-256k":
         model = "doubao-1-5-pro-256k-250115"
-    elif model == "Doubao-1.5-vision-pro":
+    elif model == "Doubao-1.5-vision-Pro":
         model = "doubao-1-5-vision-pro-32k-250115"
-    elif model == "Doubao-1.5-thinking-pro":
+    elif model == "Doubao-1.5-Thinking-Pro":
         model = "doubao-1-5-thinking-pro-250415"
-    elif model == "Doubao-1.5-thinking-vision-pro":
+    elif model == "Doubao-1.5-Thinking-vision-Pro":
         model = "doubao-1-5-thinking-vision-pro-250428"
     # Gemini
-    elif model == "Gemini-2.5-flash":
+    elif model == "Gemini-2.5-Flash":
         model = "gemini-2.5-flash-preview-04-17"
-    elif model == "Gemini-2.0-flash":
+    elif model == "Gemini-2.0-Flash":
         model = "gemini-2.0-flash"
     # Qwen
     elif model == "Qwen3":
@@ -116,21 +116,21 @@ def model_name_reverse(model: str):
     elif model == "deepseek-ai/DeepSeek-V3":
         model = "DeepSeek-V3"
     elif model == "doubao-1-5-lite-32k-250115":
-        model = "Doubao-1.5-lite"
+        model = "Doubao-1.5-Lite"
     elif model == "doubao-1-5-pro-32k-250115":
-        model = "Doubao-1.5-pro"
+        model = "Doubao-1.5-Pro"
     elif model == "doubao-1-5-pro-256k-250115":
-        model = "Doubao-1.5-pro-256k"
+        model = "Doubao-1.5-Pro-256k"
     elif model == "doubao-1-5-vision-pro-32k-250115":
-        model = "Doubao-1.5-vision-pro"
+        model = "Doubao-1.5-vision-Pro"
     elif model == "doubao-1-5-thinking-pro-250415":
-        model = "Doubao-1.5-thinking-pro"
+        model = "Doubao-1.5-Thinking-Pro"
     elif model == "doubao-1-5-thinking-vision-pro-250428":
-        model = "Doubao-1.5-thinking-vision-pro"
+        model = "Doubao-1.5-Thinking-vision-Pro"
     elif model == "gemini-2.5-flash-preview-04-17":
-        model = "Gemini-2.5-flash"
+        model = "Gemini-2.5-Flash"
     elif model == "gemini-2.0-flash":
-        model = "Gemini-2.0-flash"
+        model = "Gemini-2.0-Flash"
     elif model == "Qwen/Qwen3-235B-A22B":
         model = "Qwen3"
     elif model == "Qwen/QwQ-32B":
