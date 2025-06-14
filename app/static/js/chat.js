@@ -1113,7 +1113,6 @@ async function handleImageSelect(event) {
         let currentContent = '';
         let thinkStartTime = Date.now();
         let thinkTimerInterval = null;
-        let thinkHeaderElement = null;
         
         try {
             // 添加联网搜索参数
@@ -1172,17 +1171,7 @@ async function handleImageSelect(event) {
             }
             
             console.log("请求体完整信息:", JSON.stringify(requestBody));
-            console.log("请求体摘要:", JSON.stringify({
-                prompt: requestBody.prompt ? "已提供" : "未提供",
-                message: requestBody.message ? "已提供" : "未提供",
-                prompt长度: requestBody.prompt ? requestBody.prompt.length : 0,
-                conversation_id: conversationId,
-                model_name: requestBody.model_name,
-                model: requestBody.model,
-                has_image: !!messageData.image,
-                online_search: isOnlineSearchEnabled
-            }));
-            
+
             const serverUrl = `/api/chat/${conversationId}/generate`;
             console.log("请求URL:", serverUrl);
             
@@ -1250,7 +1239,7 @@ async function handleImageSelect(event) {
             // 读取响应流
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            
+
             while (true) {
                 const { done, value } = await reader.read();
                 
@@ -1273,7 +1262,6 @@ async function handleImageSelect(event) {
                         if (data.search && typeof data.search === 'string') {
                             handleSearchResults(data.search, aiMessageDiv);
                         }
-                        
                         // 首次接收到消息内容时替换加载动画
                         if ((data.content || data.text || data.think) && !messageCreated) {
                             const modelName = data.model_name || getSelectedModel();
@@ -1341,25 +1329,25 @@ async function handleImageSelect(event) {
                             }
                             
                             // 更新消息内容
-                    if (contentDiv) {
-                        try {
-                            // 处理内容，确保是字符串
-                            let textContent = currentContent;
-                            if (typeof textContent !== 'string') {
-                                if (textContent.content) {
-                                    textContent = textContent.content;
-                                } else if (textContent.text) {
-                                    textContent = textContent.text;
-                                } else {
-                                    textContent = JSON.stringify(textContent);
-                                }
-                            }
+                            if (contentDiv) {
+                                try {
+                                    // 处理内容，确保是字符串
+                                    let textContent = currentContent;
+                                    if (typeof textContent !== 'string') {
+                                        if (textContent.content) {
+                                            textContent = textContent.content;
+                                        } else if (textContent.text) {
+                                            textContent = textContent.text;
+                                        } else {
+                                            textContent = JSON.stringify(textContent);
+                                        }
+                                    }
                                     
                                     // 如果包含 <search>，先解析搜索结果并移除标签
                                     if (textContent.includes('<search>')) {
                                         handleSearchResults(textContent, aiMessageDiv);
                                         textContent = textContent.replace(/<search>[\s\S]*?<\/search>/g, '').trim();
-                            }
+                                    }
 
                                     // 保存原始Markdown文本到data-original-text属性，用于复制功能
                                     contentDiv.setAttribute('data-original-text', textContent);
@@ -1383,9 +1371,14 @@ async function handleImageSelect(event) {
                                             // 检查是否有实际内容
                                             const hasContent = textContent && textContent.trim().length > 0;
                                             console.log('文本内容检查:', { hasContent, textContent: textContent.substring(0, 50) });
-                                            
+                                            if (hasContent) {
+                                                const thinkTimeMatch = currentThink.match(/<think time=(\d+)>/);
+                                                var thinkSeconds = 0;
+                
+                                                thinkSeconds = parseInt(thinkTimeMatch[1], 10) || 0;
+                                            }
                                             const headerText = hasContent ? 
-                                                `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
+                                                `已深度思考（用时 ${thinkSeconds || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
                                                 '思考中...';
                                             
                                             thinkHeader.innerHTML = `
@@ -1394,17 +1387,17 @@ async function handleImageSelect(event) {
                                             `;
                                         }
                                     }
-                        } catch (error) {
-                            console.error('处理消息内容时出错:', error);
-                            contentDiv.innerHTML = `<p>消息处理错误: ${error.message}</p>`;
-                        }
+                                } catch (error) {
+                                    console.error('处理消息内容时出错:', error);
+                                    contentDiv.innerHTML = `<p>消息处理错误: ${error.message}</p>`;
+                                }
                             } else {
                                 console.error('找不到消息内容元素，无法更新内容');
                             }
                             
                             // 如果用户在底部，自动滚动
                             if (state.isNearBottom) {
-                                scrollToBottom();
+                                scrollToBottom(true);
                                 console.log('已滚动到底部');
                             }
                         }
@@ -1443,8 +1436,14 @@ async function handleImageSelect(event) {
                                 const hasContent = currentContent && currentContent.trim().length > 0;
                                 console.log('创建思考头部时的内容检查:', { hasContent, currentContent: currentContent ? currentContent.substring(0, 50) : null });
                                 
+                                if (hasContent) {
+                                    const thinkTimeMatch = currentThink.match(/<think time=(\d+)>/);
+                                    var thinkSeconds = 0;
+    
+                                    thinkSeconds = parseInt(thinkTimeMatch[1], 10) || 0;
+                                }
                                 const headerText = hasContent ? 
-                                    `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
+                                    `已深度思考（用时 ${thinkSeconds || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
                                     '思考中...';
                                 
                                 thinkHeader.innerHTML = `
@@ -1520,34 +1519,41 @@ async function handleImageSelect(event) {
                                     // 保存思考头部元素引用
                                     thinkHeaderElement = thinkHeader;
                                 }
-                                
+
+                                if (currentContent && currentContent.trim()) {
+                                    const thinkTimeMatch = currentThink.match(/<think time=(\d+)>/);
+                                    var thinkSeconds = 0;
+    
+                                    thinkSeconds = parseInt(thinkTimeMatch[1], 10) || 0;
+                                }
+
                                 // 更新头部文本
-                                    const headerText = currentContent && currentContent.trim() ? 
-                                        `已深度思考（用时 ${data.think_time || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
-                                        '思考中...';
-                                    
-                                    thinkHeader.innerHTML = `
-                                        <span>${headerText}<span style="display:inline-block; width:5px;"></span>
-                                        <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
-                                    `;
+                                const headerText = currentContent && currentContent.trim() ? 
+                                    `已深度思考（用时 ${thinkSeconds || Math.floor((Date.now() - thinkStartTime) / 1000)} 秒）` : 
+                                    '思考中...';
+                                
+                                thinkHeader.innerHTML = `
+                                    <span>${headerText}<span style="display:inline-block; width:5px;"></span>
+                                    <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
+                                `;
                                 }
                         
-                            // 确保思考容器可见（移除display: none）
-                            if (thinkContainer && currentThink && currentThink.trim() !== '') {
-                                thinkContainer.style.display = 'block';
-                                console.log('思考容器显示状态已设置为可见');
-                        }
+                                // 确保思考容器可见（移除display: none）
+                                if (thinkContainer && currentThink && currentThink.trim() !== '') {
+                                    thinkContainer.style.display = 'block';
+                                    console.log('思考容器显示状态已设置为可见');
+                                }
                         
-                        // 更新思考内容
-                            // 确保思考内容容器存在，若不存在则自动创建
-                            let thinkContentDiv = thinkContainer.querySelector('.message-think');
-                            if (!thinkContentDiv) {
-                                thinkContentDiv = document.createElement('div');
-                                thinkContentDiv.className = 'message-think';
-                                thinkContentDiv.style.backgroundColor = 'transparent';
-                                thinkContentDiv.style.lineHeight = '1.3';
-                                thinkContainer.appendChild(thinkContentDiv);
-                            }
+                                // 更新思考内容
+                                // 确保思考内容容器存在，若不存在则自动创建
+                                let thinkContentDiv = thinkContainer.querySelector('.message-think');
+                                if (!thinkContentDiv) {
+                                    thinkContentDiv = document.createElement('div');
+                                    thinkContentDiv.className = 'message-think';
+                                    thinkContentDiv.style.backgroundColor = 'transparent';
+                                    thinkContentDiv.style.lineHeight = '1.3';
+                                    thinkContainer.appendChild(thinkContentDiv);
+                                }
                                 try {
                                     // 处理内容，确保是字符串
                                     let thinkText = currentThink;
@@ -1574,11 +1580,11 @@ async function handleImageSelect(event) {
                                 }
                                 // 如果容器未被折叠，滚动到可见位置
                                 if (thinkContentDiv.style.display !== 'none' && state.isNearBottom) {
-                        scrollToBottom();
-                            }
+                                    scrollToBottom();
+                                }
                         }
                         
-                            } catch (e) {
+                    } catch (e) {
                         console.error('解析服务器消息失败:', e, line);
                     }
                 }
@@ -1599,7 +1605,7 @@ async function handleImageSelect(event) {
 
             attachCopyButtonsToAIMessages();
             // 添加复制按钮后再次滚动到底部
-            scrollToBottom(true);
+            scrollToBottom();
 
             // 检查当前对话的标题是否为"新对话"，如果是则获取新标题
             if (conversationId) {
@@ -1631,10 +1637,26 @@ async function handleImageSelect(event) {
                         clearInterval(thinkTimerInterval);
                         thinkTimerInterval = null;
                     }
-                            } catch (e) {
+                } catch (e) {
                     console.error('清除计时器时出错:', e);
                 }
                 
+                attachCopyButtonsToAIMessages();
+                // 添加复制按钮后再次滚动到底部
+                scrollToBottom();
+
+                if (!currentContent) {
+                    currentContent = ' ';
+                }
+                console.log('content:' + currentContent);
+
+                // 保存当前内容
+                await saveCurrentContent(
+                    conversationId,
+                    currentContent,
+                    currentThink,
+                    messageData.model
+                )
                 // 请求 /stop 接口，用 POST 方法，发送要中断的 message_id
                 const response = await fetch('/stop', {
                     method: 'POST',
@@ -1648,57 +1670,6 @@ async function handleImageSelect(event) {
                     console.log('请求已中断');
                 } else {
                     console.error('中断请求失败:', response.statusText);
-                }
-
-                // 处理中断
-                try {
-                    attachCopyButtonsToAIMessages();
-                    // 添加复制按钮后再次滚动到底部
-                    scrollToBottom(true);
-                    const aiMessageDiv = document.getElementById(aiMessageId);
-                    if (aiMessageDiv) {
-                        // 更新思考头部文本（如果存在）
-                        if (thinkHeaderElement && currentThink) {
-                            // 解析思考时间标签
-                            const thinkTimeMatch = currentThink.match(/<think time=(\d+)>/);
-                            var thinkSeconds = 0;
-                            
-                            // 检查是否真正完成了思考
-                            let isThinkingComplete = false;
-                            
-                            if (thinkTimeMatch && thinkTimeMatch[1] && currentContent && currentContent.trim() !== '') {
-                                // 使用标签中指定的时间，并且确认已有正文内容
-                                thinkSeconds = parseInt(thinkTimeMatch[1], 10) || 0;
-                                // 有思考时间且有正文内容，表示思考已完成
-                                isThinkingComplete = true;
-                            }
-                            
-                            // 根据思考是否完成设置适当的头部
-                            if (isThinkingComplete) {
-                                // 思考完成，显示时间
-                                thinkHeaderElement.innerHTML = `
-                                    <span>已深度思考（用时 ${thinkSeconds} 秒）<span style="display:inline-block; width:5px;"></span>
-                                    <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
-                                `;
-                            } else {
-                                // 思考尚未完成，显示"思考中..."
-                                thinkHeaderElement.innerHTML = `
-                                    <span>思考中...<span style="display:inline-block; width:5px;"></span>
-                                    <div class="triangle" style="display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #999; vertical-align:middle;"></div></span>
-                                `;
-                            }
-                            console.log('思考头部已更新');
-                        }
-                        // 保存当前内容
-                        await saveCurrentContent(
-                            conversationId,
-                            currentContent,
-                            currentThink ? currentThink.replace(/<think time=\d+>|<\/think>/g, "") : "",
-                            getSelectedModel()
-                        )
-                    }
-                } catch (error) {
-                    console.error('保存当前内容时出错:', error);
                 }
             } else {
                 console.error('获取AI响应失败:', error);
@@ -2213,7 +2184,7 @@ async function handleImageSelect(event) {
 
                         try {                           
                             // 处理base64图片标签
-                            textContent = processMessageContent(textContent, false);
+                            textContent = processMessageContent(content, false);
                             
                             // textContent = textContent.replace(/\n/g, '<br>');
                             // 解析并显示
@@ -3091,7 +3062,6 @@ async function handleImageSelect(event) {
                 </svg>
             `;
             elements.sendButton.classList.remove('stop-button');
-            elements.sendButton.title = "发送消息";
             console.log('切换为发送按钮');
             
             // 如果没有内容也没有图片，禁用发送按钮
@@ -3120,9 +3090,8 @@ async function handleImageSelect(event) {
                 }
                 
                 // 如果有思考内容，添加think标签
-                if (thinkContent && thinkContent.trim()) {
-                    const thinkTime = Math.floor(Math.random() * 5) + 1; // 1-5秒的随机思考时间
-                    finalContent += `<think time=${thinkTime}>${thinkContent}</think>\n`;
+                if (thinkContent) {
+                    finalContent += thinkContent;
                 }
                 
                 // 添加主要内容

@@ -8,8 +8,6 @@ import threading
 import queue
 from app.history import save_history, load_history
 from app.utils.token_tracker import record_token_usage, get_latest_token_usage, get_user_daily_model_usage, get_model_free_usage_limit
-from flask_login import current_user
-from flask import current_app
 from datetime import datetime
 from app.utils.search import search
 
@@ -155,6 +153,14 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
     search = ""
     completion_tokens = 0
     prompt_tokens = 0
+
+    system_prompt = [
+        {
+            'role': 'system',
+            'content': "你是 " + model_name_reverse(model) + " 模型。" + "\n" + \
+                    "现在是 " + str(datetime.now().date()) + "。"
+        }
+    ]
     try:
         if online_search:
             try:
@@ -163,13 +169,13 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                     # 创建流式响应
                     response = client.chat.completions.create(
                         model=model,
-                        messages=[{
+                        messages=system_prompt + func[0] + [{
                             'role': 'system',
                             'content': '''- 刚刚你已经调用过联网搜索工具。
 - 优先参考「联网」中的信息进行回复。
 - 回复请使用清晰、结构化（序号/分段等）的语言，确保用户轻松理解和使用。
 - 回复时，避免提及信息来源或参考资料。'''
-                        }] + func[0],
+                        }],
                         stream=True
                     )
                     search_result = func[3]
@@ -192,13 +198,17 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
             # 创建流式响应
             response = client.chat.completions.create(
                 model=model,
-                messages=history,
+                messages=system_prompt + history,
                 stream=True,
             )
 
         start_time = time.time()
 
         for chunk in response:
+            # 检查队列是否被终止
+            if response_queue.get() == None:
+                break
+
             if "deepseek" in model or "qwen" in model:
                 prompt_tokens = chunk.usage.prompt_tokens
                 completion_tokens += chunk.usage.completion_tokens
@@ -268,7 +278,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
             str(int(think_time)) + ">" + reasoning_content + \
             "</think>" + content
     except Exception as e:
-        print(f"OpenAI API调用出错: {str(e)}")
+        print(f"API调用出错: {str(e)}")
         response_queue.put(f"<e>{str(e)}</e>")
         response_queue.put(None)
         return f"发生错误: {str(e)}"
@@ -587,8 +597,8 @@ def generate_thread(
                     will_charge = False  # 不计费
                 else:
                     # 非SVIP用户：检查免费次数
-                    current_usage = get_user_daily_model_usage(user_id, model)
-                    free_limit = get_model_free_usage_limit(model, user_id)
+                    current_usage = get_user_daily_model_usage(user_id, model_name(model))
+                    free_limit = get_model_free_usage_limit(model_name(model), user_id)
                     
                     if current_usage >= free_limit:
                         # 超出免费次数：检查余额
@@ -1070,7 +1080,8 @@ def stop_message(message_id: str):
         
         # 向队列发送结束信号
         if message_id in response_queues:
-            response_queues[message_id].put(None)
+            for i in range(5):
+                response_queues[message_id].put(None)
             
         # 等待线程结束（设置超时时间为1秒）
         if isinstance(thread, threading.Thread) and thread.is_alive():
