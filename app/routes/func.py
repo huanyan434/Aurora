@@ -665,8 +665,8 @@ def generate_thread(
             except Exception as e:
                 print(f"保存历史记录出错: {str(e)}")
                 
-            # 扣费逻辑（如果用户已登录且需要扣费）
-            if user_id != 'anonymous' and will_charge:
+            # 扣费逻辑
+            if will_charge:
                 try:
                     from app.models import User
                     # 获取用户 - 转换为UUID，如果可能

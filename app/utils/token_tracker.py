@@ -180,11 +180,11 @@ def get_user_daily_model_usage(user_id, model_name):
         int: 今天使用该模型的次数
     """
     try:
-        from datetime import datetime, time
+        from datetime import datetime
         
         # 获取今天的起始时间（UTC+8时区，0点）
         today = datetime.now().date()
-        today_start_utc = datetime.combine(today, time(0, 0, 0))
+        #today_start_utc = datetime.combine(today, time(0, 0, 0))
         
         # 读取token使用记录
         file_path = get_token_file_path()
@@ -201,7 +201,6 @@ def get_user_daily_model_usage(user_id, model_name):
             record.get("model", "") == model_name and
             datetime.fromisoformat(record["timestamp"]).date() == today
         ]
-        
         # 返回今天使用的次数
         return len(today_records)
     except Exception as e:

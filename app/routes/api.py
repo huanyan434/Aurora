@@ -58,7 +58,7 @@ def get_free_usage():
         ]
         usage_info = {}
         for model_name in model_list:
-            usage_info.update({model_name: get_model_free_usage_info(model_name, valid_user_id)})
+            usage_info.update({model_name: get_model_free_usage_info(model_name_func(model_name), valid_user_id)})
         
         
         # 返回结果
