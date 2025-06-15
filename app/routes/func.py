@@ -356,7 +356,7 @@ def stream_gemini_api(model: str, history: list, response_queue, message_id, onl
             ...
         try:
             api_key = api_key.split(",")
-            if (index_num - 1) > len(api_key):
+            if (index_num + 1) > len(api_key):
                 index_num = 0
         except Exception as e:
             print(f"Gemini Api Key 格式错误:{str(e)}")
