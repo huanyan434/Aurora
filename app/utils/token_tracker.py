@@ -225,7 +225,7 @@ def get_model_free_usage_limit(model_name, user_id=None):
     free_usage_limits = {
         # 默认
         "default": 20,
-        # 具体模型可以有不同限制
+        # 具体模型不同限制
         "DeepSeek-R1": 25,
         "DeepSeek-V3": 50,
         "Doubao-1.5-Lite": 10, 
@@ -233,7 +233,7 @@ def get_model_free_usage_limit(model_name, user_id=None):
         "Doubao-1.5-Pro-256k": 10,
         "Doubao-1.5-vision-Pro": 10,
         "Doubao-1.5-Thinking-Pro": 10,
-        "Doubao-1.5-Thinkingvision-Pro": 10,
+        "Doubao-1.5-Thinking-vision-Pro": 10,
         "Gemini-2.5-Flash": 25,
         "Gemini-2.0-Flash": 50,
         "Qwen3": 45,
@@ -241,6 +241,8 @@ def get_model_free_usage_limit(model_name, user_id=None):
         "QwQ-Preview": 80,
         "QvQ": 45,
         "Qwen2.5-Instruct": 60,
+        "GLM-4": 120,
+        "GLM-Z1": 80
     }
     
     # 获取基础限制次数

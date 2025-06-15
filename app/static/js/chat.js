@@ -3005,6 +3005,8 @@ async function handleImageSelect(event) {
             return 'Gemini';
         } else if (modelName.includes('Qwen') || modelName.includes('QwQ') || modelName.includes('QwQ')) {
             return 'Qwen';
+        } else if (modelName.includes('GLM')) {
+            return 'Zhipu';
         } else {
             return modelName;
         }

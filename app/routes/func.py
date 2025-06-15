@@ -107,6 +107,11 @@ def model_name(model: str):
         model = "Qwen/QVQ-72B-Preview"
     elif model == "Qwen2.5-Instruct":
         model = "Qwen/Qwen2.5-72B-Instruct"
+    # Zhipu
+    elif model == "GLM-4":
+        model = "THUDM/GLM-4-32B-0414"
+    elif model == "GLM-Z1":
+        model = "THUDM/GLM-Z1-32B-0414"
     return model
 def model_name_reverse(model: str):
     if model == "deepseek-ai/DeepSeek-R1":
@@ -137,6 +142,10 @@ def model_name_reverse(model: str):
         model = "QwQ-Preview"
     elif model == "Qwen/Qwen2.5-72B-Instruct":
         model = "Qwen2.5-Instruct"
+    elif model == "THUDM/GLM-4-32B-0414":
+        model = "GLM-4"
+    elif model == "THUDM/GLM-Z1-32B-0414":
+        model = "GLM-Z1"
     return model
 
 def stream_openai_api(api_key: str, url: str, model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
@@ -213,7 +222,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                 break
 
 
-            if "deepseek" in model or "qwen" in model:
+            if "deepseek" in model or "qwen" in model or "glm" in model:
                 prompt_tokens = chunk.usage.prompt_tokens
                 completion_tokens += chunk.usage.completion_tokens
             if hasattr(

@@ -47,14 +47,16 @@ def get_free_usage():
             "Doubao-1.5-Pro-256k",
             "Doubao-1.5-vision-Pro",
             "Doubao-1.5-Thinking-Pro",
-            "Doubao-1.5-Thinkingvision-Pro",
+            "Doubao-1.5-Thinking-vision-Pro",
             "Gemini-2.5-Flash",
             "Gemini-2.0-Flash",
             "Qwen3",
             "QwQ",
             "QwQ-Preview",
             "QvQ",
-            "Qwen2.5-Instruct"
+            "Qwen2.5-Instruct",
+            "GLM-4",
+            "GLM-Z1"
         ]
         usage_info = {}
         for model_name in model_list:
