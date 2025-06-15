@@ -3450,3 +3450,8 @@ a:link {
   border-radius: 50%;
   animation: history-spin 1s linear infinite;
 }
+
+.error-message {
+    color: red;
+    font-size: 14px;
+}

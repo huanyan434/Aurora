@@ -139,7 +139,7 @@ def model_name_reverse(model: str):
         model = "Qwen2.5-Instruct"
     return model
 
-def stream_openai_api(api_key: str, url: str, model: str, history: list, response_queue, online_search: bool=False) -> str:
+def stream_openai_api(api_key: str, url: str, model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
     client = OpenAI(
         api_key=api_key,
         base_url=url,
@@ -204,10 +204,14 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
 
         start_time = time.time()
 
+        print("id: " + message_id)
+
         for chunk in response:
-            # 检查队列是否被终止
-            if response_queue.get() == None:
+            if message_id in response_status and response_status[message_id] == "finished":
+                print("finished")
+                response_queue.put(None)
                 break
+
 
             if "deepseek" in model or "qwen" in model:
                 prompt_tokens = chunk.usage.prompt_tokens
@@ -283,15 +287,15 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         response_queue.put(None)
         return f"发生错误: {str(e)}"
 
-def stream_volcano_ark_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
+def stream_volcano_ark_api(model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['volcengine_key']
-    return stream_openai_api(api_key, volcano_api, model, history, response_queue, online_search)
+    return stream_openai_api(api_key, volcano_api, model, history, response_queue, message_id, online_search)
 
-def stream_siliconflow_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
+def stream_siliconflow_api(model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['siliconflow_key']
-    return stream_openai_api(api_key, siliconflow_api, model, history, response_queue, online_search)
+    return stream_openai_api(api_key, siliconflow_api, model, history, response_queue, message_id, online_search)
 
 def function_calling(history: list, tools: list):
     _ = load_dotenv(find_dotenv())
@@ -338,7 +342,7 @@ def function_calling(history: list, tools: list):
         print(f"函数调用执行出错: {str(e)}")
         return history, "", "", ""
 
-def stream_gemini_api(model: str, history: list, response_queue, online_search: bool=False) -> str:
+def stream_gemini_api(model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['gemini_key']
     # 轮询    
@@ -352,7 +356,7 @@ def stream_gemini_api(model: str, history: list, response_queue, online_search: 
             ...
         try:
             api_key = api_key.split(",")
-            if index_num > len(api_key):
+            if (index_num - 1) > len(api_key):
                 index_num = 0
         except Exception as e:
             print(f"Gemini Api Key 格式错误:{str(e)}")
@@ -365,13 +369,13 @@ def stream_gemini_api(model: str, history: list, response_queue, online_search: 
         index_num_file.close()
     else:
         key = api_key
-    return stream_openai_api(key, gemini_api, model, history, response_queue, online_search)
+    return stream_openai_api(key, gemini_api, model, history, response_queue, message_id, online_search)
 
 def online_search(query: str, num: int = 10):
     """在线搜索"""
     return search(query, num)
 
-def autohistory(history: dict, model: str, response_queue, online_search: bool=False):
+def autohistory(history: dict, model: str, response_queue, message_id=None, online_search: bool=False):
     """处理历史并调用对应API生成回复"""    
     # 创建历史记录的深拷贝，处理特殊标记
     his = copy.deepcopy(history)
@@ -391,11 +395,11 @@ def autohistory(history: dict, model: str, response_queue, online_search: bool=F
     content = ""
     try:
         if "doubao" in api_model:
-            content = stream_volcano_ark_api(api_model, his, response_queue, online_search)
+            content = stream_volcano_ark_api(api_model, his, response_queue, message_id, online_search)
         elif "gemini" in api_model:
-            content = stream_gemini_api(api_model, his, response_queue, online_search)
+            content = stream_gemini_api(api_model, his, response_queue, message_id, online_search)
         else:
-            content = stream_siliconflow_api(api_model, his, response_queue, online_search)
+            content = stream_siliconflow_api(api_model, his, response_queue, message_id, online_search)
     except Exception as e:
         print(f"API调用出错: {str(e)}")
         response_queue.put(f"<e>API调用失败: {str(e)}</e>")
@@ -655,7 +659,7 @@ def generate_thread(
             if online_search:
                 try:
                     updated_history = autohistory(
-                    history, model_orig, response_queues[message_id], online_search)
+                    history, model_orig, response_queues[message_id], message_id, online_search)
                 except Exception as e:
                     print(f"联网搜索出错: {str(e)}")
                     response_status[message_id] = 'error'
@@ -665,7 +669,7 @@ def generate_thread(
             else:
                 # 使用线程安全的队列接收响应
                 updated_history = autohistory(
-                    history, model_orig, response_queues[message_id], online_search)
+                    history, model_orig, response_queues[message_id], message_id, online_search)
             # 标记响应完成
             response_status[message_id] = 'finished'
             # 保存历史记录

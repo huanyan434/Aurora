@@ -1070,6 +1070,7 @@ async function handleImageSelect(event) {
         } catch (error) {
             console.error('发送消息失败:', error);
             showError('发送消息失败: ' + error.message);
+            attachCopyButtonsToAIMessages();
             // 如果创建对话失败，清空当前对话ID
             if (!state.currentConversationId) {
                 state.currentConversationId = null;
@@ -1838,10 +1839,6 @@ async function handleImageSelect(event) {
                 container.scrollTop = scrollHeight;
             }
             }, 0);
-    }
-
-    function focusInput() {
-        if (elements.messageInput) elements.messageInput.focus();
     }
 
     function showError(message) {
