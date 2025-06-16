@@ -7,9 +7,9 @@ import random, string, json
 from datetime import datetime
 import uuid
 
-money_bp = Blueprint('money', __name__)
+balance_bp = Blueprint('balance', __name__)
 
-@money_bp.route('/get_balance/<string:user_id>', methods=['GET'])
+@balance_bp.route('/get_balance/<string:user_id>', methods=['GET'])
 @login_required
 def get_balance(user_id):
     """获取用户的余额信息"""
@@ -53,7 +53,7 @@ def get_balance(user_id):
             'message': f'获取余额信息失败: {str(e)}'
         }), 500
 
-def generate_money_tokens(count=100):
+def generate_balance_tokens(count=100):
     """生成指定数量的随机充值码列表"""
     seen = set()
     tokens = []
@@ -72,25 +72,25 @@ def generate_money_tokens(count=100):
     
     return tokens
 
-@money_bp.before_app_request
-def init_money_tokens():
+@balance_bp.before_app_request
+def init_balance_tokens():
     """应用启动时初始化充值码文件"""
-    file_path = os.path.join(current_app.instance_path, 'money_token.json')
+    file_path = os.path.join(current_app.instance_path, 'balance_token.json')
     if not os.path.exists(file_path):
-        tokens = generate_money_tokens(100)
+        tokens = generate_balance_tokens(100)
         with open(file_path, 'w') as f:
             json.dump(tokens, f)
 
-@money_bp.route('/check_money_token', methods=['POST'])
+@balance_bp.route('/check_balance_token', methods=['POST'])
 @login_required
-def check_money_token():
+def check_balance_token():
     """检查充值码可用性"""
     data = request.get_json() or {}
     code = data.get('code')
     if not code:
         return jsonify({'success': False, 'message': '充值码不能为空'}), 400
     
-    file_path = os.path.join(current_app.instance_path, 'money_token.json')
+    file_path = os.path.join(current_app.instance_path, 'balance_token.json')
     if not os.path.exists(file_path):
         return jsonify({'success': False, 'message': '无可用充值码'}), 400
     
@@ -112,9 +112,9 @@ def check_money_token():
         'message': f'有效的充值码，可充值¥{target["amount"]:.2f}'
     }), 200
 
-@money_bp.route('/redeem_money_token', methods=['POST'])
+@balance_bp.route('/redeem_balance_token', methods=['POST'])
 @login_required
-def redeem_money_token():
+def redeem_balance_token():
     """兑换余额充值码"""
     data = request.get_json() or {}
     code = data.get('code')
@@ -122,7 +122,7 @@ def redeem_money_token():
     if not code:
         return jsonify({'success': False, 'message': '充值码不能为空'}), 400
     
-    file_path = os.path.join(current_app.instance_path, 'money_token.json')
+    file_path = os.path.join(current_app.instance_path, 'balance_token.json')
     if not os.path.exists(file_path):
         return jsonify({'success': False, 'message': '无可用充值码'}), 400
     

@@ -650,19 +650,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         // 余额充值码兑换事件
-        const moneyCodeInputEl = document.getElementById('money-code-input');
-        const moneyRedeemBtnEl = document.getElementById('money-redeem-btn');
-        const moneyRedeemResultEl = document.getElementById('money-redeem-result');
-        if (moneyRedeemBtnEl) {
-            moneyRedeemBtnEl.addEventListener('click', async () => {
-                const code = moneyCodeInputEl.value.trim();
+        const balanceCodeInputEl = document.getElementById('balance-code-input');
+        const balanceRedeemBtnEl = document.getElementById('balance-redeem-btn');
+        const balanceRedeemResultEl = document.getElementById('balance-redeem-result');
+        if (balanceRedeemBtnEl) {
+            balanceRedeemBtnEl.addEventListener('click', async () => {
+                const code = balanceCodeInputEl.value.trim();
                 if (!code) {
-                    moneyRedeemResultEl.textContent = '请输入充值码';
+                    balanceRedeemResultEl.textContent = '请输入充值码';
                     return;
                 }
                 
                 try {
-                    const resp = await fetch('/money/redeem_money_token', {
+                    const resp = await fetch('/balance/redeem_balance_token', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ code })
@@ -671,28 +671,28 @@ document.addEventListener('DOMContentLoaded', function () {
                     const data = await resp.json();
                     
                     if (!resp.ok) {
-                        moneyRedeemResultEl.textContent = data.message || '充值失败';
-                        moneyRedeemResultEl.style.color = 'red';
+                        balanceRedeemResultEl.textContent = data.message || '充值失败';
+                        balanceRedeemResultEl.style.color = 'red';
                     } else {
-                        moneyRedeemResultEl.textContent = data.message || `成功充值¥${data.amount}`;
-                        moneyRedeemResultEl.style.color = 'green';
+                        balanceRedeemResultEl.textContent = data.message || `成功充值¥${data.amount}`;
+                        balanceRedeemResultEl.style.color = 'green';
                         
                         // 更新余额显示
                         fetchUserBalanceInfo();
                         
                         // 清空输入框
-                        moneyCodeInputEl.value = '';
+                        balanceCodeInputEl.value = '';
                     }
                 } catch (error) {
                     console.error('充值失败:', error);
-                    moneyRedeemResultEl.textContent = '充值操作失败，请稍后重试';
-                    moneyRedeemResultEl.style.color = 'red';
+                    balanceRedeemResultEl.textContent = '充值操作失败，请稍后重试';
+                    balanceRedeemResultEl.style.color = 'red';
                 }
             });
             
             // 支持回车键提交
-            moneyCodeInputEl.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') moneyRedeemBtnEl.click();
+            balanceCodeInputEl.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') balanceRedeemBtnEl.click();
             });
         }
     }
@@ -3515,20 +3515,20 @@ async function handleImageSelect(event) {
             }
             
             // 设置充值码兑换按钮事件
-            const moneyRedeemBtn = document.getElementById('money-redeem-btn');
-            const moneyCodeInput = document.getElementById('money-code-input');
-            const moneyRedeemResult = document.getElementById('money-redeem-result');
+            const balanceRedeemBtn = document.getElementById('balance-redeem-btn');
+            const balanceCodeInput = document.getElementById('balance-code-input');
+            const balanceRedeemResult = document.getElementById('balance-redeem-result');
             
-            if (moneyRedeemBtn && moneyCodeInput && moneyRedeemResult) {
-                moneyRedeemBtn.addEventListener('click', async () => {
+            if (balanceRedeemBtn && balanceCodeInput && balanceRedeemResult) {
+                balanceRedeemBtn.addEventListener('click', async () => {
                     // 调用统一的余额充值码处理函数
-                    redeemMoneyCode();
+                    redeembalanceCode();
                 });
                 
                 // 支持回车键提交
-                moneyCodeInput.addEventListener('keypress', (e) => {
+                balanceCodeInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        moneyRedeemBtn.click();
+                        balanceRedeemBtn.click();
                     }
                 });
             }
@@ -3685,20 +3685,20 @@ async function handleImageSelect(event) {
             }
             
             // 设置充值码兑换按钮事件
-            const moneyRedeemBtn = document.getElementById('money-redeem-btn');
-            const moneyCodeInput = document.getElementById('money-code-input');
-            const moneyRedeemResult = document.getElementById('money-redeem-result');
+            const balanceRedeemBtn = document.getElementById('balance-redeem-btn');
+            const balanceCodeInput = document.getElementById('balance-code-input');
+            const balanceRedeemResult = document.getElementById('balance-redeem-result');
             
-            if (moneyRedeemBtn && moneyCodeInput && moneyRedeemResult) {
-                moneyRedeemBtn.addEventListener('click', async () => {
+            if (balanceRedeemBtn && balanceCodeInput && balanceRedeemResult) {
+                balanceRedeemBtn.addEventListener('click', async () => {
                     // 调用统一的余额充值码处理函数
-                    redeemMoneyCode();
+                    redeembalanceCode();
                 });
                 
                 // 支持回车键提交
-                moneyCodeInput.addEventListener('keypress', (e) => {
+                balanceCodeInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        moneyRedeemBtn.click();
+                        balanceRedeemBtn.click();
                     }
                 });
             }
@@ -4306,7 +4306,7 @@ async function handleImageSelect(event) {
         document.getElementById('vip-redeem-btn')?.addEventListener('click', redeemVIPCode);
         
         // 余额充值按钮
-        document.getElementById('money-redeem-btn')?.addEventListener('click', redeemMoneyCode);
+        document.getElementById('balance-redeem-btn')?.addEventListener('click', redeembalanceCode);
         
         // 注销账号按钮
         elements.deactivateAccountBtn?.addEventListener('click', openDeactivateModal);
@@ -4333,7 +4333,7 @@ async function handleImageSelect(event) {
         }
         
         try {
-            const response = await fetch(`/money/get_balance/${state.currentUser.id}`);
+            const response = await fetch(`/balance/get_balance/${state.currentUser.id}`);
             
             if (!response.ok) {
                 throw new Error('获取余额信息失败');
@@ -4635,10 +4635,10 @@ async function handleImageSelect(event) {
         });
         
         // 余额充值码输入框回车键处理
-        document.getElementById('money-code-input')?.addEventListener('keypress', function (e) {
+        document.getElementById('balance-code-input')?.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                redeemMoneyCode();
+                redeembalanceCode();
             }
         });
     }
@@ -4750,10 +4750,10 @@ async function handleImageSelect(event) {
     }
     
     // 余额充值码兑换函数
-    async function redeemMoneyCode() {
-        const codeInput = document.getElementById('money-code-input');
-        const resultDisplay = document.getElementById('money-redeem-result');
-        const redeemButton = document.getElementById('money-redeem-btn');
+    async function redeembalanceCode() {
+        const codeInput = document.getElementById('balance-code-input');
+        const resultDisplay = document.getElementById('balance-redeem-result');
+        const redeemButton = document.getElementById('balance-redeem-btn');
         
         if (!codeInput || !resultDisplay || !redeemButton) {
             console.error('余额充值码相关元素未找到');
@@ -4773,7 +4773,7 @@ async function handleImageSelect(event) {
             resultDisplay.textContent = '正在处理...';
             resultDisplay.className = 'redeem-result';
             
-            const response = await fetch('/money/redeem', {
+            const response = await fetch('/balance/redeem', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

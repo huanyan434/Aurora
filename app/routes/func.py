@@ -148,7 +148,7 @@ def model_name_reverse(model: str):
         model = "GLM-Z1"
     return model
 
-def stream_openai_api(api_key: str, url: str, model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
+def stream_openai_api(api_key: str, url: str, model: str, history: list, response_queue, max_tokens, online_search: bool=False) -> str:
     client = OpenAI(
         api_key=api_key,
         base_url=url,
@@ -167,7 +167,8 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         {
             'role': 'system',
             'content': "你是 " + model_name_reverse(model) + " 模型。" + "\n" + \
-                    "现在是 " + str(datetime.now().date()) + "。"
+                    "现在是 " + str(datetime.now().date()) + "。" + "\n" + \
+                    "回答用户问题时请规范 **Markdown** 和 **LateX** 语法格式。"
         }
     ]
     try:
@@ -185,7 +186,8 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
 - 回复请使用清晰、结构化（序号/分段等）的语言，确保用户轻松理解和使用。
 - 回复时，避免提及信息来源或参考资料。'''
                         }],
-                        stream=True
+                        stream=True,
+                        max_tokens=max_tokens
                     )
                     search_result = func[3]
                     r = []
@@ -200,6 +202,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                         model=model,
                         messages=history,
                         stream=True,
+                        max_tokens=max_tokens
                     )
             except Exception as e:
                 print(f"OpenAI 联网搜索出错: {str(e)}")
@@ -213,12 +216,9 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
 
         start_time = time.time()
 
-        print("id: " + message_id)
-
         for chunk in response:
-            if message_id in response_status and response_status[message_id] == "finished":
-                print("finished")
-                response_queue.put(None)
+            response = response_queue.get(timeout=1)
+            if response is None:
                 break
 
 
@@ -296,15 +296,15 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         response_queue.put(None)
         return f"发生错误: {str(e)}"
 
-def stream_volcano_ark_api(model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
+def stream_volcano_ark_api(model: str, history: list, response_queue, max_tokens, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['volcengine_key']
-    return stream_openai_api(api_key, volcano_api, model, history, response_queue, message_id, online_search)
+    return stream_openai_api(api_key, volcano_api, model, history, response_queue, max_tokens, online_search)
 
-def stream_siliconflow_api(model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
+def stream_siliconflow_api(model: str, history: list, response_queue, max_tokens, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['siliconflow_key']
-    return stream_openai_api(api_key, siliconflow_api, model, history, response_queue, message_id, online_search)
+    return stream_openai_api(api_key, siliconflow_api, model, history, response_queue, max_tokens, online_search)
 
 def function_calling(history: list, tools: list):
     _ = load_dotenv(find_dotenv())
@@ -351,7 +351,7 @@ def function_calling(history: list, tools: list):
         print(f"函数调用执行出错: {str(e)}")
         return history, "", "", ""
 
-def stream_gemini_api(model: str, history: list, response_queue, message_id, online_search: bool=False) -> str:
+def stream_gemini_api(model: str, history: list, response_queue, max_tokens, online_search: bool=False) -> str:
     _ = load_dotenv(find_dotenv())
     api_key = os.environ['gemini_key']
     # 轮询    
@@ -378,13 +378,13 @@ def stream_gemini_api(model: str, history: list, response_queue, message_id, onl
         index_num_file.close()
     else:
         key = api_key
-    return stream_openai_api(key, gemini_api, model, history, response_queue, message_id, online_search)
+    return stream_openai_api(key, gemini_api, model, history, response_queue, max_tokens, online_search)
 
 def online_search(query: str, num: int = 10):
     """在线搜索"""
     return search(query, num)
 
-def autohistory(history: dict, model: str, response_queue, message_id=None, online_search: bool=False):
+def autohistory(history: dict, model: str, response_queue, max_tokens=10240, online_search: bool=False):
     """处理历史并调用对应API生成回复"""    
     # 创建历史记录的深拷贝，处理特殊标记
     his = copy.deepcopy(history)
@@ -404,11 +404,11 @@ def autohistory(history: dict, model: str, response_queue, message_id=None, onli
     content = ""
     try:
         if "doubao" in api_model:
-            content = stream_volcano_ark_api(api_model, his, response_queue, message_id, online_search)
+            content = stream_volcano_ark_api(api_model, his, response_queue, max_tokens, online_search)
         elif "gemini" in api_model:
-            content = stream_gemini_api(api_model, his, response_queue, message_id, online_search)
+            content = stream_gemini_api(api_model, his, response_queue, max_tokens, online_search)
         else:
-            content = stream_siliconflow_api(api_model, his, response_queue, message_id, online_search)
+            content = stream_siliconflow_api(api_model, his, response_queue, max_tokens, online_search)
     except Exception as e:
         print(f"API调用出错: {str(e)}")
         response_queue.put(f"<e>API调用失败: {str(e)}</e>")
@@ -555,9 +555,6 @@ def generate_thread(
         user_id = 'anonymous'
     current_user_id = user_id
 
-    # 导入必要模块
-    from flask import has_app_context
-
     # 创建应用实例和上下文
     app = None
     try:
@@ -572,6 +569,8 @@ def generate_thread(
                 f"<e>应用上下文创建失败: {str(app_err)}</e>")
             response_queues[message_id].put(None)  # 发送结束标记
         return
+
+    max_tokens = 10240
 
     # 使用创建的应用上下文执行所有操作
     with app.app_context():
@@ -602,11 +601,17 @@ def generate_thread(
                 print(f"用户信息: ID={user.id}, 名称={user.username}, 会员={user.is_member}, 等级={user.member_level}")
                 print(f"会员截止日期={user.member_until}, 当前时间={datetime.now()}")
                 print(f"会员是否有效: {user.is_active_member()}")
+                
             
-
+                # VIP用户：设置最大令牌
+                if user.is_member and user.member_level and user.member_level.lower() == 'vip':
+                    max_tokens = 20480
+                    print(f"VIP用户{user.username}(ID:{user.id})允许使用{max_tokens} tokens")
                 # SVIP用户：无限使用，不计费
                 if user.is_member and user.member_level and user.member_level.lower() == 'svip' and user.is_active_member():
+                    max_tokens = 40960
                     print(f"SVIP用户{user.username}(ID:{user.id})允许无限使用所有模型")
+                    print(f"VIP用户{user.username}(ID:{user.id})允许使用{max_tokens} tokens")
                     will_charge = False  # 不计费
                 else:
                     # 非SVIP用户：检查免费次数
@@ -668,7 +673,7 @@ def generate_thread(
             if online_search:
                 try:
                     updated_history = autohistory(
-                    history, model_orig, response_queues[message_id], message_id, online_search)
+                    history, model_orig, response_queues[message_id], max_tokens, online_search)
                 except Exception as e:
                     print(f"联网搜索出错: {str(e)}")
                     response_status[message_id] = 'error'
@@ -678,7 +683,7 @@ def generate_thread(
             else:
                 # 使用线程安全的队列接收响应
                 updated_history = autohistory(
-                    history, model_orig, response_queues[message_id], message_id, online_search)
+                    history, model_orig, response_queues[message_id], max_tokens, online_search)
             # 标记响应完成
             response_status[message_id] = 'finished'
             # 保存历史记录
@@ -1066,7 +1071,7 @@ def name_conversation(conversation_id):
 
     # 获取响应
     updated_history = autohistory(
-        history, front_model, temp_queue)
+        history, front_model, temp_queue, 1024)
 
     # 从队列获取最后一个响应
     content = ""
