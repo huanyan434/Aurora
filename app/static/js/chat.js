@@ -1630,34 +1630,6 @@ async function handleImageSelect(event) {
             return aiMessageDiv;
         } catch (error) {
             if (error.name === 'AbortError') {
-                console.log('用户中断了请求');
-                
-                // 清除计时器（使用try-catch防止错误）
-                try {
-                    if (thinkTimerInterval) {
-                        clearInterval(thinkTimerInterval);
-                        thinkTimerInterval = null;
-                    }
-                } catch (e) {
-                    console.error('清除计时器时出错:', e);
-                }
-                
-                attachCopyButtonsToAIMessages();
-                // 添加复制按钮后再次滚动到底部
-                scrollToBottom();
-
-                if (!currentContent) {
-                    currentContent = ' ';
-                }
-                console.log('content:' + currentContent);
-
-                // 保存当前内容
-                await saveCurrentContent(
-                    conversationId,
-                    currentContent,
-                    currentThink,
-                    messageData.model
-                )
                 // 请求 /stop 接口，用 POST 方法，发送要中断的 message_id
                 const response = await fetch('/stop', {
                     method: 'POST',
@@ -1672,6 +1644,35 @@ async function handleImageSelect(event) {
                 } else {
                     console.error('中断请求失败:', response.statusText);
                 }
+
+                // 清除计时器（使用try-catch防止错误）
+                try {
+                    if (thinkTimerInterval) {
+                        clearInterval(thinkTimerInterval);
+                        thinkTimerInterval = null;
+                    }
+                } catch (e) {
+                    console.error('清除计时器时出错:', e);
+                }
+                
+                attachCopyButtonsToAIMessages();
+                // 添加复制按钮后再次滚动到底部
+                scrollToBottom();
+
+                /*
+                if (!currentContent) {
+                    currentContent = ' ';
+                }
+                console.log('content:' + currentContent);
+
+                // 保存当前内容
+                await saveCurrentContent(
+                    conversationId,
+                    currentContent,
+                    currentThink,
+                    messageData.model
+                )
+                */
             } else {
                 console.error('获取AI响应失败:', error);
                 throw error;

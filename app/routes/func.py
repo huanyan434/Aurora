@@ -168,7 +168,7 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
             'role': 'system',
             'content': "你是 " + model_name_reverse(model) + " 模型。" + "\n" + \
                     "现在是 " + str(datetime.now().date()) + "。" + "\n" + \
-                    "回答用户问题时请规范 **Markdown** 和 **LateX** 语法格式。"
+                    "回答用户问题时请规范 **Markdown** 和 **LaTeX** 语法格式。"
         }
     ]
     try:
@@ -212,52 +212,62 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
                 model=model,
                 messages=system_prompt + history,
                 stream=True,
+                max_tokens=max_tokens
             )
 
         start_time = time.time()
 
-        for chunk in response:
-            response = response_queue.get(timeout=1)
-            if response is None:
-                break
+        try:
+            for chunk in response:
+                try:
+                    queue_response = response_queue.get(timeout=1e-50)
+                    if queue_response == None or response_queue == None:
+                        break
+                except queue.Empty:
+                    pass
 
-
-            if "deepseek" in model or "qwen" in model or "glm" in model:
-                prompt_tokens = chunk.usage.prompt_tokens
-                completion_tokens += chunk.usage.completion_tokens
-            if hasattr(
-                    chunk.choices[0].delta,
-                    'reasoning_content') and chunk.choices[0].delta.reasoning_content:
-                if first_reasoning_character == True:
-                    first_reasoning_character = False
-                # 去除多余的换行符
-                if chunk.choices[0].delta.reasoning_content[:2] == "\n":
-                    reasoning_content += chunk.choices[0].delta.reasoning_content[2:]
-                else:
-                    reasoning_content += chunk.choices[0].delta.reasoning_content
-                think_time = time.time() - start_time
-                response_text = "<think time=" + \
-                    str(int(think_time)) + ">" + reasoning_content + "</think>"
-                response_queue.put(search + response_text)
-            elif chunk.choices[0].delta.content:
-                if first_content_character == True:
-                    first_content_character = False
+                if "deepseek" in model or "qwen" in model or "glm" in model:
+                    prompt_tokens = chunk.usage.prompt_tokens
+                    completion_tokens += chunk.usage.completion_tokens
+                if hasattr(
+                        chunk.choices[0].delta,
+                        'reasoning_content') and chunk.choices[0].delta.reasoning_content:
+                    if first_reasoning_character == True:
+                        first_reasoning_character = False
+                    # 去除多余的换行符
+                    if chunk.choices[0].delta.reasoning_content[:2] == "\n":
+                        reasoning_content += chunk.choices[0].delta.reasoning_content[2:]
+                    else:
+                        reasoning_content += chunk.choices[0].delta.reasoning_content
                     think_time = time.time() - start_time
-                # 去除多余的换行符
-                if reasoning_content[:2] == "\n":
-                    reasoning_content += reasoning_content[2:]
-                if chunk.choices[0].delta.content[:2] == "\n":
-                    content += chunk.choices[0].delta.content[2:]
-                else:
-                    content += chunk.choices[0].delta.content
-
-                if not reasoning_content.strip():
-                    response_queue.put(search + content)
-                else:
                     response_text = "<think time=" + \
-                        str(int(think_time)) + ">" + reasoning_content + \
-                        "</think>" + content
+                        str(int(think_time)) + ">" + reasoning_content + "</think>"
                     response_queue.put(search + response_text)
+                elif chunk.choices[0].delta.content:
+                    if first_content_character == True:
+                        first_content_character = False
+                        think_time = time.time() - start_time
+                    # 去除多余的换行符
+                    if reasoning_content[:2] == "\n":
+                        reasoning_content += reasoning_content[2:]
+                    if chunk.choices[0].delta.content[:2] == "\n":
+                        content += chunk.choices[0].delta.content[2:]
+                    else:
+                        content += chunk.choices[0].delta.content
+
+                    if not reasoning_content.strip():
+                        response_queue.put(search + content)
+                    else:
+                        response_text = "<think time=" + \
+                            str(int(think_time)) + ">" + reasoning_content + \
+                            "</think>" + content
+                        response_queue.put(search + response_text)
+        except Exception as e:
+            print(f"接收响应出错: {str(e)}")
+            response_queue.put(f"<e>{str(e)}</e>")
+            response_queue.put(None)
+            return f"发生错误: {str(e)}"
+
         # 标记响应完成
         response_queue.put(None)
         
@@ -384,7 +394,7 @@ def online_search(query: str, num: int = 10):
     """在线搜索"""
     return search(query, num)
 
-def autohistory(history: dict, model: str, response_queue, max_tokens=10240, online_search: bool=False):
+def autohistory(history: dict, model: str, response_queue, max_tokens: int=1024, online_search: bool=False):
     """处理历史并调用对应API生成回复"""    
     # 创建历史记录的深拷贝，处理特殊标记
     his = copy.deepcopy(history)
@@ -570,7 +580,7 @@ def generate_thread(
             response_queues[message_id].put(None)  # 发送结束标记
         return
 
-    max_tokens = 10240
+    max_tokens = 1024
 
     # 使用创建的应用上下文执行所有操作
     with app.app_context():
@@ -605,11 +615,11 @@ def generate_thread(
             
                 # VIP用户：设置最大令牌
                 if user.is_member and user.member_level and user.member_level.lower() == 'vip':
-                    max_tokens = 20480
+                    max_tokens = 8196
                     print(f"VIP用户{user.username}(ID:{user.id})允许使用{max_tokens} tokens")
                 # SVIP用户：无限使用，不计费
                 if user.is_member and user.member_level and user.member_level.lower() == 'svip' and user.is_active_member():
-                    max_tokens = 40960
+                    max_tokens = 16384
                     print(f"SVIP用户{user.username}(ID:{user.id})允许无限使用所有模型")
                     print(f"VIP用户{user.username}(ID:{user.id})允许使用{max_tokens} tokens")
                     will_charge = False  # 不计费
@@ -1098,7 +1108,7 @@ def stop_message(message_id: str):
         
         # 向队列发送结束信号
         if message_id in response_queues:
-            for i in range(5):
+            for i in range(3):
                 response_queues[message_id].put(None)
             
         # 等待线程结束（设置超时时间为1秒）
