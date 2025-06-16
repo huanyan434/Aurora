@@ -614,12 +614,12 @@ def generate_thread(
                 
             
                 # VIP用户：设置最大令牌
-                if user.is_member and user.member_level and user.member_level.lower() == 'vip':
-                    max_tokens = 8196
+                if user.is_member and user.member_level and user.member_level.lower() == 'vip' and user.is_active_member():
+                    max_tokens = 2048
                     print(f"VIP用户{user.username}(ID:{user.id})允许使用{max_tokens} tokens")
                 # SVIP用户：无限使用，不计费
                 if user.is_member and user.member_level and user.member_level.lower() == 'svip' and user.is_active_member():
-                    max_tokens = 16384
+                    max_tokens = 8192
                     print(f"SVIP用户{user.username}(ID:{user.id})允许无限使用所有模型")
                     print(f"VIP用户{user.username}(ID:{user.id})允许使用{max_tokens} tokens")
                     will_charge = False  # 不计费
@@ -1087,7 +1087,7 @@ def name_conversation(conversation_id):
     content = ""
     while True:
         try:
-            response = temp_queue.get(timeout=1)
+            response = temp_queue.get(timeout=1e-50)
             if response is None:
                 break
             content = response

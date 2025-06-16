@@ -849,7 +849,7 @@ body {
     transform: translateY(-10px);
     transition: all 0.2s ease;
     width: 24rem;
-    max-width: calc(300% - 2rem);
+    max-width: calc(40dvw - 2rem);
     max-height: 270px;
     /* 限制高度，大约显示5个模型选项 */
     overflow-y: auto;
@@ -3345,7 +3345,7 @@ a:link {
 /* 已移除原有 .modal-dialog 样式块，避免与 Bootstrap 冲突 */
 
 /* 新增自定义确认对话框样式 */
-.custom-confirm-dialog {
+.confirm-dialog {
     position: fixed;
     top: 0;
     left: 0;
@@ -3361,12 +3361,12 @@ a:link {
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-.custom-confirm-dialog.show {
+.confirm-dialog.show {
     opacity: 1;
     visibility: visible;
 }
 
-.custom-confirm-dialog__content {
+.confirm-dialog__content {
     background: #FFFFFF;
     border-radius: 35px;
     padding: 20px;
@@ -3375,7 +3375,7 @@ a:link {
     box-sizing: border-box;
 }
 
-.custom-confirm-dialog__header {
+.confirm-dialog__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3386,17 +3386,17 @@ a:link {
     font-size: 20px;
 }
 
-.custom-confirm-dialog__body {
+.confirm-dialog__body {
     color: var(--dark-color);
     margin: 0 0 25px 16px;
 }
 
-.custom-confirm-dialog__footer {
+.confirm-dialog__footer {
     display: flex;
     justify-content: space-between;
 }
 
-.custom-confirm-dialog__btn {
+.confirm-dialog__btn {
     flex: 1;
     margin: 0 8px;
     padding: 10px 0;
@@ -3406,32 +3406,32 @@ a:link {
     border: none;
 }
 
-.custom-confirm-dialog__btn--cancel {
+.confirm-dialog__btn--cancel {
     background: transparent;
     color: var(--dark-color);
     border: 1px solid var(--dark-color);
 }
 
-.custom-confirm-dialog__btn--confirm {
+.confirm-dialog__btn--confirm {
     background: #5344c4;
     color: #fff;
 }
 
 /* 深色模式适配：自定义确认对话框 */
 @media (prefers-color-scheme: dark) {
-    .custom-confirm-dialog {
+    .confirm-dialog {
         background: rgba(0, 0, 0, 0.7);
     }
-    .custom-confirm-dialog__content {
+    .confirm-dialog__content {
         background: var(--main-bg);
     }
-    .custom-confirm-dialog__header h5,
-    .custom-confirm-dialog__close,
-    .custom-confirm-dialog__body,
-    .custom-confirm-dialog__btn--cancel {
+    .confirm-dialog__header h5,
+    .confirm-dialog__close,
+    .confirm-dialog__body,
+    .confirm-dialog__btn--cancel {
         color: var(--light-color);
     }
-    .custom-confirm-dialog__btn--cancel {
+    .confirm-dialog__btn--cancel {
         color: var(--light-color);
         border: 1px solid var(--light-color);
     }
@@ -3454,4 +3454,5 @@ a:link {
 .error-message {
     color: red;
     font-size: 14px;
+    left: 1rem;
 }

@@ -1306,7 +1306,8 @@ async function handleImageSelect(event) {
                         // 更新消息内容 - 先处理正文，保证即使没有思考内容也能显示消息
                         if ((data.content && data.content !== currentContent) || 
                             (data.text && data.text !== currentContent)) {
-                            console.log('收到新消息内容:', JSON.stringify(data).substring(0, 50));
+                            console('收到新消息，更新界面')
+                            // console.log('收到新消息内容:', JSON.stringify(data).substring(0, 50));
                             
                             // 更新currentContent，优先使用content，其次使用text
                             if (data.content) {
@@ -1316,7 +1317,7 @@ async function handleImageSelect(event) {
                             }
                             
                             // 添加调试日志
-                            console.log('当前文本内容:', currentContent);
+                            // console.log('当前文本内容:', currentContent);
                             
                             // 确保消息内容元素存在
                             let contentDiv = aiMessageDiv.querySelector('.message-content');
@@ -4115,17 +4116,17 @@ async function handleImageSelect(event) {
         
         // 创建模态对话框
         const modalHTML = `
-        <div id="customConfirmDialog" class="custom-confirm-dialog" tabindex="-1" aria-labelledby="customConfirmDialogLabel" aria-modal="true" role="dialog">
-            <div class="custom-confirm-dialog__content">
-                <div class="custom-confirm-dialog__header">
+        <div id="customConfirmDialog" class="confirm-dialog" tabindex="-1" aria-labelledby="customConfirmDialogLabel" aria-modal="true" role="dialog">
+            <div class="confirm-dialog__content">
+                <div class="confirm-dialog__header">
                     <h5 id="customConfirmDialogLabel">确认操作</h5>
                     </div>
-                <div class="custom-confirm-dialog__body">
+                <div class="confirm-dialog__body">
                         ${message}
                     </div>
-                <div class="custom-confirm-dialog__footer">
-                    <button type="button" class="custom-confirm-dialog__btn custom-confirm-dialog__btn--cancel" id="customConfirmDialogCancelBtn">取消</button>
-                    <button type="button" class="custom-confirm-dialog__btn custom-confirm-dialog__btn--confirm" id="customConfirmDialogConfirmBtn">确认</button>
+                <div class="confirm-dialog__footer">
+                    <button type="button" class="confirm-dialog__btn confirm-dialog__btn--cancel" id="customConfirmDialogCancelBtn">取消</button>
+                    <button type="button" class="confirm-dialog__btn confirm-dialog__btn--confirm" id="customConfirmDialogConfirmBtn">确认</button>
                 </div>
             </div>
         </div>
@@ -4158,7 +4159,7 @@ async function handleImageSelect(event) {
         });
         
         // 点击关闭按钮关闭对话框
-        const closeBtn = modalElement.querySelector('.custom-confirm-dialog__close');
+        const closeBtn = modalElement.querySelector('.confirm-dialog__close');
         if (closeBtn) {
             closeBtn.addEventListener('click', closeModal);
         }
