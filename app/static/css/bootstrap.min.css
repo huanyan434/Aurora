@@ -202,7 +202,7 @@ body {
     line-height: var(--bs-body-line-height);
     color: var(--bs-body-color);
     text-align: var(--bs-body-text-align);
-    background-color: var(--bs-body-bg);
+    background: var(--bs-body-bg);
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent
 }
@@ -361,7 +361,7 @@ small {
 mark {
     padding: .1875em;
     color: var(--bs-highlight-color);
-    background-color: var(--bs-highlight-bg)
+    background: var(--bs-highlight-bg)
 }
 
 sub,
@@ -431,7 +431,7 @@ kbd {
     padding: .1875rem .375rem;
     font-size: .875em;
     color: var(--bs-body-bg);
-    background-color: var(--bs-body-color);
+    background: var(--bs-body-color);
     border-radius: .25rem
 }
 
@@ -755,7 +755,7 @@ progress {
 
 .img-thumbnail {
     padding: .25rem;
-    background-color: var(--bs-body-bg);
+    background: var(--bs-body-bg);
     border: var(--bs-border-width) solid var(--bs-border-color);
     border-radius: var(--bs-border-radius);
     max-width: 100%;
@@ -2172,7 +2172,7 @@ progress {
 .table>:not(caption)>*>* {
     padding: .5rem .5rem;
     color: var(--bs-table-color-state, var(--bs-table-color-type, var(--bs-table-color)));
-    background-color: var(--bs-table-bg);
+    background: var(--bs-table-bg);
     border-bottom-width: var(--bs-border-width);
     box-shadow: inset 0 0 0 9999px var(--bs-table-bg-state, var(--bs-table-bg-type, var(--bs-table-accent-bg)))
 }
@@ -2426,7 +2426,7 @@ progress {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-color: var(--bs-body-bg);
+    background: var(--bs-body-bg);
     background-clip: padding-box;
     border: var(--bs-border-width) solid var(--bs-border-color);
     border-radius: var(--bs-border-radius);
@@ -2449,7 +2449,7 @@ progress {
 
 .form-control:focus {
     color: var(--bs-body-color);
-    background-color: var(--bs-body-bg);
+    background: var(--bs-body-bg);
     border-color: #86b7fe;
     outline: 0;
     box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25)
@@ -2477,7 +2477,7 @@ progress {
 }
 
 .form-control:disabled {
-    background-color: var(--bs-secondary-bg);
+    background: var(--bs-secondary-bg);
     opacity: 1
 }
 
@@ -2487,7 +2487,7 @@ progress {
     -webkit-margin-end: .75rem;
     margin-inline-end: .75rem;
     color: var(--bs-body-color);
-    background-color: var(--bs-tertiary-bg);
+    background: var(--bs-tertiary-bg);
     pointer-events: none;
     border-color: inherit;
     border-style: solid;
@@ -2504,7 +2504,7 @@ progress {
     -webkit-margin-end: .75rem;
     margin-inline-end: .75rem;
     color: var(--bs-body-color);
-    background-color: var(--bs-tertiary-bg);
+    background: var(--bs-tertiary-bg);
     pointer-events: none;
     border-color: inherit;
     border-style: solid;
@@ -2526,11 +2526,11 @@ progress {
 }
 
 .form-control:hover:not(:disabled):not([readonly])::-webkit-file-upload-button {
-    background-color: var(--bs-secondary-bg)
+    background: var(--bs-secondary-bg)
 }
 
 .form-control:hover:not(:disabled):not([readonly])::file-selector-button {
-    background-color: var(--bs-secondary-bg)
+    background: var(--bs-secondary-bg)
 }
 
 .form-control-plaintext {
@@ -2540,7 +2540,7 @@ progress {
     margin-bottom: 0;
     line-height: 1.5;
     color: var(--bs-body-color);
-    background-color: transparent;
+    background: transparent;
     border: solid transparent;
     border-width: var(--bs-border-width) 0
 }
@@ -2649,7 +2649,7 @@ textarea.form-control-lg {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-color: var(--bs-body-bg);
+    background: var(--bs-body-bg);
     background-image: var(--bs-form-select-bg-img), var(--bs-form-select-bg-icon, none);
     background-repeat: no-repeat;
     background-position: right .75rem center;
@@ -2678,7 +2678,7 @@ textarea.form-control-lg {
 }
 
 .form-select:disabled {
-    background-color: var(--bs-secondary-bg)
+    background: var(--bs-secondary-bg)
 }
 
 .form-select:-moz-focusring {
@@ -2740,7 +2740,7 @@ textarea.form-control-lg {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-color: var(--bs-form-check-bg);
+    background: var(--bs-form-check-bg);
     background-image: var(--bs-form-check-bg-image);
     background-repeat: no-repeat;
     background-position: center;
@@ -2770,7 +2770,7 @@ textarea.form-control-lg {
 }
 
 .form-check-input:checked {
-    background-color: #0d6efd;
+    background: #0d6efd;
     border-color: #0d6efd
 }
 
@@ -2783,7 +2783,7 @@ textarea.form-control-lg {
 }
 
 .form-check-input[type=checkbox]:indeterminate {
-    background-color: #0d6efd;
+    background: #0d6efd;
     border-color: #0d6efd;
     --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e")
 }
@@ -2868,7 +2868,7 @@ textarea.form-control-lg {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-color: transparent
+    background: transparent
 }
 
 .form-range:focus {
@@ -2893,7 +2893,7 @@ textarea.form-control-lg {
     margin-top: -.25rem;
     -webkit-appearance: none;
     appearance: none;
-    background-color: #0d6efd;
+    background: #0d6efd;
     border: 0;
     border-radius: 1rem;
     -webkit-transition: background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
@@ -2908,7 +2908,7 @@ textarea.form-control-lg {
 }
 
 .form-range::-webkit-slider-thumb:active {
-    background-color: #b6d4fe
+    background: #b6d4fe
 }
 
 .form-range::-webkit-slider-runnable-track {
@@ -2916,7 +2916,7 @@ textarea.form-control-lg {
     height: .5rem;
     color: transparent;
     cursor: pointer;
-    background-color: var(--bs-secondary-bg);
+    background: var(--bs-secondary-bg);
     border-color: transparent;
     border-radius: 1rem
 }
@@ -2926,7 +2926,7 @@ textarea.form-control-lg {
     height: 1rem;
     -moz-appearance: none;
     appearance: none;
-    background-color: #0d6efd;
+    background: #0d6efd;
     border: 0;
     border-radius: 1rem;
     -moz-transition: background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
@@ -2941,7 +2941,7 @@ textarea.form-control-lg {
 }
 
 .form-range::-moz-range-thumb:active {
-    background-color: #b6d4fe
+    background: #b6d4fe
 }
 
 .form-range::-moz-range-track {
@@ -2949,7 +2949,7 @@ textarea.form-control-lg {
     height: .5rem;
     color: transparent;
     cursor: pointer;
-    background-color: var(--bs-secondary-bg);
+    background: var(--bs-secondary-bg);
     border-color: transparent;
     border-radius: 1rem
 }
@@ -2959,11 +2959,11 @@ textarea.form-control-lg {
 }
 
 .form-range:disabled::-webkit-slider-thumb {
-    background-color: var(--bs-secondary-color)
+    background: var(--bs-secondary-color)
 }
 
 .form-range:disabled::-moz-range-thumb {
-    background-color: var(--bs-secondary-color)
+    background: var(--bs-secondary-color)
 }
 
 .form-floating {
@@ -3060,7 +3060,7 @@ textarea.form-control-lg {
     z-index: -1;
     height: 1.5em;
     content: "";
-    background-color: var(--bs-body-bg);
+    background: var(--bs-body-bg);
     border-radius: var(--bs-border-radius)
 }
 
@@ -3073,7 +3073,7 @@ textarea.form-control-lg {
     z-index: -1;
     height: 1.5em;
     content: "";
-    background-color: var(--bs-body-bg);
+    background: var(--bs-body-bg);
     border-radius: var(--bs-border-radius)
 }
 
@@ -3093,7 +3093,7 @@ textarea.form-control-lg {
 
 .form-floating>.form-control:disabled~label::after,
 .form-floating>:disabled~label::after {
-    background-color: var(--bs-secondary-bg)
+    background: var(--bs-secondary-bg)
 }
 
 .input-group {
@@ -3138,7 +3138,7 @@ textarea.form-control-lg {
     color: var(--bs-body-color);
     text-align: center;
     white-space: nowrap;
-    background-color: var(--bs-tertiary-bg);
+    background: var(--bs-tertiary-bg);
     border: var(--bs-border-width) solid var(--bs-border-color);
     border-radius: var(--bs-border-radius)
 }
@@ -3212,7 +3212,7 @@ textarea.form-control-lg {
     margin-top: .1rem;
     font-size: .875rem;
     color: #fff;
-    background-color: var(--bs-success);
+    background: var(--bs-success);
     border-radius: var(--bs-border-radius)
 }
 
@@ -3278,7 +3278,7 @@ textarea.form-control.is-valid {
 
 .form-check-input.is-valid:checked,
 .was-validated .form-check-input:valid:checked {
-    background-color: var(--bs-form-valid-color)
+    background: var(--bs-form-valid-color)
 }
 
 .form-check-input.is-valid:focus,
@@ -3322,7 +3322,7 @@ textarea.form-control.is-valid {
     margin-top: .1rem;
     font-size: .875rem;
     color: #fff;
-    background-color: var(--bs-danger);
+    background: var(--bs-danger);
     border-radius: var(--bs-border-radius)
 }
 
@@ -3388,7 +3388,7 @@ textarea.form-control.is-invalid {
 
 .form-check-input.is-invalid:checked,
 .was-validated .form-check-input:invalid:checked {
-    background-color: var(--bs-form-invalid-color)
+    background: var(--bs-form-invalid-color)
 }
 
 .form-check-input.is-invalid:focus,
@@ -3446,7 +3446,7 @@ textarea.form-control.is-invalid {
     user-select: none;
     border: var(--bs-btn-border-width) solid var(--bs-btn-border-color);
     border-radius: var(--bs-btn-border-radius);
-    background-color: var(--bs-btn-bg);
+    background: var(--bs-btn-bg);
     transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out
 }
 
@@ -3458,19 +3458,19 @@ textarea.form-control.is-invalid {
 
 .btn:hover {
     color: var(--bs-btn-hover-color);
-    background-color: var(--bs-btn-hover-bg);
+    background: var(--bs-btn-hover-bg);
     border-color: var(--bs-btn-hover-border-color)
 }
 
 .btn-check+.btn:hover {
     color: var(--bs-btn-color);
-    background-color: var(--bs-btn-bg);
+    background: var(--bs-btn-bg);
     border-color: var(--bs-btn-border-color)
 }
 
 .btn:focus-visible {
     color: var(--bs-btn-hover-color);
-    background-color: var(--bs-btn-hover-bg);
+    background: var(--bs-btn-hover-bg);
     border-color: var(--bs-btn-hover-border-color);
     outline: 0;
     box-shadow: var(--bs-btn-focus-box-shadow)
@@ -3488,7 +3488,7 @@ textarea.form-control.is-invalid {
 .btn:first-child:active,
 :not(.btn-check)+.btn:active {
     color: var(--bs-btn-active-color);
-    background-color: var(--bs-btn-active-bg);
+    background: var(--bs-btn-active-bg);
     border-color: var(--bs-btn-active-border-color)
 }
 
@@ -3505,7 +3505,7 @@ textarea.form-control.is-invalid {
 fieldset:disabled .btn {
     color: var(--bs-btn-disabled-color);
     pointer-events: none;
-    background-color: var(--bs-btn-disabled-bg);
+    background: var(--bs-btn-disabled-bg);
     border-color: var(--bs-btn-disabled-border-color);
     opacity: var(--bs-btn-disabled-opacity)
 }
@@ -3929,7 +3929,7 @@ fieldset:disabled .btn {
     color: var(--bs-dropdown-color);
     text-align: left;
     list-style: none;
-    background-color: var(--bs-dropdown-bg);
+    background: var(--bs-dropdown-bg);
     background-clip: padding-box;
     border: var(--bs-dropdown-border-width) solid var(--bs-dropdown-border-color);
     border-radius: var(--bs-dropdown-border-radius)
@@ -4163,7 +4163,7 @@ fieldset:disabled .btn {
     text-align: inherit;
     text-decoration: none;
     white-space: nowrap;
-    background-color: transparent;
+    background: transparent;
     border: 0;
     border-radius: var(--bs-dropdown-item-border-radius, 0)
 }
@@ -4171,21 +4171,21 @@ fieldset:disabled .btn {
 .dropdown-item:focus,
 .dropdown-item:hover {
     color: var(--bs-dropdown-link-hover-color);
-    background-color: var(--bs-dropdown-link-hover-bg)
+    background: var(--bs-dropdown-link-hover-bg)
 }
 
 .dropdown-item.active,
 .dropdown-item:active {
     color: var(--bs-dropdown-link-active-color);
     text-decoration: none;
-    background-color: var(--bs-dropdown-link-active-bg)
+    background: var(--bs-dropdown-link-active-bg)
 }
 
 .dropdown-item.disabled,
 .dropdown-item:disabled {
     color: var(--bs-dropdown-link-disabled-color);
     pointer-events: none;
-    background-color: transparent
+    background: transparent
 }
 
 .dropdown-menu.show {
@@ -4414,7 +4414,7 @@ fieldset:disabled .btn {
 .nav-tabs .nav-item.show .nav-link,
 .nav-tabs .nav-link.active {
     color: var(--bs-nav-tabs-link-active-color);
-    background-color: var(--bs-nav-tabs-link-active-bg);
+    background: var(--bs-nav-tabs-link-active-bg);
     border-color: var(--bs-nav-tabs-link-active-border-color)
 }
 
@@ -4437,7 +4437,7 @@ fieldset:disabled .btn {
 .nav-pills .nav-link.active,
 .nav-pills .show>.nav-link {
     color: var(--bs-nav-pills-link-active-color);
-    background-color: var(--bs-nav-pills-link-active-bg)
+    background: var(--bs-nav-pills-link-active-bg)
 }
 
 .nav-underline {
@@ -4594,7 +4594,7 @@ fieldset:disabled .btn {
     font-size: var(--bs-navbar-toggler-font-size);
     line-height: 1;
     color: var(--bs-navbar-color);
-    background-color: transparent;
+    background: transparent;
     border: var(--bs-border-width) solid var(--bs-navbar-toggler-border-color);
     border-radius: var(--bs-navbar-toggler-border-radius);
     transition: var(--bs-navbar-toggler-transition)
@@ -4671,7 +4671,7 @@ fieldset:disabled .btn {
         width: auto !important;
         height: auto !important;
         visibility: visible !important;
-        background-color: transparent !important;
+        background: transparent !important;
         border: 0 !important;
         transform: none !important;
         transition: none
@@ -4728,7 +4728,7 @@ fieldset:disabled .btn {
         width: auto !important;
         height: auto !important;
         visibility: visible !important;
-        background-color: transparent !important;
+        background: transparent !important;
         border: 0 !important;
         transform: none !important;
         transition: none
@@ -4785,7 +4785,7 @@ fieldset:disabled .btn {
         width: auto !important;
         height: auto !important;
         visibility: visible !important;
-        background-color: transparent !important;
+        background: transparent !important;
         border: 0 !important;
         transform: none !important;
         transition: none
@@ -4842,7 +4842,7 @@ fieldset:disabled .btn {
         width: auto !important;
         height: auto !important;
         visibility: visible !important;
-        background-color: transparent !important;
+        background: transparent !important;
         border: 0 !important;
         transform: none !important;
         transition: none
@@ -4899,7 +4899,7 @@ fieldset:disabled .btn {
         width: auto !important;
         height: auto !important;
         visibility: visible !important;
-        background-color: transparent !important;
+        background: transparent !important;
         border: 0 !important;
         transform: none !important;
         transition: none
@@ -4955,7 +4955,7 @@ fieldset:disabled .btn {
     width: auto !important;
     height: auto !important;
     visibility: visible !important;
-    background-color: transparent !important;
+    background: transparent !important;
     border: 0 !important;
     transform: none !important;
     transition: none
@@ -5015,7 +5015,7 @@ fieldset:disabled .btn {
     height: var(--bs-card-height);
     color: var(--bs-body-color);
     word-wrap: break-word;
-    background-color: var(--bs-card-bg);
+    background: var(--bs-card-bg);
     background-clip: border-box;
     border: var(--bs-card-border-width) solid var(--bs-card-border-color);
     border-radius: var(--bs-card-border-radius)
@@ -5077,7 +5077,7 @@ fieldset:disabled .btn {
     padding: var(--bs-card-cap-padding-y) var(--bs-card-cap-padding-x);
     margin-bottom: 0;
     color: var(--bs-card-cap-color);
-    background-color: var(--bs-card-cap-bg);
+    background: var(--bs-card-cap-bg);
     border-bottom: var(--bs-card-border-width) solid var(--bs-card-border-color)
 }
 
@@ -5088,7 +5088,7 @@ fieldset:disabled .btn {
 .card-footer {
     padding: var(--bs-card-cap-padding-y) var(--bs-card-cap-padding-x);
     color: var(--bs-card-cap-color);
-    background-color: var(--bs-card-cap-bg);
+    background: var(--bs-card-cap-bg);
     border-top: var(--bs-card-border-width) solid var(--bs-card-border-color)
 }
 
@@ -5104,7 +5104,7 @@ fieldset:disabled .btn {
 }
 
 .card-header-tabs .nav-link.active {
-    background-color: var(--bs-card-bg);
+    background: var(--bs-card-bg);
     border-bottom-color: var(--bs-card-bg)
 }
 
@@ -5226,7 +5226,7 @@ fieldset:disabled .btn {
     font-size: 1rem;
     color: var(--bs-accordion-btn-color);
     text-align: left;
-    background-color: var(--bs-accordion-btn-bg);
+    background: var(--bs-accordion-btn-bg);
     border: 0;
     border-radius: 0;
     overflow-anchor: none;
@@ -5241,7 +5241,7 @@ fieldset:disabled .btn {
 
 .accordion-button:not(.collapsed) {
     color: var(--bs-accordion-active-color);
-    background-color: var(--bs-accordion-active-bg);
+    background: var(--bs-accordion-active-bg);
     box-shadow: inset 0 calc(-1 * var(--bs-accordion-border-width)) 0 var(--bs-accordion-border-color)
 }
 
@@ -5285,7 +5285,7 @@ fieldset:disabled .btn {
 
 .accordion-item {
     color: var(--bs-accordion-color);
-    background-color: var(--bs-accordion-bg);
+    background: var(--bs-accordion-bg);
     border: var(--bs-accordion-border-width) solid var(--bs-accordion-border-color)
 }
 
@@ -5365,7 +5365,7 @@ fieldset:disabled .btn {
     margin-bottom: var(--bs-breadcrumb-margin-bottom);
     font-size: var(--bs-breadcrumb-font-size);
     list-style: none;
-    background-color: var(--bs-breadcrumb-bg);
+    background: var(--bs-breadcrumb-bg);
     border-radius: var(--bs-breadcrumb-border-radius)
 }
 
@@ -5417,7 +5417,7 @@ fieldset:disabled .btn {
     font-size: var(--bs-pagination-font-size);
     color: var(--bs-pagination-color);
     text-decoration: none;
-    background-color: var(--bs-pagination-bg);
+    background: var(--bs-pagination-bg);
     border: var(--bs-pagination-border-width) solid var(--bs-pagination-border-color);
     transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out
 }
@@ -5431,14 +5431,14 @@ fieldset:disabled .btn {
 .page-link:hover {
     z-index: 2;
     color: var(--bs-pagination-hover-color);
-    background-color: var(--bs-pagination-hover-bg);
+    background: var(--bs-pagination-hover-bg);
     border-color: var(--bs-pagination-hover-border-color)
 }
 
 .page-link:focus {
     z-index: 3;
     color: var(--bs-pagination-focus-color);
-    background-color: var(--bs-pagination-focus-bg);
+    background: var(--bs-pagination-focus-bg);
     outline: 0;
     box-shadow: var(--bs-pagination-focus-box-shadow)
 }
@@ -5447,7 +5447,7 @@ fieldset:disabled .btn {
 .page-link.active {
     z-index: 3;
     color: var(--bs-pagination-active-color);
-    background-color: var(--bs-pagination-active-bg);
+    background: var(--bs-pagination-active-bg);
     border-color: var(--bs-pagination-active-border-color)
 }
 
@@ -5455,7 +5455,7 @@ fieldset:disabled .btn {
 .page-link.disabled {
     color: var(--bs-pagination-disabled-color);
     pointer-events: none;
-    background-color: var(--bs-pagination-disabled-bg);
+    background: var(--bs-pagination-disabled-bg);
     border-color: var(--bs-pagination-disabled-border-color)
 }
 
@@ -5529,7 +5529,7 @@ fieldset:disabled .btn {
     padding: var(--bs-alert-padding-y) var(--bs-alert-padding-x);
     margin-bottom: var(--bs-alert-margin-bottom);
     color: var(--bs-alert-color);
-    background-color: var(--bs-alert-bg);
+    background: var(--bs-alert-bg);
     border: var(--bs-alert-border);
     border-radius: var(--bs-alert-border-radius)
 }
@@ -5631,7 +5631,7 @@ fieldset:disabled .btn {
     height: var(--bs-progress-height);
     overflow: hidden;
     font-size: var(--bs-progress-font-size);
-    background-color: var(--bs-progress-bg);
+    background: var(--bs-progress-bg);
     border-radius: var(--bs-progress-border-radius)
 }
 
@@ -5643,7 +5643,7 @@ fieldset:disabled .btn {
     color: var(--bs-progress-bar-color);
     text-align: center;
     white-space: nowrap;
-    background-color: var(--bs-progress-bar-bg);
+    background: var(--bs-progress-bar-bg);
     transition: var(--bs-progress-bar-transition)
 }
 
@@ -5722,12 +5722,12 @@ fieldset:disabled .btn {
     z-index: 1;
     color: var(--bs-list-group-action-hover-color);
     text-decoration: none;
-    background-color: var(--bs-list-group-action-hover-bg)
+    background: var(--bs-list-group-action-hover-bg)
 }
 
 .list-group-item-action:active {
     color: var(--bs-list-group-action-active-color);
-    background-color: var(--bs-list-group-action-active-bg)
+    background: var(--bs-list-group-action-active-bg)
 }
 
 .list-group-item {
@@ -5736,7 +5736,7 @@ fieldset:disabled .btn {
     padding: var(--bs-list-group-item-padding-y) var(--bs-list-group-item-padding-x);
     color: var(--bs-list-group-color);
     text-decoration: none;
-    background-color: var(--bs-list-group-bg);
+    background: var(--bs-list-group-bg);
     border: var(--bs-list-group-border-width) solid var(--bs-list-group-border-color)
 }
 
@@ -5754,13 +5754,13 @@ fieldset:disabled .btn {
 .list-group-item:disabled {
     color: var(--bs-list-group-disabled-color);
     pointer-events: none;
-    background-color: var(--bs-list-group-disabled-bg)
+    background: var(--bs-list-group-disabled-bg)
 }
 
 .list-group-item.active {
     z-index: 2;
     color: var(--bs-list-group-active-color);
-    background-color: var(--bs-list-group-active-bg);
+    background: var(--bs-list-group-active-bg);
     border-color: var(--bs-list-group-active-border-color)
 }
 
@@ -6137,7 +6137,7 @@ fieldset:disabled .btn {
     font-size: var(--bs-toast-font-size);
     color: var(--bs-toast-color);
     pointer-events: auto;
-    background-color: var(--bs-toast-bg);
+    background: var(--bs-toast-bg);
     background-clip: padding-box;
     border: var(--bs-toast-border-width) solid var(--bs-toast-border-color);
     box-shadow: var(--bs-toast-box-shadow);
@@ -6172,7 +6172,7 @@ fieldset:disabled .btn {
     align-items: center;
     padding: var(--bs-toast-padding-y) var(--bs-toast-padding-x);
     color: var(--bs-toast-header-color);
-    background-color: var(--bs-toast-header-bg);
+    background: var(--bs-toast-header-bg);
     background-clip: padding-box;
     border-bottom: var(--bs-toast-border-width) solid var(--bs-toast-header-border-color);
     border-top-left-radius: calc(var(--bs-toast-border-radius) - var(--bs-toast-border-width));
@@ -6275,7 +6275,7 @@ fieldset:disabled .btn {
     width: 100%;
     color: var(--bs-modal-color);
     pointer-events: auto;
-    background-color: var(--bs-modal-bg);
+    background: var(--bs-modal-bg);
     background-clip: padding-box;
     border: var(--bs-modal-border-width) solid var(--bs-modal-border-color);
     border-radius: var(--bs-modal-border-radius);
@@ -6292,7 +6292,7 @@ fieldset:disabled .btn {
     z-index: var(--bs-backdrop-zindex);
     width: 100vw;
     height: 100vh;
-    background-color: var(--bs-backdrop-bg)
+    background: var(--bs-backdrop-bg)
 }
 
 .modal-backdrop.fade {
@@ -6337,7 +6337,7 @@ fieldset:disabled .btn {
     align-items: center;
     justify-content: flex-end;
     padding: calc(var(--bs-modal-padding) - var(--bs-modal-footer-gap) * .5);
-    background-color: var(--bs-modal-footer-bg);
+    background: var(--bs-modal-footer-bg);
     border-top: var(--bs-modal-footer-border-width) solid var(--bs-modal-footer-border-color);
     border-bottom-right-radius: var(--bs-modal-inner-border-radius);
     border-bottom-left-radius: var(--bs-modal-inner-border-radius)
@@ -6629,7 +6629,7 @@ fieldset:disabled .btn {
     padding: var(--bs-tooltip-padding-y) var(--bs-tooltip-padding-x);
     color: var(--bs-tooltip-color);
     text-align: center;
-    background-color: var(--bs-tooltip-bg);
+    background: var(--bs-tooltip-bg);
     border-radius: var(--bs-tooltip-border-radius)
 }
 
@@ -6673,7 +6673,7 @@ fieldset:disabled .btn {
     line-break: auto;
     font-size: var(--bs-popover-font-size);
     word-wrap: break-word;
-    background-color: var(--bs-popover-bg);
+    background: var(--bs-popover-bg);
     background-clip: padding-box;
     border: var(--bs-popover-border-width) solid var(--bs-popover-border-color);
     border-radius: var(--bs-popover-border-radius)
@@ -6812,7 +6812,7 @@ fieldset:disabled .btn {
     margin-bottom: 0;
     font-size: var(--bs-popover-header-font-size);
     color: var(--bs-popover-header-color);
-    background-color: var(--bs-popover-header-bg);
+    background: var(--bs-popover-header-bg);
     border-bottom: var(--bs-popover-border-width) solid var(--bs-popover-border-color);
     border-top-left-radius: var(--bs-popover-inner-border-radius);
     border-top-right-radius: var(--bs-popover-inner-border-radius)
@@ -6995,7 +6995,7 @@ fieldset:disabled .btn {
     margin-left: 3px;
     text-indent: -999px;
     cursor: pointer;
-    background-color: #fff;
+    background: #fff;
     background-clip: padding-box;
     border: 0;
     border-top: 10px solid transparent;
@@ -7031,7 +7031,7 @@ fieldset:disabled .btn {
 }
 
 .carousel-dark .carousel-indicators [data-bs-target] {
-    background-color: #000
+    background: #000
 }
 
 .carousel-dark .carousel-caption {
@@ -7047,7 +7047,7 @@ fieldset:disabled .btn {
 
 [data-bs-theme=dark] .carousel .carousel-indicators [data-bs-target],
 [data-bs-theme=dark].carousel .carousel-indicators [data-bs-target] {
-    background-color: #000
+    background: #000
 }
 
 [data-bs-theme=dark] .carousel .carousel-caption,
@@ -7105,7 +7105,7 @@ fieldset:disabled .btn {
     --bs-spinner-vertical-align: -0.125em;
     --bs-spinner-animation-speed: 0.75s;
     --bs-spinner-animation-name: spinner-grow;
-    background-color: currentcolor;
+    background: currentcolor;
     opacity: 0
 }
 
@@ -7152,7 +7152,7 @@ fieldset:disabled .btn {
         max-width: 100%;
         color: var(--bs-offcanvas-color);
         visibility: hidden;
-        background-color: var(--bs-offcanvas-bg);
+        background: var(--bs-offcanvas-bg);
         background-clip: padding-box;
         outline: 0;
         transition: var(--bs-offcanvas-transition)
@@ -7217,7 +7217,7 @@ fieldset:disabled .btn {
     .offcanvas-sm {
         --bs-offcanvas-height: auto;
         --bs-offcanvas-border-width: 0;
-        background-color: transparent !important
+        background: transparent !important
     }
 
     .offcanvas-sm .offcanvas-header {
@@ -7229,7 +7229,7 @@ fieldset:disabled .btn {
         flex-grow: 0;
         padding: 0;
         overflow-y: visible;
-        background-color: transparent !important
+        background: transparent !important
     }
 }
 
@@ -7243,7 +7243,7 @@ fieldset:disabled .btn {
         max-width: 100%;
         color: var(--bs-offcanvas-color);
         visibility: hidden;
-        background-color: var(--bs-offcanvas-bg);
+        background: var(--bs-offcanvas-bg);
         background-clip: padding-box;
         outline: 0;
         transition: var(--bs-offcanvas-transition)
@@ -7308,7 +7308,7 @@ fieldset:disabled .btn {
     .offcanvas-md {
         --bs-offcanvas-height: auto;
         --bs-offcanvas-border-width: 0;
-        background-color: transparent !important
+        background: transparent !important
     }
 
     .offcanvas-md .offcanvas-header {
@@ -7320,7 +7320,7 @@ fieldset:disabled .btn {
         flex-grow: 0;
         padding: 0;
         overflow-y: visible;
-        background-color: transparent !important
+        background: transparent !important
     }
 }
 
@@ -7334,7 +7334,7 @@ fieldset:disabled .btn {
         max-width: 100%;
         color: var(--bs-offcanvas-color);
         visibility: hidden;
-        background-color: var(--bs-offcanvas-bg);
+        background: var(--bs-offcanvas-bg);
         background-clip: padding-box;
         outline: 0;
         transition: var(--bs-offcanvas-transition)
@@ -7399,7 +7399,7 @@ fieldset:disabled .btn {
     .offcanvas-lg {
         --bs-offcanvas-height: auto;
         --bs-offcanvas-border-width: 0;
-        background-color: transparent !important
+        background: transparent !important
     }
 
     .offcanvas-lg .offcanvas-header {
@@ -7411,7 +7411,7 @@ fieldset:disabled .btn {
         flex-grow: 0;
         padding: 0;
         overflow-y: visible;
-        background-color: transparent !important
+        background: transparent !important
     }
 }
 
@@ -7425,7 +7425,7 @@ fieldset:disabled .btn {
         max-width: 100%;
         color: var(--bs-offcanvas-color);
         visibility: hidden;
-        background-color: var(--bs-offcanvas-bg);
+        background: var(--bs-offcanvas-bg);
         background-clip: padding-box;
         outline: 0;
         transition: var(--bs-offcanvas-transition)
@@ -7490,7 +7490,7 @@ fieldset:disabled .btn {
     .offcanvas-xl {
         --bs-offcanvas-height: auto;
         --bs-offcanvas-border-width: 0;
-        background-color: transparent !important
+        background: transparent !important
     }
 
     .offcanvas-xl .offcanvas-header {
@@ -7502,7 +7502,7 @@ fieldset:disabled .btn {
         flex-grow: 0;
         padding: 0;
         overflow-y: visible;
-        background-color: transparent !important
+        background: transparent !important
     }
 }
 
@@ -7516,7 +7516,7 @@ fieldset:disabled .btn {
         max-width: 100%;
         color: var(--bs-offcanvas-color);
         visibility: hidden;
-        background-color: var(--bs-offcanvas-bg);
+        background: var(--bs-offcanvas-bg);
         background-clip: padding-box;
         outline: 0;
         transition: var(--bs-offcanvas-transition)
@@ -7581,7 +7581,7 @@ fieldset:disabled .btn {
     .offcanvas-xxl {
         --bs-offcanvas-height: auto;
         --bs-offcanvas-border-width: 0;
-        background-color: transparent !important
+        background: transparent !important
     }
 
     .offcanvas-xxl .offcanvas-header {
@@ -7593,7 +7593,7 @@ fieldset:disabled .btn {
         flex-grow: 0;
         padding: 0;
         overflow-y: visible;
-        background-color: transparent !important
+        background: transparent !important
     }
 }
 
@@ -7606,7 +7606,7 @@ fieldset:disabled .btn {
     max-width: 100%;
     color: var(--bs-offcanvas-color);
     visibility: hidden;
-    background-color: var(--bs-offcanvas-bg);
+    background: var(--bs-offcanvas-bg);
     background-clip: padding-box;
     outline: 0;
     transition: var(--bs-offcanvas-transition)
@@ -7671,7 +7671,7 @@ fieldset:disabled .btn {
     z-index: 1040;
     width: 100vw;
     height: 100vh;
-    background-color: #000
+    background: #000
 }
 
 .offcanvas-backdrop.fade {
@@ -7712,7 +7712,7 @@ fieldset:disabled .btn {
     min-height: 1em;
     vertical-align: middle;
     cursor: wait;
-    background-color: currentcolor;
+    background: currentcolor;
     opacity: .5
 }
 
@@ -7766,42 +7766,42 @@ fieldset:disabled .btn {
 
 .text-bg-primary {
     color: #fff !important;
-    background-color: RGBA(var(--bs-primary-rgb), var(--bs-bg-opacity, 1)) !important
+    background: RGBA(var(--bs-primary-rgb), var(--bs-bg-opacity, 1)) !important
 }
 
 .text-bg-secondary {
     color: #fff !important;
-    background-color: RGBA(var(--bs-secondary-rgb), var(--bs-bg-opacity, 1)) !important
+    background: RGBA(var(--bs-secondary-rgb), var(--bs-bg-opacity, 1)) !important
 }
 
 .text-bg-success {
     color: #fff !important;
-    background-color: RGBA(var(--bs-success-rgb), var(--bs-bg-opacity, 1)) !important
+    background: RGBA(var(--bs-success-rgb), var(--bs-bg-opacity, 1)) !important
 }
 
 .text-bg-info {
     color: #000 !important;
-    background-color: RGBA(var(--bs-info-rgb), var(--bs-bg-opacity, 1)) !important
+    background: RGBA(var(--bs-info-rgb), var(--bs-bg-opacity, 1)) !important
 }
 
 .text-bg-warning {
     color: #000 !important;
-    background-color: RGBA(var(--bs-warning-rgb), var(--bs-bg-opacity, 1)) !important
+    background: RGBA(var(--bs-warning-rgb), var(--bs-bg-opacity, 1)) !important
 }
 
 .text-bg-danger {
     color: #fff !important;
-    background-color: RGBA(var(--bs-danger-rgb), var(--bs-bg-opacity, 1)) !important
+    background: RGBA(var(--bs-danger-rgb), var(--bs-bg-opacity, 1)) !important
 }
 
 .text-bg-light {
     color: #000 !important;
-    background-color: RGBA(var(--bs-light-rgb), var(--bs-bg-opacity, 1)) !important
+    background: RGBA(var(--bs-light-rgb), var(--bs-bg-opacity, 1)) !important
 }
 
 .text-bg-dark {
     color: #fff !important;
-    background-color: RGBA(var(--bs-dark-rgb), var(--bs-bg-opacity, 1)) !important
+    background: RGBA(var(--bs-dark-rgb), var(--bs-bg-opacity, 1)) !important
 }
 
 .link-primary {
@@ -8153,7 +8153,7 @@ fieldset:disabled .btn {
     align-self: stretch;
     width: var(--bs-border-width);
     min-height: 1em;
-    background-color: currentcolor;
+    background: currentcolor;
     opacity: .25
 }
 
@@ -9760,72 +9760,72 @@ fieldset:disabled .btn {
 
 .bg-primary {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-primary-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-primary-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-secondary {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-secondary-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-secondary-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-success {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-success-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-success-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-info {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-info-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-info-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-warning {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-warning-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-warning-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-danger {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-danger-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-danger-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-light {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-light-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-light-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-dark {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-dark-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-dark-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-black {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-black-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-black-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-white {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-white-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-white-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-body {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-body-bg-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-body-bg-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-transparent {
     --bs-bg-opacity: 1;
-    background-color: transparent !important
+    background: transparent !important
 }
 
 .bg-body-secondary {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-secondary-bg-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-secondary-bg-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-body-tertiary {
     --bs-bg-opacity: 1;
-    background-color: rgba(var(--bs-tertiary-bg-rgb), var(--bs-bg-opacity)) !important
+    background: rgba(var(--bs-tertiary-bg-rgb), var(--bs-bg-opacity)) !important
 }
 
 .bg-opacity-10 {
@@ -9849,35 +9849,35 @@ fieldset:disabled .btn {
 }
 
 .bg-primary-subtle {
-    background-color: var(--bs-primary-bg-subtle) !important
+    background: var(--bs-primary-bg-subtle) !important
 }
 
 .bg-secondary-subtle {
-    background-color: var(--bs-secondary-bg-subtle) !important
+    background: var(--bs-secondary-bg-subtle) !important
 }
 
 .bg-success-subtle {
-    background-color: var(--bs-success-bg-subtle) !important
+    background: var(--bs-success-bg-subtle) !important
 }
 
 .bg-info-subtle {
-    background-color: var(--bs-info-bg-subtle) !important
+    background: var(--bs-info-bg-subtle) !important
 }
 
 .bg-warning-subtle {
-    background-color: var(--bs-warning-bg-subtle) !important
+    background: var(--bs-warning-bg-subtle) !important
 }
 
 .bg-danger-subtle {
-    background-color: var(--bs-danger-bg-subtle) !important
+    background: var(--bs-danger-bg-subtle) !important
 }
 
 .bg-light-subtle {
-    background-color: var(--bs-light-bg-subtle) !important
+    background: var(--bs-light-bg-subtle) !important
 }
 
 .bg-dark-subtle {
-    background-color: var(--bs-dark-bg-subtle) !important
+    background: var(--bs-dark-bg-subtle) !important
 }
 
 .bg-gradient {

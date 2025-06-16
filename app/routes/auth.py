@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, Conversation, Message
 from app.utils.auth import hash_password, verify_password
 from app import db
+from app.utils.email_verify import verify_email
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -36,13 +37,28 @@ def signup():
         username = request.form.get('username')
         password = request.form.get('password')
         email = request.form.get('email')
+        verify_code = request.form.get('verify_code')
     else:
         return render_template('auth/signup.html')
 
     # 验证必填字段
-    if not username or not password:
-        flash('用户名和密码为必填项', 'danger')
+    if not username:
+        flash('用户名为必填项', 'danger')
         return render_template('auth/signup.html')
+    if not password:
+        flash('密码为必填项', 'danger')
+        return render_template('auth/signup.html')
+    if not email:
+        flash('邮箱为必填项', 'danger')
+        return render_template('auth/signup.html')
+
+    # 验证邮箱
+    """if not verify_code:
+        if not verify_email(email, verify_code):
+            flash('验证码无效', 'danger')
+        flash('验证码为必填项', 'danger')
+        return render_template('auth/signup.html')"""
+
 
     # 检查用户名长度
     if len(username) < 3:

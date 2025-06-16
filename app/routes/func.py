@@ -1034,9 +1034,6 @@ def qwen_parse_image(image_base64: str) -> str:
 
 def name_conversation(conversation_id):
     """根据对话内容生成标题"""
-    # 导入必要的模块
-    from flask import has_app_context
-
     # 创建应用实例和上下文
     app = None
     try:
@@ -1060,6 +1057,8 @@ def name_conversation(conversation_id):
     if not history:
         return "不存在的对话历史"
 
+
+    temp_queue = queue.Queue()
     # 处理历史内容
     for i in history:
         if i['role'] == 'user':
@@ -1070,29 +1069,28 @@ def name_conversation(conversation_id):
                 parse_model_blocks(i['content']))[1])[1]
 
     # 添加请求获取标题
-    title_prompt = "请根据以上对话内容生成一个标题，不要生成其他内容，标题需要简洁明了，不要超过10个字，不要使用markdown格式，不要书名号，不要emoji和konomoji，不要使用特殊字符，不要括号"
+    title_prompt = "请根据以上对话内容生成一个标题。要求不要生成其他内容，标题需要简洁明了，不要超过10个字，不要使用markdown格式，不要书名号，不要emoji和konomoji，不要使用特殊字符，不要括号。"
     history.append({"role": "user", "content": title_prompt})
 
-    # 指定使用DeepSeek-V3模型生成标题
-    front_model = "DeepSeek-V3"
+    # 创建历史记录的深拷贝，处理特殊标记
+    his = copy.deepcopy(history)
+    for i in his:
+        if i['role'] == 'user':
+            i['content'] = parse_base64_blocks(i['content'])
+        elif i['role'] == 'assistant':
+            i['content'] = parse_think_blocks(
+                parse_search_blocks(
+                parse_model_blocks(i['content']))[1])[1]
 
-    # 创建队列接收响应
-    temp_queue = queue.Queue()
+    # 保存原始模型名并转换为 API 调用格式
+    model = "GLM-4"
+    api_model = model_name(model)
 
-    # 获取响应
-    updated_history = autohistory(
-        history, front_model, temp_queue, 1024)
-
-    # 从队列获取最后一个响应
-    content = ""
-    while True:
-        try:
-            response = temp_queue.get(timeout=1e-50)
-            if response is None:
-                break
-            content = response
-        except queue.Empty:
-            break
+    # 选择正确的 API 并调用
+    content = stream_siliconflow_api(api_model, his, temp_queue, 48)
+    content = parse_think_blocks(parse_model_blocks(content))[1]
+    if content:
+        print('成功生成标题')
 
     return content
 

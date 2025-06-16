@@ -1306,7 +1306,7 @@ async function handleImageSelect(event) {
                         // 更新消息内容 - 先处理正文，保证即使没有思考内容也能显示消息
                         if ((data.content && data.content !== currentContent) || 
                             (data.text && data.text !== currentContent)) {
-                            console('收到新消息，更新界面')
+                            console.log('收到新消息，更新界面');
                             // console.log('收到新消息内容:', JSON.stringify(data).substring(0, 50));
                             
                             // 更新currentContent，优先使用content，其次使用text
@@ -2707,13 +2707,13 @@ async function handleImageSelect(event) {
                 display: inline-block;
                 margin-left: 8px;
                 padding: 2px 6px;
-                background-color: rgba(255, 236, 153, 0.7);
+                background: rgba(255, 236, 153, 0.7);
                 border-radius: 4px;
                 font-size: 12px;
                 color: #664d03;
             }
             .free-usage-display.depleted {
-                background-color: rgba(255, 200, 200, 0.7);
+                background: rgba(255, 200, 200, 0.7);
                 color: #842029;
             }
             .free-usage-remaining {

@@ -13,10 +13,10 @@
         margin-right: 5px;
     }
     .online {
-        background-color: #28a745;
+        background: #28a745;
     }
     .offline {
-        background-color: #dc3545;
+        background: #dc3545;
     }
     .search-box {
         margin-bottom: 20px;
@@ -57,7 +57,7 @@
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background-color: #6c757d;
+        background: #6c757d;
         color: white;
         display: flex;
         align-items: center;
@@ -101,11 +101,11 @@
     }
     
     .online {
-        background-color: #28a745;
+        background: #28a745;
     }
     
     .offline {
-        background-color: #dc3545;
+        background: #dc3545;
     }
     
     .chart-container {
@@ -115,7 +115,7 @@
     
     /* 自定义确认对话框样式 */
     #confirmDialog {
-        background-color: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.5);
         display: flex;
     }
 
@@ -153,12 +153,12 @@
     }
 
     #confirmDialog .btn-primary {
-        background-color: #007bff;
+        background: #007bff;
         border-color: #007bff;
     }
     
     #confirmDialog .btn-primary:hover {
-        background-color: #005cbe;
+        background: #005cbe;
         border-color: #005cbe;
     }
 </style>
@@ -580,7 +580,7 @@
                 <div class="card user-card ${user.is_online ? 'online' : 'offline'}" data-user-id="${user.id}">
                     <div class="card-body">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="user-avatar me-3" style="background-color: ${user.is_online ? '#28a745' : '#dc3545'}">
+                            <div class="user-avatar me-3" style="background: ${user.is_online ? '#28a745' : '#dc3545'}">
                                 ${initial}
                             </div>
                             <div>
