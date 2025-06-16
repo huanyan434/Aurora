@@ -92,13 +92,8 @@ def get_privileges_by_level(level):
                 'icon': 'bi-chat-dots'
             },
             {
-                'name': '高级模型',
-                'description': '使用更强大的AI模型',
-                'icon': 'bi-robot'
-            },
-            {
                 'name': '更多对话额度',
-                'description': '每天可使用更多对话次数',
+                'description': '每天可获得更多免费对话次数',
                 'icon': 'bi-plus-circle'
             },
             {
@@ -114,29 +109,14 @@ def get_privileges_by_level(level):
                 'icon': 'bi-chat-dots'
             },
             {
-                'name': '最强模型',
-                'description': '使用最先进的AI模型',
-                'icon': 'bi-stars'
-            },
-            {
-                'name': '无限对话',
-                'description': '无限制的对话次数',
+                'name': '无限对话额度',
+                'description': '每天全模型对话次数无限制',
                 'icon': 'bi-infinity'
             },
             {
                 'name': '最高优先级',
-                'description': '获得系统最高响应优先级',
+                'description': '系统最高响应优先级',
                 'icon': 'bi-lightning-fill'
-            },
-            {
-                'name': '个性化定制',
-                'description': '个性化的AI助手定制',
-                'icon': 'bi-gear-wide-connected'
-            },
-            {
-                'name': '专属客服',
-                'description': '专属客服支持',
-                'icon': 'bi-headset'
             }
         ]
     }

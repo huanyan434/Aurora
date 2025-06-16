@@ -311,6 +311,12 @@
                     </div>
                     
                 {% if current_user.is_authenticated %}
+                    <!-- 获取兑换码链接 -->
+                    <div class="get-code-section">
+                        <a href="https://afdian.com/a/mchyj" target="_blank" class="get-code-link">
+                            <i class="bi bi-gift"></i> 赞助 & 获取兑换码
+                        </a>
+                    </div>
                     <!-- 会员信息 -->
                     <div class="user-info-section">
                         <h4>会员状态</h4>
@@ -344,7 +350,8 @@
                         </div>
                     </div>
 
-                    <!-- 兑换兑换码 -->
+                    
+                    <!-- 会员兑换 -->
                     <div class="user-info-section">
                         <h4>会员兑换</h4>
                         <div class="redeem-section">
@@ -366,13 +373,6 @@
                         </div>
                     </div>
                 {% endif %}
-
-                    <!-- 获取兑换码链接 -->
-                    <div class="get-code-section">
-                        <a href="https://afdian.com/a/mchyj" target="_blank" class="get-code-link">
-                            <i class="bi bi-gift"></i> 获取兑换码
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
