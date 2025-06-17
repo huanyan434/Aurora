@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, Conversation, Message
 from app.utils.auth import hash_password, verify_password
 from app import db
-from app.utils.email_verify import verify_email
+from app.utils.email_verify import email_verify_send, verify_email
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -235,3 +235,20 @@ def deactivate_account():
             'success': False,
             'message': f'注销账号失败: {str(e)}'
         }), 500
+    
+@auth_bp.route('/send_verify_code', methods=['POST'])
+@login_required
+def send_verify_code():
+    """发送验证码"""
+    # 获取用户邮箱
+    user_email = request.json.get('email')
+    if not user_email:
+        return jsonify({'success': False, 'message': '请输入邮箱地址'}), 400
+    try:
+        # 发送验证码到用户邮箱
+        email_verify_send(user_email)
+        return jsonify({'success': True, 'message': '验证码已发送到您的邮箱'})
+
+    except Exception as e:
+        print(f'发送邮件出错: {str(e)}')
+        return jsonify({'success': False, 'message': '发送邮件出错，请稍后再试'}), 500

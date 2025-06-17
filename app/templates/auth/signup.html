@@ -16,9 +16,9 @@
         
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="popup-alert {{ category }}">
+                <div class="alert">
                     {% for category, message in messages %}
-                        {{ message }}
+                        <div class="popup-alert {{ category }}">{{ message }}</div>
                     {% endfor %}
                 </div>
             {% endif %}
@@ -38,6 +38,17 @@
             </div>
             
             <div class="form-group">
+                <label for="verify_code">验证码</label>
+                <div style="display: flex; align-items: center;">
+                    <input type="text" id="verify_code" name="verify_code" required
+                        placeholder="请填写验证码">
+                    <div class="verify_code_button">
+                        获取验证码
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
                 <label for="password">密码</label>
                 <input type="password" id="password" name="password" required
                        placeholder="请设置密码">
@@ -54,5 +65,56 @@
             已有账号？<a href="{{ url_for('auth.login') }}">立即登录</a>
         </div>
     </div>
+
+    <script>
+        document.querySelector('.verify_code_button').addEventListener('click', function() {
+            const verify_code_button = document.querySelector('.verify_code_button');
+            if (verify_code_button.disabled) {
+                return;
+            }
+            verify_code_button.disabled = true;
+            // 获取 email
+            var email = document.querySelector('#email').value;
+            if (email === '') {
+                alert('请先填写邮箱地址');
+            } else {
+                fetch('/auth/send_verify_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ "email": email })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        verify_code_button.style.backgroundColor = '#ccc';
+                        verify_code_button.style.cursor = 'not-allowed';
+                        verify_code_button.innerHTML = '60秒后重试';
+                        // 倒计时60秒
+                        let countdown = 60;
+                        const interval = setInterval(() => {
+                            countdown--;
+                            verify_code_button.innerHTML = `${countdown}秒后重试`;
+                            if (countdown === 0) {
+                                clearInterval(interval);
+                                verify_code_button.disabled = false;
+                                verify_code_button.style.removeProperty('background-color');
+                                verify_code_button.style.removeProperty('cursor');
+                                verify_code_button.innerHTML = '获取验证码';
+                            }
+                        }, 1000);
+                        alert('验证码已发送到您的邮箱，请注意查收');
+                    } else {
+                        verify_code_button.disabled = false;
+                        alert('验证码发送失败，请稍后再试');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        });
+    </script>
 </body>
 </html>
