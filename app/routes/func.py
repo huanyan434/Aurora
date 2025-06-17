@@ -274,28 +274,30 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
         # 获取token使用信息并记录
         global current_user_id
         user_id = current_user_id if current_user_id else 'anonymous'
-
-        try:
-            from flask import has_app_context
-            if has_app_context():
-                record_token_usage(
-                    user_id=user_id,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    model_name=model
-                )
-            else:
-                from app import create_app
-                app = create_app()
-                with app.app_context():
+        
+        # 避免生成对话标题扣次数
+        if not max_tokens == 48:
+            try:
+                from flask import has_app_context
+                if has_app_context():
                     record_token_usage(
                         user_id=user_id,
                         prompt_tokens=prompt_tokens,
                         completion_tokens=completion_tokens,
                         model_name=model
                     )
-        except Exception as e:
-            print(f"记录token使用出错: {str(e)}")
+                else:
+                    from app import create_app
+                    app = create_app()
+                    with app.app_context():
+                        record_token_usage(
+                            user_id=user_id,
+                            prompt_tokens=prompt_tokens,
+                            completion_tokens=completion_tokens,
+                            model_name=model
+                        )
+            except Exception as e:
+                print(f"记录token使用出错: {str(e)}")
 
         return search + "<think time=" + \
             str(int(think_time)) + ">" + reasoning_content + \
