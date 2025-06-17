@@ -20,12 +20,6 @@ def create_app():
         SESSION_COOKIE_SAMESITE='Lax',
         SESSION_COOKIE_SECURE=True  # 生产环境应设为True
     )
-    
-    @app.after_request
-    def add_security_headers(response):
-        response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
-        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
-        return response
 
     os.makedirs(app.instance_path, exist_ok=True)
     db.init_app(app)

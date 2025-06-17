@@ -163,12 +163,17 @@ def stream_openai_api(api_key: str, url: str, model: str, history: list, respons
     completion_tokens = 0
     prompt_tokens = 0
 
+    # 计算今天星期
+    current_datetime = datetime.now()
+    weekdayNUM = current_datetime.weekday()
+    week_list = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"]
+    weekday = week_list[weekdayNUM]
+
     system_prompt = [
         {
             'role': 'system',
             'content': "你是 " + model_name_reverse(model) + " 模型。" + "\n" + \
-                    "现在是 " + str(datetime.now().date()) + "。" + "\n" + \
-                    "回答用户问题时请规范 **Markdown** 和 **LaTeX** 语法格式。"
+                    "现在是 " + str(datetime.now().date()) + "，" + weekday + "。"
         }
     ]
     try:
