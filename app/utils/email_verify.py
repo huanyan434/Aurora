@@ -3,6 +3,7 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
+from email.utils import formataddr
 import random
 import string
 import json
@@ -25,8 +26,8 @@ def send_email(email: str, subject: str, content: str):
     try:
         # 邮件内容
         message = MIMEText(content, 'plain', 'utf-8')
-        message['From'] = Header(sender_email, 'utf-8')
-        message['To'] = Header(email, 'utf-8')
+        message['From'] = formataddr(("Aurora", sender_email))
+        message['To'] = formataddr(("Aurora 用户", email))
         message['Subject'] = Header(subject, 'utf-8')
         smtpObj = smtplib.SMTP(smtp_server, 25)
         smtpObj.login(sender_email, sender_password)
