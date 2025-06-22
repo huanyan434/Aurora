@@ -10,67 +10,79 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     # 支持 next 参数，用于登录后重定向
-    next_url = request.args.get('next') or request.form.get('next')
+    next_url = request.args.get('next')
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        remember = True if request.form.get('remember') else False
+        email = request.json.get('email')
+        password = request.json.get('password')
+        remember = True if request.json.get('remember') else False
         
         user = User.query.filter_by(email=email).first()
         
         if not user or not verify_password(user.password_hash, password):
-            flash('请检查登录信息并重试', 'danger')
-            return redirect(url_for('auth.login'))
+            return jsonify({
+                'success': False,
+                'message': '邮箱或密码错误'
+            }), 400
         
         login_user(user, remember=remember)
         session['user_id'] = str(user.id)  # 将UUID转换为字符串
         session.permanent = True  # 设置会话为持久性，使用PERMANENT_SESSION_LIFETIME的值
-        # 登录后重定向到 next 或 默认聊天首页
-        return redirect(next_url or url_for('chat.chat_index'))
+        return jsonify({
+            'success': True
+        })
     
     # GET 请求渲染登录页面，并传入 next 参数
-    return render_template('auth/login.html', next=next_url)
+    return render_template('auth/login.html')
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        email = request.form.get('email')
-        verify_code = request.form.get('verify_code')
+        username = request.json.get('username')
+        password = request.json.get('password')
+        email = request.json.get('email')
+        verify_code = request.json.get('verify_code')
     else:
         return render_template('auth/signup.html')
 
     # 验证必填字段
     if not username:
-        flash('用户名为必填项', 'danger')
-        return render_template('auth/signup.html')
+        return jsonify({'success': False,
+                        'message': '用户名不能为空'
+                        }), 400
     if not password:
-        flash('密码为必填项', 'danger')
-        return render_template('auth/signup.html')
+        return jsonify({'success': False,
+                        'message': '密码不能为空'
+                        }), 400
     if not email:
-        flash('邮箱为必填项', 'danger')
-        return render_template('auth/signup.html')
+        return jsonify({'success': False,
+                        'message': '邮箱不能为空'
+                        }), 400
 
     # 验证邮箱
-    """if not verify_code:
+    if not verify_code:
         if not verify_email(email, verify_code):
-            flash('验证码无效', 'danger')
-        flash('验证码为必填项', 'danger')
-        return render_template('auth/signup.html')"""
-
+            return jsonify({'success': False,
+                        'message': '验证码无效'
+                        }), 400
+        return jsonify({'success': False,
+                        'message': '验证码不能为空'
+                        }), 400
 
     # 检查用户名长度
     if len(username) < 3:
-        flash('用户名长度至少为3个字符', 'danger')
-        return render_template('auth/signup.html')
+        return jsonify({
+            'success': False,
+            'message': '用户名长度不得少于3个字符'
+        }), 400
 
     # 检查用户名是否已存在
     if User.query.filter_by(username=username).first():
-        flash('用户名已存在，请选择其他用户名', 'danger')
-        return render_template('auth/signup.html')
-
-    # 创建新用户，使用UUID作为ID并设置默认余额
+        return jsonify({
+            'success': False,
+            'message': '该用户名已被使用'
+        }), 400
+    
+    # 创建新用户，使用UUID作为ID
     new_user = User(
         username=username,
         email=email
@@ -80,8 +92,9 @@ def signup():
     db.session.add(new_user)
     db.session.commit()
         
-    flash('注册成功，现在可以登录了', 'success')
-    return redirect(url_for('auth.login'))
+    return jsonify({'success': True,
+                    'message': '注册成功'
+                    })
 
 @auth_bp.route('/logout')
 @login_required

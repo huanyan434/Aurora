@@ -222,7 +222,7 @@ body {
 
 /* 顶部弹出对话框样式 */
 .popup-alert {
-    position: fixed;
+    position: absolute;
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
@@ -234,13 +234,13 @@ body {
     animation: slideDown 0.3s ease-out;
 }
 
-.popup-alert.danger {
-    color: #e53e3e;
+.popup-alert.error {
+    background-color: #fff6f6;
     border-left: 4px solid #e53e3e;
 }
 
-.popup-alert.success {
-    color: #2f855a;
+.popup-alert.info {
+    background-color: #ebfff5;
     border-left: 4px solid #2f855a;
 }
 

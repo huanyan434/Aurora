@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="/static/css/auth.css">
 </head>
 <body>
+    <div class="alert-container"></div>
+
     <div class="auth-container">
         <div class="auth-header">
             <h1>创建账号</h1>
@@ -24,49 +26,68 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('auth.signup') }}">
-            <div class="form-group">
-                <label for="username">用户名</label>
-                <input type="text" id="username" name="username" required
-                       placeholder="请输入用户名">
-            </div>
+        <div class="form-group">
+            <label for="username">用户名</label>
+            <input type="text" id="username" name="username" required
+                    placeholder="请输入用户名">
+        </div>
 
-            <div class="form-group">
-                <label for="email">邮箱地址</label>
-                <input type="email" id="email" name="email" required
-                       placeholder="请输入您的邮箱">
-            </div>
-            
-            <div class="form-group">
-                <label for="verify_code">验证码</label>
-                <div style="display: flex; align-items: center;">
-                    <input type="text" id="verify_code" name="verify_code" required
-                        placeholder="请填写验证码">
-                    <div class="verify_code_button">
-                        获取验证码
-                    </div>
+        <div class="form-group">
+            <label for="email">邮箱地址</label>
+            <input type="email" id="email" name="email" required
+                    placeholder="请输入您的邮箱">
+        </div>
+        
+        <div class="form-group">
+            <label for="verify_code">验证码</label>
+            <div style="display: flex; align-items: center;">
+                <input type="text" id="verify_code" name="verify_code" required
+                    placeholder="请填写验证码">
+                <div class="verify_code_button">
+                    获取验证码
                 </div>
             </div>
+        </div>
 
-            <div class="form-group">
-                <label for="password">密码</label>
-                <input type="password" id="password" name="password" required
-                       placeholder="请设置密码">
-            </div>
-
-            {% if error %}
-            <div class="error-message">{{ error }}</div>
-            {% endif %}
-            
-            <button type="submit" class="submit-btn">注册</button>
-        </form>
+        <div class="form-group">
+            <label for="password">密码</label>
+            <input type="password" id="password" name="password" required
+                    placeholder="请设置密码">
+        </div>
+        
+        <button type="submit" class="submit-btn">注册</button>
         
         <div class="auth-footer">
-            已有账号？<a href="{{ url_for('auth.login') }}">立即登录</a>
+            已有账号？<a href="/auth/login">立即登录</a>
         </div>
     </div>
 
     <script>
+        // auth 消息通知函数
+        function showNotification(message, type, timeout=3500) {
+            const alertsContainer = document.querySelector('.alert-container');
+
+            // 追加新通知
+            const notification = document.createElement('div');
+            notification.classList.add('popup-alert');
+            notification.classList.add(type);
+            notification.textContent = message;
+            // zIndex为当前时间
+            notification.style.zIndex = Date.now();
+
+            alertsContainer.appendChild(notification);
+
+            
+            // 设置通知消失
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s ease-in';
+            }, timeout - 290)
+            setTimeout(() => {
+                notification.style.display = `none`;
+                notification.remove();
+            }, timeout);
+        }
+            
         document.querySelector('.verify_code_button').addEventListener('click', function() {
             const verify_code_button = document.querySelector('.verify_code_button');
             if (verify_code_button.disabled) {
@@ -76,7 +97,8 @@
             // 获取 email
             var email = document.querySelector('#email').value;
             if (email === '') {
-                alert('请先填写邮箱地址');
+                showNotification('请先填写邮箱地址', "error");
+                verify_code_button.disabled = false;
             } else {
                 fetch('/auth/send_verify_code', {
                     method: 'POST',
@@ -104,16 +126,55 @@
                                 verify_code_button.innerHTML = '获取验证码';
                             }
                         }, 1000);
-                        alert('验证码已发送到您的邮箱，请注意查收');
+                        showNotification('验证码已发送到您的邮箱，请注意查收', "info");
                     } else {
                         verify_code_button.disabled = false;
-                        alert('验证码发送失败，请稍后再试');
+                        showNotification('验证码发送失败，请稍后再试', "error");
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                 });
             }
+        });
+
+        document.querySelector('.submit-btn').addEventListener('click', function(event) {
+            // 获取表单内容
+            const username = document.querySelector('#username').value;
+            const email = document.querySelector('#email').value;
+            const verify_code = document.querySelector('#verify_code').value;
+            const password = document.querySelector('#password').value;
+            if (!username || !email || !verify_code || !password) {
+                showNotification('请填写所有字段', "error");
+                return;
+            }
+
+            fetch('/auth/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'username': username,
+                    'email': email,
+                    'verify_code': verify_code,
+                    'password': password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('注册成功，请登录', "info");
+                    setTimeout(() => {
+                        window.location.href = '/auth/login';
+                    }, 500);
+                } else {
+                    showNotification(data.message, "error");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         });
     </script>
 </body>

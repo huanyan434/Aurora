@@ -8,15 +8,7 @@
     <link rel="stylesheet" href="/static/css/auth.css">
 </head>
 <body>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="alert">
-                {% for category, message in messages %}
-                    <div class="popup-alert {{ category }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+    <div class="alert-container"></div>
     
     <div class="auth-container">
         <div class="auth-header">
@@ -24,57 +16,57 @@
             <p>请登录您的账号</p>
         </div>
 
-        <form method="POST" action="{{ url_for('auth.login') }}">
-            {%- if next %}<input type="hidden" name="next" value="{{ next }}">{%- endif %}
-            <div class="form-group">
-                <label for="email">邮箱地址</label>
-                <input type="email" id="email" name="email" required 
-                       placeholder="请输入邮箱">
-            </div>
-            
-            <div class="form-group">
-                <label for="password">密码</label>
-                <input type="password" id="password" name="password" required
-                       placeholder="请输入密码">
-            </div>
-            
-            <div class="form-options">
-                <label>
-                    <input type="checkbox" name="remember"> 记住我
-                </label>
-            </div>
-            
-            <button type="submit" class="submit-btn">登录</button>
-        </form>
+        <div class="form-group">
+            <label for="email">邮箱地址</label>
+            <input type="email" id="email" name="email" required 
+                    placeholder="请输入邮箱">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">密码</label>
+            <input type="password" id="password" name="password" required
+                    placeholder="请输入密码">
+        </div>
+        
+        <div class="form-options">
+            <label>
+                <input type="checkbox" name="remember"> 记住我
+            </label>
+        </div>
+        
+        <button type="submit" class="submit-btn">登录</button>
         
         <div class="auth-footer">
-            还没有账号？<a href="{{ url_for('auth.signup') }}">立即注册</a>
+            还没有账号？<a href="/auth/signup">立即注册</a>
         </div>
     </div>
     
     <script>
-        // 获取弹出对话框元素
-        const popupAlert = document.querySelector('.popup-alert');
-        
-        if (popupAlert) {
-            // 3秒后自动关闭弹出框
-            setTimeout(() => {
-                popupAlert.style.animation = 'fadeOut 0.3s ease-out forwards';
-                setTimeout(() => {
-                    popupAlert.remove();
-                }, 300);
-            }, 3000);
+        // auth 消息通知函数
+        function showNotification(message, type, timeout=3500) {
+            const alertsContainer = document.querySelector('.alert-container');
 
-            // 点击对话框时立即关闭
-            popupAlert.addEventListener('click', () => {
-                popupAlert.style.animation = 'fadeOut 0.3s ease-out forwards';
-                setTimeout(() => {
-                    popupAlert.remove();
-                }, 300);
-            });
+            // 追加新通知
+            const notification = document.createElement('div');
+            notification.classList.add('popup-alert');
+            notification.classList.add(type);
+            notification.textContent = message;
+            // zIndex为当前时间
+            notification.style.zIndex = Date.now();
+
+            alertsContainer.appendChild(notification);
+
+            
+            // 设置通知消失
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s ease-in';
+            }, timeout - 290)
+            setTimeout(() => {
+                notification.style.display = `none`;
+                notification.remove();
+            }, timeout);
         }
-    </script>
-    <script>
+
         document.addEventListener('DOMContentLoaded', function() {
             const emailInput = document.getElementById('email');
             const rememberCheckbox = document.querySelector('input[name="remember"]');
@@ -92,6 +84,46 @@
                 } else {
                     localStorage.removeItem('remembered_username');
                 }
+            });
+        });
+
+        document.querySelector('.submit-btn').addEventListener('click', function() {
+            // 获取表单数据
+            const email = document.querySelector('#email').value;
+            const password = document.querySelector('#password').value;
+
+            // 发送登录请求
+            fetch('/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    'email': email,
+                    'password': password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('登录成功', "info");
+                    setTimeout(() => {
+                        // 检查url中是否包含next参数
+                        const next = new URLSearchParams(window.location.search).get('next');
+                        if (next) {
+                            window.location.href = next;
+                        } else {
+                            // 跳转到首页
+                            window.location.href = '/';
+                        }
+                    }, 500);
+                } else {
+                    // 登录失败，显示错误信息
+                    showNotification(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
             });
         });
     </script>
