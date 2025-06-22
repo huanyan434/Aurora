@@ -11,33 +11,68 @@
     <div class="alert-container"></div>
     
     <div class="auth-container">
-        <div class="auth-header">
-            <h1>欢迎回来</h1>
-            <p>请登录您的账号</p>
+        <div class="auth-card left">
+            <div class="header">
+                <img src="/static/icon.png" width="50" height="50" />
+                <h2>Aurora</h2>
+            </div>
+            <div class="con1">
+                <p>简洁 极速 便捷 AI 站</p>
+            </div>
+            <div class="con2">
+                <p>毫秒级响应，图片识别支持，全场景覆盖。</p>
+            </div>
+            <div class="con3">
+                <div class="block">
+                    <span>快速响应</span>
+                    <p>毫秒级响应，让您的需求得到及时处理。</p>
+                </div>
+                <div class="block">
+                    <span>图片识别</span>
+                    <p>突破传统界限，不止步于文字。更出色的识图模型。</p>
+                </div>
+                <div class="block">
+                    <span>优质服务</span>
+                    <p>24小时客服，时刻与您保持联系。疑难杂症统统解决。</p>
+                </div>
+                <div class="block">
+                    <span>实惠会员</span>
+                    <p>仅需￥10/月的VIP，￥20/月的SVIP。让您与众不同。</p>
+                </div>
+            </div>
+            <div class="footer">
+                <p>© 2025 Aurora</p>
+            </div>
         </div>
+        <div class="auth-card right">
+            <div class="auth-header">
+                <h2>欢迎回来</h2>
+                <p>请登录您的账号</p>
+            </div>
 
-        <div class="form-group">
-            <label for="email">邮箱地址</label>
-            <input type="email" id="email" name="email" required 
-                    placeholder="请输入邮箱">
-        </div>
-        
-        <div class="form-group">
-            <label for="password">密码</label>
-            <input type="password" id="password" name="password" required
-                    placeholder="请输入密码">
-        </div>
-        
-        <div class="form-options">
-            <label>
-                <input type="checkbox" name="remember"> 记住我
-            </label>
-        </div>
-        
-        <button type="submit" class="submit-btn">登录</button>
-        
-        <div class="auth-footer">
-            还没有账号？<a href="/auth/signup">立即注册</a>
+            <div class="form-group">
+                <label for="email">邮箱地址</label>
+                <input type="email" id="email" name="email" required 
+                        placeholder="请输入邮箱">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required
+                        placeholder="请输入密码">
+            </div>
+            
+            <div class="form-options">
+                <label>
+                    <input type="checkbox" name="remember"> 记住我
+                </label>
+            </div>
+            
+            <button type="submit" class="submit-btn">登录</button>
+            
+            <div class="auth-footer">
+                还没有账号？<a href="/auth/signup">立即注册</a>
+            </div>
         </div>
     </div>
     
