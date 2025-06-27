@@ -61,13 +61,7 @@
                 <input type="password" id="password" name="password" required
                         placeholder="请输入密码">
             </div>
-            
-            <div class="form-options">
-                <label>
-                    <input type="checkbox" name="remember"> 记住我
-                </label>
-            </div>
-            
+                        
             <button type="submit" class="submit-btn">登录</button>
             
             <div class="auth-footer">
@@ -102,27 +96,27 @@
             }, timeout);
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const emailInput = document.getElementById('email');
-            const rememberCheckbox = document.querySelector('input[name="remember"]');
-            const loginForm = document.querySelector('form');
-            // 页面加载时填充保存的用户名
-            const savedUsername = localStorage.getItem('remembered_username');
-            if (savedUsername) {
-                emailInput.value = savedUsername;
-                rememberCheckbox.checked = true;
-            }
-            // 提交时根据复选框决定保存或清除用户名
-            loginForm.addEventListener('submit', function() {
-                if (rememberCheckbox.checked) {
-                    localStorage.setItem('remembered_username', emailInput.value);
-                } else {
-                    localStorage.removeItem('remembered_username');
-                }
-            });
-        });
+        function showLoadingDiv(parentDiv, width, height, margin) {
+            let loadingDiv = document.createElement('div');
+            loadingDiv.classList.add('loading');
+            loadingDiv.style.width = width;
+            loadingDiv.style.height = height;
+            loadingDiv.style.margin = margin;
+            parentDiv.insertBefore(loadingDiv, parentDiv.firstChild)
+            loadingDiv = parentDiv.querySelector('.loading');
+            return loadingDiv;
+        }
 
         document.querySelector('.submit-btn').addEventListener('click', function() {
+            const submitBtn = document.querySelector('.submit-btn');
+            if (submitBtn.disabled) {
+                return;
+            }
+            submitBtn.disabled = true;
+            submitBtn.style.backgroundColor = '#6e79a7';
+            submitBtn.style.cursor = 'not-allowed';
+            // 创建加载div
+            const loadingDiv = showLoadingDiv(submitBtn, '22px', '22px', '2px 5px 0 0');
             // 获取表单数据
             const email = document.querySelector('#email').value;
             const password = document.querySelector('#password').value;
@@ -142,6 +136,10 @@
             .then(data => {
                 if (data.success) {
                     showNotification('登录成功', "info");
+                    submitBtn.disabled = false;
+                    submitBtn.style.removeProperty('background-color');
+                    submitBtn.style.removeProperty('cursor');
+                    loadingDiv.remove();
                     setTimeout(() => {
                         // 检查url中是否包含next参数
                         const next = new URLSearchParams(window.location.search).get('next');
@@ -155,10 +153,19 @@
                 } else {
                     // 登录失败，显示错误信息
                     showNotification(data.message, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.style.removeProperty('background-color');
+                    submitBtn.style.removeProperty('cursor');
+                    loadingDiv.remove();
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                showNotification('网络错误，请稍后再试', "error");
+                submitBtn.disabled = false;
+                submitBtn.style.removeProperty('background-color');
+                submitBtn.style.removeProperty('cursor');
+                loadingDiv.remove();
             });
         });
     </script>
