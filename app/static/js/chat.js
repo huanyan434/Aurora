@@ -171,8 +171,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 showInitialPage();
             }
             
-            // 获取用户余额信息
-            fetchUserBalanceInfo().catch(err => console.error('加载用户余额信息出错:', err));
+            // 获取用户积分信息
+            fetchUserPointsInfo().catch(err => console.error('加载用户积分信息出错:', err));
             
             // 初始化时如果有未完成的AI请求，立即在当前会话创建加载动画容器
             try {
@@ -649,20 +649,20 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
         
-        // 余额充值码兑换事件
-        const balanceCodeInputEl = document.getElementById('balance-code-input');
-        const balanceRedeemBtnEl = document.getElementById('balance-redeem-btn');
-        const balanceRedeemResultEl = document.getElementById('balance-redeem-result');
-        if (balanceRedeemBtnEl) {
-            balanceRedeemBtnEl.addEventListener('click', async () => {
-                const code = balanceCodeInputEl.value.trim();
+        // 积分充值码兑换事件
+        const pointsCodeInputEl = document.getElementById('points-code-input');
+        const pointsRedeemBtnEl = document.getElementById('points-redeem-btn');
+        const pointsRedeemResultEl = document.getElementById('points-redeem-result');
+        if (pointsRedeemBtnEl) {
+            pointsRedeemBtnEl.addEventListener('click', async () => {
+                const code = pointsCodeInputEl.value.trim();
                 if (!code) {
-                    balanceRedeemResultEl.textContent = '请输入充值码';
+                    pointsRedeemResultEl.textContent = '请输入充值码';
                     return;
                 }
                 
                 try {
-                    const resp = await fetch('/balance/redeem_balance_token', {
+                    const resp = await fetch('/points/redeem_points_token', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ code })
@@ -671,28 +671,28 @@ document.addEventListener('DOMContentLoaded', function () {
                     const data = await resp.json();
                     
                     if (!resp.ok) {
-                        balanceRedeemResultEl.textContent = data.message || '充值失败';
-                        balanceRedeemResultEl.style.color = 'red';
+                        pointsRedeemResultEl.textContent = data.message || '充值失败';
+                        pointsRedeemResultEl.style.color = 'red';
                     } else {
-                        balanceRedeemResultEl.textContent = data.message || `成功充值¥${data.amount}`;
-                        balanceRedeemResultEl.style.color = 'green';
+                        pointsRedeemResultEl.textContent = data.message || `成功充值¥${data.amount}`;
+                        pointsRedeemResultEl.style.color = 'green';
                         
-                        // 更新余额显示
-                        fetchUserBalanceInfo();
+                        // 更新积分显示
+                        fetchUserPointsInfo();
                         
                         // 清空输入框
-                        balanceCodeInputEl.value = '';
+                        pointsCodeInputEl.value = '';
                     }
                 } catch (error) {
                     console.error('充值失败:', error);
-                    balanceRedeemResultEl.textContent = '充值操作失败，请稍后重试';
-                    balanceRedeemResultEl.style.color = 'red';
+                    pointsRedeemResultEl.textContent = '充值操作失败，请稍后重试';
+                    pointsRedeemResultEl.style.color = 'red';
                 }
             });
             
             // 支持回车键提交
-            balanceCodeInputEl.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') balanceRedeemBtnEl.click();
+            pointsCodeInputEl.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') pointsRedeemBtnEl.click();
             });
         }
     }
@@ -939,10 +939,10 @@ async function handleImageSelect(event) {
             return;
         }
         
-        // 检查余额是否足够
-        const balanceOk = await checkBalanceBeforeSend();
-        if (!balanceOk) {
-            console.log('余额不足，无法发送消息');
+        // 检查积分是否足够
+        const pointsOk = await checkPointsBeforeSend();
+        if (!pointsOk) {
+            console.log('积分不足，无法发送消息');
             state.isSending = false;
             return;
         }
@@ -1618,10 +1618,10 @@ async function handleImageSelect(event) {
                 }
             }
             
-            // 函数结束时，获取和刷新用户余额
+            // 函数结束时，获取和刷新用户积分
             try {
-                // 刷新余额显示
-                await fetchUserBalanceInfo();
+                // 刷新积分显示
+                await fetchUserPointsInfo();
                 // 刷新免费次数显示
                 await updateAllModelsFreeUsage();
             } catch (error) {
@@ -3489,12 +3489,12 @@ async function handleImageSelect(event) {
 
     // ====================== 用户资料模态窗口 ======================
     function setupUserProfileModal() {
-        // 当用户资料模态框打开时，获取会员信息和余额信息
+        // 当用户资料模态框打开时，获取会员信息和积分信息
         const userProfileModal = document.getElementById('user-profile-modal');
         if (userProfileModal) {
             userProfileModal.addEventListener('show', () => {
                 fetchUserMembershipInfo();
-                fetchUserBalanceInfo();
+                fetchUserPointsInfo();
             });
             
             // 设置VIP码兑换按钮事件
@@ -3517,20 +3517,20 @@ async function handleImageSelect(event) {
             }
             
             // 设置充值码兑换按钮事件
-            const balanceRedeemBtn = document.getElementById('balance-redeem-btn');
-            const balanceCodeInput = document.getElementById('balance-code-input');
-            const balanceRedeemResult = document.getElementById('balance-redeem-result');
+            const pointsRedeemBtn = document.getElementById('points-redeem-btn');
+            const pointsCodeInput = document.getElementById('points-code-input');
+            const pointsRedeemResult = document.getElementById('points-redeem-result');
             
-            if (balanceRedeemBtn && balanceCodeInput && balanceRedeemResult) {
-                balanceRedeemBtn.addEventListener('click', async () => {
-                    // 调用统一的余额充值码处理函数
-                    redeembalanceCode();
+            if (pointsRedeemBtn && pointsCodeInput && pointsRedeemResult) {
+                pointsRedeemBtn.addEventListener('click', async () => {
+                    // 调用统一的积分充值码处理函数
+                    redeempointsCode();
                 });
                 
                 // 支持回车键提交
-                balanceCodeInput.addEventListener('keypress', (e) => {
+                pointsCodeInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        balanceRedeemBtn.click();
+                        pointsRedeemBtn.click();
                     }
                 });
             }
@@ -3659,12 +3659,12 @@ async function handleImageSelect(event) {
     }
 
     function setupUserProfileModal() {
-        // 当用户资料模态框打开时，获取会员信息和余额信息
+        // 当用户资料模态框打开时，获取会员信息和积分信息
         const userProfileModal = document.getElementById('user-profile-modal');
         if (userProfileModal) {
             userProfileModal.addEventListener('show', () => {
                 fetchUserMembershipInfo();
-                fetchUserBalanceInfo();
+                fetchUserPointsInfo();
             });
             
             // 设置VIP码兑换按钮事件
@@ -3687,20 +3687,20 @@ async function handleImageSelect(event) {
             }
             
             // 设置充值码兑换按钮事件
-            const balanceRedeemBtn = document.getElementById('balance-redeem-btn');
-            const balanceCodeInput = document.getElementById('balance-code-input');
-            const balanceRedeemResult = document.getElementById('balance-redeem-result');
+            const pointsRedeemBtn = document.getElementById('points-redeem-btn');
+            const pointsCodeInput = document.getElementById('points-code-input');
+            const pointsRedeemResult = document.getElementById('points-redeem-result');
             
-            if (balanceRedeemBtn && balanceCodeInput && balanceRedeemResult) {
-                balanceRedeemBtn.addEventListener('click', async () => {
-                    // 调用统一的余额充值码处理函数
-                    redeembalanceCode();
+            if (pointsRedeemBtn && pointsCodeInput && pointsRedeemResult) {
+                pointsRedeemBtn.addEventListener('click', async () => {
+                    // 调用统一的积分充值码处理函数
+                    redeempointsCode();
                 });
                 
                 // 支持回车键提交
-                balanceCodeInput.addEventListener('keypress', (e) => {
+                pointsCodeInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        balanceRedeemBtn.click();
+                        pointsRedeemBtn.click();
                     }
                 });
             }
@@ -4307,8 +4307,8 @@ async function handleImageSelect(event) {
         // VIP兑换码按钮
         document.getElementById('vip-redeem-btn')?.addEventListener('click', redeemVIPCode);
         
-        // 余额充值按钮
-        document.getElementById('balance-redeem-btn')?.addEventListener('click', redeembalanceCode);
+        // 积分充值按钮
+        document.getElementById('points-redeem-btn')?.addEventListener('click', redeempointsCode);
         
         // 注销账号按钮
         elements.deactivateAccountBtn?.addEventListener('click', openDeactivateModal);
@@ -4323,84 +4323,84 @@ async function handleImageSelect(event) {
         elements.confirmDeactivateBtn?.addEventListener('click', deactivateAccount);
     }
 
-    // 获取用户余额信息函数
-    async function fetchUserBalanceInfo() {
+    // 获取用户积分信息函数
+    async function fetchUserPointsInfo() {
         if (!state.currentUser || !state.currentUser.id) {
-            console.error('获取余额信息失败：用户未登录');
+            console.error('获取积分信息失败：用户未登录');
             return {
                 success: false,
-                balance: 0,
-                formatted_balance: "¥0.00"
+                points: 0,
+                formatted_points: "¥0.00"
             };
         }
         
         try {
-            const response = await fetch(`/balance/get_balance/${state.currentUser.id}`);
+            const response = await fetch(`/points/get_points/${state.currentUser.id}`);
             
             if (!response.ok) {
-                throw new Error('获取余额信息失败');
+                throw new Error('获取积分信息失败');
             }
             
-            const balanceData = await response.json();
+            const pointsData = await response.json();
             
-            if (balanceData.success) {
-                // 更新余额显示
-                const balanceDisplay = document.getElementById('balance-display');
-                if (balanceDisplay) {
-                    balanceDisplay.innerHTML = `
-                        <div class="balance-card">
-                            <div class="balance-header">
-                                <span>我的余额</span>
+            if (pointsData.success) {
+                // 更新积分显示
+                const pointsDisplay = document.getElementById('points-display');
+                if (pointsDisplay) {
+                    pointsDisplay.innerHTML = `
+                        <div class="points-card">
+                            <div class="points-header">
+                                <span>我的积分</span>
                             </div>
-                            <div class="balance-amount">${balanceData.formatted_balance}</div>
+                            <div class="points-amount">${pointsData.formatted_points}</div>
                         </div>
                     `;
                 }
                 
-                // 如果余额不足，禁用发送按钮
-                if (balanceData.balance <= 0) {
+                // 如果积分不足，禁用发送按钮
+                if (pointsData.points <= 0) {
                     const sendButton = document.getElementById('send-button');
                     if (sendButton) {
                         sendButton.disabled = true;
-                        sendButton.title = '余额不足，请充值后使用';
+                        sendButton.title = '积分不足，请充值后使用';
                     }
                     
-                    // 余额不足时不弹提示，提示仅在发送时显示
+                    // 积分不足时不弹提示，提示仅在发送时显示
                 } else {
                     // 确保发送按钮启用
                     const sendButton = document.getElementById('send-button');
-                    if (sendButton && sendButton.title === '余额不足，请充值后使用') {
+                    if (sendButton && sendButton.title === '积分不足，请充值后使用') {
                         sendButton.disabled = false;
                         sendButton.title = '';
                     }
                 }
                 
-                return balanceData;
+                return pointsData;
             } else {
-                throw new Error(balanceData.message || '获取余额信息失败');
+                throw new Error(pointsData.message || '获取积分信息失败');
             }
             
         } catch (error) {
-            console.error('获取余额信息时出错:', error);
+            console.error('获取积分信息时出错:', error);
             
             // 显示错误信息
-            const balanceDisplay = document.getElementById('balance-display');
-            if (balanceDisplay) {
-                balanceDisplay.innerHTML = '<div class="error-message">获取余额信息失败</div>';
+            const pointsDisplay = document.getElementById('points-display');
+            if (pointsDisplay) {
+                pointsDisplay.innerHTML = '<div class="error-message">获取积分信息失败</div>';
             }
             
             return {
                 success: false,
-                balance: 0,
-                formatted_balance: "¥0.00"
+                points: 0,
+                formatted_points: "¥0.00"
             };
         }
     }
     
-    // 在发送消息前检查余额
-    async function checkBalanceBeforeSend() {
+    // 在发送消息前检查积分
+    async function checkPointsBeforeSend() {
         if (!state.currentUser || !state.currentUser.id) {
-            return true; // 匿名用户不检查余额
+            return true; // 匿名用户不检查积分
         }
         
         try {
@@ -4422,15 +4422,15 @@ async function handleImageSelect(event) {
                 return true;
             }
             
-            // 没有免费次数，检查余额
-            const balanceData = await fetchUserBalanceInfo();
-            if (!balanceData.success || balanceData.balance <= 0) {
-                showToast('您今日免费使用次数已用完，且余额不足，请充值后继续使用', 'danger');
+            // 没有免费次数，检查积分
+            const pointsData = await fetchUserPointsInfo();
+            if (!pointsData.success || pointsData.points <= 0) {
+                showToast('您今日免费使用次数已用完，且积分不足，请充值后继续使用', 'danger');
                 return false;
             }
             return true;
         } catch (error) {
-            console.error('检查余额和免费次数时出错:', error);
+            console.error('检查积分和免费次数时出错:', error);
             return true; // 出错时允许发送，后端会再次检查
         }
     }
@@ -4636,11 +4636,11 @@ async function handleImageSelect(event) {
             }
         });
         
-        // 余额充值码输入框回车键处理
-        document.getElementById('balance-code-input')?.addEventListener('keypress', function (e) {
+        // 积分充值码输入框回车键处理
+        document.getElementById('points-code-input')?.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                redeembalanceCode();
+                redeempointsCode();
             }
         });
     }
@@ -4751,14 +4751,14 @@ async function handleImageSelect(event) {
         }
     }
     
-    // 余额充值码兑换函数
-    async function redeembalanceCode() {
-        const codeInput = document.getElementById('balance-code-input');
-        const resultDisplay = document.getElementById('balance-redeem-result');
-        const redeemButton = document.getElementById('balance-redeem-btn');
+    // 积分充值码兑换函数
+    async function redeempointsCode() {
+        const codeInput = document.getElementById('points-code-input');
+        const resultDisplay = document.getElementById('points-redeem-result');
+        const redeemButton = document.getElementById('points-redeem-btn');
         
         if (!codeInput || !resultDisplay || !redeemButton) {
-            console.error('余额充值码相关元素未找到');
+            console.error('积分充值码相关元素未找到');
             return;
         }
         
@@ -4775,7 +4775,7 @@ async function handleImageSelect(event) {
             resultDisplay.textContent = '正在处理...';
             resultDisplay.className = 'redeem-result';
             
-            const response = await fetch('/balance/redeem', {
+            const response = await fetch('/points/redeem', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -4790,17 +4790,17 @@ async function handleImageSelect(event) {
                 resultDisplay.className = 'redeem-result success';
                 codeInput.value = '';
                 
-                // 刷新余额信息
-                await fetchUserBalanceInfo();
+                // 刷新积分信息
+                await fetchUserPointsInfo();
                 
                 // 显示成功提示
-                showToast('余额充值成功！', 'success');
+                showToast('积分充值成功！', 'success');
             } else {
                 resultDisplay.textContent = data.message || '充值失败，请检查充值码是否有效';
                 resultDisplay.className = 'redeem-result error';
             }
         } catch (error) {
-            console.error('处理余额充值码时出错:', error);
+            console.error('处理积分充值码时出错:', error);
             resultDisplay.textContent = '充值过程中发生错误，请稍后重试';
             resultDisplay.className = 'redeem-result error';
         } finally {

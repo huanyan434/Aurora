@@ -14,8 +14,8 @@ class User(UserMixin, db.Model):
     member_level = db.Column(db.String(20), default='free')  # free, basic, premium, vip
     member_since = db.Column(db.DateTime, nullable=True)
     member_until = db.Column(db.DateTime, nullable=True)
-    # 用户余额字段
-    balance = db.Column(db.Float, default=0.0)
+    # 用户积分字段
+    points = db.Column(db.Float, default=0.0)
     conversations = db.relationship('Conversation', backref='user', lazy=True)
 
     def set_password(self, password):
@@ -60,12 +60,12 @@ class User(UserMixin, db.Model):
             'until': self.member_until.isoformat() if self.member_until else None
         }
         
-    def add_balance(self, amount):
-        """增加或减少用户余额"""
-        self.balance += amount
-        # 确保余额不会变成负数
-        if self.balance < 0:
-            self.balance = 0
+    def add_points(self, amount):
+        """增加或减少用户积分"""
+        self.points += amount
+        # 确保积分不会变成负数
+        if self.points < 0:
+            self.points = 0
             return True
         
     def to_dict(self):
@@ -76,7 +76,7 @@ class User(UserMixin, db.Model):
             'email': self.email,
             'is_member': self.is_member,
             'member_level': self.member_level,
-            'balance': self.balance
+            'points': self.points
         }
 
 class Conversation(db.Model):

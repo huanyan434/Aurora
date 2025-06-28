@@ -117,7 +117,7 @@ def get_current_user():
             'email': current_user.email,
             'is_member': current_user.is_member,
             'member_level': current_user.member_level,
-            'balance': current_user.balance
+            'points': current_user.points
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

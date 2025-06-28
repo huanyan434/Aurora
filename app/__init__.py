@@ -42,7 +42,7 @@ def register_blueprints(app):
     from .history import history_bp
     from .dashboard import dashboard_bp  # 从dashboard模块导入
     from .routes.vip import vip_bp  # 导入新创建的vip蓝图
-    from .routes.balance import balance_bp  # 导入新创建的balance蓝图
+    from .routes.points import points_bp  # 导入新创建的points蓝图
     from .routes.api import api_bp  # 导入新创建的api蓝图
     
     app.register_blueprint(chat_bp)
@@ -50,7 +50,7 @@ def register_blueprints(app):
     app.register_blueprint(history_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(vip_bp, url_prefix='/vip')  # 注册vip蓝图，url前缀为/vip
-    app.register_blueprint(balance_bp, url_prefix='/balance')  # 注册balance蓝图，url前缀为/balance
+    app.register_blueprint(points_bp, url_prefix='/points')  # 注册points蓝图，url前缀为/points
     app.register_blueprint(api_bp, url_prefix='/api')  # 注册api蓝图，url前缀为/api
 
 def register_public_static_files(app):

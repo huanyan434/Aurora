@@ -229,7 +229,7 @@ def get_users():
                 'member_expired': member_status['expired'],
                 'member_since': user.member_since.isoformat() if user.member_since else None,
                 'member_until': user.member_until.isoformat() if user.member_until else None,
-                'balance': user.balance  # 添加余额信息
+                'points': user.points  # 添加积分信息
             })
         
         return jsonify({
@@ -322,10 +322,10 @@ def update_user_membership():
         print(f"更新用户会员状态时出错: {e}")
         return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
 
-@dashboard_bp.route('/add_user_balance', methods=['POST'])
+@dashboard_bp.route('/add_user_points', methods=['POST'])
 @dashboard_login_required
-def add_user_balance():
-    """管理员给用户充值余额"""
+def add_user_points():
+    """管理员给用户充值积分"""
     try:
         data = request.json
         user_id = data.get('user_id')
@@ -351,16 +351,16 @@ def add_user_balance():
                 'message': '用户不存在'
             }), 404
         
-        # 充值余额
-        user.add_balance(amount)
+        # 充值积分
+        user.add_points(amount)
         db.session.commit()
         
         # 返回充值结果
         return jsonify({
             'success': True,
             'message': f'成功为用户 {user.username} 充值 ¥{amount:.2f}',
-            'balance': user.balance,
-            'formatted_balance': f'¥{user.balance:.2f}'
+            'points': user.points,
+            'formatted_points': f'¥{user.points:.2f}'
         })
     except ValueError as e:
         return jsonify({
@@ -368,26 +368,26 @@ def add_user_balance():
             'message': f'无效的充值金额: {str(e)}'
         }), 400
     except Exception as e:
-        print(f"给用户充值余额时出错: {e}")
+        print(f"给用户充值积分时出错: {e}")
         return jsonify({
             'success': False,
             'message': f'充值失败: {str(e)}'
         }), 500
 
-@dashboard_bp.route('/reset_user_balance', methods=['POST'])
+@dashboard_bp.route('/reset_user_points', methods=['POST'])
 @dashboard_login_required
-def reset_user_balance():
-    """管理员重置用户余额"""
+def reset_user_points():
+    """管理员重置用户积分"""
     try:
         data = request.json
         user_id = data.get('user_id')
-        amount = float(data.get('amount', 0))  # 新的余额值
+        amount = float(data.get('amount', 0))  # 新的积分值
         
         # 验证输入
         if not user_id or amount < 0:  # 允许重置为0
             return jsonify({
                 'success': False,
-                'message': '无效的用户ID或余额值'
+                'message': '无效的用户ID或积分值'
             }), 400
         
         # 获取用户 - 转换为UUID
@@ -403,25 +403,25 @@ def reset_user_balance():
                 'message': '用户不存在'
             }), 404
         
-        # 重置余额
-        old_balance = user.balance
-        user.balance = amount
+        # 重置积分
+        old_points = user.points
+        user.points = amount
         db.session.commit()
         
         # 返回结果
         return jsonify({
             'success': True,
-            'message': f'成功将用户 {user.username} 的余额从 ¥{old_balance:.2f} 重置为 ¥{amount:.2f}',
-            'balance': user.balance,
-            'formatted_balance': f'¥{user.balance:.2f}'
+            'message': f'成功将用户 {user.username} 的积分从 ¥{old_points:.2f} 重置为 ¥{amount:.2f}',
+            'points': user.points,
+            'formatted_points': f'¥{user.points:.2f}'
         })
     except ValueError as e:
         return jsonify({
             'success': False,
-            'message': f'无效的余额值: {str(e)}'
+            'message': f'无效的积分值: {str(e)}'
         }), 400
     except Exception as e:
-        print(f"重置用户余额时出错: {e}")
+        print(f"重置用户积分时出错: {e}")
         return jsonify({
             'success': False,
             'message': f'重置失败: {str(e)}'

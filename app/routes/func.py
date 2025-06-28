@@ -595,7 +595,7 @@ def generate_thread(
             # 获取正确的数据库实例
             from app import db
             
-            # 检查用户余额和免费次数（如果是登录用户）
+            # 检查用户积分和免费次数（如果是登录用户）
             will_charge = False
             from app.models import User
             from app.utils.token_tracker import get_user_daily_model_usage, get_model_free_usage_limit
@@ -636,17 +636,17 @@ def generate_thread(
                     free_limit = get_model_free_usage_limit(model_name(model), user_id)
                     
                     if current_usage >= free_limit:
-                        # 超出免费次数：检查余额
+                        # 超出免费次数：检查积分
                         will_charge = True
-                        if user.balance <= 0:
+                        if user.points <= 0:
                             response_status[message_id] = 'error'
                             if message_id in response_queues:
                                 response_queues[message_id].put(
-                                    f"<e>您今日免费使用次数已用完，且余额不足，请充值后继续使用</e>")
+                                    f"<e>您今日免费使用次数已用完，且积分不足，请充值后继续使用</e>")
                                 response_queues[message_id].put(None)
                                 return
                         else:
-                            print(f"用户{user.username}免费次数已用完，将使用余额，当前余额: {user.balance}")
+                            print(f"用户{user.username}免费次数已用完，将使用积分，当前积分: {user.points}")
                     else:
                         # 还有免费次数
                         will_charge = False
@@ -741,14 +741,14 @@ def generate_thread(
                             else:
                                 fee_rate = 0.001  # 普通用户费率
                             
-                            # 计算费用并扣除（使用负数，因为扣费是减少余额）
+                            # 计算费用并扣除（使用负数，因为扣费是减少积分）
                             fee = total_tokens * fee_rate
                             if fee > 0:
-                                # 使用add_balance方法，但传入负值来扣费
-                                # user.balance -= fee
-                                user.add_balance(-fee)  # 使用负值扣费
+                                # 使用add_points方法，但传入负值来扣费
+                                # user.points -= fee
+                                user.add_points(-fee)  # 使用负值扣费
                                 db.session.commit()
-                                print(f"用户{user.username}扣费成功，扣除{fee}元，当前余额{user.balance}元")
+                                print(f"用户{user.username}扣费成功，扣除{fee}元，当前积分{user.points}元")
                 except Exception as e:
                     print(f"扣费过程中出错: {str(e)}")
                     # 不中断用户体验，只记录错误

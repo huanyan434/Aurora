@@ -2423,8 +2423,8 @@ body.dark .au-tooltip {
     box-shadow: none;
 }
 
-/* 余额卡片样式 - 扁平化设计 */
-.balance-card {
+/* 积分卡片样式 - 扁平化设计 */
+.points-card {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 12px;
     padding: 16px;
@@ -2436,26 +2436,26 @@ body.dark .au-tooltip {
     overflow: hidden;
 }
 
-.balance-header {
+.points-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
 }
 
-.balance-amount {
+.points-amount {
     font-size: 24px;
     font-weight: 600;
     color: #3f37c9;
 }
 
-.balance-label {
+.points-label {
     font-size: 14px;
     color: #6c757d;
     margin-right: 8px;
 }
 
-.balance-value {
+.points-value {
     font-size: 18px;
     font-weight: 600;
     color: #3f37c9;
@@ -2612,20 +2612,20 @@ body.dark .au-tooltip {
         box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
     }
     
-    .balance-card {
+    .points-card {
         background: rgba(40, 44, 52, 0.8);
         border-color: rgba(255, 255, 255, 0.1);
     }
     
-    .balance-amount {
+    .points-amount {
         color: #7b8eff;
     }
     
-    .balance-label {
+    .points-label {
         color: #adb5bd;
     }
     
-    .balance-value {
+    .points-value {
         color: #7b8eff;
     }
 }
