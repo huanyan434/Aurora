@@ -228,13 +228,29 @@ body {
 
 
 /* 用户信息区域 */
-.user-profile {
-    padding: 16px;
+.user-profile-container {
+    padding: 8px;
     display: flex;
-    align-items: center;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(5px);
     position: relative;
+    align-items: center;
+}
+
+.user-profile {
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(5px);
+    position: relative;
+    width: 100%;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.user-profile:hover { 
+    background: rgba(228, 228, 228, 0.6);
 }
 
 .user-avatar {
@@ -259,13 +275,7 @@ body {
     font-weight: 500;
     color: var(--dark-color);
     margin-bottom: 2px;
-    cursor: pointer;
     transition: color 0.2s;
-}
-
-.user-name:hover {
-    color: var(--primary-color);
-    text-decoration: underline;
 }
 
 .user-status {
@@ -3455,4 +3465,14 @@ a:link {
     color: red;
     font-size: 14px;
     left: 1rem;
+}
+
+.points-usage {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 6px;
+    background: rgba(255, 236, 153, 0.7);
+    border-radius: 4px;
+    font-size: 12px;
+    color: #664d03;
 }

@@ -97,28 +97,30 @@
             </div>
 
             <!-- 用户信息 -->
-            <div class="user-profile">
-                <div class="user-avatar">
-                    {% if current_user.is_authenticated %}
-                    {{ current_user.username[0].upper() }}
-                    {% else %}
-                        <i class="bi bi-person"></i>
-                    {% endif %}
-                </div>
-                <div class="user-info">
-                    <div class="user-name" id="user-name-display">
+            <div class="user-profile-container">
+                <div class="user-profile">
+                    <div class="user-avatar">
                         {% if current_user.is_authenticated %}
-                            {{ current_user.username }}
+                        {{ current_user.username[0].upper() }}
                         {% else %}
-                            游客
+                            <i class="bi bi-person"></i>
                         {% endif %}
                     </div>
-                    <div class="user-status">
-                        {% if current_user.is_authenticated %}
-                            在线
-                        {% else %}
-                            未登录
-                        {% endif %}
+                    <div class="user-info">
+                        <div class="user-name" id="user-name-display">
+                            {% if current_user.is_authenticated %}
+                                {{ current_user.username }}
+                            {% else %}
+                                游客
+                            {% endif %}
+                        </div>
+                        <div class="user-status">
+                            {% if current_user.is_authenticated %}
+                                在线
+                            {% else %}
+                                未登录
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 <button class="logout-btn" {% if not current_user.is_authenticated %}onclick="window.location.href='/auth/login'"{% endif %}>
@@ -156,62 +158,72 @@
                     <div class="model-option" data-value="DeepSeek-R1">
                         <img src="/static/models/DeepSeek.png" alt="DeepSeek-R1" class="model-option-icon">
                         <span>DeepSeek-R1</span>
+                        <div class="points-usage">10积分/次</div>
                     </div>
                     <div class="model-option" data-value="DeepSeek-V3">
                         <img src="/static/models/DeepSeek.png" alt="DeepSeek-V3" class="model-option-icon">
                         <span>DeepSeek-V3</span>
+                        <div class="points-usage">5积分/次</div>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-Lite">
                         <img src="/static/models/Doubao.png" alt="Doubao-1.5-Lite" class="model-option-icon">
                         <span>Doubao-1.5-Lite</span>
+                        <div class="points-usage">10积分/次</div>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-Pro">
                         <img src="/static/models/Doubao.png" alt="Doubao-1.5-Pro" class="model-option-icon">
                         <span>Doubao-1.5-Pro</span>
+                        <div class="points-usage">10积分/次</div>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-Pro-256k">
                         <img src="/static/models/Doubao.png" alt="Doubao-1.5-Pro-256k" class="model-option-icon">
                         <span>Doubao-1.5-Pro-256k</span>
+                        <div class="points-usage">10积分/次</div>
                     </div>
                     <div class="model-option" data-value="Doubao-1.5-Thinking-Pro">
                         <img src="/static/models/Doubao.png" alt="Doubao-1.5-Pro" class="model-option-icon">
                         <span>Doubao-1.5-Thinking-Pro</span>
+                        <div class="points-usage">10积分/次</div>
                     </div>
                     <div class="model-option" data-value="Gemini-2.5-Flash">
                         <img src="/static/models/Gemini.png" alt="Gemini-2.5-Flash" class="model-option-icon">
                         <span>Gemini-2.5-Flash</span>
+                        <div class="points-usage">5积分/次</div>
                     </div>
                     <div class="model-option" data-value="Gemini-2.0-Flash">
                         <img src="/static/models/Gemini.png" alt="Gemini-2.0-Flash" class="model-option-icon">
                         <span>Gemini-2.0-Flash</span>
+                        <div class="points-usage">5积分/次</div>
                     </div>
                     <div class="model-option" data-value="Qwen3">
                         <img src="/static/models/Qwen.png" alt="Qwen3" class="model-option-icon">
                         <span>Qwen3</span>
+                        <div class="points-usage">2积分/次</div>
                     </div>
                     <div class="model-option" data-value="QwQ">
                         <img src="/static/models/Qwen.png" alt="QwQ" class="model-option-icon">
                         <span>QwQ</span>
-                    </div>
-                    <div class="model-option" data-value="QwQ-Preview">
-                        <img src="/static/models/Qwen.png" alt="QwQ-Preview" class="model-option-icon">
-                        <span>QwQ-Preview</span>
+                        <div class="points-usage">2积分/次</div>
                     </div>
                     <div class="model-option" data-value="QvQ">
                         <img src="/static/models/Qwen.png" alt="QvQ" class="model-option-icon">
                         <span>QvQ</span>
+                        <div class="points-usage">1积分/次</div>
                     </div>
                     <div class="model-option" data-value="Qwen2.5-Instruct">
                         <img src="/static/models/Qwen.png" alt="Qwen2.5-Instruct" class="model-option-icon">
                         <span>Qwen2.5-Instruct</span>
+                        <div class="points-usage">1积分/次</div>
                     </div>
                     <div class="model-option" data-value="GLM-4">
                         <img src="/static/models/Zhipu.png" alt="GLM-4" class="model-option-icon">
                         <span>GLM-4</span>
+                        <div class="points-usage">2积分/次</div>
                     </div>
                     <div class="model-option" data-value="GLM-Z1">
                         <img src="/static/models/Zhipu.png" alt="GLM-Z1" class="model-option-icon">
                         <span>GLM-Z1</span>
+                        <div class="points-usage">5积分/次</div>
                     </div>
                 </div>
             </div>

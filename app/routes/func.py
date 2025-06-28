@@ -7,7 +7,7 @@ import copy
 import threading
 import queue
 from app.history import save_history, load_history
-from app.utils.token_tracker import record_token_usage, get_latest_token_usage, get_user_daily_model_usage, get_model_free_usage_limit
+from app.utils.token_tracker import record_token_usage
 from datetime import datetime
 from app.utils.search import search
 
@@ -595,10 +595,9 @@ def generate_thread(
             # 获取正确的数据库实例
             from app import db
             
-            # 检查用户积分和免费次数（如果是登录用户）
-            will_charge = False
+            # 检查用户积分（如果是登录用户）
+            will_reduce_points = False
             from app.models import User
-            from app.utils.token_tracker import get_user_daily_model_usage, get_model_free_usage_limit
             
             # 获取用户 - 转换为UUID，如果可能
             import uuid
@@ -613,6 +612,30 @@ def generate_thread(
                 print(f"无效的用户ID格式: {user_id}")
                 user = None
             
+
+            reduce_points = {
+                # 默认
+                "default": 1,
+                # 具体模型不同限制
+                "DeepSeek-R1": 10,
+                "DeepSeek-V3": 5,
+                "Doubao-1.5-Lite": 10, 
+                "Doubao-1.5-Pro": 10,
+                "Doubao-1.5-Pro-256k": 10,
+                "Doubao-1.5-vision-Pro": 10,
+                "Doubao-1.5-Thinking-Pro": 10,
+                "Doubao-1.5-Thinking-vision-Pro": 10,
+                "Gemini-2.5-Flash": 5,
+                "Gemini-2.0-Flash": 5,
+                "Qwen3": 2,
+                "QwQ": 2,
+                "QwQ-Preview": 1,
+                "QvQ": 1,
+                "Qwen2.5-Instruct": 1,
+                "GLM-4": 2,
+                "GLM-Z1": 5
+            }
+
             # 打印详细的用户信息
             if user:
                 print(f"用户信息: ID={user.id}, 名称={user.username}, 会员={user.is_member}, 等级={user.member_level}")
@@ -624,33 +647,22 @@ def generate_thread(
                 if user.is_member and user.member_level and user.member_level.lower() == 'vip' and user.is_active_member():
                     max_tokens = 2048
                     print(f"VIP用户{user.username}(ID:{user.id})允许使用{max_tokens} tokens")
-                # SVIP用户：无限使用，不计费
+                # SVIP用户：无限使用，不扣积分
                 if user.is_member and user.member_level and user.member_level.lower() == 'svip' and user.is_active_member():
                     max_tokens = 8192
                     print(f"SVIP用户{user.username}(ID:{user.id})允许无限使用所有模型")
                     print(f"VIP用户{user.username}(ID:{user.id})允许使用{max_tokens} tokens")
-                    will_charge = False  # 不计费
+                    will_reduce_points = False
                 else:
-                    # 非SVIP用户：检查免费次数
-                    current_usage = get_user_daily_model_usage(user_id, model_name(model))
-                    free_limit = get_model_free_usage_limit(model_name(model), user_id)
-                    
-                    if current_usage >= free_limit:
-                        # 超出免费次数：检查积分
-                        will_charge = True
-                        if user.points <= 0:
-                            response_status[message_id] = 'error'
-                            if message_id in response_queues:
-                                response_queues[message_id].put(
-                                    f"<e>您今日免费使用次数已用完，且积分不足，请充值后继续使用</e>")
-                                response_queues[message_id].put(None)
-                                return
-                        else:
-                            print(f"用户{user.username}免费次数已用完，将使用积分，当前积分: {user.points}")
-                    else:
-                        # 还有免费次数
-                        will_charge = False
-                        print(f"用户{user.username}今日使用{model}的第{current_usage+1}次，免费次数上限为{free_limit}")
+                    # 非SVIP用户：检查积分数
+                    will_reduce_points = True
+                    if user.points <= reduce_points.get(model, "default"):
+                        response_status[message_id] = 'error'
+                        if message_id in response_queues:
+                            response_queues[message_id].put(
+                                f"<e>您的积分不足，请充值或签到后继续使用</e>")
+                            response_queues[message_id].put(None)
+                            return
             # 保存原始模型名
             model_orig = model
             # 转换模型名为API所需格式
@@ -710,8 +722,8 @@ def generate_thread(
             except Exception as e:
                 print(f"保存历史记录出错: {str(e)}")
                 
-            # 扣费逻辑
-            if will_charge:
+            # 扣积分逻辑
+            if will_reduce_points:
                 try:
                     from app.models import User
                     # 获取用户 - 转换为UUID，如果可能
@@ -728,29 +740,23 @@ def generate_thread(
                         user = None
                         
                     if user:
-                        # 获取上次API调用的token使用量，从数据库或token记录中获取
-                        usage = get_latest_token_usage(user_id)
-                        if usage:
-                            total_tokens = usage.get('prompt_tokens', 0) + usage.get('completion_tokens', 0)
-                            
-                            # 根据会员级别确定费率
-                            if user.member_level == 'svip':
-                                fee_rate = 0.0  # SVIP不收费
-                            elif user.is_member and user.member_level == 'vip':
-                                fee_rate = 0.0005  # VIP费率
-                            else:
-                                fee_rate = 0.001  # 普通用户费率
-                            
-                            # 计算费用并扣除（使用负数，因为扣费是减少积分）
-                            fee = total_tokens * fee_rate
-                            if fee > 0:
-                                # 使用add_points方法，但传入负值来扣费
-                                # user.points -= fee
-                                user.add_points(-fee)  # 使用负值扣费
-                                db.session.commit()
-                                print(f"用户{user.username}扣费成功，扣除{fee}元，当前积分{user.points}元")
+                        
+                        # 根据会员级别确定费率
+                        if user.member_level == 'svip':
+                            fee_rate = 0.0  # SVIP不扣积分
+                        elif user.is_member and user.member_level == 'vip':
+                            fee_rate = 0.5  # VIP扣50%
+                        else:
+                            fee_rate = 1  # 普通用户扣100%
+                        
+                        # 计算
+                        fee = reduce_points.get(model_orig, "default") * fee_rate
+                        if fee > 0:
+                            user.add_points(-fee)  # 使用负值扣积分
+                            db.session.commit()
+                            print(f"用户{user.username}扣积分成功，扣除{fee}，当前积分{user.points}")
                 except Exception as e:
-                    print(f"扣费过程中出错: {str(e)}")
+                    print(f"扣积分过程中出错: {str(e)}")
                     # 不中断用户体验，只记录错误
 
         except Exception as e:
@@ -936,43 +942,6 @@ def get_active_responses():
                 'message_id': msg_id
             }
     return active
-
-
-def get_model_free_usage_info(model_name, user_id=None):
-    """获取模型的免费使用次数信息"""
-    try:
-        # 获取今天的使用次数
-        current_usage = get_user_daily_model_usage(user_id, model_name) if user_id else 0
-        # 获取免费使用次数限制（传入用户ID以获取正确的VIP限制）
-        free_limit = get_model_free_usage_limit(model_name, user_id)
-        
-        # 处理无限次数的情况
-        if free_limit == float('inf'):
-            return {
-                'success': True,
-                'current': current_usage,
-                'limit': -1,  # 使用-1表示无限
-                'remaining': -1  # 使用-1表示无限
-            }
-            
-        # 计算剩余免费次数
-        remaining = max(0, free_limit - current_usage)
-        
-        return {
-            'success': True,
-            'current': current_usage,
-            'limit': free_limit,
-            'remaining': remaining
-        }
-    except Exception as e:
-        print(f"获取用户每日模型使用次数出错: {e}")
-        return {
-            'success': False,
-            'current': 0,
-            'limit': get_model_free_usage_limit(model_name),  # 出错时使用基础限制
-            'remaining': 0
-        }
-
 
 def qwen_parse_image(image_base64: str) -> str:
     """使用通义千问API的视觉功能解析图片"""

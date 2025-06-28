@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
         sidebarOverlay: document.querySelector('.sidebar-overlay'),
         logoutBtn: document.querySelector('.logout-btn'),
         userNameDisplay: document.getElementById('user-name-display'),
+        userProfile: document.querySelector(".user-profile"),
         userProfileModal: document.getElementById('user-profile-modal'),
         closeModalBtn: document.querySelector('.close-modal'),
         usernameInput: document.getElementById('username-input'),
@@ -193,14 +194,12 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // 优化体验：延迟加载非关键资源
             setTimeout(() => {
-                // 异步更新模型使用次数
-                updateAllModelsFreeUsage().catch(err => console.error('加载模型免费使用次数出错:', err));
                 
                 // 异步加载其他资源
                 setupScrollListener();
-            startMarkdownObserver();
-            
-            // 初始化完成后添加复制按钮
+                startMarkdownObserver();
+                
+                // 初始化完成后添加复制按钮
                 window.addCopyButtonsToAllCodeBlocks();
                 
                 // 确保滚动到底部
@@ -574,8 +573,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // 用户名点击事件
-        if (elements.userNameDisplay) {
-            elements.userNameDisplay.addEventListener('click', openUserProfileModal);
+        if (elements.userProfile) {
+            elements.userProfile.addEventListener('click', openUserProfileModal);
         }
 
         // 关闭模态窗口事件
@@ -1622,8 +1621,6 @@ async function handleImageSelect(event) {
             try {
                 // 刷新积分显示
                 await fetchUserPointsInfo();
-                // 刷新免费次数显示
-                await updateAllModelsFreeUsage();
             } catch (error) {
                 console.error('刷新信息失败:', error);
             }
@@ -2685,114 +2682,77 @@ async function handleImageSelect(event) {
     // 设置模型选择器
     function setupModelSelector() {
         try {
-        const modelSelect = document.querySelector('.model-select');
-            if (!modelSelect) {
-                console.error('未找到模型选择器元素');
-                return;
-            }
+            const modelSelect = document.querySelector('.model-select');
+                if (!modelSelect) {
+                    console.error('未找到模型选择器元素');
+                    return;
+                }
 
-        const modelHeader = modelSelect.querySelector('.model-select-header');
-        const modelOptions = modelSelect.querySelector('.model-select-options');
-        const selectedModelSpan = modelSelect.querySelector('.selected-model');
+            const modelHeader = modelSelect.querySelector('.model-select-header');
+            const modelOptions = modelSelect.querySelector('.model-select-options');
+            const selectedModelSpan = modelSelect.querySelector('.selected-model');
 
-            if (!modelHeader || !modelOptions || !selectedModelSpan) {
-                console.error('模型选择器子元素不完整');
-                return;
-            }
+                if (!modelHeader || !modelOptions || !selectedModelSpan) {
+                    console.error('模型选择器子元素不完整');
+                    return;
+                }
 
-        // 添加免费次数提示的样式
-        const freeUsageStyle = document.createElement('style');
-        freeUsageStyle.textContent = `
-            .free-usage-display {
-                display: inline-block;
-                margin-left: 8px;
-                padding: 2px 6px;
-                background: rgba(255, 236, 153, 0.7);
-                border-radius: 4px;
-                font-size: 12px;
-                color: #664d03;
-            }
-            .free-usage-display.depleted {
-                background: rgba(255, 200, 200, 0.7);
-                color: #842029;
-            }
-            .free-usage-remaining {
-                font-weight: bold;
-            }
-        `;
-        document.head.appendChild(freeUsageStyle);
-
-        // 根据localStorage中保存的模型设置初始选中状态
-        const savedModel = state.currentModel;
-        const savedModelOption = modelOptions.querySelector(`.model-option[data-value="${savedModel}"]`);
-        
-        if (savedModelOption) {
-            // 更新显示的文本
-            const savedModelText = savedModelOption.querySelector('span').textContent;
-            selectedModelSpan.textContent = savedModelText;
+            // 根据localStorage中保存的模型设置初始选中状态
+            const savedModel = state.currentModel;
+            const savedModelOption = modelOptions.querySelector(`.model-option[data-value="${savedModel}"]`);
             
-            // 更新选中状态
-            modelOptions.querySelectorAll('.model-option').forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            savedModelOption.classList.add('selected');
-            
-            console.log(`从缓存中加载模型设置: ${savedModel}`);
-        }
-
-        // 点击头部显示/隐藏选项
-        modelHeader.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isActive = modelSelect.classList.toggle('active');
-            
-            // 更新所有模型的免费使用次数
-                if (isActive && state.currentUser && state.currentUser.id) {
-                    updateAllModelsFreeUsage().catch(err => {
-                        console.error('更新模型免费使用次数失败:', err);
-                    });
-            }
-        });
-
-        // 点击选项时更新选中的模型
-        modelOptions.querySelectorAll('.model-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const value = option.getAttribute('data-value');
-                const text = option.querySelector('span').textContent;
-                
+            if (savedModelOption) {
                 // 更新显示的文本
-                selectedModelSpan.textContent = text;
+                const savedModelText = savedModelOption.querySelector('span').textContent;
+                selectedModelSpan.textContent = savedModelText;
                 
                 // 更新选中状态
                 modelOptions.querySelectorAll('.model-option').forEach(opt => {
                     opt.classList.remove('selected');
                 });
-                option.classList.add('selected');
+                savedModelOption.classList.add('selected');
                 
-                // 关闭下拉菜单
-                modelSelect.classList.remove('active');
-                
-                // 更新当前选中的模型
-                state.currentModel = value;
-                
-                // 保存到localStorage
-                localStorage.setItem('selectedModel', value);
-                console.log(`模型设置已保存: ${value}`);
-            });
-        });
-
-        // 点击页面其他地方时关闭下拉菜单
-        document.addEventListener('click', () => {
-            modelSelect.classList.remove('active');
-        });
-        
-            // 只有登录用户才初始化更新免费使用次数
-            if (state.currentUser && state.currentUser.id) {
-                updateAllModelsFreeUsage().catch(err => {
-                    console.error('初始化模型免费使用次数失败:', err);
-                });
+                console.log(`从缓存中加载模型设置: ${savedModel}`);
             }
 
+            // 点击头部显示/隐藏选项
+            modelHeader.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isActive = modelSelect.classList.toggle('active');
+            });
+
+            // 点击选项时更新选中的模型
+            modelOptions.querySelectorAll('.model-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = option.getAttribute('data-value');
+                    const text = option.querySelector('span').textContent;
+                    
+                    // 更新显示的文本
+                    selectedModelSpan.textContent = text;
+                    
+                    // 更新选中状态
+                    modelOptions.querySelectorAll('.model-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    option.classList.add('selected');
+                    
+                    // 关闭下拉菜单
+                    modelSelect.classList.remove('active');
+                    
+                    // 更新当前选中的模型
+                    state.currentModel = value;
+                    
+                    // 保存到localStorage
+                    localStorage.setItem('selectedModel', value);
+                    console.log(`模型设置已保存: ${value}`);
+                });
+            });
+
+            // 点击页面其他地方时关闭下拉菜单
+            document.addEventListener('click', () => {
+                modelSelect.classList.remove('active');
+            });
             return true;
         } catch (error) {
             console.error('设置模型选择器时出错:', error);
@@ -2804,10 +2764,6 @@ async function handleImageSelect(event) {
     function getSelectedModel() {
         return state.currentModel;
     }
-
-    // 添加一个计时器管理对象
-    const thinkTimers = {};
-
 
     // 添加滚动监听函数
     function setupScrollListener() {
@@ -4091,9 +4047,7 @@ async function handleImageSelect(event) {
                 `;
             });
             
-            privilegesHTML += '</div>';
-                console.log('生成的权益HTML:', privilegesHTML);
-            
+            privilegesHTML += '</div>';            
                 membershipPrivilegesElement.innerHTML = privilegesHTML;
             } else {
                 membershipPrivilegesElement.innerHTML = '<div class="no-privileges">无可用权益</div>';
@@ -4362,14 +4316,13 @@ async function handleImageSelect(event) {
                     const sendButton = document.getElementById('send-button');
                     if (sendButton) {
                         sendButton.disabled = true;
-                        sendButton.title = '积分不足，请充值后使用';
                     }
                     
                     // 积分不足时不弹提示，提示仅在发送时显示
                 } else {
                     // 确保发送按钮启用
                     const sendButton = document.getElementById('send-button');
-                    if (sendButton && sendButton.title === '积分不足，请充值后使用') {
+                    if (sendButton) {
                         sendButton.disabled = false;
                         sendButton.title = '';
                     }
@@ -4407,130 +4360,37 @@ async function handleImageSelect(event) {
             // 获取当前选择的模型
             const currentModel = getSelectedModel();
             
-            // 检查模型免费次数
-            let modelUsage = await fetchModelFreeUsageInfo();
-            modelUsage = modelUsage['usage_info'][currentModel];
-            console.log('模型使用信息:', modelUsage);
-            
-            // 如果是无限次数（SVIP），直接允许发送
-            if (modelUsage['limit'] === -1 || modelUsage['remaining'] === -1) {
-                return true;
-            }
-            
-            // 如果还有免费次数，直接允许发送
-            if (modelUsage['remaining'] > 0) {
-                return true;
-            }
-            
-            // 没有免费次数，检查积分
+            const reducePoints = {
+                "DeepSeek-R1": 10,
+                "DeepSeek-V3": 5,
+                "Doubao-1.5-Lite": 10, 
+                "Doubao-1.5-Pro": 10,
+                "Doubao-1.5-Pro-256k": 10,
+                "Doubao-1.5-vision-Pro": 10,
+                "Doubao-1.5-Thinking-Pro": 10,
+                "Doubao-1.5-Thinking-vision-Pro": 10,
+                "Gemini-2.5-Flash": 5,
+                "Gemini-2.0-Flash": 5,
+                "Qwen3": 2,
+                "QwQ": 2,
+                "QwQ-Preview": 1,
+                "QvQ": 1,
+                "Qwen2.5-Instruct": 1,
+                "GLM-4": 2,
+                "GLM-Z1": 5
+            };
             const pointsData = await fetchUserPointsInfo();
-            if (!pointsData.success || pointsData.points <= 0) {
-                showToast('您今日免费使用次数已用完，且积分不足，请充值后继续使用', 'danger');
+            if (!pointsData.success || pointsData.points < reducePoints[currentModel]) {
+                showNotification('您的积分不足，请充值或签到后继续使用');
                 return false;
             }
             return true;
         } catch (error) {
-            console.error('检查积分和免费次数时出错:', error);
+            console.error('检查积分时出错:', error);
             return true; // 出错时允许发送，后端会再次检查
         }
     }
-
-    // 获取模型的免费使用次数信息
-    async function fetchModelFreeUsageInfo() {
-        try {
-            // 构建请求URL，包含用户ID
-            let url = `/api/model/free_usage`;
-            
-            // 如果有当前用户信息，添加user_id参数
-            if (state.currentUser && state.currentUser.id) {
-                url += `?user_id=${state.currentUser.id}`;
-            }
-            
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error('获取模型免费使用次数信息失败');
-            }
-            const data = await response.json();
-            
-            if (!data.success) {
-                throw new Error(data.message || '获取模型免费使用次数信息失败');
-            }
-            
-            return {
-                usage_info: data.usage_info
-                /* current: data.usage_info['model_name']['current'],
-                limit: data.usage_info['model_name']['limit'],
-                remaining: data.usage_info['model_name']['remaining'] */
-            };
-        } catch (error) {
-            console.error('获取模型免费使用次数信息失败:', error);
-            return {
-                current: 0,
-                limit: 0,
-                remaining: 0
-            };
-        }
-    }
     
-    // 更新所有模型的免费使用次数显示
-    async function updateAllModelsFreeUsage() {
-        try {
-            // 如果用户未登录，则跳过
-            if (!state.currentUser || !state.currentUser.id) {
-                console.log('未登录用户，跳过更新模型免费使用次数');
-                return;
-            }
-
-        const modelOptions = document.querySelectorAll('.model-option');
-            if (!modelOptions || modelOptions.length === 0) {
-                console.warn('未找到模型选项元素，无法更新免费使用次数');
-                return;
-            }
-
-
-        const usage_Info = await fetchModelFreeUsageInfo();
-        for (const option of modelOptions) {
-            const modelName = option.getAttribute('data-value');
-            try {
-                const usageInfo = usage_Info['usage_info'][modelName];
-                // 查找或创建免费次数显示元素
-                let freeUsageDisplay = option.querySelector('.free-usage-display');
-                if (!freeUsageDisplay) {
-                    freeUsageDisplay = document.createElement('div');
-                    freeUsageDisplay.className = 'free-usage-display';
-                    option.appendChild(freeUsageDisplay);
-                }
-                
-                
-                // 更新显示内容
-                const isInfinite = usageInfo['limit'] === -1;
-                freeUsageDisplay.innerHTML = isInfinite ? 
-                    `<span class="free-usage-remaining"><img src="/static/icons/infinity.svg" alt="无限" style="height: 20px; vertical-align: middle;"></span>` : 
-                    `<span class="free-usage-remaining">${usageInfo['remaining']}</span>/<span class="free-usage-limit">${usageInfo['limit']}</span>`;
-                
-                // 添加样式
-                if (isInfinite) {
-                    freeUsageDisplay.style.color = '#4CAF50'; // 使用绿色表示无限
-                    freeUsageDisplay.style.display = 'inline-flex';
-                    freeUsageDisplay.style.alignItems = 'center';
-                    freeUsageDisplay.style.gap = '2px';
-                }
-                
-                // 如果剩余次数为0且不是无限次数，添加警告样式
-                if (!isInfinite && usageInfo['remaining'] <= 0) {
-                    freeUsageDisplay.classList.add('depleted');
-                } else {
-                    freeUsageDisplay.classList.remove('depleted');
-                }
-            } catch (error) {
-                console.error(`获取模型${modelName}免费使用次数失败:`, error);
-            }
-            }
-        } catch (error) {
-            console.error('更新模型免费使用次数失败:', error);
-        }
-    }
-
     // ========= 注销账号相关函数 =========
     // 打开注销确认弹窗
     function openDeactivateModal() {
