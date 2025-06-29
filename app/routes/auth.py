@@ -274,6 +274,12 @@ def send_verify_code():
 def sign():
     """签到"""
     try:
+        with open('sign.log', 'x') as f:
+            f.close()
+    except Exception as e:
+        print('文件已存在')
+        
+    try:
         with open('sign.log', 'r+') as f:
             content = f.read()
             # 先读取文件
@@ -315,7 +321,6 @@ def sign():
             f.seek(0)
             f.write('{"sign":[' + ','.join(will_written) + ']}')            
         return jsonify({'success': True, 'message': '签到成功', 'points': amount})
-            
         
     except Exception as e:
         print(f"签到出错: {e}")
