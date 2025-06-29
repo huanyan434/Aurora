@@ -109,7 +109,7 @@ def check_points_token():
     return jsonify({
         'success': True, 
         'amount': target['amount'], 
-        'message': f'有效的充值码，可充值¥{target["amount"]:.2f}'
+        'message': f'有效的充值码，可充值{target["amount"]:.2f}'
     }), 200
 
 @points_bp.route('/redeem_points_token', methods=['POST'])
@@ -153,6 +153,6 @@ def redeem_points_token():
         'success': True, 
         'amount': amount,
         'new_points': user.points,
-        'formatted_points': f"¥{user.points:.2f}",
-        'message': f'成功充值¥{amount:.2f}，当前积分：¥{user.points:.2f}'
+        'formatted_points': f"{user.points:.2f}",
+        'message': f'成功充值{amount:.2f}，当前积分：{user.points:.2f}'
     }), 200 

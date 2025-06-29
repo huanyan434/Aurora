@@ -32,7 +32,7 @@ def reset_user_points():
         log = UserLog(
             user_id=user_id,
             action='reset_points',
-            details=f'管理员重置积分为 ¥{amount:.2f}'
+            details=f'管理员重置积分为 {amount:.2f}'
         )
         db.session.add(log)
         db.session.commit()

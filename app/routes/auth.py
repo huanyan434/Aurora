@@ -1,9 +1,12 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
+import random
+from flask import Blueprint, render_template, redirect, url_for, request, session, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, Conversation, Message
 from app.utils.auth import hash_password, verify_password
 from app import db
 from app.utils.email_verify import email_verify_send, verify_email
+import json
+import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -265,3 +268,82 @@ def send_verify_code():
     except Exception as e:
         print(f'发送邮件出错: {str(e)}')
         return jsonify({'success': False, 'message': '发送邮件出错，请稍后再试'}), 500
+    
+@auth_bp.route('/sign', methods=['GET'])
+@login_required
+def sign():
+    """签到"""
+    try:
+        with open('sign.log', 'r+') as f:
+            content = f.read()
+            # 先读取文件
+            if content != "":
+                try:
+                    log = json.loads(content)['sign']
+                except Exception as e:
+                    print(f"读取签到记录出错: {str(e)}")
+                    log = []
+            else:
+                print('文件为空')
+                log = []
+            if type(log) == list and len(log) > 0:
+                for i in log:
+                    # 查询是否已经签到 并且 是否是今天
+                    if i["username"] == current_user.username and i['date'] == datetime.datetime.now().strftime('%Y-%m-%d'):
+                        print("用户已经签到")
+                        return jsonify({'success': False, 'message': '今天已经签到过了', 'points': 0})
+            else:
+                log = []
+            # 签到
+            user_id = current_user.id
+            user = User.query.get(user_id)
+
+
+            amount = float(100 + random.randint(-10, 10))    # 随机积分 100+-10
+            user.add_points(amount)
+            db.session.commit()
+            print(f"{current_user.username} 签到成功，获得积分 {amount}")
+
+            log_append = {"username": current_user.username, "date": datetime.datetime.now().strftime('%Y-%m-%d')}
+            log.append(log_append)
+
+            will_written = []
+            for i in log:
+                # 此处 i 为字典
+                will_written.append(json.dumps(i))
+                
+            f.seek(0)
+            f.write('{"sign":[' + ','.join(will_written) + ']}')            
+        return jsonify({'success': True, 'message': '签到成功', 'points': amount})
+            
+        
+    except Exception as e:
+        print(f"签到出错: {e}")
+        return jsonify({'success': False, 'message': '签到出错，请稍后再试', 'points': 0}), 500
+    
+@auth_bp.route('/sign_log', methods=['GET'])
+@login_required
+def sign_log():
+    """获取用户签到状态"""
+    try:
+        with open('sign.log', 'r') as f:
+            content = f.read()
+            if content != "":
+                # 先读取文件
+                try:
+                    log = json.loads(content)['sign']
+                except Exception as e:
+                    print(f"读取签到记录出错: {str(e)}")
+                    log = []
+            else:
+                print("文件为空")
+                log = []
+            if type(log) == list and len(log) > 0:
+                for i in log:
+                    if i["username"] == current_user.username and i['date'] == datetime.datetime.now().strftime('%Y-%m-%d'):
+                        return jsonify({'success': True, 'message': '今天已经签到过了'})
+            else:
+                return jsonify({'success': False, 'message': '今天未签到'})
+            return jsonify({'success': False, 'message': '今天未签到'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': '今天未签到'}), 400

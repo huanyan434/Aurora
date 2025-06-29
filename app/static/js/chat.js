@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
         imagePreviewContainer: document.getElementById('image-preview-container'),
         previewImage: document.getElementById('preview-image'),
         removeImageBtn: document.querySelector('.remove-image-btn'),
+        signBtn: document.getElementById('sign-btn'),
         vipCodeInput: document.getElementById('vip-code-input'), // 兑换码输入框
         vipRedeemBtn: document.getElementById('vip-redeem-btn'),   // 兑换按钮
         vipRedeemResult: document.getElementById('vip-redeem-result'), // 兑换结果显示
@@ -198,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // 异步加载其他资源
                 setupScrollListener();
                 startMarkdownObserver();
+                signInit();
                 
                 // 初始化完成后添加复制按钮
                 window.addCopyButtonsToAllCodeBlocks();
@@ -633,10 +635,13 @@ document.addEventListener('DOMContentLoaded', function () {
             cancelUsernameBtn.addEventListener('click', cancelUsernameEdit);
         }
 
+        // 签到事件
+        if (elements.signBtn) {
+            elements.signBtn.addEventListener('click', sign);
+        }
         // 兑换兑换码事件
         const vipCodeInputEl = document.getElementById('vip-code-input');
         const vipRedeemBtnEl = document.getElementById('vip-redeem-btn');
-        const vipRedeemResultEl = document.getElementById('vip-redeem-result');
         if (vipRedeemBtnEl) {
             vipRedeemBtnEl.addEventListener('click', async () => {
                 // 调用统一的兑换码处理函数
@@ -673,7 +678,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         pointsRedeemResultEl.textContent = data.message || '充值失败';
                         pointsRedeemResultEl.style.color = 'red';
                     } else {
-                        pointsRedeemResultEl.textContent = data.message || `成功充值¥${data.amount}`;
+                        pointsRedeemResultEl.textContent = data.message || `成功充值${data.amount}`;
                         pointsRedeemResultEl.style.color = 'green';
                         
                         // 更新积分显示
@@ -1656,21 +1661,6 @@ async function handleImageSelect(event) {
                 attachCopyButtonsToAIMessages();
                 // 添加复制按钮后再次滚动到底部
                 scrollToBottom();
-
-                /*
-                if (!currentContent) {
-                    currentContent = ' ';
-                }
-                console.log('content:' + currentContent);
-
-                // 保存当前内容
-                await saveCurrentContent(
-                    conversationId,
-                    currentContent,
-                    currentThink,
-                    messageData.model
-                )
-                */
             } else {
                 console.error('获取AI响应失败:', error);
                 throw error;
@@ -2374,70 +2364,7 @@ async function handleImageSelect(event) {
         elements.messagesContainer.innerHTML = '';
     }
 
-    function formatTime(isoString) {
-        const date = new Date(isoString);
-        return date.toLocaleString('zh-CN', {
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-
     // ====================== 初始化聊天 ======================
-    async function initChat() {
-        try {
-            // 加载对话列表
-            await loadConversations();
-            
-            // 检查 URL 路径
-            const path = window.location.pathname;
-            
-            if (path === '/' || path === '') {
-                // 在根路径显示欢迎界面
-                showInitialPage();
-                // 清除当前对话ID
-                state.currentConversationId = null;
-                // 更新侧边栏中的活动对话项
-                updateActiveConversationInSidebar(null);
-            } else if (path.startsWith('/chat/')) {
-                // 如果是聊天路径，检查是否包含有效的 conversation_id
-                const conversationId = path.split('/').pop();
-                if (conversationId && conversationId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-                    state.currentConversationId = conversationId;
-                    await loadConversationHistory(conversationId);
-                    // 确保更新了侧边栏中的活动对话项
-                    updateActiveConversationInSidebar(conversationId);
-                } else {
-                    // 无效的 conversation_id，重定向到根路径
-                    history.pushState({}, '', '/');
-                    showInitialPage();
-                    state.currentConversationId = null;
-                    updateActiveConversationInSidebar(null);
-                }
-            }
-
-            // 添加折叠按钮事件监听
-            if (elements.collapseBtn) {
-                elements.collapseBtn.addEventListener('click', toggleSidebar);
-            }
-            
-            // 添加初始化标记，启用过渡动画
-            requestAnimationFrame(() => {
-                elements.sidebar.classList.add('initialized');
-                elements.sidebarToggle.classList.add('initialized');
-            });
-
-            // 添加登出按钮事件监听
-            if (elements.logoutBtn) {
-                elements.logoutBtn.addEventListener('click', logout);
-            }
-        } catch (error) {
-            console.error('初始化聊天失败:', error);
-            showError('初始化聊天失败: ' + error.message);
-        }
-    }
-
     // 修改新对话按钮的处理函数
     function handleNewChat() {
         // 更新 URL 到根路径
@@ -2576,45 +2503,6 @@ async function handleImageSelect(event) {
                 }
             }
         }
-    }
-
-    // 创建确认对话框
-    function createConfirmDialog() {
-        const dialog = document.createElement('div');
-        dialog.className = 'confirm-dialog';
-        dialog.id = 'confirm-dialog';
-        
-        const content = document.createElement('div');
-        content.className = 'confirm-content';
-        
-        const message = document.createElement('div');
-        message.className = 'confirm-message';
-        
-        const buttons = document.createElement('div');
-        buttons.className = 'confirm-buttons';
-        
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'confirm-cancel';
-        cancelBtn.textContent = '取消';
-        
-        const okBtn = document.createElement('button');
-        okBtn.className = 'confirm-ok';
-        okBtn.textContent = '确定';
-        
-        buttons.appendChild(cancelBtn);
-        buttons.appendChild(okBtn);
-        content.appendChild(message);
-        content.appendChild(buttons);
-        dialog.appendChild(content);
-        
-        document.body.appendChild(dialog);
-        
-        return {
-            dialog,
-            message,
-            okBtn,
-            cancelBtn
-        };
     }
 
     // 修改登出函数
@@ -3019,73 +2907,6 @@ async function handleImageSelect(event) {
         }
     }
 
-    // 定义一个全局的保存函数
-    async function saveCurrentContent(conversationId, content, thinkContent, modelName) {
-        if (!conversationId || !content) {
-            console.warn('保存消息失败: 缺少必要参数');
-            return;
-        }
-
-        // 最多重试3次
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                // 构建完整内容
-                let finalContent = '';
-                
-                // 如果有模型名称，添加模型标签
-                if (modelName) {
-                    finalContent += `<model="${modelName}"/>`;
-                }
-                
-                // 如果有思考内容，添加think标签
-                if (thinkContent) {
-                    finalContent += thinkContent;
-                }
-                
-                // 添加主要内容
-                finalContent += content;
-                
-                const response = await fetch(`/conversations/${conversationId}/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        content: finalContent,
-                        is_user: false
-                    })
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`保存消息失败: ${errorData.error || response.statusText}`);
-                }
-                
-                // 保存成功，返回
-                console.log('消息保存成功');
-                return await response.json();
-            } catch (error) {
-                console.error(`保存消息失败(尝试 ${attempt + 1}/3):`, error);
-                // 最后一次尝试失败才显示错误
-                if (attempt === 2) {
-                    // 在UI上显示一个小小的错误通知
-                    const errorNote = document.createElement('div');
-                    errorNote.className = 'error-note';
-                    errorNote.textContent = '内容保存失败，请刷新页面';
-                    errorNote.style.cssText = 'color: #d9534f; font-size: 0.8rem; margin-top: 5px;';
-                    
-                    const lastMessage = document.querySelector('.message.ai:last-child');
-                    if (lastMessage) {
-                        lastMessage.appendChild(errorNote);
-                    }
-                } else {
-                    // 等待一小段时间再重试
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-            }
-        }
-    }
-
     // 创建AI加载消息
     function createLoadingMessage(aiMessageId, modelName) {
         const messageDiv = document.createElement('div');
@@ -3202,7 +3023,7 @@ async function handleImageSelect(event) {
         }
     }
 
-    // 添加异步获取对话标题的函数
+    // 异步获取对话标题
     async function fetchConversationTitle(conversationId) {
         try {
             // 再次检查对话标题是否已更改（防止重复请求）
@@ -3229,69 +3050,7 @@ async function handleImageSelect(event) {
         }
     }
 
-    // 添加重命名对话框函数
-    function showRenameDialog(conversationId, currentTitle) {
-        const dialog = document.createElement('div');
-        dialog.className = 'confirm-dialog rename-dialog';
-        
-        const content = document.createElement('div');
-        content.className = 'confirm-content';
-        
-        content.innerHTML = `
-            <div class="confirm-message">重命名对话</div>
-            <input type="text" class="rename-input" value="${currentTitle || '新对话'}" maxlength="100">
-            <div class="confirm-buttons">
-                <button class="confirm-cancel">取消</button>
-                <button class="confirm-ok">确定</button>
-            </div>
-        `;
-        
-        dialog.appendChild(content);
-        document.body.appendChild(dialog);
-        
-        // 添加样式
-        const input = content.querySelector('.rename-input');
-        input.style.width = '100%';
-        input.style.padding = '8px 12px';
-        input.style.marginBottom = '20px';
-        input.style.border = '1px solid #ddd';
-        input.style.borderRadius = '6px';
-        input.style.fontSize = '14px';
-        
-        // 显示对话框并聚焦输入框
-        setTimeout(() => {
-            dialog.classList.add('show');
-            input.focus();
-            input.select(); // 全选文本，方便编辑
-        }, 10);
-        
-        // 取消按钮
-        const cancelBtn = content.querySelector('.confirm-cancel');
-        cancelBtn.onclick = () => {
-            dialog.classList.remove('show');
-            setTimeout(() => dialog.remove(), 300);
-        };
-        
-        // 确认按钮
-        const okBtn = content.querySelector('.confirm-ok');
-        okBtn.onclick = () => {
-            const newTitle = input.value.trim();
-            if (newTitle) {
-                updateConversationTitle(conversationId, newTitle);
-            }
-            dialog.classList.remove('show');
-            setTimeout(() => dialog.remove(), 300);
-        };
-        
-        // 按Enter键确认
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                okBtn.click();
-            }
-        });
-    }
-
-    // 新增函数：更新侧边栏中的活动对话项
+    // 更新侧边栏中的活动对话项
     function updateActiveConversationInSidebar(conversationId) {
         console.log(`尝试更新活动对话项: ${conversationId}`);
         
@@ -3761,25 +3520,6 @@ async function handleImageSelect(event) {
         if (displayEl && editEl) {
             displayEl.style.display = 'flex';
             editEl.style.display = 'none';
-        }
-    }
-
-    // 显示/隐藏密码修改表单
-    function togglePasswordForm() {
-        const passwordForm = document.getElementById('password-change-form');
-        const changePasswordBtn = document.getElementById('change-password-btn');
-
-        if (passwordForm.style.display === 'none' || !passwordForm.style.display) {
-            passwordForm.style.display = 'block';
-            changePasswordBtn.style.display = 'none';
-
-            // 清空表单
-            document.getElementById('current-password').value = '';
-            document.getElementById('new-password').value = '';
-            document.getElementById('confirm-password').value = '';
-        } else {
-            passwordForm.style.display = 'none';
-            changePasswordBtn.style.display = 'block';
         }
     }
 
@@ -4284,7 +4024,7 @@ async function handleImageSelect(event) {
             return {
                 success: false,
                 points: 0,
-                formatted_points: "¥0.00"
+                formatted_points: "0"
             };
         }
         
@@ -4345,9 +4085,63 @@ async function handleImageSelect(event) {
             return {
                 success: false,
                 points: 0,
-                formatted_points: "¥0.00"
+                formatted_points: "0"
             };
         }
+    }
+
+    // 签到
+    function signInit() {
+        // 初始化签到按钮
+        fetch(`/auth/sign_log`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('初始化签到按钮失败');
+                }
+                return response.json();
+            })
+            .then((data) => {
+                if (data.success) {
+                    elements.signBtn.innerText = `今天已经签到过啦`;
+                    elements.signBtn.disabled = true;
+                }
+            })
+            .catch ((error) => console.log('初始化签到按钮失败:'+error));
+    }
+
+    function sign() {
+        fetch(`/auth/sign`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('签到失败');
+                };
+                return response.json();
+            })
+            .then((data) => {
+                if (data.success) {
+                    elements.signBtn.innerText = `今天已经签到过啦`;
+                    elements.signBtn.disabled = true;
+                    fetchUserPointsInfo();
+                    console.log('签到成功');
+                    const points = data.points;
+                    showNotification('签到成功，恭喜获得'+points+`积分~`);
+                } else {
+                    if (elements.signBtn.innerText = `签到` || elements.signBtn.disabled == false) {
+                        elements.signBtn.innerText = `今天已经签到过啦`;
+                        elements.signBtn.disabled = true;
+                    }
+                    showNotification('今天已经签到过啦');
+                }
+            })
+            .catch((error) => {
+                console.log('签到失败:'+error);
+                if (elements.signBtn.innerText = `签到` || elements.signBtn.disabled == false) {
+                    elements.signBtn.innerText = `今天已经签到过啦`;
+                    elements.signBtn.disabled = true;
+                }
+                showNotification('签到失败');
+            });
+        
     }
     
     // 在发送消息前检查积分

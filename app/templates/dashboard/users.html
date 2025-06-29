@@ -365,7 +365,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <h6 class="text-muted">当前积分</h6>
-                                    <p id="modal-points">¥0.00</p>
+                                    <p id="modal-points">0.00</p>
                                 </div>
                             </div>
                             
@@ -717,7 +717,7 @@
         
         // 显示用户积分
         document.getElementById('modal-points').textContent = user.points !== undefined ? 
-            `¥${user.points.toFixed(2)}` : '¥0.00';
+            `${user.points.toFixed(2)}` : '0.00';
         document.getElementById('points-user-id').value = user.id;
         
         // 控制会员设置选项的显示
@@ -843,11 +843,11 @@
         .then(data => {
             if (data.success) {
                 // 提示成功
-                showNotification(`已成功重置用户积分为 ¥${amount.toFixed(2)}`, 'success');
+                showNotification(`已成功重置用户积分为 ${amount.toFixed(2)}`, 'success');
                 hasShownNotification = true;
                 
                 // 更新模态框内的积分显示
-                document.getElementById('modal-points').textContent = `¥${data.new_points !== undefined ? data.new_points.toFixed(2) : amount.toFixed(2)}`;
+                document.getElementById('modal-points').textContent = `${data.new_points !== undefined ? data.new_points.toFixed(2) : amount.toFixed(2)}`;
                 
                 // 安全地刷新用户列表
                 try {
@@ -1072,7 +1072,7 @@
             }
             
             // 使用自定义确认对话框
-            showConfirmDialog(`确定要将用户 ${userId} 的积分重置为 ¥${amount.toFixed(2)} 吗？`, function() {
+            showConfirmDialog(`确定要将用户 ${userId} 的积分重置为 ${amount.toFixed(2)} 吗？`, function() {
                 resetUserPoints(userId, amount);
             });
         });

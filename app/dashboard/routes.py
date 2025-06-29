@@ -37,7 +37,7 @@ def dashboard_login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'dashboard_logged_in' not in session or not session['dashboard_logged_in']:
-            return redirect(url_for('dashboard.dashboard_login'))
+            return redirect(url_for('dashboard.login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -63,7 +63,7 @@ def dashboard_login():
 @dashboard_bp.route('/logout')
 def dashboard_logout():
     session.pop('dashboard_logged_in', None)
-    return redirect(url_for('dashboard.dashboard_login'))
+    return redirect(url_for('dashboard.login'))
 
 @dashboard_bp.route('/')
 @dashboard_login_required
@@ -358,9 +358,9 @@ def add_user_points():
         # 返回充值结果
         return jsonify({
             'success': True,
-            'message': f'成功为用户 {user.username} 充值 ¥{amount:.2f}',
+            'message': f'成功为用户 {user.username} 充值 {amount:.2f}',
             'points': user.points,
-            'formatted_points': f'¥{user.points:.2f}'
+            'formatted_points': f'{user.points:.2f}'
         })
     except ValueError as e:
         return jsonify({
@@ -411,9 +411,9 @@ def reset_user_points():
         # 返回结果
         return jsonify({
             'success': True,
-            'message': f'成功将用户 {user.username} 的积分从 ¥{old_points:.2f} 重置为 ¥{amount:.2f}',
+            'message': f'成功将用户 {user.username} 的积分从 {old_points:.2f} 重置为 {amount:.2f}',
             'points': user.points,
-            'formatted_points': f'¥{user.points:.2f}'
+            'formatted_points': f'{user.points:.2f}'
         })
     except ValueError as e:
         return jsonify({
