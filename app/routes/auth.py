@@ -1,5 +1,5 @@
 import random
-from flask import Blueprint, render_template, redirect, url_for, request, session, jsonify
+from flask import Blueprint, render_template, redirect, request, session, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, Conversation, Message
 from app.utils.auth import hash_password, verify_password
@@ -107,7 +107,7 @@ def logout():
     # 登出用户
     logout_user()
     # 重定向到登录页面
-    return redirect(url_for('auth.login'))
+    return redirect('auth/login')
 
 @auth_bp.route('/api/user/current')
 @login_required

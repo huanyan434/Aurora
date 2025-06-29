@@ -1,7 +1,7 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import current_user
 from functools import wraps
-from flask import redirect, url_for, flash
+from flask import redirect, flash
 
 def hash_password(password):
     return generate_password_hash(password)
@@ -14,6 +14,6 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             flash('请先登录')
-            return redirect(url_for('auth.login'))
+            return redirect('auth/login')
         return f(*args, **kwargs)
     return decorated_function

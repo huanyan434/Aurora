@@ -1,5 +1,5 @@
-from flask import render_template, jsonify, request, redirect, url_for, session, flash
-from flask_login import login_required, current_user
+from flask import render_template, jsonify, request, redirect, session
+from flask_login import current_user
 from ..models import User, Message, Conversation
 from ..extensions import db
 from . import dashboard_bp
@@ -37,7 +37,7 @@ def dashboard_login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'dashboard_logged_in' not in session or not session['dashboard_logged_in']:
-            return redirect(url_for('dashboard.login'))
+            return redirect('/dashboard/login')
         return f(*args, **kwargs)
     return decorated_function
 
@@ -54,7 +54,7 @@ def dashboard_login():
         # 验证密码
         if check_password_hash(config['password_hash'], password):
             session['dashboard_logged_in'] = True
-            return redirect('dashboard')
+            return redirect('/dashboard')
         else:
             error = "密码错误，请重试"
     
@@ -63,7 +63,7 @@ def dashboard_login():
 @dashboard_bp.route('/logout')
 def dashboard_logout():
     session.pop('dashboard_logged_in', None)
-    return redirect('dashboard/login')
+    return redirect('/dashboard/login')
 
 @dashboard_bp.route('/')
 @dashboard_login_required
