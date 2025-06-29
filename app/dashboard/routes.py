@@ -54,7 +54,7 @@ def dashboard_login():
         # 验证密码
         if check_password_hash(config['password_hash'], password):
             session['dashboard_logged_in'] = True
-            return redirect(url_for('dashboard.index'))
+            return redirect('dashboard')
         else:
             error = "密码错误，请重试"
     
@@ -63,7 +63,7 @@ def dashboard_login():
 @dashboard_bp.route('/logout')
 def dashboard_logout():
     session.pop('dashboard_logged_in', None)
-    return redirect(url_for('dashboard.login'))
+    return redirect('dashboard/login')
 
 @dashboard_bp.route('/')
 @dashboard_login_required
