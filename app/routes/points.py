@@ -57,7 +57,7 @@ def generate_points_tokens(count=100):
     """生成指定数量的随机充值码列表"""
     seen = set()
     tokens = []
-    amounts = [5.0, 10.0]  # 充值金额为5元或10元
+    amounts = [5.0, 10.0]  # 充值积分为500或1000
     
     while len(tokens) < count:
         code = '-'.join(
@@ -145,7 +145,7 @@ def redeem_points_token():
     
     # 为用户充值积分
     user = current_user
-    amount = target['amount']
+    amount = target['amount'] * 100
     user.add_points(amount)
     db.session.commit()
     
