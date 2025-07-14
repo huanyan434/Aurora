@@ -11,9 +11,9 @@ from app.routes.func import generate, get_active_responses, stop_message
 
 chat_bp = Blueprint('chat', __name__)
 
-@chat_bp.route('/', methods=['GET'])
-def chat_index():
-    return render_template('chat/index.html')
+# @chat_bp.route('/', methods=['GET'])
+# def chat_index():
+#     return render_template('chat/index.html')
 
 @chat_bp.route('/chat/<conversation_id>', methods=['GET'])
 @login_required
