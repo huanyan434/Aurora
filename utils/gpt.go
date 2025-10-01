@@ -136,8 +136,18 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 		}
 	}()
 
+	var reasoningContent, content string
+
 	defer func() {
 		db := GetDB()
+		messages := append(prompt, openai.ChatCompletionMessage{
+			Role:             "assistant",
+			Content:          content,
+			ReasoningContent: reasoningContent,
+		})
+		if err := SaveConversationHistory(GetDB(), conversationID, messages); err != nil {
+			fmt.Printf("save error: %v\n", err)
+		}
 		var conversation Conversation
 		db.Table("conversations").Where("id = ?", conversationID).First(&conversation)
 		// 如果对话标题为“新对话”
@@ -164,7 +174,6 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 		}
 	}()
 
-	var reasoningContent, content string
 	for {
 		select {
 		case <-ctx.Done():
@@ -191,15 +200,6 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 				if contentDelta := response.Choices[0].Delta.Content; contentDelta != "" {
 					content += contentDelta
 					resp <- contentDelta
-				}
-
-				messages := append(prompt, openai.ChatCompletionMessage{
-					Role:             "assistant",
-					Content:          content,
-					ReasoningContent: reasoningContent,
-				})
-				if err := SaveConversationHistory(GetDB(), conversationID, messages); err != nil {
-					fmt.Printf("save error: %v\n", err)
 				}
 			}
 		}
