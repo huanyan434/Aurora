@@ -1,0 +1,97 @@
+# API 配置
+api: "https://yunwu.ai/v1"
+apiKey: "sk-xxx"
+apiNameC: "https://api.siliconflow.cn/v1"
+apiKeyNameC: "sk-xxx"
+modelNameC: "deepseek-ai/DeepSeek-V3.1-Terminus"
+models:
+  [
+    {
+      name: "deepseek-v3.2",
+      id: "deepseek-v3.2-exp",
+      points: 4,
+    },
+    {
+    name: "deepseek-v3.1",
+    id: "deepseek-v3-1-250821",
+    points: 8,
+    },
+    {
+      name: "deepseek-r1",
+      id: "deepseek-r1-250528",
+      points: 10,
+    },
+    {
+      name: "deepseek-v3",
+      id: "deepseek-v3-250324",
+      points: 5,
+    },
+    {
+      name: "gpt-5",
+      id: "gpt-5-2025-08-07",
+      points: 6,
+    },
+    {
+      name: "o1-mini",
+      id: "o1-mini",
+      points: 5
+    },
+    {
+      name: "o1",
+      id: "o1",
+      points: 30,
+    },
+    {
+      name: "gemini-2.5-flash",
+      id: "gemini-flash-latest",
+      points: 3,
+    },
+    {
+      name: "gemini-2.5-pro",
+      id: "gemini-pro-latest",
+      points: 6,
+    },
+    {
+      name: "qwen3-max",
+      id: "qwen3-max",
+      points: 20,
+    },
+    {
+      name: "qwen3-coder-plus",
+      id: "qwen3-coder-plus",
+      points: 8,
+    },
+    {
+      name: "qwen3-235b-a22b",
+      id: "qwen3-235b-a22b",
+      points: 5,
+    },
+    {
+      name: "claude-sonnet-4.5",
+      id: "claude-sonnet-4-5-20250929",
+      points: 10,
+    },
+    {
+      name: "claude-opus-4",
+      id: "claude-opus-4-20250514",
+      points: 80,
+    }
+  ]
+
+# 邮件配置
+email:
+  sender:
+    email: "no_reply@wanyim.cn"
+    password: "xxx"
+  smtp:
+    host: "smtp.qiye.aliyun.com"
+    port: 25
+
+# 数据库配置
+database:
+  host: "192.168.31.134"
+  port: 3306
+  username: "aurora"
+  password: "xxx"
+  dbname: "aurora"
+  charset: "utf8mb4"
