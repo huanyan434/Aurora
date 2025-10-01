@@ -122,7 +122,7 @@ func ChatInit(r *gin.Engine) {
 			})
 		})
 
-		chat.POST("/new_conversation", func(c *gin.Context) {
+		chat.GET("/new_conversation", func(c *gin.Context) {
 			User, err := getCurrentUser(c)
 			if err != nil {
 				c.JSON(400, gin.H{"error": err})
