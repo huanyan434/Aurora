@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/gob"
+	"fmt"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
@@ -24,5 +26,9 @@ func main() {
 	routes.ChatInit(r)
 	routes.ApiInit(r)
 
-	r.Run(":5000")
+	err := r.Run(":5000")
+	if err != nil {
+		fmt.Println("Err:", err)
+		return
+	}
 }
