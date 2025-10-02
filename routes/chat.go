@@ -152,5 +152,36 @@ func ChatInit(r *gin.Engine) {
 				"conversations": conversations,
 			})
 		})
+
+		chat.POST("/share_messages", func(c *gin.Context) {
+			var req struct {
+				MessageIDs []string `json:"messageIDs"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err})
+				return
+			}
+			shareID, err := utils.SaveShareMessages(utils.GetDB(), req.MessageIDs)
+			if err != nil {
+				c.JSON(400, gin.H{"error": err})
+				return
+			}
+			c.JSON(200, gin.H{
+				"share_id": shareID,
+			})
+
+		})
+
+		chat.GET("/:shareID", func(c *gin.Context) {
+			shareID := c.Param("shareID")
+			messages, err := utils.LoadShareMessages(utils.GetDB(), shareID)
+			if err != nil {
+				c.JSON(400, gin.H{"error": err})
+				return
+			}
+			c.JSON(200, gin.H{
+				"messages": messages,
+			})
+		})
 	}
 }

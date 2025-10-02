@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
@@ -85,6 +86,18 @@ type SignRecord struct {
 // TableName 指定SignRecord结构体对应的表名
 func (SignRecord) TableName() string {
 	return "sign_records"
+}
+
+// Share 分享结构
+type Share struct {
+	ShareID    string    `gorm:"column:share_id;type:char(16);primaryKey"`
+	MessageIDs string    `gorm:"column:message_ids;type:text"` // 存储JSON格式的数组
+	CreatedAt  time.Time `gorm:"column:created_at;autoCreateTime"`
+}
+
+// TableName 指定Share结构体对应的表名
+func (Share) TableName() string {
+	return "shares"
 }
 
 // SetPassword 设置用户密码
@@ -196,7 +209,7 @@ func GetDB() *gorm.DB {
 func InitDB(DB *gorm.DB) *gorm.DB {
 	// 自动迁移表结构
 	// 如果表不存在则创建，如果存在但结构不匹配则修改表结构
-	err := DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{})
+	err := DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{})
 	if err != nil {
 		fmt.Println("自动迁移表结构失败：", err)
 		return nil
@@ -399,6 +412,71 @@ func CreateConversation(db *gorm.DB, userID uuid.UUID) uuid.UUID {
 		Title:  "新对话",
 	})
 	return conversationID
+}
+
+// SaveShareMessages 保存分享消息
+func SaveShareMessages(db *gorm.DB, messageIDs []string) (string, error) {
+	// 清理超过7天的分享
+	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
+
+	// 将messageIDs转换为JSON字符串
+	messageIDsJSON, err := json.Marshal(messageIDs)
+	if err != nil {
+		return "", err
+	}
+
+	// 循环生成唯一的shareID直到不重复为止
+	var shareID string
+	for {
+		// 生成16位随机十六进制字符串
+		bytes := make([]byte, 8) // 8字节=16个十六进制字符
+		rand.Read(bytes)
+		shareID = hex.EncodeToString(bytes)
+
+		// 检查是否已经存在
+		var count int64
+		db.Model(&Share{}).Where("share_id = ?", shareID).Count(&count)
+		if count == 0 {
+			break // 找到唯一的shareID
+		}
+		// 如果重复，则重新生成
+	}
+
+	// 创建分享记录
+	share := Share{
+		ShareID:    shareID,
+		MessageIDs: string(messageIDsJSON),
+		CreatedAt:  time.Now(),
+	}
+
+	result := db.Create(&share)
+	if result.Error != nil {
+		return "", result.Error
+	}
+
+	return shareID, nil
+}
+
+// LoadShareMessages 根据shareID加载分享的消息
+func LoadShareMessages(db *gorm.DB, shareID string) ([]string, error) {
+	// 清理超过7天的分享
+	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
+
+	// 查找分享记录
+	var share Share
+	result := db.Where("share_id = ?", shareID).First(&share)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	// 解析messageIDs JSON
+	var messageIDs []string
+	err := json.Unmarshal([]byte(share.MessageIDs), &messageIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return messageIDs, nil
 }
 
 func DeleteConversation(db *gorm.DB, conversationID uuid.UUID) error {
