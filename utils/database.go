@@ -48,7 +48,7 @@ func (Conversation) TableName() string {
 
 type Message struct {
 	ID             uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
-	Content        string    `gorm:"column:content;type:text"`
+	Content        string    `gorm:"column:content;type:mediumtext"`
 	Role           string    `gorm:"column:role;type:varchar(20)"`
 	ConversationID uuid.UUID `gorm:"column:conversation_id;type:char(36);index"`
 	CreatedAt      time.Time `gorm:"column:created_at;autoCreateTime"`

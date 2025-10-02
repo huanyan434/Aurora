@@ -7,7 +7,6 @@ import (
 	"utils"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sashabaranov/go-openai"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -60,23 +59,7 @@ func ChatInit(r *gin.Engine) {
 
 				}
 			}
-			messages, err := utils.LoadConversationHistory(utils.GetDB(), req.ConversationID)
-			if err != nil {
-				c.JSON(400, gin.H{"error": err})
-				return
-			}
-			if req.Base64 != "" {
-				req.Prompt = req.Prompt + "\n\n" + utils.ScanPicture(req.Base64, req.Prompt)
-			}
-			prompt := append(messages, openai.ChatCompletionMessage{
-				Role:    "user",
-				Content: req.Prompt,
-			})
-			err = utils.SaveConversationHistory(utils.GetDB(), req.ConversationID, prompt)
-			if err != nil {
-				return
-			}
-			resp := utils.ThreadOpenai(req.ConversationID, req.Model, prompt)
+			resp := utils.ThreadOpenai(req.ConversationID, req.Model, req.Prompt, req.Base64)
 			for response := range resp {
 				reasoningContent, content := utils.ParseThinkBlock(response)
 				msg := struct {

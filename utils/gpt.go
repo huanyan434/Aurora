@@ -40,7 +40,7 @@ func init() {
 // --- 核心功能：并发处理 OpenAI 请求 ---
 
 // ThreadOpenai 使用并发处理OpenAI请求，返回一个通道以实现类似Python yield的功能
-func ThreadOpenai(conversationID uuid.UUID, model string, prompt []openai.ChatCompletionMessage) <-chan string {
+func ThreadOpenai(conversationID uuid.UUID, model string, prompt string, base64 string) <-chan string {
 	threadID := conversationID.String()
 
 	// 1. 检查线程是否已存在
@@ -71,8 +71,6 @@ func ThreadOpenai(conversationID uuid.UUID, model string, prompt []openai.ChatCo
 	// 4. 提交任务到队列中执行
 	// 使用 QueueTask 方法来安排任务
 	conversationIDCopy := conversationID // 创建副本以在闭包中使用
-	promptCopy := make([]openai.ChatCompletionMessage, len(prompt))
-	copy(promptCopy, prompt)
 
 	go func() {
 		err := taskQueue.QueueTask(func(ctx context.Context) error {
@@ -84,7 +82,7 @@ func ThreadOpenai(conversationID uuid.UUID, model string, prompt []openai.ChatCo
 				threadMutex.Unlock()
 			}()
 
-			Openai(ctx, conversationIDCopy, model, promptCopy, resp)
+			Openai(ctx, conversationIDCopy, model, prompt, base64, resp)
 			return nil
 		})
 
@@ -101,7 +99,35 @@ func ThreadOpenai(conversationID uuid.UUID, model string, prompt []openai.ChatCo
 	return resp
 }
 
-func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt []openai.ChatCompletionMessage, resp chan<- string) {
+func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt string, base64 string, resp chan<- string) {
+	messages, err := LoadConversationHistory(GetDB(), conversationID)
+	if err != nil {
+		resp <- fmt.Sprintf("ERR:%s", err)
+	}
+	messagesCopy := make([]openai.ChatCompletionMessage, len(messages))
+	copy(messagesCopy, messages)
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:    "user",
+		Content: fmt.Sprintf("<base64>%s</base64>", base64) + prompt,
+	})
+	err = SaveConversationHistory(GetDB(), conversationID, messages)
+	if err != nil {
+		resp <- fmt.Sprintf("ERR:%s", err)
+	}
+	for _, m := range messagesCopy {
+		if m.Role == "assistant" {
+			_, m.Content = ParseModelBlock(m.Content)
+		}
+		if m.Role == "user" {
+			_, m.Content = ParseBase64Block(m.Content)
+		}
+	}
+	var promptImage string
+	if base64 != "" {
+		promptImage = "\n\n" + ScanPicture(base64, prompt)
+		fmt.Println("promptImage:", promptImage)
+	}
+
 	Configs := GetConfig()
 	clientConfig := openai.DefaultConfig(Configs.APIKey)
 	clientConfig.BaseURL = Configs.API
@@ -110,11 +136,16 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	timeOnly := time.Now().Format(time.TimeOnly)
 	req := openai.ChatCompletionRequest{
 		Model: model,
-		Messages: append(prompt, openai.ChatCompletionMessage{
-			Role: "system",
-			Content: "今天是 " + date + "。" + "\n" +
-				"现在是 " + timeOnly + "。",
-		}),
+		Messages: append(
+			append(messagesCopy, openai.ChatCompletionMessage{
+				Role:    "user",
+				Content: prompt + promptImage,
+			}),
+			openai.ChatCompletionMessage{
+				Role: "system",
+				Content: "今天是 " + date + "。" + "\n" +
+					"现在是 " + timeOnly + "。",
+			}),
 		Stream: true,
 	}
 
@@ -139,9 +170,9 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 
 	defer func() {
 		db := GetDB()
-		messages := append(prompt, openai.ChatCompletionMessage{
+		messages = append(messages, openai.ChatCompletionMessage{
 			Role:             "assistant",
-			Content:          content,
+			Content:          fmt.Sprintf("<model=%s>", model) + content,
 			ReasoningContent: reasoningContent,
 		})
 		if err := SaveConversationHistory(GetDB(), conversationID, messages); err != nil {
@@ -222,8 +253,9 @@ func ScanPicture(base64 string, prompt string) string {
 						Text: "请简要描述输入图片的内容，优先描述图片上的文字，其次概括图片内容。你的描述会作为提示词给另一个不支持视觉模型进行理解。请根据用户输入来更好地描述图片，以下是用户的输入：" + prompt,
 					},
 					{
-						Type:     "image_url",
-						ImageURL: &openai.ChatMessageImageURL{URL: fmt.Sprintf("data:image/jpeg;base64,{%s}", base64)},
+						Type: "image_url",
+						// ImageURL: &openai.ChatMessageImageURL{URL: fmt.Sprintf("data:image/jpeg;base64,%s", base64)},
+						ImageURL: &openai.ChatMessageImageURL{URL: base64},
 					},
 				},
 			},
@@ -259,7 +291,9 @@ func ParseThinkBlock(c string) (string, string) {
 	if match == "" {
 		return "", c
 	}
-	return re.ReplaceAllString(fmt.Sprintf("<think>%s</think>", match), ""), re.ReplaceAllString(c, "")
+	internalContent := match[7 : len(match)-8]
+	externalContent := re.ReplaceAllString(c, "")
+	return internalContent, externalContent
 }
 
 // ParseModelBlock 解析模型标签
@@ -272,7 +306,9 @@ func ParseModelBlock(c string) (string, string) {
 	if match == "" {
 		return "", c
 	}
-	return re.ReplaceAllString(fmt.Sprintf("<model=%s>", match), ""), re.ReplaceAllString(c, "")
+	internalContent := match[7 : len(match)-1]
+	externalContent := re.ReplaceAllString(c, "")
+	return internalContent, externalContent
 }
 
 // ParseBase64Block 解析图片标签
@@ -285,7 +321,9 @@ func ParseBase64Block(c string) (string, string) {
 	if match == "" {
 		return "", c
 	}
-	return re.ReplaceAllString(fmt.Sprintf("<base64>%s</base64>", match), ""), re.ReplaceAllString(c, "")
+	internalContent := match[8 : len(match)-9]
+	externalContent := re.ReplaceAllString(c, "")
+	return internalContent, externalContent
 }
 
 // GetThreadList 获取用户正在进行中的对话线程ID列表
