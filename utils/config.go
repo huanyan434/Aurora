@@ -24,6 +24,7 @@ type Config struct {
 	APINameC    string `yaml:"apiNameC"`
 	APIKeyNameC string `yaml:"apiKeyNameC"`
 	ModelNameC  string `yaml:"modelNameC"`
+	ModelScan   string `yaml:"modelScan"`
 	Models      []struct {
 		Name   string `yaml:"name"`
 		ID     string `yaml:"id"`

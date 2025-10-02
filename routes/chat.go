@@ -3,11 +3,12 @@ package routes
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"utils"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sashabaranov/go-openai"
 	uuid "github.com/satori/go.uuid"
-	"net/http"
-	"utils"
 )
 
 func ChatInit(r *gin.Engine) {
@@ -22,6 +23,7 @@ func ChatInit(r *gin.Engine) {
 				ConversationID uuid.UUID `json:"conversationID"`
 				Prompt         string    `json:"prompt"`
 				Model          string    `json:"model"`
+				Base64         string    `json:"base64"`
 			}
 			err := c.ShouldBindJSON(&req)
 			if err != nil {
@@ -62,6 +64,9 @@ func ChatInit(r *gin.Engine) {
 			if err != nil {
 				c.JSON(400, gin.H{"error": err})
 				return
+			}
+			if req.Base64 != "" {
+				req.Prompt = req.Prompt + "\n\n" + utils.ScanPicture(req.Base64, req.Prompt)
 			}
 			prompt := append(messages, openai.ChatCompletionMessage{
 				Role:    "user",

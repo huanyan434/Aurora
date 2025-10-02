@@ -4,6 +4,7 @@ apiKey: "sk-xxx"
 apiNameC: "https://api.siliconflow.cn/v1"
 apiKeyNameC: "sk-xxx"
 modelNameC: "deepseek-ai/DeepSeek-V3.1-Terminus"
+modelScan: "zai-org/GLM-4.5V"
 models:
   [
     {

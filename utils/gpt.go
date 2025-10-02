@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -52,7 +51,7 @@ func ThreadOpenai(conversationID uuid.UUID, model string, prompt []openai.ChatCo
 	// 如果线程已存在，直接返回已存在的通道
 	if exists {
 		// 确保返回的通道没有被关闭
-		// 这是一个简单的检查，更严谨的实现需要额外的状态字段
+		// 这是一个简单的检查，更严谨地实现需要额外的状态字段
 		// 但基于当前的defer close逻辑，我们相信如果存在，它应该仍在使用中。
 		return info.Resp
 	}
@@ -206,6 +205,37 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	}
 }
 
+// ScanPicture 视图
+func ScanPicture(base64 string, prompt string) string {
+	Configs := GetConfig()
+	clientConfig := openai.DefaultConfig(Configs.APIKeyNameC)
+	clientConfig.BaseURL = Configs.APINameC
+	client := openai.NewClientWithConfig(clientConfig)
+	req := openai.ChatCompletionRequest{
+		Model: Configs.ModelScan,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role: "user",
+				MultiContent: []openai.ChatMessagePart{
+					{
+						Type: "text",
+						Text: "请简要描述输入图片的内容，优先描述图片上的文字，其次概括图片内容。你的描述会作为提示词给另一个不支持视觉模型进行理解。请根据用户输入来更好地描述图片，以下是用户的输入：" + prompt,
+					},
+					{
+						Type:     "image_url",
+						ImageURL: &openai.ChatMessageImageURL{URL: fmt.Sprintf("data:image/jpeg;base64,{%s}", base64)},
+					},
+				},
+			},
+		},
+	}
+	resp, err := client.CreateChatCompletion(context.Background(), req)
+	if err != nil {
+		return fmt.Sprintf("识图失败：%s", err)
+	}
+	return "用户上传了一张图片，以下是一个视觉模型对图片的描述：" + resp.Choices[0].Message.Content
+}
+
 // KillThread 终止指定ID的线程
 func KillThread(threadID string) bool {
 	threadMutex.RLock()
@@ -229,7 +259,7 @@ func ParseThinkBlock(c string) (string, string) {
 	if match == "" {
 		return "", c
 	}
-	return strings.TrimSpace(match[1 : len(match)-1]), re.ReplaceAllString(c, "")
+	return re.ReplaceAllString(fmt.Sprintf("<think>%s</think>", match), ""), re.ReplaceAllString(c, "")
 }
 
 // ParseModelBlock 解析模型标签
@@ -242,7 +272,20 @@ func ParseModelBlock(c string) (string, string) {
 	if match == "" {
 		return "", c
 	}
-	return strings.TrimSpace(match[7 : len(match)-1]), re.ReplaceAllString(c, "")
+	return re.ReplaceAllString(fmt.Sprintf("<model=%s>", match), ""), re.ReplaceAllString(c, "")
+}
+
+// ParseBase64Block 解析图片标签
+func ParseBase64Block(c string) (string, string) {
+	if c == "" {
+		return "", ""
+	}
+	re := regexp.MustCompile(`<base64>(.*?)</base64>`)
+	match := re.FindString(c)
+	if match == "" {
+		return "", c
+	}
+	return re.ReplaceAllString(fmt.Sprintf("<base64>%s</base64>", match), ""), re.ReplaceAllString(c, "")
 }
 
 // GetThreadList 获取用户正在进行中的对话线程ID列表
