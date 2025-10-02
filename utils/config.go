@@ -41,6 +41,8 @@ type Config struct {
 		} `yaml:"smtp"`
 	} `yaml:"email"`
 	Database DatabaseConfig `yaml:"database"`
+	UserID   string         `yaml:"userID"`
+	Token    string         `yaml:"token"`
 }
 
 var AppConfig *Config

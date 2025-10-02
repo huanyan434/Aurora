@@ -96,3 +96,7 @@ database:
   password: "xxx"
   dbname: "aurora"
   charset: "utf8mb4"
+
+# 爱发电
+userID: "xxx"
+token: "xxx"
