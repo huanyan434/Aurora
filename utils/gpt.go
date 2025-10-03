@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 
@@ -106,10 +107,12 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	}
 	messagesCopy := make([]openai.ChatCompletionMessage, len(messages))
 	copy(messagesCopy, messages)
-	messages = append(messages, openai.ChatCompletionMessage{
-		Role:    "user",
-		Content: fmt.Sprintf("<base64>%s</base64>", base64) + prompt,
-	})
+	if base64 != "" {
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    "user",
+			Content: fmt.Sprintf("<base64>%s</base64>", base64) + prompt,
+		})
+	}
 	err = SaveConversationHistory(GetDB(), conversationID, messages)
 	if err != nil {
 		resp <- fmt.Sprintf("ERR:%s", err)
@@ -117,6 +120,7 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	for _, m := range messagesCopy {
 		if m.Role == "assistant" {
 			_, m.Content = ParseModelBlock(m.Content)
+			_, m.ReasoningContent, _ = ParseThinkBlock(m.Content)
 		}
 		if m.Role == "user" {
 			_, m.Content = ParseBase64Block(m.Content)
@@ -167,14 +171,24 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	}()
 
 	var reasoningContent, content string
+	timeO := time.Now().Unix()
+	usedTime := strconv.Itoa(int(time.Now().Unix() - timeO))
 
 	defer func() {
 		db := GetDB()
-		messages = append(messages, openai.ChatCompletionMessage{
-			Role:             "assistant",
-			Content:          fmt.Sprintf("<model=%s>", model) + content,
-			ReasoningContent: reasoningContent,
-		})
+		if reasoningContent != "" {
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:             "assistant",
+				Content:          fmt.Sprintf("<model=%s>", model) + content,
+				ReasoningContent: fmt.Sprintf("<think time=%s>%s</think>", usedTime, reasoningContent),
+			})
+		} else {
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:             "assistant",
+				Content:          fmt.Sprintf("<model=%s>", model) + content,
+				ReasoningContent: "",
+			})
+		}
 		if err := SaveConversationHistory(GetDB(), conversationID, messages); err != nil {
 			fmt.Printf("save error: %v\n", err)
 		}
@@ -224,7 +238,8 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 			if len(response.Choices) > 0 {
 				if reasoning := response.Choices[0].Delta.ReasoningContent; reasoning != "" {
 					reasoningContent += reasoning
-					resp <- "<think>" + reasoning + "</think>"
+					usedTime = strconv.Itoa(int(time.Now().Unix() - timeO))
+					resp <- fmt.Sprintf("<think time=%s>%s</think>", usedTime, reasoning)
 				}
 
 				if contentDelta := response.Choices[0].Delta.Content; contentDelta != "" {
@@ -282,18 +297,26 @@ func KillThread(threadID string) bool {
 }
 
 // ParseThinkBlock 解析思考内容
-func ParseThinkBlock(c string) (string, string) {
+func ParseThinkBlock(c string) (int, string, string) {
 	if c == "" {
-		return "", ""
+		return 0, "", ""
 	}
-	re := regexp.MustCompile(`<think>(.*?)</think>`)
-	match := re.FindString(c)
-	if match == "" {
-		return "", c
+	re := regexp.MustCompile(`<think time=(\d+)>(.*?)</think>`)
+	matches := re.FindStringSubmatch(c)
+	if len(matches) < 3 {
+		return 0, "", c
 	}
-	internalContent := match[7 : len(match)-8]
-	externalContent := re.ReplaceAllString(c, "")
-	return internalContent, externalContent
+	// 提取各部分
+	timeStr := matches[1]
+	timeInt, err := strconv.Atoi(timeStr)
+	if err != nil {
+		return 0, "", c
+	}
+	inner := matches[2]
+
+	// 计算外部部分（标签之外的内容）
+	outer := re.ReplaceAllString(c, "")
+	return timeInt, inner, outer
 }
 
 // ParseModelBlock 解析模型标签
@@ -301,14 +324,14 @@ func ParseModelBlock(c string) (string, string) {
 	if c == "" {
 		return "", ""
 	}
-	re := regexp.MustCompile(`<model=(.*?)>`)
-	match := re.FindString(c)
-	if match == "" {
+	re := regexp.MustCompile(`<model=([^>]+)>(.*?)`)
+
+	matches := re.FindStringSubmatch(c)
+	if len(matches) < 3 {
 		return "", c
 	}
-	internalContent := match[7 : len(match)-1]
-	externalContent := re.ReplaceAllString(c, "")
-	return internalContent, externalContent
+
+	return matches[1], matches[2]
 }
 
 // ParseBase64Block 解析图片标签
@@ -316,14 +339,14 @@ func ParseBase64Block(c string) (string, string) {
 	if c == "" {
 		return "", ""
 	}
-	re := regexp.MustCompile(`<base64>(.*?)</base64>`)
-	match := re.FindString(c)
-	if match == "" {
+	re := regexp.MustCompile(`<base64>(.*?)</base64>(.*)`)
+
+	matches := re.FindStringSubmatch(c)
+	if len(matches) < 3 {
 		return "", c
 	}
-	internalContent := match[8 : len(match)-9]
-	externalContent := re.ReplaceAllString(c, "")
-	return internalContent, externalContent
+
+	return matches[1], matches[2]
 }
 
 // GetThreadList 获取用户正在进行中的对话线程ID列表

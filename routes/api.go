@@ -49,14 +49,10 @@ func ApiInit(r *gin.Engine) {
 				return
 			}
 
-			// 检查用户是否为会员
-			isActiveMember := utils.IsActiveMember(&user)
-
 			setCurrentUser(c, user)
 			c.JSON(200, gin.H{
-				"success":  true,
-				"message":  "登录成功",
-				"isMember": isActiveMember,
+				"success": true,
+				"message": "登录成功",
 			})
 		})
 
@@ -223,6 +219,69 @@ func ApiInit(r *gin.Engine) {
 			// 返回JSON响应
 			c.JSON(200, gin.H{
 				"models": models,
+			})
+		})
+
+		api.POST("/verify_vip", func(c *gin.Context) {
+			var req struct {
+				OrderID string `json:"orderID"`
+				Force   bool   `json:"force"` // 强制套餐转化
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{
+					"success": false,
+					"message": "内部错误",
+				})
+				return
+			}
+			user, err := getCurrentUser(c)
+			if err != nil {
+				c.JSON(400, gin.H{
+					"success": false,
+					"message": "Err:" + err.Error(),
+				})
+			}
+			message := utils.VerifyVip(user.ID, req.OrderID, req.Force)
+			if message != "" {
+				c.JSON(400, gin.H{
+					"success": false,
+					"message": message,
+				})
+				return
+			}
+			c.JSON(200, gin.H{
+				"success": true,
+			})
+		})
+
+		api.POST("/verify_points", func(c *gin.Context) {
+			var req struct {
+				OrderID string `json:"orderID"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{
+					"success": false,
+					"message": "内部错误",
+				})
+				return
+			}
+			user, err := getCurrentUser(c)
+			if err != nil {
+				c.JSON(400, gin.H{
+					"success": false,
+					"message": "Err:" + err.Error(),
+				})
+			}
+			message := utils.VerifyPoints(user.ID, req.OrderID)
+			if message != "" {
+				c.JSON(400, gin.H{
+					"success": false,
+					"message": message,
+				})
+				return
+			}
+			c.JSON(200, gin.H{
+				"success": true,
 			})
 		})
 	}

@@ -16,17 +16,17 @@ import (
 
 // User 结构
 type User struct {
-	ID           uuid.UUID  `gorm:"column:id;type:char(36);primaryKey"`
-	Username     string     `gorm:"column:username;type:varchar(64);uniqueIndex:idx_username;not null"`
-	Email        string     `gorm:"column:email;type:varchar(120);uniqueIndex:idx_email;not null"`
-	PasswordHash string     `gorm:"column:password_hash;type:varchar(255)"`
-	IsMember     bool       `gorm:"column:is_member;type:boolean;default:false"`
-	MemberLevel  string     `gorm:"column:member_level;type:varchar(20);default:'free'"`
-	MemberSince  *time.Time `gorm:"column:member_since;type:datetime;null"`
-	MemberUntil  *time.Time `gorm:"column:member_until;type:datetime;null"`
-	Points       int        `gorm:"column:points;type:int;default:0"`
-	CreatedAt    time.Time  `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt    time.Time  `gorm:"column:updated_at;autoUpdateTime"`
+	ID           uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
+	Username     string    `gorm:"column:username;type:varchar(64);uniqueIndex:idx_username;not null"`
+	Email        string    `gorm:"column:email;type:varchar(120);uniqueIndex:idx_email;not null"`
+	PasswordHash string    `gorm:"column:password_hash;type:varchar(255)"`
+	IsMember     bool      `gorm:"column:is_member;type:boolean;default:false"`
+	MemberLevel  string    `gorm:"column:member_level;type:varchar(20);default:'free'"`
+	MemberSince  time.Time `gorm:"column:member_since;type:datetime;null"`
+	MemberUntil  time.Time `gorm:"column:member_until;type:datetime;null"`
+	Points       int       `gorm:"column:points;type:int;default:0"`
+	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt    time.Time `gorm:"column:updated_at;autoUpdateTime"`
 }
 
 // TableName 指定User结构体对应的表名
@@ -48,16 +48,27 @@ func (Conversation) TableName() string {
 }
 
 type Message struct {
-	ID             uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
-	Content        string    `gorm:"column:content;type:mediumtext"`
-	Role           string    `gorm:"column:role;type:varchar(20)"`
-	ConversationID uuid.UUID `gorm:"column:conversation_id;type:char(36);index"`
-	CreatedAt      time.Time `gorm:"column:created_at;autoCreateTime"`
+	ID               uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
+	Content          string    `gorm:"column:content;type:mediumtext"`
+	Role             string    `gorm:"column:role;type:varchar(20)"`
+	ConversationID   uuid.UUID `gorm:"column:conversation_id;type:char(36);index"`
+	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
+	ReasoningContent string    `gorm:"column:reasoning_content;type:mediumtext"`
 }
 
 // TableName 指定Message结构体对应的表名
 func (Message) TableName() string {
 	return "messages"
+}
+
+// Order 订单结构
+type Order struct {
+	ID string `gorm:"column:id;type:varchar(255);primaryKey"`
+}
+
+// TableName 指定Order结构体对应的表名
+func (Order) TableName() string {
+	return "orders"
 }
 
 // VerifyCode 验证码结构
@@ -110,10 +121,10 @@ func IsActiveMember(u *User) bool {
 	if !u.IsMember {
 		return false
 	}
-	if u.MemberUntil == nil {
+	if u.MemberUntil.IsZero() {
 		return false
 	}
-	return time.Now().Before(*u.MemberUntil)
+	return time.Now().Before(u.MemberUntil)
 }
 
 // GetMemberStatus 获取会员状态信息
@@ -130,9 +141,9 @@ func GetMemberStatus(u *User) map[string]interface{} {
 	daysLeft := 0
 	expired := true
 
-	if u.MemberUntil != nil {
+	if !(u.MemberUntil.IsZero()) {
 		now := time.Now()
-		if now.Before(*u.MemberUntil) {
+		if now.Before(u.MemberUntil) {
 			daysLeft = int(u.MemberUntil.Sub(now).Hours() / 24)
 			expired = false
 		}
@@ -144,10 +155,10 @@ func GetMemberStatus(u *User) map[string]interface{} {
 		"days_left": daysLeft,
 		"expired":   expired,
 	}
-	if u.MemberSince != nil {
+	if !(u.MemberSince.IsZero()) {
 		result["since"] = u.MemberSince.Format(time.RFC3339)
 	}
-	if u.MemberUntil != nil {
+	if !(u.MemberSince.IsZero()) {
 		result["until"] = u.MemberUntil.Format(time.RFC3339)
 	}
 	return result
@@ -209,7 +220,7 @@ func GetDB() *gorm.DB {
 func InitDB(DB *gorm.DB) *gorm.DB {
 	// 自动迁移表结构
 	// 如果表不存在则创建，如果存在但结构不匹配则修改表结构
-	err := DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{})
+	err := DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{})
 	if err != nil {
 		fmt.Println("自动迁移表结构失败：", err)
 		return nil
@@ -236,8 +247,7 @@ func FilterBy(db *gorm.DB, username string, email string) User {
 	// 根据提供的参数添加查询条件
 	if username != "" {
 		query = query.Where("username = ?", username)
-	}
-	if email != "" {
+	} else if email != "" {
 		query = query.Where("email = ?", email)
 	}
 
@@ -264,8 +274,9 @@ func LoadConversationHistory(db *gorm.DB, conversationID uuid.UUID) ([]openai.Ch
 	var chatMessages []openai.ChatCompletionMessage
 	for _, msg := range messages {
 		chatMessages = append(chatMessages, openai.ChatCompletionMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
+			Role:             msg.Role,
+			Content:          msg.Content,
+			ReasoningContent: msg.ReasoningContent,
 		})
 	}
 
@@ -282,10 +293,11 @@ func SaveConversationHistory(db *gorm.DB, conversationID uuid.UUID, messages []o
 	// 添加新的消息记录
 	for _, msg := range messages {
 		message := Message{
-			ID:             uuid.NewV4(),
-			Content:        msg.Content,
-			Role:           msg.Role,
-			ConversationID: conversationID,
+			ID:               uuid.NewV4(),
+			Content:          msg.Content,
+			Role:             msg.Role,
+			ConversationID:   conversationID,
+			ReasoningContent: msg.ReasoningContent,
 		}
 		if err := db.Create(&message).Error; err != nil {
 			return err
@@ -510,4 +522,32 @@ func LoadMessage(db *gorm.DB, messageID uuid.UUID) (Message, error) {
 		return message, result.Error
 	}
 	return message, nil
+}
+
+// VerifyOrder 向orders表插入orderID
+func VerifyOrder(db *gorm.DB, order string) error {
+	orderRecord := Order{
+		ID: order,
+	}
+	result := db.Create(&orderRecord)
+	return result.Error
+}
+
+// SearchOrder 查询orders表中是否有此id
+func SearchOrder(db *gorm.DB, orderId string) (bool, error) {
+	var order Order
+	result := db.Where("id = ?", orderId).First(&order)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, result.Error
+	}
+	return true, nil
+}
+
+func DeleteMessage(db *gorm.DB, messageID uuid.UUID) {
+	var message Message
+	db.Table("messages").Where("id = ?", messageID).First(&message)
+	db.Create(&message)
 }

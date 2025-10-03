@@ -69,14 +69,16 @@ func ChatInit(r *gin.Engine) {
 			}
 			resp := utils.ThreadOpenai(req.ConversationID, req.Model, req.Prompt, req.Base64)
 			for response := range resp {
-				reasoningContent, content := utils.ParseThinkBlock(response)
+				reasoningTime, reasoningContent, content := utils.ParseThinkBlock(response)
 				msg := struct {
 					Success          bool   `json:"success"`
 					ReasoningContent string `json:"reasoningContent"`
+					ReasoningTime    int    `json:"reasoningTime"`
 					Content          string `json:"content"`
 				}{
 					Success:          true,
 					ReasoningContent: reasoningContent,
+					ReasoningTime:    reasoningTime,
 					Content:          content,
 				}
 				jsonData, _ := json.Marshal(msg)
@@ -237,6 +239,24 @@ func ChatInit(r *gin.Engine) {
 			c.JSON(200, gin.H{
 				"success":  true,
 				"messages": messages,
+			})
+		})
+
+		chat.POST("/delete_message", func(c *gin.Context) {
+			var req struct {
+				MessageID uuid.UUID `json:"messageID"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
+				return
+			}
+
+			utils.DeleteMessage(utils.GetDB(), req.MessageID)
+			c.JSON(200, gin.H{
+				"success": true,
 			})
 		})
 	}

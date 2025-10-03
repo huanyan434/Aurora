@@ -25,7 +25,6 @@ func main() {
 
 	routes.ChatInit(r)
 	routes.ApiInit(r)
-
 	err := r.Run(":5000")
 	if err != nil {
 		fmt.Println("Err:", err)
