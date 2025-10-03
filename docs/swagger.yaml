@@ -1,0 +1,799 @@
+basePath: /
+definitions:
+  routes.conversationsListResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.conversationsListResponseSuccess:
+    properties:
+      conversations:
+        items:
+          $ref: '#/definitions/utils.Conversation'
+        type: array
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.currentUserResponseFailed:
+    properties:
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.currentUserResponseSuccess:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      id:
+        example: uuid-string
+        type: string
+      isMember:
+        example: true
+        type: boolean
+      memberLevel:
+        example: VIP
+        type: string
+      points:
+        example: 100
+        type: integer
+      success:
+        example: true
+        type: boolean
+      username:
+        example: currentuser
+        type: string
+    type: object
+  routes.deleteConversationRequest:
+    properties:
+      conversationID:
+        example: uuid-string
+        type: string
+    type: object
+  routes.deleteConversationResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.deleteConversationResponseSuccess:
+    properties:
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.deleteMessageRequest:
+    properties:
+      messageID:
+        example: uuid-string
+        type: string
+    type: object
+  routes.deleteMessageResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.deleteMessageResponseSuccess:
+    properties:
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.generateRequest:
+    properties:
+      base64:
+        example: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==
+        type: string
+      conversationID:
+        example: uuid-string
+        type: string
+      model:
+        example: gpt-3.5-turbo
+        type: string
+      prompt:
+        example: 你好，帮我写一个Hello World程序
+        type: string
+    type: object
+  routes.generateResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.loadShareMessagesResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.loadShareMessagesResponseSuccess:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/utils.Message'
+        type: array
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.loginRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: password123
+        type: string
+    type: object
+  routes.loginResponseFailed:
+    properties:
+      message:
+        example: 用户名或密码错误
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.loginResponseSuccess:
+    properties:
+      message:
+        example: 登录成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.modelsListResponse:
+    properties:
+      models:
+        items: {}
+        type: array
+    type: object
+  routes.newConversationResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.newConversationResponseSuccess:
+    properties:
+      conversationID:
+        example: uuid-string
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.sendVerifyCodeRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+    type: object
+  routes.sendVerifyCodeResponseFailed:
+    properties:
+      message:
+        example: 发送失败
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.sendVerifyCodeResponseSuccess:
+    properties:
+      message:
+        example: 发送成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.shareMessagesRequest:
+    properties:
+      messageIDs:
+        example:
+        - message-id-1
+        - message-id-2
+        items:
+          type: string
+        type: array
+    type: object
+  routes.shareMessagesResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.shareMessagesResponseSuccess:
+    properties:
+      share_id:
+        example: a1b2c3d4e5f67890
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.signResponseFailed:
+    properties:
+      message:
+        example: 今日已签到
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.signResponseSuccess:
+    properties:
+      message:
+        example: 签到成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.signupRequest:
+    properties:
+      email:
+        example: newuser@example.com
+        type: string
+      password:
+        example: password123
+        type: string
+      username:
+        example: newuser
+        type: string
+      verifyCode:
+        example: "123456"
+        type: string
+    type: object
+  routes.signupResponseFailed:
+    properties:
+      message:
+        example: 该邮箱已被注册
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.signupResponseSuccess:
+    properties:
+      message:
+        example: 注册成功
+        type: string
+      success:
+        example: true
+        type: boolean
+      user:
+        $ref: '#/definitions/routes.signupUser'
+    type: object
+  routes.signupUser:
+    properties:
+      email:
+        example: newuser@example.com
+        type: string
+      id:
+        example: uuid-string
+        type: string
+      username:
+        example: newuser
+        type: string
+    type: object
+  routes.stopRequest:
+    properties:
+      conversationID:
+        example: uuid-string
+        type: string
+    type: object
+  routes.stopResponseFailed:
+    properties:
+      error:
+        example: 内部错误
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.stopResponseSuccess:
+    properties:
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.threadListResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.threadListResponseSuccess:
+    properties:
+      success:
+        example: true
+        type: boolean
+      thread_list:
+        items: {}
+        type: array
+    type: object
+  routes.verifyPointsRequest:
+    properties:
+      orderID:
+        example: 订单ID
+        type: string
+    type: object
+  routes.verifyPointsResponseFailed:
+    properties:
+      message:
+        example: 无效 orderID
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.verifyPointsResponseSuccess:
+    properties:
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.verifyVipRequest:
+    properties:
+      force:
+        example: false
+        type: boolean
+      orderID:
+        example: 订单ID
+        type: string
+    type: object
+  routes.verifyVipResponseFailed:
+    properties:
+      message:
+        example: 无效 orderID
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.verifyVipResponseSuccess:
+    properties:
+      success:
+        example: true
+        type: boolean
+    type: object
+  utils.Conversation:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: string
+    type: object
+  utils.Message:
+    properties:
+      content:
+        type: string
+      conversationID:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      reasoningContent:
+        type: string
+      role:
+        type: string
+    type: object
+host: localhost:5000
+info:
+  contact: {}
+  description: API文档 for Aurora 项目
+  title: Aurora API
+  version: "1.0"
+paths:
+  /api/current_user:
+    get:
+      description: 获取当前登录用户的信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取用户信息成功
+          schema:
+            $ref: '#/definitions/routes.currentUserResponseSuccess'
+        "400":
+          description: 获取用户信息失败
+          schema:
+            $ref: '#/definitions/routes.currentUserResponseFailed'
+      summary: 获取当前用户信息
+      tags:
+      - 用户
+  /api/login:
+    post:
+      consumes:
+      - application/json
+      description: 通过邮箱和密码进行用户登录验证
+      parameters:
+      - description: 登录信息
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/routes.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登录成功
+          schema:
+            $ref: '#/definitions/routes.loginResponseSuccess'
+        "400":
+          description: 登录失败
+          schema:
+            $ref: '#/definitions/routes.loginResponseFailed'
+      summary: 用户登录
+      tags:
+      - 用户
+  /api/models_list:
+    get:
+      description: 获取可用的AI模型列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取模型列表成功
+          schema:
+            $ref: '#/definitions/routes.modelsListResponse'
+      summary: 获取模型列表
+      tags:
+      - 模型
+  /api/send_verify_code:
+    post:
+      consumes:
+      - application/json
+      description: 向指定邮箱发送验证码
+      parameters:
+      - description: 邮箱地址
+        in: body
+        name: email
+        required: true
+        schema:
+          $ref: '#/definitions/routes.sendVerifyCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 验证码发送成功
+          schema:
+            $ref: '#/definitions/routes.sendVerifyCodeResponseSuccess'
+        "400":
+          description: 验证码发送失败
+          schema:
+            $ref: '#/definitions/routes.sendVerifyCodeResponseFailed'
+      summary: 发送验证码
+      tags:
+      - 用户
+  /api/sign:
+    post:
+      description: 用户每日签到获取积分
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 签到成功
+          schema:
+            $ref: '#/definitions/routes.signResponseSuccess'
+        "400":
+          description: 签到失败
+          schema:
+            $ref: '#/definitions/routes.signResponseFailed'
+      summary: 用户签到
+      tags:
+      - 用户
+  /api/signup:
+    post:
+      consumes:
+      - application/json
+      description: 通过用户名、邮箱、密码和验证码进行用户注册
+      parameters:
+      - description: 注册信息
+        in: body
+        name: signup
+        required: true
+        schema:
+          $ref: '#/definitions/routes.signupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 注册成功
+          schema:
+            $ref: '#/definitions/routes.signupResponseSuccess'
+        "400":
+          description: 注册失败
+          schema:
+            $ref: '#/definitions/routes.signupResponseFailed'
+      summary: 用户注册
+      tags:
+      - 用户
+  /api/verify_points:
+    post:
+      consumes:
+      - application/json
+      description: 通过订单ID验证并充值积分
+      parameters:
+      - description: 验证信息
+        in: body
+        name: verifyPoints
+        required: true
+        schema:
+          $ref: '#/definitions/routes.verifyPointsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 积分验证成功
+          schema:
+            $ref: '#/definitions/routes.verifyPointsResponseSuccess'
+        "400":
+          description: 积分验证失败
+          schema:
+            $ref: '#/definitions/routes.verifyPointsResponseFailed'
+      summary: 验证积分充值
+      tags:
+      - 用户
+  /api/verify_vip:
+    post:
+      consumes:
+      - application/json
+      description: 通过订单ID验证并激活VIP会员资格
+      parameters:
+      - description: 验证信息
+        in: body
+        name: verifyVip
+        required: true
+        schema:
+          $ref: '#/definitions/routes.verifyVipRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: VIP验证成功
+          schema:
+            $ref: '#/definitions/routes.verifyVipResponseSuccess'
+        "400":
+          description: VIP验证失败
+          schema:
+            $ref: '#/definitions/routes.verifyVipResponseFailed'
+      summary: 验证VIP会员
+      tags:
+      - 用户
+  /chat/{shareID}:
+    get:
+      description: 根据分享ID获取分享的消息内容
+      parameters:
+      - description: 分享ID
+        in: path
+        name: shareID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取分享内容成功
+          schema:
+            $ref: '#/definitions/routes.loadShareMessagesResponseSuccess'
+        "400":
+          description: 获取分享内容失败
+          schema:
+            $ref: '#/definitions/routes.loadShareMessagesResponseFailed'
+      summary: 获取分享内容
+      tags:
+      - Chat
+  /chat/conversations_list:
+    get:
+      description: 获取当前用户的所有对话列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取对话列表成功
+          schema:
+            $ref: '#/definitions/routes.conversationsListResponseSuccess'
+        "400":
+          description: 获取对话列表失败
+          schema:
+            $ref: '#/definitions/routes.conversationsListResponseFailed'
+      summary: 获取对话列表
+      tags:
+      - Chat
+  /chat/delete_conversation:
+    post:
+      consumes:
+      - application/json
+      description: 删除指定的对话及其相关消息
+      parameters:
+      - description: 删除对话请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/routes.deleteConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除对话成功
+          schema:
+            $ref: '#/definitions/routes.deleteConversationResponseSuccess'
+        "400":
+          description: 删除对话失败
+          schema:
+            $ref: '#/definitions/routes.deleteConversationResponseFailed'
+      summary: 删除对话
+      tags:
+      - Chat
+  /chat/delete_message:
+    post:
+      consumes:
+      - application/json
+      description: 删除指定的消息
+      parameters:
+      - description: 删除消息请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/routes.deleteMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除消息成功
+          schema:
+            $ref: '#/definitions/routes.deleteMessageResponseSuccess'
+        "400":
+          description: 删除消息失败
+          schema:
+            $ref: '#/definitions/routes.deleteMessageResponseFailed'
+      summary: 删除消息
+      tags:
+      - Chat
+  /chat/generate:
+    post:
+      consumes:
+      - application/json
+      description: 根据用户输入生成AI回复，使用SSE流式传输
+      parameters:
+      - description: 生成请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/routes.generateRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: 流式响应，返回AI生成内容
+          schema:
+            type: string
+        "400":
+          description: 生成失败
+          schema:
+            $ref: '#/definitions/routes.generateResponseFailed'
+      summary: 生成AI回复
+      tags:
+      - Chat
+  /chat/new_conversation:
+    get:
+      description: 为当前用户创建一个新的对话
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建新对话成功
+          schema:
+            $ref: '#/definitions/routes.newConversationResponseSuccess'
+        "400":
+          description: 创建新对话失败
+          schema:
+            $ref: '#/definitions/routes.newConversationResponseFailed'
+      summary: 创建新对话
+      tags:
+      - Chat
+  /chat/share_messages:
+    post:
+      consumes:
+      - application/json
+      description: 将指定的消息ID列表创建为分享链接
+      parameters:
+      - description: 分享消息请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/routes.shareMessagesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建分享成功
+          schema:
+            $ref: '#/definitions/routes.shareMessagesResponseSuccess'
+        "400":
+          description: 创建分享失败
+          schema:
+            $ref: '#/definitions/routes.shareMessagesResponseFailed'
+      summary: 分享消息
+      tags:
+      - Chat
+  /chat/stop:
+    post:
+      consumes:
+      - application/json
+      description: 停止指定对话的AI生成过程
+      parameters:
+      - description: 停止生成请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/routes.stopRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 停止生成成功
+          schema:
+            $ref: '#/definitions/routes.stopResponseSuccess'
+        "400":
+          description: 停止生成失败
+          schema:
+            $ref: '#/definitions/routes.stopResponseFailed'
+      summary: 停止生成
+      tags:
+      - Chat
+  /chat/thread_list:
+    post:
+      consumes:
+      - application/json
+      description: 获取当前用户的线程列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取线程列表成功
+          schema:
+            $ref: '#/definitions/routes.threadListResponseSuccess'
+        "400":
+          description: 获取线程列表失败
+          schema:
+            $ref: '#/definitions/routes.threadListResponseFailed'
+      summary: 获取线程列表
+      tags:
+      - Chat
+swagger: "2.0"
