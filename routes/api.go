@@ -133,13 +133,14 @@ func ApiInit(r *gin.Engine) {
 		})
 
 		// User
-		api.GET("/user_current", func(c *gin.Context) {
+		api.GET("/current_user", func(c *gin.Context) {
 			// 获取当前登录用户信息
 			userInfo, err := getCurrentUser(c)
 			if err != nil {
 				c.JSON(400, gin.H{
 					"success": false,
 				})
+				return
 			}
 			// 以json格式返回
 			c.JSON(200, gin.H{
