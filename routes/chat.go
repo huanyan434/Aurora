@@ -85,7 +85,7 @@ func generateHandler(c *gin.Context) {
 						})
 						return
 					}
-					utils.AddPoints(&User, -config.Models[i].Points/2)
+					utils.AddPoints(utils.GetDB(), User.ID, -config.Models[i].Points/2)
 				}
 			} else {
 				if User.Points < config.Models[i].Points {
@@ -95,7 +95,7 @@ func generateHandler(c *gin.Context) {
 					})
 					return
 				}
-				utils.AddPoints(&User, -config.Models[i].Points)
+				utils.AddPoints(utils.GetDB(), User.ID, -config.Models[i].Points)
 			}
 
 		}

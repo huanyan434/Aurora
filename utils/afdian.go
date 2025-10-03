@@ -223,7 +223,7 @@ func VerifyPoints(userID uuid.UUID, orderID string) string {
 		if err != nil {
 			return "内部错误"
 		}
-		AddPoints(&user, int(points)*100)
+		AddPoints(GetDB(), user.ID, int(points)*100)
 		err = VerifyOrder(GetDB(), orderID)
 		if err != nil {
 			return "内部错误"

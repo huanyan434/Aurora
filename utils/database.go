@@ -165,13 +165,13 @@ func GetMemberStatus(u *User) map[string]interface{} {
 }
 
 // AddPoints 增加或减少用户积分
-func AddPoints(u *User, amount int) bool {
-	u.Points += amount
-	if u.Points < 0 {
-		u.Points = 0
-		return true
+func AddPoints(db *gorm.DB, userID uuid.UUID, amount int) {
+	var user User
+	db.Table("users").Where("id = ?", userID).First(&user)
+	user.Points += amount
+	if user.Points < 0 {
+		user.Points = 0
 	}
-	return false
 }
 
 // RegisterUser 用户注册函数
@@ -350,7 +350,7 @@ func Sign(db *gorm.DB, Email string) error {
 
 	// 随机数生成
 	points := rand.Intn(20) + 90
-	AddPoints(&user, points)
+	AddPoints(GetDB(), user.ID, points)
 
 	// 记录签到信息
 	signRecord := SignRecord{
