@@ -111,6 +111,22 @@ func (Share) TableName() string {
 	return "shares"
 }
 
+// Log 日志结构
+type Log struct {
+	ID       uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
+	UserID   uuid.UUID `gorm:"column:user_id;type:char(36);not null"`
+	Time     time.Time `gorm:"column:time;not null"`
+	Route    string    `gorm:"column:route;type:varchar(255);not null"`
+	Method   string    `gorm:"column:method;type:varchar(10);not null"`
+	Response string    `gorm:"column:response;type:text"`
+	About    string    `gorm:"column:about;type:varchar(255)"`
+}
+
+// TableName 指定Log结构体对应的表名
+func (Log) TableName() string {
+	return "logs"
+}
+
 // SetPassword 设置用户密码
 func SetPassword(u *User, password string) {
 	u.PasswordHash = HashPassword(password)
@@ -220,7 +236,7 @@ func GetDB() *gorm.DB {
 func InitDB(DB *gorm.DB) *gorm.DB {
 	// 自动迁移表结构
 	// 如果表不存在则创建，如果存在但结构不匹配则修改表结构
-	err := DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{})
+	err := DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{})
 	if err != nil {
 		fmt.Println("自动迁移表结构失败：", err)
 		return nil
