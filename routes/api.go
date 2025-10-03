@@ -143,6 +143,7 @@ func ApiInit(r *gin.Engine) {
 			}
 			// 以json格式返回
 			c.JSON(200, gin.H{
+				"success":     true,
 				"id":          userInfo.ID.String(),
 				"username":    userInfo.Username,
 				"email":       userInfo.Email,
@@ -185,7 +186,7 @@ func ApiInit(r *gin.Engine) {
 			if err != nil {
 				c.JSON(400, gin.H{
 					"success": false,
-					"error":   err,
+					"message": "签到失败: " + err.Error(),
 				})
 				return
 			}

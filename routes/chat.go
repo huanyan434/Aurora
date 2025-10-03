@@ -26,12 +26,18 @@ func ChatInit(r *gin.Engine) {
 			}
 			err := c.ShouldBindJSON(&req)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
 			User, err := getCurrentUser(c)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
 			config := utils.GetConfig()
@@ -41,7 +47,8 @@ func ChatInit(r *gin.Engine) {
 						if User.MemberLevel == "VIP" {
 							if User.Points < (config.Models[i].Points / 2) {
 								c.JSON(400, gin.H{
-									"error": "积分不足",
+									"success": false,
+									"error":   "积分不足",
 								})
 								return
 							}
@@ -50,7 +57,8 @@ func ChatInit(r *gin.Engine) {
 					} else {
 						if User.Points < config.Models[i].Points {
 							c.JSON(400, gin.H{
-								"error": "积分不足",
+								"success": false,
+								"error":   "积分不足",
 							})
 							return
 						}
@@ -63,9 +71,11 @@ func ChatInit(r *gin.Engine) {
 			for response := range resp {
 				reasoningContent, content := utils.ParseThinkBlock(response)
 				msg := struct {
+					Success          bool   `json:"success"`
 					ReasoningContent string `json:"reasoningContent"`
 					Content          string `json:"content"`
 				}{
+					Success:          true,
 					ReasoningContent: reasoningContent,
 					Content:          content,
 				}
@@ -78,14 +88,21 @@ func ChatInit(r *gin.Engine) {
 		chat.POST("/thread_list", func(c *gin.Context) {
 			User, err := getCurrentUser(c)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
 			list, err := utils.GetThreadList(User.ID)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 			}
 			c.JSON(200, gin.H{
+				"success":     true,
 				"thread_list": list,
 			})
 		})
@@ -95,12 +112,16 @@ func ChatInit(r *gin.Engine) {
 				ConversationID uuid.UUID `json:"conversationID"`
 			}
 			if err := c.ShouldBindJSON(&req); err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 			}
 
 			if utils.KillThread(req.ConversationID.String()) != true {
 				c.JSON(400, gin.H{
 					"success": false,
+					"error":   "内部错误",
 				})
 				return
 			}
@@ -113,7 +134,10 @@ func ChatInit(r *gin.Engine) {
 		chat.GET("/new_conversation", func(c *gin.Context) {
 			User, err := getCurrentUser(c)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
 			conversationID := utils.CreateConversation(utils.GetDB(), User.ID)
@@ -128,11 +152,17 @@ func ChatInit(r *gin.Engine) {
 				ConversationID uuid.UUID `json:"conversationID"`
 			}
 			if err := c.ShouldBindJSON(&req); err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 			}
 			err := utils.DeleteConversation(utils.GetDB(), req.ConversationID)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
 			c.JSON(200, gin.H{
@@ -143,30 +173,41 @@ func ChatInit(r *gin.Engine) {
 		chat.GET("/conversations_list", func(c *gin.Context) {
 			User, err := getCurrentUser(c)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
 			var conversations []utils.Conversation
 			utils.GetDB().Table("conversations").Where("user_id = ?", User.ID).Order("updated_at DESC").Find(&conversations)
 			c.JSON(200, gin.H{
+				"success":       true,
 				"conversations": conversations,
 			})
 		})
 
 		chat.POST("/share_messages", func(c *gin.Context) {
 			var req struct {
-				MessageIDs []string `json:"messageIDs"`
+				MessageIDs []uuid.UUID `json:"messageIDs"`
 			}
 			if err := c.ShouldBindJSON(&req); err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
 			shareID, err := utils.SaveShareMessages(utils.GetDB(), req.MessageIDs)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
 			c.JSON(200, gin.H{
+				"success":  true,
 				"share_id": shareID,
 			})
 
@@ -174,12 +215,27 @@ func ChatInit(r *gin.Engine) {
 
 		chat.GET("/:shareID", func(c *gin.Context) {
 			shareID := c.Param("shareID")
-			messages, err := utils.LoadShareMessages(utils.GetDB(), shareID)
+			messageIDs, err := utils.LoadShareMessages(utils.GetDB(), shareID)
 			if err != nil {
-				c.JSON(400, gin.H{"error": err})
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   err,
+				})
 				return
 			}
+			var messages []utils.Message
+			for _, m := range messageIDs {
+				message, err := utils.LoadMessage(utils.GetDB(), m)
+				if err != nil {
+					c.JSON(400, gin.H{
+						"success": false,
+						"error":   err,
+					})
+				}
+				messages = append(messages, message)
+			}
 			c.JSON(200, gin.H{
+				"success":  true,
 				"messages": messages,
 			})
 		})

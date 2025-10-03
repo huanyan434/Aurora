@@ -415,7 +415,7 @@ func CreateConversation(db *gorm.DB, userID uuid.UUID) uuid.UUID {
 }
 
 // SaveShareMessages 保存分享消息
-func SaveShareMessages(db *gorm.DB, messageIDs []string) (string, error) {
+func SaveShareMessages(db *gorm.DB, messageIDs []uuid.UUID) (string, error) {
 	// 清理超过7天的分享
 	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
 
@@ -458,7 +458,7 @@ func SaveShareMessages(db *gorm.DB, messageIDs []string) (string, error) {
 }
 
 // LoadShareMessages 根据shareID加载分享的消息
-func LoadShareMessages(db *gorm.DB, shareID string) ([]string, error) {
+func LoadShareMessages(db *gorm.DB, shareID string) ([]uuid.UUID, error) {
 	// 清理超过7天的分享
 	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
 
@@ -470,7 +470,7 @@ func LoadShareMessages(db *gorm.DB, shareID string) ([]string, error) {
 	}
 
 	// 解析messageIDs JSON
-	var messageIDs []string
+	var messageIDs []uuid.UUID
 	err := json.Unmarshal([]byte(share.MessageIDs), &messageIDs)
 	if err != nil {
 		return nil, err
@@ -501,4 +501,13 @@ func RenameConversation(db *gorm.DB, conversationID uuid.UUID, title string) err
 		return result.Error
 	}
 	return nil
+}
+
+func LoadMessage(db *gorm.DB, messageID uuid.UUID) (Message, error) {
+	var message Message
+	result := db.Table("messages").Where("id = ?", messageID).First(&message)
+	if result.Error != nil {
+		return message, result.Error
+	}
+	return message, nil
 }
