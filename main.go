@@ -27,13 +27,13 @@ import (
 // @BasePath /
 func main() {
 	// 数据库
-	DB := utils.GetDB()
-	utils.InitDB(DB)
+	db := utils.GetDB()
+	utils.InitDB(db)
 
 	r := gin.Default()
 
 	// 添加日志记录中间件
-	r.Use(loggingMiddleware(DB))
+	r.Use(loggingMiddleware(db))
 
 	store := cookie.NewStore([]byte("snaosnca"))
 	r.Use(sessions.Sessions("SESSIONID", store))
@@ -77,6 +77,16 @@ func loggingMiddleware(db *gorm.DB) gin.HandlerFunc {
 
 		// 根据路由确定about内容
 		about := getAboutFromRoute(c.Request.URL.Path)
+
+		// 只记录"用户"和"财务"类别的日志，忽略其他类别
+		if about != "用户" && about != "财务" {
+			return
+		}
+
+		// 当user_id为空时不记录日志
+		if userID == uuid.Nil {
+			return
+		}
 
 		// 构造响应信息
 		responseData := map[string]interface{}{

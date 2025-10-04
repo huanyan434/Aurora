@@ -108,7 +108,7 @@ func ThreadOpenai(conversationID uuid.UUID, model string, prompt string, base64 
 }
 
 func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt string, base64 string, resp chan<- string) {
-	messages, err := LoadConversationHistory(GetDB(), conversationID)
+	messages, err := LoadConversationHistory(conversationID)
 	if err != nil {
 		resp <- fmt.Sprintf("ERR:%s", err)
 	}
@@ -120,7 +120,7 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 			Content: fmt.Sprintf("<base64>%s</base64>", base64) + prompt,
 		})
 	}
-	err = SaveConversationHistory(GetDB(), conversationID, messages)
+	err = SaveConversationHistory(conversationID, messages)
 	if err != nil {
 		resp <- fmt.Sprintf("ERR:%s", err)
 	}
@@ -182,7 +182,6 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	usedTime := strconv.Itoa(int(time.Now().Unix() - timeO))
 
 	defer func() {
-		db := GetDB()
 		if reasoningContent != "" {
 			messages = append(messages, openai.ChatCompletionMessage{
 				Role:             "assistant",
@@ -196,18 +195,18 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 				ReasoningContent: "",
 			})
 		}
-		if err := SaveConversationHistory(GetDB(), conversationID, messages); err != nil {
+		if err := SaveConversationHistory(conversationID, messages); err != nil {
 			fmt.Printf("save error: %v\n", err)
 		}
 		var conversation Conversation
-		db.Table("conversations").Where("id = ?", conversationID).First(&conversation)
+		GetDB().Table("conversations").Where("id = ?", conversationID).First(&conversation)
 		// 如果对话标题为“新对话”
 		if conversation.Title == "新对话" {
 			Configs := GetConfig()
 			clientConfig := openai.DefaultConfig(Configs.APIKeyNameC)
 			clientConfig.BaseURL = Configs.APINameC
 			client := openai.NewClientWithConfig(clientConfig)
-			messages, _ := LoadConversationHistory(db, conversationID)
+			messages, _ := LoadConversationHistory(conversationID)
 			messages = append(messages, openai.ChatCompletionMessage{
 				Role:    "user",
 				Content: "请总结概括对话内容，生成一个对话标题，不超过15字，不要使用 Emoji 和 Konomoji，不要使用 markdown，不要输出其他内容，仅需对话标题内容，不需前缀。",
@@ -221,7 +220,7 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 				fmt.Println("Error:", err)
 			}
 
-			_ = RenameConversation(db, conversationID, title.Choices[0].Message.Content)
+			_ = RenameConversation(conversationID, title.Choices[0].Message.Content)
 		}
 	}()
 
@@ -358,9 +357,8 @@ func ParseBase64Block(c string) (string, string) {
 
 // GetThreadList 获取用户正在进行中的对话线程ID列表
 func GetThreadList(userID uuid.UUID) ([]string, error) {
-	db := GetDB()
 	var conversations []Conversation
-	result := db.Where("user_id = ?", userID).Find(&conversations)
+	result := GetDB().Where("user_id = ?", userID).Find(&conversations)
 	if result.Error != nil {
 		return nil, result.Error
 	}

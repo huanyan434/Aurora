@@ -39,6 +39,12 @@ func ChatInit(r *gin.Engine) {
 
 		// 删除消息
 		chat.POST("/delete_message", deleteMessageHandler)
+
+		// TTS
+		chat.POST("/tts", ttsHandler)
+
+		// STT
+		chat.POST("/stt", sttHandler)
 	}
 }
 
@@ -85,7 +91,7 @@ func generateHandler(c *gin.Context) {
 						})
 						return
 					}
-					utils.AddPoints(utils.GetDB(), User.ID, -config.Models[i].Points/2)
+					utils.AddPoints(User.ID, -config.Models[i].Points/2)
 				}
 			} else {
 				if User.Points < config.Models[i].Points {
@@ -95,7 +101,7 @@ func generateHandler(c *gin.Context) {
 					})
 					return
 				}
-				utils.AddPoints(utils.GetDB(), User.ID, -config.Models[i].Points)
+				utils.AddPoints(User.ID, -config.Models[i].Points)
 			}
 
 		}
@@ -197,7 +203,7 @@ func newConversationHandler(c *gin.Context) {
 		})
 		return
 	}
-	conversationID := utils.CreateConversation(utils.GetDB(), User.ID)
+	conversationID := utils.CreateConversation(User.ID)
 	c.JSON(200, gin.H{
 		"success":        true,
 		"conversationID": conversationID,
@@ -221,7 +227,7 @@ func deleteConversationHandler(c *gin.Context) {
 			"error":   err,
 		})
 	}
-	err := utils.DeleteConversation(utils.GetDB(), req.ConversationID)
+	err := utils.DeleteConversation(req.ConversationID)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
@@ -290,7 +296,7 @@ func shareMessagesHandler(c *gin.Context) {
 		messageIDs = append(messageIDs, parsedID)
 	}
 
-	shareID, err := utils.SaveShareMessages(utils.GetDB(), messageIDs)
+	shareID, err := utils.SaveShareMessages(messageIDs)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
@@ -315,7 +321,7 @@ func shareMessagesHandler(c *gin.Context) {
 // @Router /chat/{shareID} [get]
 func loadShareMessagesHandler(c *gin.Context) {
 	shareID := c.Param("shareID")
-	messageIDs, err := utils.LoadShareMessages(utils.GetDB(), shareID)
+	messageIDs, err := utils.LoadShareMessages(shareID)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
@@ -325,7 +331,7 @@ func loadShareMessagesHandler(c *gin.Context) {
 	}
 	var messages []utils.Message
 	for _, m := range messageIDs {
-		message, err := utils.LoadMessage(utils.GetDB(), m)
+		message, err := utils.LoadMessage(m)
 		if err != nil {
 			c.JSON(400, gin.H{
 				"success": false,
@@ -368,9 +374,112 @@ func deleteMessageHandler(c *gin.Context) {
 		return
 	}
 
-	utils.DeleteMessage(utils.GetDB(), parsedID)
+	utils.DeleteMessage(parsedID)
 	c.JSON(200, gin.H{
 		"success": true,
+	})
+}
+
+// @Summary 文字转语音
+// @Description 将文字转换为语音
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Param request body ttsRequest true "文字转语音请求参数"
+// @Success 200 {object} ttsResponseSuccess "文字转语音成功"
+// @Failure 400 {object} ttsResponseFailed "文字转语音失败"
+// @Router /chat/tts [post]
+func ttsHandler(c *gin.Context) {
+	var req ttsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+	user, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+	if utils.IsActiveMember(&user) == true && !(user.MemberLevel == "SVIP") {
+		if user.MemberLevel == "VIP" {
+			if user.Points < 1 {
+				c.JSON(400, gin.H{
+					"success": false,
+					"error":   "积分不足",
+				})
+				return
+			}
+			utils.AddPoints(user.ID, -1)
+		} else {
+			c.JSON(400, gin.H{
+				"success": false,
+				"error":   "未知 MemberLevel",
+			})
+			return
+		}
+	} else {
+		if user.Points < 2 {
+			c.JSON(400, gin.H{
+				"success": false,
+				"error":   "积分不足",
+			})
+			return
+		}
+		utils.AddPoints(user.ID, -2)
+	}
+	data := utils.TTS(req.Prompt)
+	c.JSON(200, gin.H{
+		"success": true,
+		"data":    data,
+	})
+}
+
+// @Summary 语音转文字
+// @Description 将语音转换为文字
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Param request body sttRequest true "语音转文字请求参数"
+// @Success 200 {object} sttResponseSuccess "语音转文字成功"
+// @Failure 400 {object} sttResponseFailed "语音转文字失败"
+// @Router /chat/stt [post]
+func sttHandler(c *gin.Context) {
+	var req sttRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+	user, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+	if utils.IsActiveMember(&user) == false {
+		if user.Points < 1 {
+			c.JSON(400, gin.H{
+				"success": false,
+				"error":   "积分不足",
+			})
+			return
+		}
+		utils.AddPoints(user.ID, -1)
+	}
+	data := utils.STT(req.Base64)
+	c.JSON(200, gin.H{
+		"success": true,
+		"data":    data,
 	})
 }
 
@@ -477,5 +586,33 @@ type deleteMessageResponseSuccess struct {
 
 type deleteMessageResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
+	Error   string `json:"error"`
+}
+
+type ttsRequest struct {
+	Prompt string `json:"prompt" example:"你好，请讲一个笑话"`
+}
+
+type ttsResponseSuccess struct {
+	Success bool   `json:"success" example:"true"`
+	Data    []byte `json:"data"`
+}
+
+type ttsResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Error   string `json:"error"`
+}
+
+type sttRequest struct {
+	Base64 string `json:"base64"`
+}
+
+type sttResponseSuccess struct {
+	Success bool   `json:"success"`
+	Data    string `json:"data"`
+}
+
+type sttResponseFailed struct {
+	Success bool   `json:"success"`
 	Error   string `json:"error"`
 }

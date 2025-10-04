@@ -316,6 +316,25 @@ definitions:
         example: true
         type: boolean
     type: object
+  routes.sttRequest:
+    properties:
+      base64:
+        type: string
+    type: object
+  routes.sttResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  routes.sttResponseSuccess:
+    properties:
+      data:
+        type: string
+      success:
+        type: boolean
+    type: object
   routes.threadListResponseFailed:
     properties:
       error:
@@ -332,6 +351,30 @@ definitions:
       thread_list:
         items: {}
         type: array
+    type: object
+  routes.ttsRequest:
+    properties:
+      prompt:
+        example: 你好，请讲一个笑话
+        type: string
+    type: object
+  routes.ttsResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.ttsResponseSuccess:
+    properties:
+      data:
+        items:
+          type: integer
+        type: array
+      success:
+        example: true
+        type: boolean
     type: object
   routes.verifyPointsRequest:
     properties:
@@ -777,6 +820,32 @@ paths:
       summary: 停止生成
       tags:
       - Chat
+  /chat/stt:
+    post:
+      consumes:
+      - application/json
+      description: 将语音转换为文字
+      parameters:
+      - description: 语音转文字请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/routes.sttRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 语音转文字成功
+          schema:
+            $ref: '#/definitions/routes.sttResponseSuccess'
+        "400":
+          description: 语音转文字失败
+          schema:
+            $ref: '#/definitions/routes.sttResponseFailed'
+      summary: 语音转文字
+      tags:
+      - Chat
   /chat/thread_list:
     post:
       consumes:
@@ -794,6 +863,32 @@ paths:
           schema:
             $ref: '#/definitions/routes.threadListResponseFailed'
       summary: 获取线程列表
+      tags:
+      - Chat
+  /chat/tts:
+    post:
+      consumes:
+      - application/json
+      description: 将文字转换为语音
+      parameters:
+      - description: 文字转语音请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/routes.ttsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 文字转语音成功
+          schema:
+            $ref: '#/definitions/routes.ttsResponseSuccess'
+        "400":
+          description: 文字转语音失败
+          schema:
+            $ref: '#/definitions/routes.ttsResponseFailed'
+      summary: 文字转语音
       tags:
       - Chat
 swagger: "2.0"

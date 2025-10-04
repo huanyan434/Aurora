@@ -181,7 +181,8 @@ func GetMemberStatus(u *User) map[string]interface{} {
 }
 
 // AddPoints 增加或减少用户积分
-func AddPoints(db *gorm.DB, userID uuid.UUID, amount int) {
+func AddPoints(userID uuid.UUID, amount int) {
+	db := GetDB()
 	var user User
 	db.Table("users").Where("id = ?", userID).First(&user)
 	user.Points += amount
@@ -191,7 +192,7 @@ func AddPoints(db *gorm.DB, userID uuid.UUID, amount int) {
 }
 
 // RegisterUser 用户注册函数
-func RegisterUser(db *gorm.DB, username, email, password string) (User, error) {
+func RegisterUser(username, email, password string) (User, error) {
 	// 创建用户实例
 	user := User{
 		ID:          uuid.NewV4(),
@@ -206,6 +207,7 @@ func RegisterUser(db *gorm.DB, username, email, password string) (User, error) {
 	SetPassword(&user, password)
 
 	// 插入数据库
+	db := GetDB()
 	result := db.Create(&user)
 	if result.Error != nil {
 		return user, result.Error
@@ -254,7 +256,8 @@ func HashPassword(password string) string {
 }
 
 // FilterBy 通过条件过滤用户
-func FilterBy(db *gorm.DB, username string, email string) User {
+func FilterBy(username string, email string) User {
+	db := GetDB()
 	var user User
 
 	// 创建查询
@@ -280,7 +283,8 @@ func VerifyPassword(inputPassword string, passwordHash string) bool {
 }
 
 // LoadConversationHistory 加载指定conversationID的对话历史
-func LoadConversationHistory(db *gorm.DB, conversationID uuid.UUID) ([]openai.ChatCompletionMessage, error) {
+func LoadConversationHistory(conversationID uuid.UUID) ([]openai.ChatCompletionMessage, error) {
+	db := GetDB()
 	var messages []Message
 	result := db.Where("conversation_id = ?", conversationID).Order("created_at ASC").Find(&messages)
 	if result.Error != nil {
@@ -300,7 +304,8 @@ func LoadConversationHistory(db *gorm.DB, conversationID uuid.UUID) ([]openai.Ch
 }
 
 // SaveConversationHistory 保存对话历史到指定conversationID
-func SaveConversationHistory(db *gorm.DB, conversationID uuid.UUID, messages []openai.ChatCompletionMessage) error {
+func SaveConversationHistory(conversationID uuid.UUID, messages []openai.ChatCompletionMessage) error {
+	db := GetDB()
 	// 删除现有的消息记录
 	if err := db.Where("conversation_id = ?", conversationID).Delete(&Message{}).Error; err != nil {
 		return err
@@ -324,7 +329,8 @@ func SaveConversationHistory(db *gorm.DB, conversationID uuid.UUID, messages []o
 }
 
 // HasSignedToday 检查用户今日是否已签到
-func HasSignedToday(db *gorm.DB, email string) (bool, error) {
+func HasSignedToday(email string) (bool, error) {
+	db := GetDB()
 	var signRecord SignRecord
 
 	// 获取今天的开始时间
@@ -347,15 +353,15 @@ func HasSignedToday(db *gorm.DB, email string) (bool, error) {
 }
 
 // Sign 用户签到
-func Sign(db *gorm.DB, Email string) error {
+func Sign(Email string) error {
 	// 获取用户信息
-	user := FilterBy(db, "", Email)
+	user := FilterBy("", Email)
 	if user.Username == "" {
 		return fmt.Errorf("用户不存在")
 	}
 
 	// 检查今日是否已签到
-	signed, err := HasSignedToday(db, user.Email)
+	signed, err := HasSignedToday(user.Email)
 	if err != nil {
 		return err
 	}
@@ -366,7 +372,7 @@ func Sign(db *gorm.DB, Email string) error {
 
 	// 随机数生成
 	points := rand.Intn(20) + 90
-	AddPoints(GetDB(), user.ID, points)
+	AddPoints(user.ID, points)
 
 	// 记录签到信息
 	signRecord := SignRecord{
@@ -377,6 +383,7 @@ func Sign(db *gorm.DB, Email string) error {
 
 	// 检查用户是否已有签到记录
 	var existingRecord SignRecord
+	db := GetDB()
 	result := db.Where("email = ?", user.Email).First(&existingRecord)
 	if result.Error != nil && result.Error == gorm.ErrRecordNotFound {
 		// 创建新记录
@@ -402,7 +409,8 @@ func Sign(db *gorm.DB, Email string) error {
 }
 
 // SaveVerifyCode 保存验证码到数据库
-func SaveVerifyCode(db *gorm.DB, email, code string) error {
+func SaveVerifyCode(email, code string) error {
+	db := GetDB()
 	// 删除该邮箱之前的验证码
 	db.Where("email = ?", email).Delete(&VerifyCode{})
 
@@ -420,7 +428,8 @@ func SaveVerifyCode(db *gorm.DB, email, code string) error {
 }
 
 // CheckVerifyCode 验证邮箱和验证码
-func CheckVerifyCode(db *gorm.DB, email, code string) bool {
+func CheckVerifyCode(email, code string) bool {
+	db := GetDB()
 	var verifyCode VerifyCode
 
 	// 查找未过期的验证码
@@ -432,7 +441,8 @@ func CheckVerifyCode(db *gorm.DB, email, code string) bool {
 	return true
 }
 
-func CreateConversation(db *gorm.DB, userID uuid.UUID) uuid.UUID {
+func CreateConversation(userID uuid.UUID) uuid.UUID {
+	db := GetDB()
 	conversationID := uuid.NewV4()
 	db.Create(&Conversation{
 		ID:     conversationID,
@@ -443,7 +453,8 @@ func CreateConversation(db *gorm.DB, userID uuid.UUID) uuid.UUID {
 }
 
 // SaveShareMessages 保存分享消息
-func SaveShareMessages(db *gorm.DB, messageIDs []uuid.UUID) (string, error) {
+func SaveShareMessages(messageIDs []uuid.UUID) (string, error) {
+	db := GetDB()
 	// 清理超过7天的分享
 	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
 
@@ -486,7 +497,8 @@ func SaveShareMessages(db *gorm.DB, messageIDs []uuid.UUID) (string, error) {
 }
 
 // LoadShareMessages 根据shareID加载分享的消息
-func LoadShareMessages(db *gorm.DB, shareID string) ([]uuid.UUID, error) {
+func LoadShareMessages(shareID string) ([]uuid.UUID, error) {
+	db := GetDB()
 	// 清理超过7天的分享
 	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
 
@@ -507,7 +519,8 @@ func LoadShareMessages(db *gorm.DB, shareID string) ([]uuid.UUID, error) {
 	return messageIDs, nil
 }
 
-func DeleteConversation(db *gorm.DB, conversationID uuid.UUID) error {
+func DeleteConversation(conversationID uuid.UUID) error {
+	db := GetDB()
 	// 删除对话
 	result := db.Where("id = ?", conversationID).Delete(&Conversation{})
 	if result.Error != nil {
@@ -523,7 +536,8 @@ func DeleteConversation(db *gorm.DB, conversationID uuid.UUID) error {
 	return nil
 }
 
-func RenameConversation(db *gorm.DB, conversationID uuid.UUID, title string) error {
+func RenameConversation(conversationID uuid.UUID, title string) error {
+	db := GetDB()
 	result := db.Table("conversations").Where("id = ?", conversationID).Update("title", title)
 	if result.Error != nil {
 		return result.Error
@@ -531,7 +545,8 @@ func RenameConversation(db *gorm.DB, conversationID uuid.UUID, title string) err
 	return nil
 }
 
-func LoadMessage(db *gorm.DB, messageID uuid.UUID) (Message, error) {
+func LoadMessage(messageID uuid.UUID) (Message, error) {
+	db := GetDB()
 	var message Message
 	result := db.Table("messages").Where("id = ?", messageID).First(&message)
 	if result.Error != nil {
@@ -541,7 +556,8 @@ func LoadMessage(db *gorm.DB, messageID uuid.UUID) (Message, error) {
 }
 
 // VerifyOrder 向orders表插入orderID
-func VerifyOrder(db *gorm.DB, order string) error {
+func VerifyOrder(order string) error {
+	db := GetDB()
 	orderRecord := Order{
 		ID: order,
 	}
@@ -550,7 +566,8 @@ func VerifyOrder(db *gorm.DB, order string) error {
 }
 
 // SearchOrder 查询orders表中是否有此id
-func SearchOrder(db *gorm.DB, orderId string) (bool, error) {
+func SearchOrder(orderId string) (bool, error) {
+	db := GetDB()
 	var order Order
 	result := db.Where("id = ?", orderId).First(&order)
 	if result.Error != nil {
@@ -562,7 +579,8 @@ func SearchOrder(db *gorm.DB, orderId string) (bool, error) {
 	return true, nil
 }
 
-func DeleteMessage(db *gorm.DB, messageID uuid.UUID) {
+func DeleteMessage(messageID uuid.UUID) {
+	db := GetDB()
 	var message Message
 	db.Table("messages").Where("id = ?", messageID).First(&message)
 	db.Create(&message)

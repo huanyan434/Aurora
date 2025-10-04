@@ -76,7 +76,7 @@ func QueryOrder(orderID string) (bool, []map[string]interface{}) {
 func VerifyVip(userID uuid.UUID, orderID string, force bool) string {
 	success, list := QueryOrder(orderID)
 	if success {
-		verify, err := SearchOrder(GetDB(), orderID)
+		verify, err := SearchOrder(orderID)
 		if err != nil {
 			return "发生错误：" + err.Error()
 		}
@@ -191,7 +191,7 @@ func VerifyVip(userID uuid.UUID, orderID string, force bool) string {
 		user.MemberSince = begin
 		user.MemberUntil = end.AddDate(0, 0, days)
 
-		err = VerifyOrder(GetDB(), orderID)
+		err = VerifyOrder(orderID)
 		if err != nil {
 			return "内部错误"
 		}
@@ -204,7 +204,7 @@ func VerifyVip(userID uuid.UUID, orderID string, force bool) string {
 func VerifyPoints(userID uuid.UUID, orderID string) string {
 	success, list := QueryOrder(orderID)
 	if success {
-		verify, err := SearchOrder(GetDB(), orderID)
+		verify, err := SearchOrder(orderID)
 		if err != nil {
 			return "发生错误：" + err.Error()
 		}
@@ -223,8 +223,8 @@ func VerifyPoints(userID uuid.UUID, orderID string) string {
 		if err != nil {
 			return "内部错误"
 		}
-		AddPoints(GetDB(), user.ID, int(points)*100)
-		err = VerifyOrder(GetDB(), orderID)
+		AddPoints(user.ID, int(points)*100)
+		err = VerifyOrder(orderID)
 		if err != nil {
 			return "内部错误"
 		}

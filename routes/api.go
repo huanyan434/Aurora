@@ -70,7 +70,7 @@ func loginHandler(c *gin.Context) {
 	}
 
 	//在数据库通过邮箱找用户
-	user := utils.FilterBy(utils.GetDB(), "", email)
+	user := utils.FilterBy("", email)
 
 	if (user == utils.User{}) || !utils.VerifyPassword(password, user.PasswordHash) {
 		c.JSON(400, gin.H{
@@ -120,10 +120,8 @@ func signupHandler(c *gin.Context) {
 		return
 	}
 
-	db := utils.GetDB()
-
 	// 检测邮箱是否存在
-	if (utils.FilterBy(db, "", email) != utils.User{}) {
+	if (utils.FilterBy("", email) != utils.User{}) {
 		c.JSON(400, gin.H{
 			"success": false,
 			"message": "该邮箱已被注册",
@@ -141,7 +139,7 @@ func signupHandler(c *gin.Context) {
 	}
 
 	// 注册流程
-	user, err := utils.RegisterUser(db, username, email, password)
+	user, err := utils.RegisterUser(username, email, password)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
@@ -243,7 +241,7 @@ func signHandler(c *gin.Context) {
 	}
 
 	// 执行签到
-	err = utils.Sign(utils.GetDB(), User.Email)
+	err = utils.Sign(User.Email)
 	if err != nil {
 		if err.Error() == "already signed today" {
 			c.JSON(400, gin.H{
@@ -385,7 +383,7 @@ func getCurrentUser(c *gin.Context) (userInfo utils.User, err error) {
 		return
 	}
 
-	userInfo = utils.FilterBy(utils.GetDB(), "", userInfo.Email)
+	userInfo = utils.FilterBy("", userInfo.Email)
 	setCurrentUser(c, userInfo)
 	return userInfo, nil
 }

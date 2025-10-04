@@ -40,8 +40,7 @@ func SendEmailCode(email string, code string) bool {
 	}
 
 	// 保存验证码到数据库
-	db := GetDB()
-	err = SaveVerifyCode(db, email, code)
+	err = SaveVerifyCode(email, code)
 	if err != nil {
 		return false
 	}
@@ -61,8 +60,7 @@ func VerifyEmail(email string, code string) bool {
 	}
 
 	// 从数据库验证验证码
-	db := GetDB()
-	return CheckVerifyCode(db, email, code)
+	return CheckVerifyCode(email, code)
 }
 
 func GenerateVerifyCode() string {

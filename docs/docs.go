@@ -539,6 +539,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/chat/stt": {
+            "post": {
+                "description": "将语音转换为文字",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "语音转文字",
+                "parameters": [
+                    {
+                        "description": "语音转文字请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes.sttRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "语音转文字成功",
+                        "schema": {
+                            "$ref": "#/definitions/routes.sttResponseSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "语音转文字失败",
+                        "schema": {
+                            "$ref": "#/definitions/routes.sttResponseFailed"
+                        }
+                    }
+                }
+            }
+        },
         "/chat/thread_list": {
             "post": {
                 "description": "获取当前用户的线程列表",
@@ -563,6 +603,46 @@ const docTemplate = `{
                         "description": "获取线程列表失败",
                         "schema": {
                             "$ref": "#/definitions/routes.threadListResponseFailed"
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/tts": {
+            "post": {
+                "description": "将文字转换为语音",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "文字转语音",
+                "parameters": [
+                    {
+                        "description": "文字转语音请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes.ttsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "文字转语音成功",
+                        "schema": {
+                            "$ref": "#/definitions/routes.ttsResponseSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "文字转语音失败",
+                        "schema": {
+                            "$ref": "#/definitions/routes.ttsResponseFailed"
                         }
                     }
                 }
@@ -1066,6 +1146,36 @@ const docTemplate = `{
                 }
             }
         },
+        "routes.sttRequest": {
+            "type": "object",
+            "properties": {
+                "base64": {
+                    "type": "string"
+                }
+            }
+        },
+        "routes.sttResponseFailed": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "routes.sttResponseSuccess": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "routes.threadListResponseFailed": {
             "type": "object",
             "properties": {
@@ -1088,6 +1198,42 @@ const docTemplate = `{
                 "thread_list": {
                     "type": "array",
                     "items": {}
+                }
+            }
+        },
+        "routes.ttsRequest": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "example": "你好，请讲一个笑话"
+                }
+            }
+        },
+        "routes.ttsResponseFailed": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "routes.ttsResponseSuccess": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
