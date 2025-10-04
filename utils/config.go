@@ -21,6 +21,8 @@ type DatabaseConfig struct {
 type Config struct {
 	API         string `yaml:"api"`
 	APIKey      string `yaml:"apiKey"`
+	ModelTTS    string `yaml:"modelTTS"`
+	ModelSTT    string `yaml:"modelSTT"`
 	APINameC    string `yaml:"apiNameC"`
 	APIKeyNameC string `yaml:"apiKeyNameC"`
 	ModelNameC  string `yaml:"modelNameC"`

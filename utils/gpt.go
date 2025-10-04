@@ -1,12 +1,19 @@
 package utils
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -369,4 +376,157 @@ func GetThreadList(userID uuid.UUID) ([]string, error) {
 	threadMutex.RUnlock()
 
 	return conversationIDs, nil
+}
+
+func TTS(prompt string) []byte {
+	configs := GetConfig()
+	url := fmt.Sprint(configs.API, "/chat/completions")
+	method := "POST"
+
+	payload := strings.NewReader(fmt.Sprintf(`{
+      "model": "%s",
+      "modalities": ["text", "audio"],
+      "audio": { "voice": "alloy", "format": "opus" },
+      "messages": [
+        {
+          "role": "user",
+          "content": "请复述以下内容：%s"
+        }
+      ]
+    }`, configs.ModelTTS, prompt))
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, payload)
+
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+	req.Header.Add("Authorization", fmt.Sprint("Bearer ", configs.APIKey))
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+	var data map[string]interface{}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+	choicesByte, _ := json.Marshal(data["choices"])
+	var choices []map[string]interface{}
+	err = json.Unmarshal(choicesByte, &choices)
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+	messageByte, _ := json.Marshal(choices[0]["message"])
+	var message map[string]interface{}
+	err = json.Unmarshal(messageByte, &message)
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+	audioByte, _ := json.Marshal(message["audio"])
+	var audio map[string]interface{}
+	err = json.Unmarshal(audioByte, &audio)
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+	Base64 := audio["data"].(string)
+	decoded, err := base64.StdEncoding.DecodeString(Base64)
+	if err != nil {
+		fmt.Println("解码错误:", err)
+		return []byte{}
+	}
+	fmt.Println(audio["transcript"].(string))
+	return decoded
+}
+
+func STT(Base64 string) string {
+	configs := GetConfig()
+	url := fmt.Sprint(configs.API, "/audio/transcriptions")
+	method := "POST"
+
+	payload := &bytes.Buffer{}
+	writer := multipart.NewWriter(payload)
+	file, err := Base64ToOsFile(Base64)
+	defer file.Close()
+	part1, err := writer.CreateFormFile("file", "tmp.wav")
+	_, err = io.Copy(part1, file)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	_ = writer.WriteField("model", configs.ModelSTT)
+	err = writer.Close()
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, payload)
+
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	req.Header.Add("Authorization", fmt.Sprint("Bearer ", configs.APIKey))
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	fmt.Println(string(body))
+
+	var data map[string]interface{}
+	err = json.Unmarshal(body, &data)
+	return data["text"].(string)
+}
+
+func Base64ToOsFile(Base64 string) (*os.File, error) {
+	// 解码base64字符串
+	decodedData, err := base64.StdEncoding.DecodeString(Base64)
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建临时文件
+	tmpFile, err := os.CreateTemp("", "decoded_file_*")
+	if err != nil {
+		return nil, err
+	}
+
+	// 写入解码的数据到文件
+	_, err = bytes.NewReader(decodedData).WriteTo(tmpFile)
+	if err != nil {
+		tmpFile.Close()
+		return nil, err
+	}
+
+	// 重置文件指针到开头
+	tmpFile.Seek(0, 0)
+
+	return tmpFile, nil
 }

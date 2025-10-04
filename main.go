@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -46,11 +45,7 @@ func main() {
 	// Swagger路由
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	err := r.Run(":5000")
-	if err != nil {
-		fmt.Println("Err:", err)
-		return
-	}
+	r.Run(":5000")
 }
 
 // 日志记录中间件

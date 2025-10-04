@@ -1,6 +1,8 @@
 # API 配置
 api: "https://yunwu.ai/v1"
 apiKey: "sk-xxx"
+modelTTS: "gpt-4o-audio-preview"
+modelSTT: "gpt-4o-transcribe"
 apiNameC: "https://api.siliconflow.cn/v1"
 apiKeyNameC: "sk-xxx"
 modelNameC: "deepseek-ai/DeepSeek-V3.1-Terminus"
