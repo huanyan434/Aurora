@@ -48,7 +48,7 @@ func init() {
 // --- 核心功能：并发处理 OpenAI 请求 ---
 
 // ThreadOpenai 使用并发处理OpenAI请求，返回一个通道以实现类似Python yield的功能
-func ThreadOpenai(conversationID uuid.UUID, model string, prompt string, base64 string) <-chan string {
+func ThreadOpenai(conversationID uuid.UUID, model string, prompt string, base64 string, reasoning bool) <-chan string {
 	threadID := conversationID.String()
 
 	// 1. 检查线程是否已存在
@@ -90,7 +90,7 @@ func ThreadOpenai(conversationID uuid.UUID, model string, prompt string, base64 
 				threadMutex.Unlock()
 			}()
 
-			Openai(ctx, conversationIDCopy, model, prompt, base64, resp)
+			Openai(ctx, conversationIDCopy, model, prompt, base64, reasoning, resp)
 			return nil
 		})
 
@@ -107,10 +107,49 @@ func ThreadOpenai(conversationID uuid.UUID, model string, prompt string, base64 
 	return resp
 }
 
-func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt string, base64 string, resp chan<- string) {
+type Response struct {
+	Success          bool   `json:"success" default:"false"`
+	Error            string `json:"error" default:""`
+	ReasoningContent string `json:"reasoningContent" default:""`
+	Content          string `json:"content" default:""`
+}
+
+func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt string, base64 string, reasoning bool, resp chan<- string) {
+	var responseByte []byte
+	configs := GetConfig()
+	// 判断模型信息
+	modelSupport := false
+	visionSupport := false
+	var modelReasoning string
+	for _, m := range configs.Models {
+		if m.ID == model {
+			modelSupport = true
+			modelReasoning = m.Reasoning
+			if m.Image == 1 {
+				visionSupport = true
+			}
+		}
+	}
+	if modelSupport == false {
+		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR: model not supported:%s", model)})
+		resp <- string(responseByte)
+		return
+	}
+	if reasoning == true {
+		if modelReasoning == "" {
+			responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR: model does not support reasoning:%s", model)})
+			resp <- string(responseByte)
+			return
+		} else if modelReasoning != model {
+			model = modelReasoning
+		}
+	}
+
+	// 处理messages
 	messages, err := LoadConversationHistory(conversationID)
 	if err != nil {
-		resp <- fmt.Sprintf("ERR:%s", err)
+		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
+		resp <- string(responseByte)
 	}
 	messagesCopy := make([]openai.ChatCompletionMessage, len(messages))
 	copy(messagesCopy, messages)
@@ -122,7 +161,8 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	}
 	err = SaveConversationHistory(conversationID, messages)
 	if err != nil {
-		resp <- fmt.Sprintf("ERR:%s", err)
+		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
+		resp <- string(responseByte)
 	}
 	for _, m := range messagesCopy {
 		if m.Role == "assistant" {
@@ -133,15 +173,36 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 			_, m.Content = ParseBase64Block(m.Content)
 		}
 	}
-	var promptImage string
+
+	// 处理base64，创建client
+	promptWrapper := openai.ChatCompletionMessage{
+		Role:    "user",
+		Content: prompt,
+	}
 	if base64 != "" {
-		promptImage = "\n\n" + ScanPicture(base64, prompt)
-		fmt.Println("promptImage:", promptImage)
+		if visionSupport == true {
+			promptWrapper = openai.ChatCompletionMessage{
+				Role:    "user",
+				Content: prompt,
+				MultiContent: []openai.ChatMessagePart{
+					{
+						Type: "image_url",
+						ImageURL: &openai.ChatMessageImageURL{
+							URL: base64,
+						},
+					},
+				},
+			}
+		} else {
+			promptWrapper = openai.ChatCompletionMessage{
+				Role:    "user",
+				Content: prompt + "\n\n" + ScanPicture(base64, prompt),
+			}
+		}
 	}
 
-	Configs := GetConfig()
-	clientConfig := openai.DefaultConfig(Configs.APIKey)
-	clientConfig.BaseURL = Configs.API
+	clientConfig := openai.DefaultConfig(configs.APIKey)
+	clientConfig.BaseURL = configs.API
 	client := openai.NewClientWithConfig(clientConfig)
 	date := time.Now().Format(time.DateOnly)
 	timeOnly := time.Now().Format(time.TimeOnly)
@@ -149,22 +210,20 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 		Model: model,
 		Messages: append(
 			append(messagesCopy, openai.ChatCompletionMessage{
-				Role:    "user",
-				Content: prompt + promptImage,
-			}),
-			openai.ChatCompletionMessage{
 				Role: "system",
 				Content: "今天是 " + date + "。" + "\n" +
 					"现在是 " + timeOnly + "。",
 			}),
+			promptWrapper),
 		Stream: true,
 	}
 
-	// 使用传入的ctx，而不是context.Background()
+	// 创建流式响应
 	stream, err := client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
 		// 发送错误信息到通道，并确保格式清晰
-		resp <- fmt.Sprintf("ERROR: failed to create stream: %v", err)
+		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR: failed to create stream: %v", err)})
+		resp <- string(responseByte)
 		// 返回 nil 表示 Job 执行完成，避免 go-queue 再次尝试
 		return
 	}
@@ -173,7 +232,8 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	defer func() {
 		if err := stream.Close(); err != nil {
 			// 避免 panic，改为记录错误或发送到通道
-			resp <- fmt.Sprintf("ERROR: failed to close stream: %v", err)
+			responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR: failed to close stream: %v", err)})
+			resp <- string(responseByte)
 		}
 	}()
 
@@ -196,15 +256,15 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 			})
 		}
 		if err := SaveConversationHistory(conversationID, messages); err != nil {
-			fmt.Printf("save error: %v\n", err)
+			fmt.Printf("ERROR:%v\n", err)
 		}
 		var conversation Conversation
 		GetDB().Table("conversations").Where("id = ?", conversationID).First(&conversation)
 		// 如果对话标题为“新对话”
 		if conversation.Title == "新对话" {
-			Configs := GetConfig()
-			clientConfig := openai.DefaultConfig(Configs.APIKeyNameC)
-			clientConfig.BaseURL = Configs.APINameC
+			configs := GetConfig()
+			clientConfig := openai.DefaultConfig(configs.APIKey2)
+			clientConfig.BaseURL = configs.API2
 			client := openai.NewClientWithConfig(clientConfig)
 			messages, _ := LoadConversationHistory(conversationID)
 			messages = append(messages, openai.ChatCompletionMessage{
@@ -212,7 +272,7 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 				Content: "请总结概括对话内容，生成一个对话标题，不超过15字，不要使用 Emoji 和 Konomoji，不要使用 markdown，不要输出其他内容，仅需对话标题内容，不需前缀。",
 			})
 			req := openai.ChatCompletionRequest{
-				Model:    Configs.ModelNameC,
+				Model:    configs.DefaultDialogNamingModel,
 				Messages: messages,
 			}
 			title, err := client.CreateChatCompletion(ctx, req)
@@ -237,7 +297,8 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 				if err == io.EOF {
 					return
 				}
-				resp <- fmt.Sprintf("stream error: %v", err)
+				responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%v", err)})
+				resp <- string(responseByte)
 				return
 			}
 
@@ -245,12 +306,20 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 				if reasoning := response.Choices[0].Delta.ReasoningContent; reasoning != "" {
 					reasoningContent += reasoning
 					usedTime = strconv.Itoa(int(time.Now().Unix() - timeO))
-					resp <- fmt.Sprintf("<think time=%s>%s</think>", usedTime, reasoning)
+					responseByte, _ = json.Marshal(Response{
+						Success:          true,
+						ReasoningContent: fmt.Sprintf("<think time=%s>%s</think>", usedTime, reasoning),
+					})
+					resp <- string(responseByte)
 				}
 
 				if contentDelta := response.Choices[0].Delta.Content; contentDelta != "" {
 					content += contentDelta
-					resp <- contentDelta
+					responseByte, _ = json.Marshal(Response{
+						Success: true,
+						Content: contentDelta,
+					})
+					resp <- string(responseByte)
 				}
 			}
 		}
@@ -259,12 +328,12 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 
 // ScanPicture 视图
 func ScanPicture(base64 string, prompt string) string {
-	Configs := GetConfig()
-	clientConfig := openai.DefaultConfig(Configs.APIKeyNameC)
-	clientConfig.BaseURL = Configs.APINameC
+	configs := GetConfig()
+	clientConfig := openai.DefaultConfig(configs.APIKey2)
+	clientConfig.BaseURL = configs.API2
 	client := openai.NewClientWithConfig(clientConfig)
 	req := openai.ChatCompletionRequest{
-		Model: Configs.ModelScan,
+		Model: configs.DefaultVisualModel,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role: "user",

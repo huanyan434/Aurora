@@ -1,83 +1,157 @@
 # API 配置
 api: "https://yunwu.ai/v1"
-apiKey: "sk-xxx"
+apiKey: "sk-***"
 modelTTS: "gpt-4o-audio-preview"
 modelSTT: "gpt-4o-transcribe"
-apiNameC: "https://api.siliconflow.cn/v1"
-apiKeyNameC: "sk-xxx"
-modelNameC: "deepseek-ai/DeepSeek-V3.1-Terminus"
-modelScan: "zai-org/GLM-4.5V"
+api2: "https://api.siliconflow.cn/v1"
+apiKey2: "sk-***"
+defaultDialogNamingModel: "deepseek-ai/DeepSeek-V3.1-Terminus"
+defaultVisualModel: "zai-org/GLM-4.5V"
 models:
   [
     {
       name: "deepseek-v3.2",
       id: "deepseek-v3.2-exp",
       points: 4,
+      reasoning: "",
+      tool: 1,
+      image: 0,
     },
     {
-    name: "deepseek-v3.1",
-    id: "deepseek-v3-1-250821",
-    points: 8,
+      name: "deepseek-v3.1",
+      id: "deepseek-v3-1-250821",
+      points: 8,
+      reasoning: "deepseek-v3-1-think-250821",
+      tool: 1,
+      image: 0,
     },
     {
       name: "deepseek-r1",
       id: "deepseek-r1-250528",
       points: 10,
+      reasoning: "deepseek-r1-250528",
+      tool: 1,
+      image: 0,
     },
     {
       name: "deepseek-v3",
       id: "deepseek-v3-250324",
       points: 5,
+      reasoning: "",
+      tool: 1,
+      image: 0,
     },
     {
       name: "gpt-5",
       id: "gpt-5-2025-08-07",
       points: 6,
+      reasoning: "gpt-5-thinking-all",
+      tool: 1,
+      image: 1,
+    },
+    {
+      name: "gpt-4o",
+      id: "gpt-4o",
+      points: 6,
+      reasoning: "",
+      tool: 1,
+      image: 1,
+    },
+    {
+      name: "gpt-4-turbo",
+      id: "gpt-4-turbo",
+      points: 10,
+      reasoning: "",
+      tool: 1,
+      image: 0,
+    },
+    {
+      name: "gpt-3.5-turbo",
+      id: "gpt-3.5-turbo",
+      points: 2,
+      reasoning: "",
+      tool: 1,
+      image: 1,
     },
     {
       name: "o1-mini",
       id: "o1-mini",
-      points: 5
+      points: 5,
+      reasoning: "o1-mini",
+      tool: 1,
+      image: 0,
     },
     {
       name: "o1",
       id: "o1",
       points: 30,
+      reasoning: "o1",
+      tool: 1,
+      image: 0,
     },
     {
       name: "gemini-2.5-flash",
-      id: "gemini-flash-latest",
+      id: "gemini-flash-latest-nothinking",
       points: 3,
+      reasoning: "gemini-flash-latest-thinking",
+      tool: 1,
+      image: 1,
     },
     {
       name: "gemini-2.5-pro",
-      id: "gemini-pro-latest",
+      id: "gemini-pro-latest-nothinking",
       points: 6,
+      reasoning: "gemini-pro-latest-thinking",
+      tool: 1,
+      image: 1,
     },
     {
       name: "qwen3-max",
       id: "qwen3-max",
       points: 20,
+      reasoning: 0,
+      tool: 1,
+      image: 0,
     },
     {
       name: "qwen3-coder-plus",
       id: "qwen3-coder-plus",
       points: 8,
+      reasoning: 2,
+      tool: 1,
+      image: 0,
     },
     {
       name: "qwen3-235b-a22b",
       id: "qwen3-235b-a22b",
       points: 5,
+      reasoning: "qwen3-235b-a22b-think",
+      tool: 1,
+      image: 1,
     },
     {
       name: "claude-sonnet-4.5",
       id: "claude-sonnet-4-5-20250929",
       points: 10,
+      reasoning: "claude-sonnet-4-5-20250929-thinking",
+      tool: 1,
+      image: 1,
     },
     {
       name: "claude-opus-4",
       id: "claude-opus-4-20250514",
-      points: 80,
+      points: 70,
+      reasoning: "claude-sonnet-4-20250514-thinking",
+      tool: 1,
+      image: 1,
+    },
+    {
+      name: "claude-opus-4.1",
+      id: "claude-opus-4-1-20250805",
+      points: 100,
+      reasoning: "claude-opus-4-20250514-thinking",
+      tool: 1,
+      image: 1,
     }
   ]
 
@@ -85,7 +159,7 @@ models:
 email:
   sender:
     email: "no_reply@wanyim.cn"
-    password: "xxx"
+    password: "***"
   smtp:
     host: "smtp.qiye.aliyun.com"
     port: 25
@@ -95,10 +169,10 @@ database:
   host: "192.168.31.134"
   port: 3306
   username: "aurora"
-  password: "xxx"
+  password: "***"
   dbname: "aurora"
   charset: "utf8mb4"
 
 # 爱发电
-userID: "xxx"
-token: "xxx"
+userID: "***"
+token: "***"

@@ -415,7 +415,7 @@
                     "200": {
                         "description": "流式响应，返回AI生成内容",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/routes.generateResponseSuccess"
                         }
                     },
                     "400": {
@@ -826,18 +826,53 @@
                 "prompt": {
                     "type": "string",
                     "example": "你好，帮我写一个Hello World程序"
+                },
+                "reasoning": {
+                    "type": "boolean",
+                    "example": false
                 }
             }
         },
         "routes.generateResponseFailed": {
             "type": "object",
             "properties": {
-                "error": {
+                "content": {
                     "type": "string"
+                },
+                "error": {
+                    "type": "string",
+                    "example": "ERROR:"
+                },
+                "reasoningContent": {
+                    "type": "string"
+                },
+                "reasoningTime": {
+                    "type": "integer"
                 },
                 "success": {
                     "type": "boolean",
                     "example": false
+                }
+            }
+        },
+        "routes.generateResponseSuccess": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "reasoningContent": {
+                    "type": "string"
+                },
+                "reasoningTime": {
+                    "type": "integer"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },

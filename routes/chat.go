@@ -3,6 +3,7 @@ package routes
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"utils"
 
@@ -54,7 +55,7 @@ func ChatInit(r *gin.Engine) {
 // @Accept json
 // @Produce text/event-stream
 // @Param request body generateRequest true "生成请求参数"
-// @Success 200 {string} string "流式响应，返回AI生成内容"
+// @Success 200 {object} generateResponseSuccess "流式响应，返回AI生成内容"
 // @Failure 400 {object} generateResponseFailed "生成失败"
 // @Router /chat/generate [post]
 func generateHandler(c *gin.Context) {
@@ -80,45 +81,93 @@ func generateHandler(c *gin.Context) {
 		return
 	}
 	config := utils.GetConfig()
-	for i := range config.Models {
-		if req.Model == config.Models[i].Name {
-			if User.IsMember == true {
-				if User.MemberLevel == "VIP" {
-					if User.Points < (config.Models[i].Points / 2) {
+	for _, m := range config.Models {
+		if m.Name == req.Model {
+			if req.Reasoning == true && m.Reasoning != req.Model {
+				if User.IsMember == true {
+					if User.MemberLevel == "VIP" {
+						if User.Points < int(math.Ceil((math.Ceil(float64(m.Points/2))))*1.5) {
+							c.JSON(400, gin.H{
+								"success": false,
+								"error":   "积分不足",
+							})
+							return
+						}
+						utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points/2))))*1.5))
+					}
+				} else {
+					if User.Points < int(math.Ceil((math.Ceil(float64(m.Points))))*1.5) {
 						c.JSON(400, gin.H{
 							"success": false,
 							"error":   "积分不足",
 						})
 						return
 					}
-					utils.AddPoints(User.ID, -config.Models[i].Points/2)
+					utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points))))*1.5))
 				}
 			} else {
-				if User.Points < config.Models[i].Points {
-					c.JSON(400, gin.H{
-						"success": false,
-						"error":   "积分不足",
-					})
-					return
+				if User.IsMember == true {
+					if User.MemberLevel == "VIP" {
+						if User.Points < int((math.Ceil(float64(m.Points / 2)))) {
+							c.JSON(400, gin.H{
+								"success": false,
+								"error":   "积分不足",
+							})
+							return
+						}
+						utils.AddPoints(User.ID, -int((math.Ceil(float64(m.Points / 2)))))
+					}
+				} else {
+					if User.Points < m.Points {
+						c.JSON(400, gin.H{
+							"success": false,
+							"error":   "积分不足",
+						})
+						return
+					}
+					utils.AddPoints(User.ID, -m.Points)
 				}
-				utils.AddPoints(User.ID, -config.Models[i].Points)
 			}
-
 		}
 	}
-	resp := utils.ThreadOpenai(req.ConversationID, req.Model, req.Prompt, req.Base64)
+	resp := utils.ThreadOpenai(req.ConversationID, req.Model, req.Prompt, req.Base64, req.Reasoning)
 	for response := range resp {
-		reasoningTime, reasoningContent, content := utils.ParseThinkBlock(response)
-		msg := struct {
-			Success          bool   `json:"success"`
-			ReasoningContent string `json:"reasoningContent"`
-			ReasoningTime    int    `json:"reasoningTime"`
-			Content          string `json:"content"`
-		}{
+		type MSG struct {
+			Success          bool   `json:"success" default:"false"`
+			Error            string `json:"error" default:""`
+			ReasoningContent string `json:"reasoningContent" default:""`
+			ReasoningTime    int    `json:"reasoningTime" default:""`
+			Content          string `json:"content" default:""`
+		}
+		var msg MSG
+		var parsedResponse utils.Response
+		err := json.Unmarshal([]byte(response), &parsedResponse)
+		if err != nil {
+			msg = MSG{
+				Success: false,
+				Error:   err.Error(),
+			}
+			jsonData, _ := json.Marshal(msg)
+			_, _ = fmt.Fprintf(c.Writer, "data:%s\n\n", jsonData)
+			flusher.Flush()
+			return
+		}
+		if parsedResponse.Error != "" {
+			msg = MSG{
+				Success: false,
+				Error:   parsedResponse.Error,
+			}
+			jsonData, _ := json.Marshal(msg)
+			_, _ = fmt.Fprintf(c.Writer, "data:%s\n\n", jsonData)
+			flusher.Flush()
+			return
+		}
+		reasoningTime, reasoningContent, _ := utils.ParseThinkBlock(parsedResponse.ReasoningContent)
+		msg = MSG{
 			Success:          true,
 			ReasoningContent: reasoningContent,
 			ReasoningTime:    reasoningTime,
-			Content:          content,
+			Content:          parsedResponse.Content,
 		}
 		jsonData, _ := json.Marshal(msg)
 		_, _ = fmt.Fprintf(c.Writer, "data:%s\n\n", jsonData)
@@ -489,11 +538,23 @@ type generateRequest struct {
 	Prompt         string    `json:"prompt" example:"你好，帮我写一个Hello World程序"`
 	Model          string    `json:"model" example:"gpt-3.5-turbo"`
 	Base64         string    `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
+	Reasoning      bool      `json:"reasoning" example:"false"`
+}
+
+type generateResponseSuccess struct {
+	Success          bool   `json:"success" example:"true"`
+	Error            string `json:"error"`
+	ReasoningContent string `json:"reasoningContent"`
+	ReasoningTime    int    `json:"reasoningTime"`
+	Content          string `json:"content"`
 }
 
 type generateResponseFailed struct {
-	Success bool   `json:"success" example:"false"`
-	Error   string `json:"error"`
+	Success          bool   `json:"success" example:"false"`
+	Error            string `json:"error" example:"ERROR:"`
+	ReasoningContent string `json:"reasoningContent"`
+	ReasoningTime    int    `json:"reasoningTime"`
+	Content          string `json:"content"`
 }
 
 type threadListResponseSuccess struct {

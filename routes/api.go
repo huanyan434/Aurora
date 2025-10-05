@@ -48,9 +48,9 @@ func ApiInit(r *gin.Engine) {
 // @Failure 400 {object} loginResponseFailed "登录失败"
 // @Router /api/login [post]
 func loginHandler(c *gin.Context) {
-	var loginJSON loginRequest
+	var req loginRequest
 
-	err := c.ShouldBindJSON(&loginJSON)
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
@@ -58,8 +58,8 @@ func loginHandler(c *gin.Context) {
 		})
 		return
 	}
-	email := loginJSON.Email
-	password := loginJSON.Password
+	email := req.Email
+	password := req.Password
 
 	if email == "" || password == "" {
 		c.JSON(400, gin.H{
@@ -97,9 +97,9 @@ func loginHandler(c *gin.Context) {
 // @Failure 400 {object} signupResponseFailed "注册失败"
 // @Router /api/signup [post]
 func signupHandler(c *gin.Context) {
-	var signupJSON signupRequest
+	var req signupRequest
 
-	err := c.ShouldBindJSON(&signupJSON)
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
@@ -107,10 +107,10 @@ func signupHandler(c *gin.Context) {
 		})
 		return
 	}
-	email := signupJSON.Email
-	username := signupJSON.Username
-	password := signupJSON.Password
-	verifyCode := signupJSON.VerifyCode
+	email := req.Email
+	username := req.Username
+	password := req.Password
+	verifyCode := req.VerifyCode
 
 	if email == "" || username == "" || password == "" || verifyCode == "" {
 		c.JSON(400, gin.H{

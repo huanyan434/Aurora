@@ -102,13 +102,37 @@ definitions:
       prompt:
         example: 你好，帮我写一个Hello World程序
         type: string
+      reasoning:
+        example: false
+        type: boolean
     type: object
   routes.generateResponseFailed:
     properties:
-      error:
+      content:
         type: string
+      error:
+        example: 'ERROR:'
+        type: string
+      reasoningContent:
+        type: string
+      reasoningTime:
+        type: integer
       success:
         example: false
+        type: boolean
+    type: object
+  routes.generateResponseSuccess:
+    properties:
+      content:
+        type: string
+      error:
+        type: string
+      reasoningContent:
+        type: string
+      reasoningTime:
+        type: integer
+      success:
+        example: true
         type: boolean
     type: object
   routes.loadShareMessagesResponseFailed:
@@ -743,7 +767,7 @@ paths:
         "200":
           description: 流式响应，返回AI生成内容
           schema:
-            type: string
+            $ref: '#/definitions/routes.generateResponseSuccess'
         "400":
           description: 生成失败
           schema:

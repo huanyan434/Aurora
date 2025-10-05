@@ -7,30 +7,23 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// DatabaseConfig 定义数据库配置结构
-type DatabaseConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	DBName   string `yaml:"dbname"`
-	Charset  string `yaml:"charset"`
-}
-
 // Config 定义整体配置结构
 type Config struct {
-	API         string `yaml:"api"`
-	APIKey      string `yaml:"apiKey"`
-	ModelTTS    string `yaml:"modelTTS"`
-	ModelSTT    string `yaml:"modelSTT"`
-	APINameC    string `yaml:"apiNameC"`
-	APIKeyNameC string `yaml:"apiKeyNameC"`
-	ModelNameC  string `yaml:"modelNameC"`
-	ModelScan   string `yaml:"modelScan"`
-	Models      []struct {
-		Name   string `yaml:"name"`
-		ID     string `yaml:"id"`
-		Points int    `yaml:"points"`
+	API                      string `yaml:"api"`
+	APIKey                   string `yaml:"apiKey"`
+	ModelTTS                 string `yaml:"modelTTS"`
+	ModelSTT                 string `yaml:"modelSTT"`
+	API2                     string `yaml:"api2"`
+	APIKey2                  string `yaml:"apiKey2"`
+	DefaultDialogNamingModel string `yaml:"defaultDialogNamingModel"`
+	DefaultVisualModel       string `yaml:"defaultVisualModel"`
+	Models                   []struct {
+		Name      string `yaml:"name"`      // 向用户展示
+		ID        string `yaml:"id"`        // 调用模型时使用
+		Points    int    `yaml:"points"`    // 使用1次扣除积分 VIP用户半价（向上取整） SVIP用户免费
+		Reasoning string `yaml:"reasoning"` // ""：不支持 原模型ID：强制推理 其他模型ID：支持推理（扣除1.5倍积分（向上取整））
+		Tool      int    `yaml:"tool"`      // 0不支持 1支持
+		Image     int    `yaml:"image"`     // 0不支持 1只支持输入 2只支持输出 3支持输出和输出
 	} `yaml:"models"`
 	Email struct {
 		Sender struct {
@@ -42,9 +35,16 @@ type Config struct {
 			Port int    `yaml:"port"`
 		} `yaml:"smtp"`
 	} `yaml:"email"`
-	Database DatabaseConfig `yaml:"database"`
-	UserID   string         `yaml:"userID"`
-	Token    string         `yaml:"token"`
+	Database struct {
+		Host     string `yaml:"host"`
+		Port     int    `yaml:"port"`
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+		DBName   string `yaml:"dbname"`
+		Charset  string `yaml:"charset"`
+	} `yaml:"database"`
+	UserID string `yaml:"userID"`
+	Token  string `yaml:"token"`
 }
 
 var AppConfig *Config
