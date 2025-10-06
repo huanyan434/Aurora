@@ -82,13 +82,15 @@
           circle
           size="small"
           @click="handleLogout"
-          title="退出登录"
         >
-          <template #icon>
-            <n-icon>
-              <Logout />
-            </n-icon>
-          </template>
+          <n-tooltip trigger="hover">
+            <template #trigger>
+              <n-icon>
+                <Logout />
+              </n-icon>
+            </template>
+            <span>退出登录</span>
+          </n-tooltip>
         </n-button>
       </div>
     </div>
@@ -96,12 +98,13 @@
     <!-- 主内容区域 -->
     <div class="main-content">
       <ChatArea 
-        v-if="currentConversation || showWelcome" 
+        v-if="!showSharePanel && (currentConversation || showWelcome)" 
         :conversation="currentConversation"
+        @share="handleShareConversation"
       />
       
       <!-- 空状态 -->
-      <div v-else class="empty-state">
+      <div v-else-if="!showSharePanel" class="empty-state">
         <div class="empty-content">
           <h2>欢迎使用 Aurora AI</h2>
           <p>选择一个对话或创建新对话开始聊天</p>
@@ -115,7 +118,20 @@
           </n-button>
         </div>
       </div>
+      
+      <!-- 分享面板 -->
+      <SharePanel 
+        v-if="showSharePanel"
+        @close="showSharePanel = false"
+        @shared="handleShareSuccess"
+      />
     </div>
+    
+    <!-- 分享对话弹窗 -->
+    <ShareDialog 
+      v-model:show="showShareDialog" 
+      :conversation="currentConversation"
+    />
   </div>
 </template>
 
@@ -126,6 +142,7 @@ import {
   NButton, 
   NIcon, 
   NAvatar,
+  NTooltip,
   useMessage,
   useDialog
 } from 'naive-ui'
@@ -137,6 +154,7 @@ import {
 
 import ConversationItem from '@/components/ConversationItem.vue'
 import ChatArea from '@/components/ChatArea.vue'
+import SharePanel from '@/components/SharePanel.vue'
 import { useChatStore } from '@/stores/chat'
 import { useUserStore } from '@/stores/user'
 import { chatApi } from '@/api/chat'
@@ -156,6 +174,8 @@ const userStore = useUserStore()
 // 响应式状态
 const sidebarCollapsed = ref(false)
 const isMobile = ref(window.innerWidth <= 768)
+const showSharePanel = ref(false)
+const showShareDialog = ref(false)
 
 // 计算属性
 const conversations = computed(() => chatStore.conversations)
@@ -243,24 +263,16 @@ const handleRenameConversation = async (conversation) => {
  * 处理分享对话
  */
 const handleShareConversation = async (conversation) => {
-  try {
-    // 获取当前对话的所有消息ID
-    const messageIds = chatStore.messages.map(msg => msg.id)
-    
-    // 调用分享API
-    const response = await chatApi.shareMessages({ messageIDs: messageIds })
-    
-    if (response.success) {
-      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`
-      await navigator.clipboard.writeText(shareUrl)
-      message.success('分享链接已复制到剪贴板')
-    } else {
-      message.error(response.message || '分享失败')
-    }
-  } catch (error) {
-    console.error('分享对话失败:', error)
-    message.error('分享对话失败')
-  }
+  // 显示分享面板
+  showSharePanel.value = true
+}
+
+/**
+ * 处理分享成功
+ */
+const handleShareSuccess = () => {
+  // 可以在这里添加分享成功后的处理逻辑
+  console.log('分享成功')
 }
 
 /**

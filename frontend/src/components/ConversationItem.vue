@@ -25,11 +25,14 @@
           size="small"
           class="action-btn"
         >
-          <template #icon>
-            <n-icon>
-              <DotsVertical />
-            </n-icon>
-          </template>
+          <n-tooltip trigger="hover">
+            <template #trigger>
+              <n-icon>
+                <DotsVertical />
+              </n-icon>
+            </template>
+            <span>操作</span>
+          </n-tooltip>
         </n-button>
       </n-dropdown>
     </div>
@@ -38,7 +41,7 @@
 
 <script>
 import { computed, h } from 'vue'
-import { NButton, NIcon, NDropdown, useMessage } from 'naive-ui'
+import { NButton, NIcon, NDropdown, NTooltip, useMessage } from 'naive-ui'
 import { 
   DotsVertical, 
   Edit,

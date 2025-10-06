@@ -18,32 +18,20 @@
           @update:value="handleModelChange"
         />
         
-        <!-- 清空对话 -->
-        <n-button
-          quaternary
-          size="small"
-          @click="handleClearChat"
-          title="清空对话"
-        >
-          <template #icon>
-            <n-icon>
-              <Trash />
-            </n-icon>
-          </template>
-        </n-button>
-        
         <!-- 分享对话 -->
         <n-button
           quaternary
           size="small"
           @click="handleShareChat"
-          title="分享对话"
         >
-          <template #icon>
-            <n-icon>
-              <Share />
-            </n-icon>
-          </template>
+          <n-tooltip trigger="hover">
+            <template #trigger>
+              <n-icon>
+                <Share />
+              </n-icon>
+            </template>
+            <span>分享对话</span>
+          </n-tooltip>
         </n-button>
       </div>
     </div>
@@ -75,6 +63,7 @@
           v-for="message in messages"
           :key="message.id"
           :message="message"
+          @copy="handleCopyMessage"
           @regenerate="handleRegenerateMessage"
           @delete="handleDeleteMessage"
         />
@@ -109,13 +98,15 @@
             circle
             size="small"
             @click="handleVoiceInput"
-            title="语音输入"
           >
-            <template #icon>
-              <n-icon>
-                <Microphone />
-              </n-icon>
-            </template>
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-icon>
+                  <Microphone />
+                </n-icon>
+              </template>
+              <span>语音输入</span>
+            </n-tooltip>
           </n-button>
           
           <!-- 停止生成 -->
@@ -125,13 +116,15 @@
             circle
             size="small"
             @click="handleStopGeneration"
-            title="停止生成"
           >
-            <template #icon>
-              <n-icon>
-                <Square />
-              </n-icon>
-            </template>
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-icon>
+                  <Square />
+                </n-icon>
+              </template>
+              <span>停止生成</span>
+            </n-tooltip>
           </n-button>
           
           <!-- 发送按钮 -->
@@ -142,13 +135,15 @@
             size="small"
             :disabled="!inputMessage.trim()"
             @click="handleSendMessage"
-            title="发送消息"
           >
-            <template #icon>
-              <n-icon>
-                <Send />
-              </n-icon>
-            </template>
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-icon>
+                  <Send />
+                </n-icon>
+              </template>
+              <span>发送消息</span>
+            </n-tooltip>
           </n-button>
         </div>
       </div>
@@ -164,6 +159,7 @@ import {
   NIcon, 
   NSelect, 
   NSpin,
+  NTooltip,
   useMessage,
   useDialog
 } from 'naive-ui'
@@ -188,12 +184,12 @@ export default {
     NIcon,
     NSelect,
     NSpin,
+    NTooltip,
     MessageItem,
     Send,
     Microphone,
     Square,
-    Share,
-    Trash
+    Share
   },
   props: {
     /**
@@ -204,7 +200,8 @@ export default {
       default: null
     }
   },
-  setup(props) {
+  emits: ['share'],
+  setup(props, { emit }) {
     const message = useMessage()
     const dialog = useDialog()
     const chatStore = useChatStore()
@@ -430,26 +427,9 @@ export default {
     /**
      * 处理分享对话
      */
-    const handleShareChat = async () => {
-      if (messages.value.length === 0) {
-        message.warning('当前对话没有消息可分享')
-        return
-      }
-
-      try {
-        const messageIds = messages.value.map(msg => msg.id)
-        const result = await chatStore.shareMessages(messageIds)
-        
-        if (result.success) {
-          const shareUrl = `${window.location.origin}/share/${result.data.share_id}`
-          await navigator.clipboard.writeText(shareUrl)
-          message.success('分享链接已复制到剪贴板')
-        } else {
-          message.error(result.message || '分享失败')
-        }
-      } catch (error) {
-        message.error('分享失败')
-      }
+    const handleShareChat = () => {
+      // 触发事件，让父组件处理分享逻辑
+      emit('share')
     }
 
     /**
@@ -566,6 +546,15 @@ export default {
       } catch (error) {
         message.error('删除失败')
       }
+    }
+
+    /**
+     * 处理复制消息
+     * @param {Object} msg - 消息对象
+     */
+    const handleCopyMessage = (msg) => {
+      navigator.clipboard.writeText(msg.content)
+      message.success('消息已复制')
     }
 
     // 监听消息变化，自动滚动到底部

@@ -256,10 +256,10 @@ const copyShareLink = async () => {
 const goToApp = () => {
   // 如果是在同一域名下，直接跳转
   if (window.location.origin === window.location.origin) {
-    router.push('/c')
+    router.push('/')
   } else {
     // 否则打开新窗口
-    window.open('/c', '_blank')
+    window.open('/', '_blank')
   }
 }
 
