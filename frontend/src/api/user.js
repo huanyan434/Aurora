@@ -7,13 +7,12 @@ export const userApi = {
   /**
    * 用户登录
    * @param {Object} data - 登录数据
-   * @param {string} data.username - 用户名
+   * @param {string} data.email - 邮箱
    * @param {string} data.password - 密码
-   * @param {string} data.captcha - 验证码
    * @returns {Promise} 登录结果
    */
   login(data) {
-    return request.post('/login', data)
+    return request.post('/api/login', data)
   },
 
   /**
@@ -22,11 +21,11 @@ export const userApi = {
    * @param {string} data.username - 用户名
    * @param {string} data.password - 密码
    * @param {string} data.email - 邮箱
-   * @param {string} data.captcha - 验证码
+   * @param {string} data.verifyCode - 验证码
    * @returns {Promise} 注册结果
    */
   register(data) {
-    return request.post('/signup', data)
+    return request.post('/api/signup', data)
   },
 
   /**
@@ -34,7 +33,7 @@ export const userApi = {
    * @returns {Promise} 用户信息
    */
   getCurrentUser() {
-    return request.get('/current_user')
+    return request.get('/api/current_user')
   },
 
   /**
@@ -42,7 +41,7 @@ export const userApi = {
    * @returns {Promise} 签到结果
    */
   signIn() {
-    return request.post('/sign')
+    return request.post('/api/sign')
   },
 
   /**
@@ -52,7 +51,7 @@ export const userApi = {
    * @returns {Promise} 发送结果
    */
   sendVerificationCode(data) {
-    return request.post('/send_verify_code', data)
+    return request.post('/api/send_verify_code', data)
   },
 
   /**
@@ -60,7 +59,7 @@ export const userApi = {
    * @returns {Promise} 验证结果
    */
   verifyPoints() {
-    return request.post('/verify_points')
+    return request.post('/api/verify_points')
   },
 
   /**
@@ -68,7 +67,7 @@ export const userApi = {
    * @returns {Promise} 验证结果
    */
   verifyVip() {
-    return request.post('/verify_vip')
+    return request.post('/api/verify_vip')
   },
 
   /**
@@ -76,14 +75,6 @@ export const userApi = {
    * @returns {Promise} 模型列表
    */
   getModelsList() {
-    return request.get('/models_list')
-  },
-
-  /**
-   * 获取验证码图片
-   * @returns {Promise} 验证码图片
-   */
-  getCaptcha() {
-    return request.get('/auth/captcha')
+    return request.get('/api/models_list')
   }
 }

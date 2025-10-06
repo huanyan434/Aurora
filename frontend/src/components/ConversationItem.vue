@@ -27,7 +27,7 @@
         >
           <template #icon>
             <n-icon>
-              <MoreHorizontal />
+              <DotsVertical />
             </n-icon>
           </template>
         </n-button>
@@ -40,9 +40,8 @@
 import { computed, h } from 'vue'
 import { NButton, NIcon, NDropdown, useMessage } from 'naive-ui'
 import { 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
+  DotsVertical, 
+  Edit,
   Share 
 } from '@vicons/tabler'
 import { useChatStore } from '@/stores/chat'
@@ -53,9 +52,8 @@ export default {
     NButton,
     NIcon,
     NDropdown,
-    MoreHorizontal,
+    DotsVertical,
     Edit,
-    Trash2,
     Share
   },
   props: {
@@ -97,7 +95,6 @@ export default {
       {
         label: '删除',
         key: 'delete',
-        icon: () => h(NIcon, null, { default: () => h(Trash2) }),
         props: {
           style: 'color: #e74c3c;'
         }
@@ -166,7 +163,7 @@ export default {
         
         case 'delete':
           try {
-            const result = await chatStore.deleteConversation(props.conversation.id)
+            const result = await chatStore.deleteConversation(props.conversation.ID)
             if (result.success) {
               message.success('对话删除成功')
               emit('delete', props.conversation)

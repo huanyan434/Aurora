@@ -286,18 +286,60 @@ func VerifyPassword(inputPassword string, passwordHash string) bool {
 func LoadConversationHistory(conversationID uuid.UUID) ([]openai.ChatCompletionMessage, error) {
 	db := GetDB()
 	var messages []Message
-	result := db.Where("conversation_id = ?", conversationID).Order("created_at ASC").Find(&messages)
+	result := db.Table("messages").Where("conversation_id = ?", conversationID).Order("created_at ASC").Find(&messages)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-
 	var chatMessages []openai.ChatCompletionMessage
 	for _, msg := range messages {
-		chatMessages = append(chatMessages, openai.ChatCompletionMessage{
-			Role:             msg.Role,
-			Content:          msg.Content,
-			ReasoningContent: msg.ReasoningContent,
-		})
+		if msg.Role == "assistant" {
+			chatMessages = append(chatMessages, openai.ChatCompletionMessage{
+				Role:             msg.Role,
+				Content:          msg.Content,
+				ReasoningContent: msg.ReasoningContent,
+			})
+		} else {
+			chatMessages = append(chatMessages, openai.ChatCompletionMessage{
+				Role:    msg.Role,
+				Content: msg.Content,
+			})
+		}
+	}
+
+	return chatMessages, nil
+}
+
+type messageFormat struct {
+	ID               uuid.UUID `json:"id"`
+	Role             string    `json:"role"`
+	Content          string    `json:"content"`
+	ReasoningContent string    `json:"reasoning_content,omitempty"`
+}
+
+// LoadConversationHistoryFormat2 加载指定conversationID的对话历史，返回自定义格式
+func LoadConversationHistoryFormat2(conversationID uuid.UUID) ([]messageFormat, error) {
+	db := GetDB()
+	var messages []Message
+	result := db.Table("messages").Where("conversation_id = ?", conversationID).Order("created_at ASC").Find(&messages)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	var chatMessages []messageFormat
+	for _, msg := range messages {
+		if msg.Role == "assistant" {
+			chatMessages = append(chatMessages, messageFormat{
+				ID:               msg.ID,
+				Role:             msg.Role,
+				Content:          msg.Content,
+				ReasoningContent: msg.ReasoningContent,
+			})
+		} else {
+			chatMessages = append(chatMessages, messageFormat{
+				ID:      msg.ID,
+				Role:    msg.Role,
+				Content: msg.Content,
+			})
+		}
 	}
 
 	return chatMessages, nil
@@ -307,7 +349,7 @@ func LoadConversationHistory(conversationID uuid.UUID) ([]openai.ChatCompletionM
 func SaveConversationHistory(conversationID uuid.UUID, messages []openai.ChatCompletionMessage) error {
 	db := GetDB()
 	// 删除现有的消息记录
-	if err := db.Where("conversation_id = ?", conversationID).Delete(&Message{}).Error; err != nil {
+	if err := db.Table("messages").Where("conversation_id = ?", conversationID).Delete(&Message{}).Error; err != nil {
 		return err
 	}
 
@@ -315,6 +357,31 @@ func SaveConversationHistory(conversationID uuid.UUID, messages []openai.ChatCom
 	for _, msg := range messages {
 		message := Message{
 			ID:               uuid.NewV4(),
+			Content:          msg.Content,
+			Role:             msg.Role,
+			ConversationID:   conversationID,
+			ReasoningContent: msg.ReasoningContent,
+		}
+		if err := db.Create(&message).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// SaveConversationHistoryFormat2 保存对话历史到指定conversationID
+func SaveConversationHistoryFormat2(conversationID uuid.UUID, messages []messageFormat) error {
+	db := GetDB()
+	// 删除现有的消息记录
+	if err := db.Table("messages").Where("conversation_id = ?", conversationID).Delete(&Message{}).Error; err != nil {
+		return err
+	}
+
+	// 添加新的消息记录
+	for _, msg := range messages {
+		message := Message{
+			ID:               msg.ID,
 			Content:          msg.Content,
 			Role:             msg.Role,
 			ConversationID:   conversationID,
@@ -582,6 +649,5 @@ func SearchOrder(orderId string) (bool, error) {
 func DeleteMessage(messageID uuid.UUID) {
 	db := GetDB()
 	var message Message
-	db.Table("messages").Where("id = ?", messageID).First(&message)
-	db.Create(&message)
+	db.Table("messages").Where("id = ?", messageID).First(&message).Delete(&message)
 }

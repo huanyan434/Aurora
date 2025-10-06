@@ -433,6 +433,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/chat/messages_list": {
+            "post": {
+                "description": "获取指定对话的聊天记录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "获取历史消息",
+                "parameters": [
+                    {
+                        "description": "获取历史消息请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes.messagesListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取历史消息成功",
+                        "schema": {
+                            "$ref": "#/definitions/routes.messagesListResponseSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "获取历史消息失败",
+                        "schema": {
+                            "$ref": "#/definitions/routes.messagesListResponseFailed"
+                        }
+                    }
+                }
+            }
+        },
         "/chat/new_conversation": {
             "get": {
                 "description": "为当前用户创建一个新的对话",
@@ -825,6 +865,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "uuid-string"
                 },
+                "messageAssistantID": {
+                    "type": "string",
+                    "example": "uuid-string"
+                },
+                "messageUserID": {
+                    "type": "string",
+                    "example": "uuid-string"
+                },
                 "model": {
                     "type": "string",
                     "example": "gpt-3.5-turbo"
@@ -941,6 +989,40 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "登录成功"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "routes.messagesListRequest": {
+            "type": "object",
+            "properties": {
+                "conversationID": {
+                    "type": "string",
+                    "example": "uuid-string"
+                }
+            }
+        },
+        "routes.messagesListResponseFailed": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "routes.messagesListResponseSuccess": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "string",
+                    "example": "{\"role\": \"user\", \"content\": \"你好\"}"
                 },
                 "success": {
                     "type": "boolean",

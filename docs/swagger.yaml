@@ -96,6 +96,12 @@ definitions:
       conversationID:
         example: uuid-string
         type: string
+      messageAssistantID:
+        example: uuid-string
+        type: string
+      messageUserID:
+        example: uuid-string
+        type: string
       model:
         example: gpt-3.5-turbo
         type: string
@@ -175,6 +181,29 @@ definitions:
     properties:
       message:
         example: 登录成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.messagesListRequest:
+    properties:
+      conversationID:
+        example: uuid-string
+        type: string
+    type: object
+  routes.messagesListResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.messagesListResponseSuccess:
+    properties:
+      messages:
+        example: '{"role": "user", "content": "你好"}'
         type: string
       success:
         example: true
@@ -773,6 +802,32 @@ paths:
           schema:
             $ref: '#/definitions/routes.generateResponseFailed'
       summary: 生成AI回复
+      tags:
+      - Chat
+  /chat/messages_list:
+    post:
+      consumes:
+      - application/json
+      description: 获取指定对话的聊天记录
+      parameters:
+      - description: 获取历史消息请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/routes.messagesListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取历史消息成功
+          schema:
+            $ref: '#/definitions/routes.messagesListResponseSuccess'
+        "400":
+          description: 获取历史消息失败
+          schema:
+            $ref: '#/definitions/routes.messagesListResponseFailed'
+      summary: 获取历史消息
       tags:
       - Chat
   /chat/new_conversation:

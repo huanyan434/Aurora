@@ -1,31 +1,13 @@
 import axios from 'axios'
-import { useUserStore } from '@/stores/user'
 
 // 创建axios实例
 const request = axios.create({
-  baseURL: '/api',
-  timeout: 30000,
+  timeout: 15000, // 增加超时时间到15秒
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
-/**
- * 请求拦截器 - 添加认证token
- */
-request.interceptors.request.use(
-  (config) => {
-    const userStore = useUserStore()
-    if (userStore.token) {
-      config.headers.Authorization = `Bearer ${userStore.token}`
-    }
-    return config
-  },
-  (error) => {
-    console.error('请求拦截器错误:', error)
-    return Promise.reject(error)
-  }
-)
 
 /**
  * 响应拦截器 - 处理响应和错误
@@ -33,12 +15,22 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     const { data } = response
+    console.log('API响应:', response.config.url, data)
+    
+    // 对于模型列表API的特殊处理
+    if (response.config.url === '/api/models_list') {
+      // 模型列表API直接返回数据
+      return {
+        success: true,
+        data: data
+      };
+    }
     
     // 统一处理响应格式
     if (data.code === 200 || data.success) {
       return {
         success: true,
-        data: data.data || data.result,
+        data: data.data || data.result || data,
         message: data.message || '操作成功'
       }
     } else {
@@ -52,16 +44,13 @@ request.interceptors.response.use(
   (error) => {
     console.error('响应拦截器错误:', error)
     
-    const userStore = useUserStore()
-    
     // 处理不同的错误状态
     if (error.response) {
       const { status, data } = error.response
       
       switch (status) {
         case 401:
-          // 未授权，清除token并跳转到登录页
-          userStore.logout()
+          // 未授权，跳转到登录页
           window.location.href = '/login'
           return Promise.reject(new Error('登录已过期，请重新登录'))
         
@@ -79,6 +68,9 @@ request.interceptors.response.use(
       }
     } else if (error.request) {
       // 网络错误
+      if (error.code === 'ECONNABORTED') {
+        return Promise.reject(new Error('请求超时，请稍后重试'))
+      }
       return Promise.reject(new Error('网络连接失败，请检查网络设置'))
     } else {
       // 其他错误

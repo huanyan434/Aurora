@@ -9,6 +9,6 @@ export const modelsApi = {
    * @returns {Promise} 模型列表
    */
   getModels() {
-    return request.get('/models')
+    return request.get('/api/models_list');
   }
 }

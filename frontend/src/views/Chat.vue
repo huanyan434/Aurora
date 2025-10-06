@@ -50,15 +50,14 @@
         
         <div class="conversations-list">
           <ConversationItem
-            v-for="conversation in conversations"
-            :key="conversation.id"
-            :conversation="conversation"
-            :is-active="currentConversationId === conversation.id"
-            @select="selectConversation"
-            @delete="handleDeleteConversation"
-            @rename="handleRenameConversation"
-            @share="handleShareConversation"
-          />
+          v-for="conversation in conversations"
+          :key="conversation.ID || conversation.ID || conversation"
+          :conversation="conversation"
+          :is-active="!!(currentConversationId && (currentConversationId === (conversation.ID || conversation.ID)))"
+          @select="selectConversation"
+          @rename="handleRenameConversation"
+          @share="handleShareConversation"
+        />
         </div>
       </div>
       
@@ -96,7 +95,10 @@
 
     <!-- 主内容区域 -->
     <div class="main-content">
-      <ChatArea v-if="currentConversation || showWelcome" />
+      <ChatArea 
+        v-if="currentConversation || showWelcome" 
+        :conversation="currentConversation"
+      />
       
       <!-- 空状态 -->
       <div v-else class="empty-state">
@@ -118,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { 
   NButton, 
@@ -137,6 +139,7 @@ import ConversationItem from '@/components/ConversationItem.vue'
 import ChatArea from '@/components/ChatArea.vue'
 import { useChatStore } from '@/stores/chat'
 import { useUserStore } from '@/stores/user'
+import { chatApi } from '@/api/chat'
 
 /**
  * 主聊天页面组件
@@ -172,25 +175,24 @@ const toggleSidebar = () => {
  * 创建新对话
  */
 const createNewChat = async () => {
-  try {
-    const result = await chatStore.createConversation()
-    if (result.success) {
-      router.push(`/chat/${result.data.id}`)
-      message.success('新对话创建成功')
-    } else {
-      message.error(result.message || '创建对话失败')
-    }
-  } catch (error) {
-    message.error('创建对话失败')
-  }
+  // 不再直接创建对话，而是跳转到/路由显示欢迎界面
+  router.push('/')
+  chatStore.setCurrentConversation(null)
 }
 
 /**
  * 选择对话
  */
 const selectConversation = (conversation) => {
+  console.log('选择对话:', conversation)
   chatStore.setCurrentConversation(conversation)
-  router.push(`/chat/${conversation.id}`)
+  // 检查对话对象的ID字段
+  const conversationId = conversation?.ID;
+  if (conversation && conversationId) {
+    router.push(`/c/${conversationId}`)
+  } else {
+    router.push('/')
+  }
   
   // 移动端自动收起侧边栏
   if (isMobile.value) {
@@ -199,30 +201,66 @@ const selectConversation = (conversation) => {
 }
 
 /**
- * 处理删除对话
- */
-const handleDeleteConversation = (conversation) => {
-  // 删除逻辑已在ConversationItem组件中处理
-  // 如果删除的是当前对话，跳转到聊天首页
-  if (currentConversationId.value === conversation.id) {
-    router.push('/chat')
-  }
-}
-
-/**
  * 处理重命名对话
  */
-const handleRenameConversation = (conversation) => {
-  // TODO: 实现重命名对话功能
-  message.info('重命名功能开发中...')
+const handleRenameConversation = async (conversation) => {
+  // 显示输入对话框
+  const value = ref(conversation.title)
+  
+  dialog.info({
+    title: '重命名对话',
+    content: () => h('n-input', {
+      value: value.value,
+      onUpdateValue: (val) => {
+        value.value = val
+      },
+      placeholder: '请输入新的对话名称'
+    }),
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      if (!value.value.trim()) {
+        message.error('对话名称不能为空')
+        return false
+      }
+      
+      try {
+        // 这里应该调用API更新对话标题
+        // 由于API文档中没有提供更新对话标题的接口，暂时只更新本地状态
+        conversation.title = value.value.trim()
+        message.success('对话重命名成功')
+        return true
+      } catch (error) {
+        console.error('重命名对话失败:', error)
+        message.error('重命名对话失败')
+        return false
+      }
+    }
+  })
 }
 
 /**
  * 处理分享对话
  */
-const handleShareConversation = (conversation) => {
-  // TODO: 实现分享对话功能
-  message.info('分享功能开发中...')
+const handleShareConversation = async (conversation) => {
+  try {
+    // 获取当前对话的所有消息ID
+    const messageIds = chatStore.messages.map(msg => msg.id)
+    
+    // 调用分享API
+    const response = await chatApi.shareMessages({ messageIDs: messageIds })
+    
+    if (response.success) {
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`
+      await navigator.clipboard.writeText(shareUrl)
+      message.success('分享链接已复制到剪贴板')
+    } else {
+      message.error(response.message || '分享失败')
+    }
+  } catch (error) {
+    console.error('分享对话失败:', error)
+    message.error('分享对话失败')
+  }
 }
 
 /**
@@ -269,15 +307,37 @@ const handleResize = () => {
 watch(
   () => route.params.conversationId,
   async (conversationId) => {
+    console.log('路由变化，对话ID:', conversationId)
     if (conversationId) {
-      const conversation = conversations.value.find(conv => conv.id === conversationId)
+      // 查找对话是否存在
+      let conversation = chatStore.conversations.find(conv => conv.ID === conversationId)
+      
       if (conversation) {
         chatStore.setCurrentConversation(conversation)
       } else {
-        // 如果对话不存在，跳转到聊天首页
-        router.push('/chat')
+        // 如果对话不存在，先尝试刷新对话列表
+        console.log('对话不存在，尝试刷新对话列表')
+        const response = await chatApi.getConversations()
+        if (response.success) {
+          chatStore.conversations = response.data?.conversations || []
+          // 再次查找对话
+          let refreshedConversation = chatStore.conversations.find(conv => conv.ID === conversationId)
+          
+          if (refreshedConversation) {
+            chatStore.setCurrentConversation(refreshedConversation)
+          } else {
+            // 如果还是不存在，跳转到首页
+            console.log('对话仍然不存在，跳转到首页')
+            router.push('/')
+          }
+        } else {
+          // 获取对话列表失败，跳转到首页
+          console.log('获取对话列表失败，跳转到首页')
+          router.push('/')
+        }
       }
     } else {
+      console.log('无对话ID，清空当前对话')
       chatStore.setCurrentConversation(null)
     }
   },
@@ -286,8 +346,24 @@ watch(
 
 // 组件挂载时加载数据
 onMounted(async () => {
+  console.log('聊天页面挂载，开始加载数据')
   // 获取对话列表
-  await chatStore.fetchConversations()
+  try {
+    const response = await chatApi.getConversations()
+    console.log('获取对话列表响应:', response)
+    
+    if (response.success) {
+      chatStore.conversations = response.data?.conversations || []
+    } else {
+      message.error(response.message || '获取对话列表失败')
+    }
+    
+    // 获取模型列表
+    await chatStore.fetchModels()
+  } catch (error) {
+    console.error('获取数据失败:', error)
+    message.error('获取数据失败')
+  }
   
   // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
@@ -449,7 +525,7 @@ onUnmounted(() => {
     transition: transform 0.3s ease;
   }
 
-  .sidebar:not(.sidebar-collapsed) {
+  .sidebar:not(.collapsed) {
     transform: translateX(0);
   }
 

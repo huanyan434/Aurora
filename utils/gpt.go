@@ -42,13 +42,13 @@ var (
 
 // 初始化队列
 func init() {
-	taskQueue = queue.NewPool(5) // 同时处理5个并发请求
+	taskQueue = queue.NewPool(100) // 同时处理100个并发请求
 }
 
 // --- 核心功能：并发处理 OpenAI 请求 ---
 
 // ThreadOpenai 使用并发处理OpenAI请求，返回一个通道以实现类似Python yield的功能
-func ThreadOpenai(conversationID uuid.UUID, model string, prompt string, base64 string, reasoning bool) <-chan string {
+func ThreadOpenai(conversationID uuid.UUID, messageID1 uuid.UUID, messageID2 uuid.UUID, model string, prompt string, base64 string, reasoning bool) <-chan string {
 	threadID := conversationID.String()
 
 	// 1. 检查线程是否已存在
@@ -90,7 +90,7 @@ func ThreadOpenai(conversationID uuid.UUID, model string, prompt string, base64 
 				threadMutex.Unlock()
 			}()
 
-			Openai(ctx, conversationIDCopy, model, prompt, base64, reasoning, resp)
+			Openai(ctx, conversationIDCopy, messageID1, messageID2, model, prompt, base64, reasoning, resp)
 			return nil
 		})
 
@@ -114,7 +114,7 @@ type Response struct {
 	Content          string `json:"content" default:""`
 }
 
-func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt string, base64 string, reasoning bool, resp chan<- string) {
+func Openai(ctx context.Context, conversationID uuid.UUID, messageID1 uuid.UUID, messageID2 uuid.UUID, model string, prompt string, base64 string, reasoning bool, resp chan<- string) {
 	var responseByte []byte
 	configs := GetConfig()
 	// 判断模型信息
@@ -146,20 +146,31 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 	}
 
 	// 处理messages
-	messages, err := LoadConversationHistory(conversationID)
+	messages, err := LoadConversationHistoryFormat2(conversationID)
 	if err != nil {
 		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
 		resp <- string(responseByte)
 	}
-	messagesCopy := make([]openai.ChatCompletionMessage, len(messages))
-	copy(messagesCopy, messages)
+	messagesCopy, err := LoadConversationHistory(conversationID)
+	if err != nil {
+		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
+		resp <- string(responseByte)
+	}
+
 	if base64 != "" {
-		messages = append(messages, openai.ChatCompletionMessage{
+		messages = append(messages, messageFormat{
+			ID:      messageID1,
 			Role:    "user",
 			Content: fmt.Sprintf("<base64>%s</base64>", base64) + prompt,
 		})
+	} else {
+		messages = append(messages, messageFormat{
+			ID:      messageID1,
+			Role:    "user",
+			Content: prompt,
+		})
 	}
-	err = SaveConversationHistory(conversationID, messages)
+	err = SaveConversationHistoryFormat2(conversationID, messages)
 	if err != nil {
 		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
 		resp <- string(responseByte)
@@ -243,19 +254,21 @@ func Openai(ctx context.Context, conversationID uuid.UUID, model string, prompt 
 
 	defer func() {
 		if reasoningContent != "" {
-			messages = append(messages, openai.ChatCompletionMessage{
+			messages = append(messages, messageFormat{
+				ID:               messageID2,
 				Role:             "assistant",
 				Content:          fmt.Sprintf("<model=%s>", model) + content,
 				ReasoningContent: fmt.Sprintf("<think time=%s>%s</think>", usedTime, reasoningContent),
 			})
 		} else {
-			messages = append(messages, openai.ChatCompletionMessage{
+			messages = append(messages, messageFormat{
+				ID:               messageID2,
 				Role:             "assistant",
 				Content:          fmt.Sprintf("<model=%s>", model) + content,
 				ReasoningContent: "",
 			})
 		}
-		if err := SaveConversationHistory(conversationID, messages); err != nil {
+		if err := SaveConversationHistoryFormat2(conversationID, messages); err != nil {
 			fmt.Printf("ERROR:%v\n", err)
 		}
 		var conversation Conversation

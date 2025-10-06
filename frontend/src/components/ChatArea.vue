@@ -4,7 +4,7 @@
     <div class="chat-header">
       <div class="chat-title">
         <h3>{{ conversationTitle }}</h3>
-        <span class="message-count">{{ messages.length }} 条消息</span>
+        <span class="message-count">{{ messages?.length || 0 }} 条消息</span>
       </div>
       
       <div class="chat-actions">
@@ -27,7 +27,7 @@
         >
           <template #icon>
             <n-icon>
-              <Trash2 />
+              <Trash />
             </n-icon>
           </template>
         </n-button>
@@ -52,7 +52,7 @@
     <div class="messages-container" ref="messagesContainer">
       <div class="messages-list">
         <!-- 欢迎消息 -->
-        <div v-if="messages.length === 0" class="welcome-message">
+        <div v-if="!messages || messages.length === 0" class="welcome-message">
           <div class="welcome-content">
             <h2>欢迎使用 Aurora AI</h2>
             <p>我是您的智能助手，可以帮助您解答问题、处理任务。请输入您的问题开始对话。</p>
@@ -75,7 +75,6 @@
           v-for="message in messages"
           :key="message.id"
           :message="message"
-          @copy="handleCopyMessage"
           @regenerate="handleRegenerateMessage"
           @delete="handleDeleteMessage"
         />
@@ -171,12 +170,15 @@ import {
 import { 
   Send, 
   Microphone, 
-  Square, 
-  Trash2, 
-  Share 
+  Square,
+  Share,
+  Trash
 } from '@vicons/tabler'
 import MessageItem from './MessageItem.vue'
 import { useChatStore } from '@/stores/chat'
+import { chatApi } from '@/api/chat'
+import { useRouter } from 'vue-router'
+import { generateUUID } from '@/utils/uuid'
 
 export default {
   name: 'ChatArea',
@@ -190,13 +192,23 @@ export default {
     Send,
     Microphone,
     Square,
-    Trash2,
-    Share
+    Share,
+    Trash
   },
-  setup() {
+  props: {
+    /**
+     * 当前对话
+     */
+    conversation: {
+      type: Object,
+      default: null
+    }
+  },
+  setup(props) {
     const message = useMessage()
     const dialog = useDialog()
     const chatStore = useChatStore()
+    const router = useRouter()
     
     // 响应式引用
     const inputMessage = ref('')
@@ -211,7 +223,7 @@ export default {
       set: (value) => chatStore.selectedModel = value
     })
     const conversationTitle = computed(() => {
-      return chatStore.currentConversation?.title || '新对话'
+      return props.conversation?.title || '新对话'
     })
 
     // 模型选项
@@ -264,19 +276,38 @@ export default {
       const content = inputMessage.value.trim()
       if (!content || isGenerating.value) return
 
-      if (!chatStore.currentConversation) {
-        // 创建新对话
-        const result = await chatStore.createConversation()
-        if (!result.success) {
-          message.error(result.message || '创建对话失败')
-          return
+      // 检查是否有有效的对话
+      const conversationId = chatStore.currentConversation?.ID;
+
+      // 如果没有对话ID，先创建对话
+      if (!conversationId) {
+        const createResult = await chatStore.createConversation();
+        if (createResult.success) {
+          const newConversationId = createResult.data?.conversationID;
+          // 更新路由
+          if (newConversationId) {
+            router.push(`/c/${newConversationId}`);
+          }
+        } else {
+          message.error(createResult.message || '创建对话失败');
+          chatStore.isGenerating = false;
+          return;
         }
       }
-
+      
+      // 获取最终的对话ID（可能是新创建的）
+      const finalConversationId = chatStore.currentConversation?.ID;
+      
+      // 生成消息ID
+      const messageUserID = generateUUID();
+      const messageAssistantID = generateUUID();
+      
       const messageData = {
-        content,
-        conversationId: chatStore.currentConversation.id,
-        model: selectedModel.value
+        prompt: content,
+        conversationID: finalConversationId,
+        model: selectedModel.value,
+        messageUserID: messageUserID,
+        messageAssistantID: messageAssistantID
       }
 
       // 清空输入框
@@ -286,24 +317,60 @@ export default {
       scrollToBottom()
 
       try {
+        // 设置生成状态
+        chatStore.isGenerating = true
+        
+        // 添加用户消息到本地状态
+        const userMessage = {
+          id: messageUserID, // 使用生成的UUID
+          content: content,
+          role: 'user',
+          createdAt: new Date().toISOString()
+        }
+        chatStore.messages.push(userMessage)
+
+        // 添加AI消息占位符
+        const aiMessage = {
+          id: messageAssistantID, // 使用生成的UUID
+          content: '',
+          role: 'assistant',
+          createdAt: new Date().toISOString(),
+          isStreaming: true
+        }
+        chatStore.messages.push(aiMessage)
+        
         // 使用流式发送
-        await chatStore.streamMessage(
+        let accumulatedContent = ''
+        await chatApi.sendMessage(
           messageData,
-          (chunk) => {
-            // 消息块回调
+          (content) => {
+            // 流式接收内容
+            accumulatedContent += content
+            // 更新最后一条消息的内容
+            const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+            if (lastMessage && lastMessage.role === 'assistant') {
+              lastMessage.content = accumulatedContent
+            }
             scrollToBottom()
           },
           (error) => {
-            // 错误回调
-            message.error(error.message || '发送失败')
+            message.error('消息发送失败')
+            console.error('消息发送失败:', error)
+            chatStore.isGenerating = false
           },
           () => {
             // 完成回调
+            const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+            if (lastMessage && lastMessage.role === 'assistant') {
+              lastMessage.isStreaming = false
+            }
+            chatStore.isGenerating = false
             scrollToBottom()
           }
         )
       } catch (error) {
-        message.error('发送失败')
+        message.error(error.message || '发送失败')
+        chatStore.isGenerating = false
       }
     }
 
@@ -312,7 +379,16 @@ export default {
      */
     const handleStopGeneration = async () => {
       try {
-        await chatStore.stopGeneration()
+        await chatApi.stopGeneration()
+        // 更新状态
+        chatStore.isGenerating = false
+        
+        // 移除流式标记
+        const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+        if (lastMessage && lastMessage.role === 'assistant') {
+          lastMessage.isStreaming = false
+        }
+        
         message.info('已停止生成')
       } catch (error) {
         message.error('停止失败')
@@ -365,7 +441,7 @@ export default {
         const result = await chatStore.shareMessages(messageIds)
         
         if (result.success) {
-          const shareUrl = `${window.location.origin}/share/${result.data.shareId}`
+          const shareUrl = `${window.location.origin}/share/${result.data.share_id}`
           await navigator.clipboard.writeText(shareUrl)
           message.success('分享链接已复制到剪贴板')
         } else {
@@ -386,14 +462,6 @@ export default {
     }
 
     /**
-     * 处理复制消息
-     * @param {Object} msg - 消息对象
-     */
-    const handleCopyMessage = (msg) => {
-      // 消息已在MessageItem组件中处理
-    }
-
-    /**
      * 处理重新生成消息
      * @param {Object} msg - 消息对象
      */
@@ -407,16 +475,77 @@ export default {
           await chatStore.deleteMessage(msg.id)
           
           // 重新发送用户消息
+          // 确保有有效的对话ID
+          let conversationId = chatStore.currentConversation?.ID;
+          
+          // 如果没有对话ID，先创建对话
+          if (!conversationId) {
+            const createResult = await chatStore.createConversation();
+            if (createResult.success) {
+              conversationId = createResult.data?.conversationID;
+              // 更新路由
+              if (conversationId) {
+                router.push(`/c/${conversationId}`);
+              }
+            } else {
+              message.error(createResult.message || '创建对话失败');
+              chatStore.isGenerating = false;
+              return;
+            }
+          }
+          
           const messageData = {
-            content: userMessage.content,
-            conversationId: chatStore.currentConversation.id,
+            prompt: userMessage.content,
+            conversationID: conversationId,
             model: selectedModel.value
           }
           
           try {
-            await chatStore.streamMessage(messageData)
+            // 设置生成状态
+            chatStore.isGenerating = true
+
+            // 添加AI消息占位符
+            const aiMessage = {
+              id: 'assistant_' + Date.now(),
+              content: '',
+              role: 'assistant',
+              createdAt: new Date().toISOString(),
+              isStreaming: true
+            }
+            chatStore.messages.push(aiMessage)
+            
+            // 使用流式发送
+            let accumulatedContent = ''
+            await chatApi.sendMessage(
+              messageData,
+              (content) => {
+                // 流式接收内容
+                accumulatedContent += content
+                // 更新最后一条消息的内容
+                const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+                if (lastMessage && lastMessage.role === 'assistant') {
+                  lastMessage.content = accumulatedContent
+                }
+                scrollToBottom()
+              },
+              (error) => {
+                message.error('消息发送失败')
+                console.error('消息发送失败:', error)
+                chatStore.isGenerating = false
+              },
+              () => {
+                // 完成回调
+                const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+                if (lastMessage && lastMessage.role === 'assistant') {
+                  lastMessage.isStreaming = false
+                }
+                chatStore.isGenerating = false
+                scrollToBottom()
+              }
+            )
           } catch (error) {
             message.error('重新生成失败')
+            chatStore.isGenerating = false
           }
         }
       }
@@ -446,7 +575,19 @@ export default {
 
     // 组件挂载时获取模型列表
     onMounted(async () => {
-      await chatStore.fetchModels()
+      console.log('开始获取模型列表')
+      try {
+        const result = await chatStore.fetchModels()
+        console.log('获取模型结果:', result)
+        if (!result.success) {
+          message.warning('获取AI模型列表失败，将使用默认模型')
+        } else {
+          console.log('成功获取模型:', chatStore.models)
+        }
+      } catch (error) {
+        console.error('获取模型异常:', error)
+        message.warning('获取AI模型列表失败，将使用默认模型')
+      }
     })
 
     return {
@@ -468,7 +609,6 @@ export default {
       handleClearChat,
       handleShareChat,
       handleQuickAction,
-      handleCopyMessage,
       handleRegenerateMessage,
       handleDeleteMessage
     }

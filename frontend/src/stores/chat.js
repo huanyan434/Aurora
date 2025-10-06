@@ -16,7 +16,7 @@ export const useChatStore = defineStore('chat', () => {
   const selectedModel = ref('')
 
   // 计算属性
-  const currentConversationId = computed(() => currentConversation.value?.id)
+  const currentConversationId = computed(() => currentConversation.value?.ID)
   const hasMessages = computed(() => messages.value.length > 0)
 
   /**
@@ -26,8 +26,9 @@ export const useChatStore = defineStore('chat', () => {
   const fetchConversations = async () => {
     try {
       const response = await chatApi.getConversations()
+      console.log('获取对话列表响应:', response)
       if (response.success) {
-        conversations.value = response.data
+        conversations.value = response.data.conversations || []
         return { success: true, data: response.data }
       }
       return { success: false, message: response.message }
@@ -39,18 +40,25 @@ export const useChatStore = defineStore('chat', () => {
 
   /**
    * 创建新对话
-   * @param {string} title - 对话标题
    * @returns {Promise<Object>} 创建结果
    */
-  const createConversation = async (title = '新对话') => {
+  const createConversation = async () => {
     try {
-      const response = await chatApi.createConversation({ title })
+      const response = await chatApi.createConversation()
+      console.log('创建对话响应:', response)
       if (response.success) {
-        const newConversation = response.data
+        // 获取新创建的对话信息
+        const newConversation = {
+          id: response.data.conversationID,
+          title: '新对话',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+        
         conversations.value.unshift(newConversation)
         currentConversation.value = newConversation
         messages.value = []
-        return { success: true, data: newConversation }
+        return { success: true, data: response.data }
       }
       return { success: false, message: response.message }
     } catch (error) {
@@ -67,15 +75,16 @@ export const useChatStore = defineStore('chat', () => {
   const deleteConversation = async (conversationId) => {
     try {
       const response = await chatApi.deleteConversation(conversationId)
+      console.log('删除对话响应:', response)
       if (response.success) {
-        conversations.value = conversations.value.filter(conv => conv.id !== conversationId)
-        if (currentConversation.value?.id === conversationId) {
+        conversations.value = conversations.value.filter(conv => conv.ID !== conversationId)
+        if (currentConversation.value?.ID === conversationId) {
           currentConversation.value = null
           messages.value = []
         }
         return { success: true }
       }
-      return { success: false, message: response.message }
+      return { success: false, message: response.message || '删除对话失败' }
     } catch (error) {
       console.error('删除对话失败:', error)
       return { success: false, message: error.message || '删除对话失败' }
@@ -88,121 +97,41 @@ export const useChatStore = defineStore('chat', () => {
    * @returns {Promise<Object>} 获取结果
    */
   const fetchMessages = async (conversationId) => {
-    try {
-      const response = await chatApi.getMessages(conversationId)
-      if (response.success) {
-        messages.value = response.data
-        return { success: true, data: response.data }
-      }
-      return { success: false, message: response.message }
-    } catch (error) {
-      console.error('获取消息失败:', error)
-      return { success: false, message: error.message || '获取消息失败' }
+    console.log('获取对话消息:', conversationId)
+    // 检查conversationId是否存在
+    if (!conversationId) {
+      messages.value = [];
+      return { success: true, data: [] };
     }
-  }
-
-  /**
-   * 发送消息
-   * @param {Object} messageData - 消息数据
-   * @param {string} messageData.content - 消息内容
-   * @param {string} messageData.conversationId - 对话ID
-   * @param {string} messageData.model - 模型名称
-   * @returns {Promise<Object>} 发送结果
-   */
-  const sendMessage = async (messageData) => {
+    
     try {
-      // 添加用户消息到本地状态
-      const userMessage = {
-        id: Date.now().toString(),
-        content: messageData.content,
-        role: 'user',
-        timestamp: new Date().toISOString()
-      }
-      messages.value.push(userMessage)
-
-      // 添加AI消息占位符
-      const aiMessage = {
-        id: (Date.now() + 1).toString(),
-        content: '',
-        role: 'assistant',
-        timestamp: new Date().toISOString(),
-        isStreaming: true
-      }
-      messages.value.push(aiMessage)
-
-      isGenerating.value = true
-
-      const response = await chatApi.sendMessage(messageData)
+      const response = await chatApi.getMessages(conversationId);
+      console.log('获取对话消息响应:', response);
       if (response.success) {
-        return { success: true, data: response.data }
-      }
-      return { success: false, message: response.message }
-    } catch (error) {
-      console.error('发送消息失败:', error)
-      isGenerating.value = false
-      // 移除失败的AI消息
-      messages.value = messages.value.filter(msg => !msg.isStreaming)
-      return { success: false, message: error.message || '发送消息失败' }
-    }
-  }
-
-  /**
-   * 流式接收消息
-   * @param {Object} messageData - 消息数据
-   * @param {Function} onMessage - 消息回调
-   * @param {Function} onError - 错误回调
-   * @param {Function} onComplete - 完成回调
-   */
-  const streamMessage = async (messageData, onMessage, onError, onComplete) => {
-    try {
-      // 添加用户消息到本地状态
-      const userMessage = {
-        id: Date.now().toString(),
-        content: messageData.content,
-        role: 'user',
-        timestamp: new Date().toISOString()
-      }
-      messages.value.push(userMessage)
-
-      // 添加AI消息占位符
-      const aiMessage = {
-        id: (Date.now() + 1).toString(),
-        content: '',
-        role: 'assistant',
-        timestamp: new Date().toISOString(),
-        isStreaming: true
-      }
-      messages.value.push(aiMessage)
-
-      isGenerating.value = true
-      
-      await chatApi.streamMessage(messageData, (chunk) => {
-        // 更新最后一条AI消息的内容
-        const lastMessage = messages.value[messages.value.length - 1]
-        if (lastMessage && lastMessage.role === 'assistant') {
-          lastMessage.content += chunk
-          if (onMessage) onMessage(chunk)
+        // 解析消息数据
+        let parsedMessages = [];
+        if (response.data && response.data.messages) {
+          try {
+            const messagesStr = response.data.messages;
+            // 检查是否为'null'字符串
+            if (messagesStr && messagesStr !== 'null') {
+              parsedMessages = JSON.parse(messagesStr);
+            }
+          } catch (e) {
+            console.error('解析消息数据失败:', e);
+            parsedMessages = [];
+          }
         }
-      }, (error) => {
-        isGenerating.value = false
-        // 移除失败的AI消息
-        messages.value = messages.value.filter(msg => !msg.isStreaming)
-        if (onError) onError(error)
-      }, () => {
-        isGenerating.value = false
-        // 移除流式标记
-        const lastMessage = messages.value[messages.value.length - 1]
-        if (lastMessage && lastMessage.role === 'assistant') {
-          lastMessage.isStreaming = false
-        }
-        if (onComplete) onComplete()
-      })
+        messages.value = parsedMessages;
+        return { success: true, data: parsedMessages };
+      } else {
+        messages.value = [];
+        return { success: false, message: response.message || '获取消息失败' };
+      }
     } catch (error) {
-      console.error('流式消息失败:', error)
-      isGenerating.value = false
-      // 移除失败的AI消息
-      messages.value = messages.value.filter(msg => !msg.isStreaming)
-      if (onError) onError(error)
+      console.error('获取对话消息失败:', error);
+      messages.value = [];
+      return { success: false, message: error.message || '获取消息失败' };
     }
   }
 
@@ -239,14 +168,18 @@ export const useChatStore = defineStore('chat', () => {
    */
   const deleteMessage = async (messageId) => {
     try {
-      const response = await chatApi.deleteMessage(messageId)
+      console.log('删除消息请求参数:', { messageID: messageId })
+      const response = await chatApi.deleteMessage({ messageID: messageId })
+      console.log('删除消息响应:', response)
       if (response.success) {
         messages.value = messages.value.filter(msg => msg.id !== messageId)
         return { success: true }
       }
-      return { success: false, message: response.message }
+      return { success: false, message: response.message || '删除消息失败' }
     } catch (error) {
       console.error('删除消息失败:', error)
+      // 即使API调用失败，也在本地删除消息
+      messages.value = messages.value.filter(msg => msg.id !== messageId)
       return { success: false, message: error.message || '删除消息失败' }
     }
   }
@@ -258,17 +191,29 @@ export const useChatStore = defineStore('chat', () => {
   const fetchModels = async () => {
     try {
       const response = await modelsApi.getModels()
-      if (response.success) {
-        models.value = response.data
-        // 设置默认模型
+      console.log('获取模型响应:', response)
+      
+      // 检查响应数据结构
+      const modelsData = response.data?.models || response.data || []
+      if (Array.isArray(modelsData) && modelsData.length > 0) {
+        models.value = modelsData.map((model) => ({
+          id: model.ID || model.id || model,
+          name: model.Name || model.name || model
+        }))
+        // 设置默认模型为列表中的第一个
         if (models.value.length > 0 && !selectedModel.value) {
           selectedModel.value = models.value[0].id
         }
-        return { success: true, data: response.data }
+        return { success: true, data: models.value }
+      } else {
+        // 如果没有模型数据，不提供默认选项
+        models.value = []
+        return { success: false, message: '模型数据为空' }
       }
-      return { success: false, message: response.message }
     } catch (error) {
       console.error('获取模型失败:', error)
+      // 获取模型失败时清空模型列表
+      models.value = []
       return { success: false, message: error.message || '获取模型失败' }
     }
   }
@@ -280,9 +225,9 @@ export const useChatStore = defineStore('chat', () => {
    */
   const shareMessages = async (messageIds) => {
     try {
-      const response = await chatApi.shareMessages({ messageIds })
+      const response = await chatApi.shareMessages({ messageIDs: messageIds })
       if (response.success) {
-        return { success: true, data: response.data }
+        return { success: true, data: { share_id: response.data.share_id } }
       }
       return { success: false, message: response.message }
     } catch (error) {
@@ -303,9 +248,11 @@ export const useChatStore = defineStore('chat', () => {
    * @param {Object} conversation - 对话对象
    */
   const setCurrentConversation = (conversation) => {
+    console.log('设置当前对话:', conversation)
     currentConversation.value = conversation
-    if (conversation) {
-      fetchMessages(conversation.id)
+    if (conversation && conversation.ID) {
+      const conversationId = conversation.ID;
+      fetchMessages(conversationId)
     } else {
       messages.value = []
     }
@@ -341,8 +288,6 @@ export const useChatStore = defineStore('chat', () => {
     createConversation,
     deleteConversation,
     fetchMessages,
-    sendMessage,
-    streamMessage,
     stopGeneration,
     deleteMessage,
     fetchModels,

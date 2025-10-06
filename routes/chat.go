@@ -32,6 +32,9 @@ func ChatInit(r *gin.Engine) {
 		// 获取对话列表
 		chat.GET("/conversations_list", conversationsListHandler)
 
+		// 获取历史消息
+		chat.POST("/messages_list", messagesListHandler)
+
 		// 分享消息
 		chat.POST("/share_messages", shareMessagesHandler)
 
@@ -130,7 +133,7 @@ func generateHandler(c *gin.Context) {
 			}
 		}
 	}
-	resp := utils.ThreadOpenai(req.ConversationID, req.Model, req.Prompt, req.Base64, req.Reasoning)
+	resp := utils.ThreadOpenai(req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.Prompt, req.Base64, req.Reasoning)
 	for response := range resp {
 		type MSG struct {
 			Success          bool   `json:"success" default:"false"`
@@ -275,6 +278,7 @@ func deleteConversationHandler(c *gin.Context) {
 			"success": false,
 			"error":   err,
 		})
+		return
 	}
 	err := utils.DeleteConversation(req.ConversationID)
 	if err != nil {
@@ -310,6 +314,47 @@ func conversationsListHandler(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"success":       true,
 		"conversations": conversations,
+	})
+}
+
+// @Summary 获取历史消息
+// @Description 获取指定对话的聊天记录
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Param request body messagesListRequest true "获取历史消息请求参数"
+// @Success 200 {object} messagesListResponseSuccess "获取历史消息成功"
+// @Failure 400 {object} messagesListResponseFailed "获取历史消息失败"
+// @Router /chat/messages_list [post]
+func messagesListHandler(c *gin.Context) {
+	var req messagesListRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+	messages, err := utils.LoadConversationHistoryFormat2(req.ConversationID)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+
+	Messages, err := json.Marshal(messages)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"success":  true,
+		"messages": string(Messages),
 	})
 }
 
@@ -414,16 +459,7 @@ func deleteMessageHandler(c *gin.Context) {
 		return
 	}
 
-	parsedID, err := uuid.FromString(req.MessageID)
-	if err != nil {
-		c.JSON(400, gin.H{
-			"success": false,
-			"error":   "无效的消息ID",
-		})
-		return
-	}
-
-	utils.DeleteMessage(parsedID)
+	utils.DeleteMessage(req.MessageID)
 	c.JSON(200, gin.H{
 		"success": true,
 	})
@@ -534,11 +570,13 @@ func sttHandler(c *gin.Context) {
 
 // 请求和响应结构体定义
 type generateRequest struct {
-	ConversationID uuid.UUID `json:"conversationID" example:"uuid-string"`
-	Prompt         string    `json:"prompt" example:"你好，帮我写一个Hello World程序"`
-	Model          string    `json:"model" example:"gpt-3.5-turbo"`
-	Base64         string    `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
-	Reasoning      bool      `json:"reasoning" example:"false"`
+	ConversationID     uuid.UUID `json:"conversationID" example:"uuid-string"`
+	MessageUserID      uuid.UUID `json:"messageUserID" example:"uuid-string"`
+	MessageAssistantID uuid.UUID `json:"messageAssistantID" example:"uuid-string"`
+	Prompt             string    `json:"prompt" example:"你好，帮我写一个Hello World程序"`
+	Model              string    `json:"model" example:"gpt-3.5-turbo"`
+	Base64             string    `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
+	Reasoning          bool      `json:"reasoning" example:"false"`
 }
 
 type generateResponseSuccess struct {
@@ -613,6 +651,20 @@ type conversationsListResponseFailed struct {
 	Error   string `json:"error"`
 }
 
+type messagesListRequest struct {
+	ConversationID uuid.UUID `json:"conversationID" example:"uuid-string"`
+}
+
+type messagesListResponseSuccess struct {
+	Success  bool   `json:"success" example:"true"`
+	Messages string `json:"messages" example:"{\"role\": \"user\", \"content\": \"你好\"}"`
+}
+
+type messagesListResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Error   string `json:"error"`
+}
+
 type shareMessagesRequest struct {
 	MessageIDs []string `json:"messageIDs" example:"message-id-1,message-id-2"`
 }
@@ -638,7 +690,7 @@ type loadShareMessagesResponseFailed struct {
 }
 
 type deleteMessageRequest struct {
-	MessageID string `json:"messageID" example:"uuid-string"`
+	MessageID uuid.UUID `json:"messageID" example:"uuid-string"`
 }
 
 type deleteMessageResponseSuccess struct {

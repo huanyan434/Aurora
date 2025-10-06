@@ -9,17 +9,15 @@ export const chatApi = {
    * @returns {Promise} 对话列表
    */
   getConversations() {
-    return request.get('/conversations')
+    return request.get('/chat/conversations_list')
   },
 
   /**
    * 创建新对话
-   * @param {Object} data - 对话数据
-   * @param {string} data.title - 对话标题
    * @returns {Promise} 创建结果
    */
-  createConversation(data) {
-    return request.post('/conversations', data)
+  createConversation() {
+    return request.get('/chat/new_conversation')
   },
 
   /**
@@ -28,7 +26,7 @@ export const chatApi = {
    * @returns {Promise} 删除结果
    */
   deleteConversation(conversationId) {
-    return request.delete(`/conversations/${conversationId}`)
+    return request.post('/chat/delete_conversation', { conversationID: conversationId })
   },
 
   /**
@@ -37,84 +35,76 @@ export const chatApi = {
    * @returns {Promise} 消息列表
    */
   getMessages(conversationId) {
-    return request.get(`/conversations/${conversationId}/messages`)
+    return request.post('/chat/messages_list', { conversationID: conversationId });
   },
 
   /**
-   * 发送消息
-   * @param {Object} data - 消息数据
-   * @param {string} data.content - 消息内容
-   * @param {string} data.conversationId - 对话ID
-   * @param {string} data.model - 模型名称
-   * @returns {Promise} 发送结果
-   */
-  sendMessage(data) {
-    return request.post('/chat/completions', data)
-  },
-
-  /**
-   * 流式发送消息
+   * 发送消息（使用SSE流式传输）
    * @param {Object} data - 消息数据
    * @param {Function} onMessage - 消息回调
    * @param {Function} onError - 错误回调
    * @param {Function} onComplete - 完成回调
    */
-  async streamMessage(data, onMessage, onError, onComplete) {
+  async sendMessage(data, onMessage, onError, onComplete) {
     try {
-      const response = await fetch('/chat/stream', {
+      // 使用fetch实现SSE流式传输，因为EventSource不支持POST
+      const response = await fetch('/chat/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(data)
-      })
+        body: JSON.stringify({
+          prompt: data.prompt,
+          conversationID: data.conversationID,
+          model: data.model,
+          messageUserID: data.messageUserID,
+          messageAssistantID: data.messageAssistantID
+        })
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
 
       while (true) {
-        const { done, value } = await reader.read()
-        
+        const { done, value } = await reader.read();
         if (done) {
-          if (onComplete) onComplete()
-          break
+          if (onComplete) onComplete();
+          break;
         }
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // 保留不完整的行
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6)
+          if (line.startsWith('data:')) {
+            const data = line.slice(5).trim(); // 移除 'data:' 前缀
             if (data === '[DONE]') {
-              if (onComplete) onComplete()
-              return
+              if (onComplete) onComplete();
+              return;
             }
-            
-            try {
-              const parsed = JSON.parse(data)
-              if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
-                const content = parsed.choices[0].delta.content
-                if (content && onMessage) {
-                  onMessage(content)
+              
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content && onMessage) {
+                  onMessage(parsed.content);
                 }
+              } catch (e) {
+                console.warn('解析SSE数据失败:', e);
               }
-            } catch (e) {
-              console.warn('解析SSE数据失败:', e)
             }
           }
         }
+      } catch (error) {
+        console.error('发送消息失败:', error);
+        if (onError) onError(error);
       }
-    } catch (error) {
-      console.error('流式消息失败:', error)
-      if (onError) onError(error)
-    }
-  },
+    },
 
   /**
    * 停止生成
@@ -126,21 +116,22 @@ export const chatApi = {
 
   /**
    * 删除消息
-   * @param {string} messageId - 消息ID
+   * @param {Object} data - 删除数据
+   * @param {string} data.messageID - 消息ID
    * @returns {Promise} 删除结果
    */
-  deleteMessage(messageId) {
-    return request.delete(`/messages/${messageId}`)
+  deleteMessage(data) {
+    return request.post('/chat/delete_message', data)
   },
 
   /**
    * 分享消息
    * @param {Object} data - 分享数据
-   * @param {Array} data.messageIds - 消息ID数组
+   * @param {Array} data.messageIDs - 消息ID数组
    * @returns {Promise} 分享结果
    */
   shareMessages(data) {
-    return request.post('/share', data)
+    return request.post('/chat/share_messages', data)
   },
 
   /**
@@ -149,32 +140,6 @@ export const chatApi = {
    * @returns {Promise} 分享内容
    */
   getSharedContent(shareId) {
-    return request.get(`/share/${shareId}`)
-  },
-
-  /**
-   * 语音转文字
-   * @param {FormData} formData - 音频文件
-   * @returns {Promise} 转换结果
-   */
-  speechToText(formData) {
-    return request.post('/speech-to-text', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-  },
-
-  /**
-   * 文字转语音
-   * @param {Object} data - 转换数据
-   * @param {string} data.text - 文本内容
-   * @param {string} data.voice - 语音类型
-   * @returns {Promise} 转换结果
-   */
-  textToSpeech(data) {
-    return request.post('/text-to-speech', data, {
-      responseType: 'blob'
-    })
+    return request.get(`/chat/${shareId}`)
   }
 }

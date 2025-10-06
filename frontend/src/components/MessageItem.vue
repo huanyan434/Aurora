@@ -69,7 +69,7 @@
         >
           <template #icon>
             <n-icon>
-              <Trash2 />
+              <Trash />
             </n-icon>
           </template>
         </n-button>
@@ -81,9 +81,10 @@
 <script>
 import { computed } from 'vue'
 import { NAvatar, NButton, NIcon, useMessage } from 'naive-ui'
-import { Copy, Refresh, Trash2 } from '@vicons/tabler'
+import { Copy, Refresh, Trash } from '@vicons/tabler'
 import { marked } from 'marked'
 import { useUserStore } from '@/stores/user'
+import { useChatStore } from '@/stores/chat'
 
 export default {
   name: 'MessageItem',
@@ -93,7 +94,7 @@ export default {
     NIcon,
     Copy,
     Refresh,
-    Trash2
+    Trash
   },
   props: {
     /**
@@ -108,13 +109,33 @@ export default {
   setup(props, { emit }) {
     const message = useMessage()
     const userStore = useUserStore()
+    const chatStore = useChatStore()
 
     // 是否为用户消息
     const isUser = computed(() => props.message.role === 'user')
 
+    // 提取模型ID
+    const extractModelId = (content) => {
+      if (!content) return null
+      const modelMatch = content.match(/<model=([^>]+)>/)
+      return modelMatch ? modelMatch[1] : null
+    }
+
+    // 获取模型名称
+    const getModelName = (modelId) => {
+      if (!modelId) return 'Aurora'
+      const model = chatStore.models.find(m => m.id === modelId)
+      return model ? model.name : modelId
+    }
+
     // 角色名称
     const roleName = computed(() => {
-      return isUser.value ? '你' : 'Aurora'
+      if (isUser.value) {
+        return '你'
+      } else {
+        const modelId = extractModelId(props.message.content)
+        return getModelName(modelId)
+      }
     })
 
     // 头像源
@@ -135,7 +156,10 @@ export default {
       if (isUser.value) {
         return userStore.userInfo?.username?.charAt(0).toUpperCase() || 'U'
       }
-      return 'A'
+      // 对于AI消息，使用模型名称的首字母
+      const modelId = extractModelId(props.message.content)
+      const modelName = getModelName(modelId)
+      return modelName?.charAt(0).toUpperCase() || 'A'
     })
 
     // 格式化消息内容
@@ -147,15 +171,18 @@ export default {
         return props.message.content.replace(/\n/g, '<br>')
       }
       
+      // 移除模型标签
+      let content = props.message.content.replace(/<model=[^>]+>/, '')
+      
       // AI消息使用Markdown渲染
       try {
-        return marked(props.message.content, {
+        return marked(content, {
           breaks: true,
           gfm: true
         })
       } catch (error) {
         console.error('Markdown渲染失败:', error)
-        return props.message.content.replace(/\n/g, '<br>')
+        return content.replace(/\n/g, '<br>')
       }
     })
 
@@ -179,7 +206,12 @@ export default {
      */
     const handleCopy = async () => {
       try {
-        await navigator.clipboard.writeText(props.message.content)
+        // 复制时不包含模型标签
+        let contentToCopy = props.message.content
+        if (!isUser.value) {
+          contentToCopy = contentToCopy.replace(/<model=[^>]+>/, '')
+        }
+        await navigator.clipboard.writeText(contentToCopy)
         message.success('已复制到剪贴板')
         emit('copy', props.message)
       } catch (error) {
