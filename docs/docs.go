@@ -41,6 +41,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/has_signed": {
+            "get": {
+                "description": "获取当前用户今日的签到状态",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "获取签到状态",
+                "responses": {
+                    "200": {
+                        "description": "获取签到状态成功",
+                        "schema": {
+                            "$ref": "#/definitions/routes.hasSignedResponseSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "获取签到状态失败",
+                        "schema": {
+                            "$ref": "#/definitions/routes.hasSignedResponseFailed"
+                        }
+                    }
+                }
+            }
+        },
         "/api/login": {
             "post": {
                 "description": "通过邮箱和密码进行用户登录验证",
@@ -770,7 +796,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string",
-                    "example": "uuid-string"
+                    "example": "1234567890"
                 },
                 "isMember": {
                     "type": "boolean",
@@ -798,8 +824,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "conversationID": {
-                    "type": "string",
-                    "example": "uuid-string"
+                    "type": "integer",
+                    "example": 1234567890
                 }
             }
         },
@@ -828,8 +854,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "messageID": {
-                    "type": "string",
-                    "example": "uuid-string"
+                    "type": "integer",
+                    "example": 1234567890
                 }
             }
         },
@@ -862,16 +888,16 @@ const docTemplate = `{
                     "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
                 },
                 "conversationID": {
-                    "type": "string",
-                    "example": "uuid-string"
+                    "type": "integer",
+                    "example": 1234567890
                 },
                 "messageAssistantID": {
-                    "type": "string",
-                    "example": "uuid-string"
+                    "type": "integer",
+                    "example": 1234567892
                 },
                 "messageUserID": {
-                    "type": "string",
-                    "example": "uuid-string"
+                    "type": "integer",
+                    "example": 1234567891
                 },
                 "model": {
                     "type": "string",
@@ -923,6 +949,31 @@ const docTemplate = `{
                 },
                 "reasoningTime": {
                     "type": "integer"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "routes.hasSignedResponseFailed": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "routes.hasSignedResponseSuccess": {
+            "type": "object",
+            "properties": {
+                "signed": {
+                    "type": "boolean",
+                    "example": false
                 },
                 "success": {
                     "type": "boolean",
@@ -1000,8 +1051,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "conversationID": {
-                    "type": "string",
-                    "example": "uuid-string"
+                    "type": "integer",
+                    "example": 1234567890
                 }
             }
         },
@@ -1056,7 +1107,7 @@ const docTemplate = `{
             "properties": {
                 "conversationID": {
                     "type": "string",
-                    "example": "uuid-string"
+                    "example": "1234567890"
                 },
                 "success": {
                     "type": "boolean",
@@ -1155,6 +1206,10 @@ const docTemplate = `{
         "routes.signResponseSuccess": {
             "type": "object",
             "properties": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
                 "message": {
                     "type": "string",
                     "example": "签到成功"
@@ -1224,7 +1279,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string",
-                    "example": "uuid-string"
+                    "example": "1234567890"
                 },
                 "username": {
                     "type": "string",
@@ -1236,8 +1291,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "conversationID": {
-                    "type": "string",
-                    "example": "uuid-string"
+                    "type": "integer",
+                    "example": 1234567890
                 }
             }
         },
@@ -1427,7 +1482,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "title": {
                     "type": "string"
@@ -1436,7 +1491,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "userID": {
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
@@ -1447,13 +1502,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "conversationID": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "createdAt": {
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "reasoningContent": {
                     "type": "string"

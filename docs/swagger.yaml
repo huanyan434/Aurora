@@ -30,7 +30,7 @@ definitions:
         example: user@example.com
         type: string
       id:
-        example: uuid-string
+        example: "1234567890"
         type: string
       isMember:
         example: true
@@ -51,8 +51,8 @@ definitions:
   routes.deleteConversationRequest:
     properties:
       conversationID:
-        example: uuid-string
-        type: string
+        example: 1234567890
+        type: integer
     type: object
   routes.deleteConversationResponseFailed:
     properties:
@@ -71,8 +71,8 @@ definitions:
   routes.deleteMessageRequest:
     properties:
       messageID:
-        example: uuid-string
-        type: string
+        example: 1234567890
+        type: integer
     type: object
   routes.deleteMessageResponseFailed:
     properties:
@@ -94,14 +94,14 @@ definitions:
         example: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==
         type: string
       conversationID:
-        example: uuid-string
-        type: string
+        example: 1234567890
+        type: integer
       messageAssistantID:
-        example: uuid-string
-        type: string
+        example: 1234567892
+        type: integer
       messageUserID:
-        example: uuid-string
-        type: string
+        example: 1234567891
+        type: integer
       model:
         example: gpt-3.5-turbo
         type: string
@@ -137,6 +137,23 @@ definitions:
         type: string
       reasoningTime:
         type: integer
+      success:
+        example: true
+        type: boolean
+    type: object
+  routes.hasSignedResponseFailed:
+    properties:
+      error:
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.hasSignedResponseSuccess:
+    properties:
+      signed:
+        example: false
+        type: boolean
       success:
         example: true
         type: boolean
@@ -189,8 +206,8 @@ definitions:
   routes.messagesListRequest:
     properties:
       conversationID:
-        example: uuid-string
-        type: string
+        example: 1234567890
+        type: integer
     type: object
   routes.messagesListResponseFailed:
     properties:
@@ -226,7 +243,7 @@ definitions:
   routes.newConversationResponseSuccess:
     properties:
       conversationID:
-        example: uuid-string
+        example: "1234567890"
         type: string
       success:
         example: true
@@ -294,6 +311,9 @@ definitions:
     type: object
   routes.signResponseSuccess:
     properties:
+      data:
+        additionalProperties: true
+        type: object
       message:
         example: 签到成功
         type: string
@@ -342,7 +362,7 @@ definitions:
         example: newuser@example.com
         type: string
       id:
-        example: uuid-string
+        example: "1234567890"
         type: string
       username:
         example: newuser
@@ -351,8 +371,8 @@ definitions:
   routes.stopRequest:
     properties:
       conversationID:
-        example: uuid-string
-        type: string
+        example: 1234567890
+        type: integer
     type: object
   routes.stopResponseFailed:
     properties:
@@ -479,24 +499,24 @@ definitions:
       createdAt:
         type: string
       id:
-        type: string
+        type: integer
       title:
         type: string
       updatedAt:
         type: string
       userID:
-        type: string
+        type: integer
     type: object
   utils.Message:
     properties:
       content:
         type: string
       conversationID:
-        type: string
+        type: integer
       createdAt:
         type: string
       id:
-        type: string
+        type: integer
       reasoningContent:
         type: string
       role:
@@ -524,6 +544,23 @@ paths:
           schema:
             $ref: '#/definitions/routes.currentUserResponseFailed'
       summary: 获取当前用户信息
+      tags:
+      - 用户
+  /api/has_signed:
+    get:
+      description: 获取当前用户今日的签到状态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取签到状态成功
+          schema:
+            $ref: '#/definitions/routes.hasSignedResponseSuccess'
+        "400":
+          description: 获取签到状态失败
+          schema:
+            $ref: '#/definitions/routes.hasSignedResponseFailed'
+      summary: 获取签到状态
       tags:
       - 用户
   /api/login:

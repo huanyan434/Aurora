@@ -8,7 +8,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	uuid "github.com/satori/go.uuid"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
@@ -65,7 +64,7 @@ func loggingMiddleware(db *gorm.DB) gin.HandlerFunc {
 		endTime := time.Now()
 
 		// 获取用户ID（如果已登录）
-		var userID uuid.UUID
+		var userID int64
 		session := sessions.Default(c)
 		user := session.Get("currentUser")
 		if user != nil {
@@ -84,7 +83,7 @@ func loggingMiddleware(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// 当user_id为空时不记录日志
-		if userID == uuid.Nil {
+		if userID == 0 {
 			return
 		}
 
@@ -102,9 +101,13 @@ func loggingMiddleware(db *gorm.DB) gin.HandlerFunc {
 		// 将响应信息转换为JSON字符串
 		responseJSON, _ := json.Marshal(responseData)
 
+		id, err := utils.GenerateSnowflakeId()
+		if err != nil {
+			return
+		}
 		// 创建日志记录
 		log := utils.Log{
-			ID:       uuid.NewV4(),
+			ID:       id,
 			UserID:   userID,
 			Time:     startTime,
 			Route:    c.Request.URL.Path,

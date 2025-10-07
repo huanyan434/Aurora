@@ -198,7 +198,10 @@ export const useChatStore = defineStore('chat', () => {
       if (Array.isArray(modelsData) && modelsData.length > 0) {
         models.value = modelsData.map((model) => ({
           id: model.ID || model.id || model,
-          name: model.Name || model.name || model
+          name: model.Name || model.name || model,
+          reasoning: model.Reasoning || model.reasoning || '',
+          image: model.Image !== undefined ? model.Image : (model.image !== undefined ? model.image : 0),
+          points: model.Points || model.points || 0
         }))
         // 设置默认模型为列表中的第一个
         if (models.value.length > 0 && !selectedModel.value) {

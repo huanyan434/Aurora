@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	uuid "github.com/satori/go.uuid"
 )
 
 func QueryOrder(orderID string) (bool, []map[string]interface{}) {
@@ -73,7 +71,7 @@ func QueryOrder(orderID string) (bool, []map[string]interface{}) {
 	return false, list
 }
 
-func VerifyVip(userID uuid.UUID, orderID string, force bool) string {
+func VerifyVip(userID int64, orderID string, force bool) string {
 	success, list := QueryOrder(orderID)
 	if success {
 		verify, err := SearchOrder(orderID)
@@ -201,7 +199,7 @@ func VerifyVip(userID uuid.UUID, orderID string, force bool) string {
 	}
 }
 
-func VerifyPoints(userID uuid.UUID, orderID string) string {
+func VerifyPoints(userID int64, orderID string) string {
 	success, list := QueryOrder(orderID)
 	if success {
 		verify, err := SearchOrder(orderID)

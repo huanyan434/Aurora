@@ -19,7 +19,6 @@ import (
 
 	"github.com/golang-queue/queue"
 	"github.com/sashabaranov/go-openai"
-	uuid "github.com/satori/go.uuid"
 )
 
 // --- 全局线程管理 ---
@@ -48,8 +47,8 @@ func init() {
 // --- 核心功能：并发处理 OpenAI 请求 ---
 
 // ThreadOpenai 使用并发处理OpenAI请求，返回一个通道以实现类似Python yield的功能
-func ThreadOpenai(conversationID uuid.UUID, messageID1 uuid.UUID, messageID2 uuid.UUID, model string, prompt string, base64 string, reasoning bool) <-chan string {
-	threadID := conversationID.String()
+func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64 string, reasoning bool) <-chan string {
+	threadID := strconv.FormatInt(conversationID, 10)
 
 	// 1. 检查线程是否已存在
 	threadMutex.RLock()
@@ -90,7 +89,7 @@ func ThreadOpenai(conversationID uuid.UUID, messageID1 uuid.UUID, messageID2 uui
 				threadMutex.Unlock()
 			}()
 
-			Openai(ctx, conversationIDCopy, messageID1, messageID2, model, prompt, base64, reasoning, resp)
+			Openai(ctx, conversationIDCopy, messageUserID, messageAssistantID, model, prompt, base64, reasoning, resp)
 			return nil
 		})
 
@@ -114,7 +113,7 @@ type Response struct {
 	Content          string `json:"content" default:""`
 }
 
-func Openai(ctx context.Context, conversationID uuid.UUID, messageID1 uuid.UUID, messageID2 uuid.UUID, model string, prompt string, base64 string, reasoning bool, resp chan<- string) {
+func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64 string, reasoning bool, resp chan<- string) {
 	var responseByte []byte
 	configs := GetConfig()
 	// 判断模型信息
@@ -156,25 +155,6 @@ func Openai(ctx context.Context, conversationID uuid.UUID, messageID1 uuid.UUID,
 		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
 		resp <- string(responseByte)
 	}
-
-	if base64 != "" {
-		messages = append(messages, messageFormat{
-			ID:      messageID1,
-			Role:    "user",
-			Content: fmt.Sprintf("<base64>%s</base64>", base64) + prompt,
-		})
-	} else {
-		messages = append(messages, messageFormat{
-			ID:      messageID1,
-			Role:    "user",
-			Content: prompt,
-		})
-	}
-	err = SaveConversationHistoryFormat2(conversationID, messages)
-	if err != nil {
-		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
-		resp <- string(responseByte)
-	}
 	for _, m := range messagesCopy {
 		if m.Role == "assistant" {
 			_, m.Content = ParseModelBlock(m.Content)
@@ -183,6 +163,25 @@ func Openai(ctx context.Context, conversationID uuid.UUID, messageID1 uuid.UUID,
 		if m.Role == "user" {
 			_, m.Content = ParseBase64Block(m.Content)
 		}
+	}
+
+	if base64 != "" {
+		messages = append(messages, messageFormat{
+			ID:      messageUserID,
+			Role:    "user",
+			Content: fmt.Sprintf("<base64>%s</base64>", base64) + prompt,
+		})
+	} else {
+		messages = append(messages, messageFormat{
+			ID:      messageUserID,
+			Role:    "user",
+			Content: prompt,
+		})
+	}
+	err = SaveConversationHistoryFormat2(conversationID, messages)
+	if err != nil {
+		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
+		resp <- string(responseByte)
 	}
 
 	// 处理base64，创建client
@@ -253,16 +252,17 @@ func Openai(ctx context.Context, conversationID uuid.UUID, messageID1 uuid.UUID,
 	usedTime := strconv.Itoa(int(time.Now().Unix() - timeO))
 
 	defer func() {
+		messages, _ = LoadConversationHistoryFormat2(conversationID)
 		if reasoningContent != "" {
 			messages = append(messages, messageFormat{
-				ID:               messageID2,
+				ID:               messageAssistantID,
 				Role:             "assistant",
 				Content:          fmt.Sprintf("<model=%s>", model) + content,
 				ReasoningContent: fmt.Sprintf("<think time=%s>%s</think>", usedTime, reasoningContent),
 			})
 		} else {
 			messages = append(messages, messageFormat{
-				ID:               messageID2,
+				ID:               messageAssistantID,
 				Role:             "assistant",
 				Content:          fmt.Sprintf("<model=%s>", model) + content,
 				ReasoningContent: "",
@@ -273,7 +273,7 @@ func Openai(ctx context.Context, conversationID uuid.UUID, messageID1 uuid.UUID,
 		}
 		var conversation Conversation
 		GetDB().Table("conversations").Where("id = ?", conversationID).First(&conversation)
-		// 如果对话标题为“新对话”
+		// 如果对话标题为"新对话"
 		if conversation.Title == "新对话" {
 			configs := GetConfig()
 			clientConfig := openai.DefaultConfig(configs.APIKey2)
@@ -438,7 +438,7 @@ func ParseBase64Block(c string) (string, string) {
 }
 
 // GetThreadList 获取用户正在进行中的对话线程ID列表
-func GetThreadList(userID uuid.UUID) ([]string, error) {
+func GetThreadList(userID int64) ([]string, error) {
 	var conversations []Conversation
 	result := GetDB().Where("user_id = ?", userID).Find(&conversations)
 	if result.Error != nil {
@@ -448,7 +448,7 @@ func GetThreadList(userID uuid.UUID) ([]string, error) {
 	var conversationIDs []string
 	threadMutex.RLock()
 	for _, conv := range conversations {
-		convID := conv.ID.String()
+		convID := strconv.FormatInt(conv.ID, 10)
 		if _, exists := threadRegistry[convID]; exists {
 			conversationIDs = append(conversationIDs, convID)
 		}

@@ -40,8 +40,8 @@
               </div>
               <div class="stat-item">
                 <span class="stat-label">VIP状态</span>
-                <span class="stat-value" :class="{ 'vip': userInfo?.isVip }">
-                  {{ userInfo?.isVip ? 'VIP用户' : '普通用户' }}
+                <span class="stat-value" :class="{ 'vip': userInfo?.isMember }">
+                  {{ userInfo?.isMember ? 'VIP用户' : '普通用户' }}
                 </span>
               </div>
             </div>
@@ -74,24 +74,6 @@
           </div>
         </n-card>
 
-        <!-- 积分记录 -->
-        <n-card class="feature-card">
-          <div class="feature-content">
-            <div class="feature-icon">
-              <n-icon size="24">
-                <Coins />
-              </n-icon>
-            </div>
-            <div class="feature-info">
-              <h3>积分记录</h3>
-              <p>查看积分获取和使用记录</p>
-            </div>
-            <n-button @click="showPointsHistory = true">
-              查看记录
-            </n-button>
-          </div>
-        </n-card>
-
         <!-- VIP升级 -->
         <n-card class="feature-card">
           <div class="feature-content">
@@ -106,55 +88,14 @@
             </div>
             <n-button
               type="warning"
-              :disabled="userInfo?.isVip"
+              :disabled="userInfo?.isMember"
               @click="showVipUpgrade = true"
             >
-              {{ userInfo?.isVip ? '已是VIP' : '升级VIP' }}
+              {{ userInfo?.isMember ? '已是VIP' : '升级VIP' }}
             </n-button>
           </div>
         </n-card>
-
-        <!-- 设置 -->
-        <n-card class="feature-card">
-          <div class="feature-content">
-            <div class="feature-icon">
-              <n-icon size="24">
-                <Settings />
-              </n-icon>
-            </div>
-            <div class="feature-info">
-              <h3>账户设置</h3>
-              <p>修改个人信息和偏好设置</p>
-            </div>
-            <n-button @click="showSettings = true">
-              设置
-            </n-button>
-          </div>
-        </n-card>
-      </div>
     </div>
-
-    <!-- 积分记录弹窗 -->
-    <n-modal v-model:show="showPointsHistory" preset="card" title="积分记录" style="width: 600px;">
-      <div class="points-history">
-        <n-empty v-if="pointsHistory.length === 0" description="暂无积分记录" />
-        <div v-else class="history-list">
-          <div
-            v-for="record in pointsHistory"
-            :key="record.id"
-            class="history-item"
-          >
-            <div class="history-info">
-              <div class="history-title">{{ record.description }}</div>
-              <div class="history-time">{{ formatTime(record.createdAt) }}</div>
-            </div>
-            <div class="history-points" :class="{ 'positive': record.points > 0, 'negative': record.points < 0 }">
-              {{ record.points > 0 ? '+' : '' }}{{ record.points }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </n-modal>
 
     <!-- VIP升级弹窗 -->
     <n-modal v-model:show="showVipUpgrade" preset="card" title="VIP升级" style="width: 500px;">
@@ -184,37 +125,6 @@
               立即升级
             </n-button>
           </div>
-        </div>
-      </div>
-    </n-modal>
-
-    <!-- 设置弹窗 -->
-    <n-modal v-model:show="showSettings" preset="card" title="账户设置" style="width: 500px;">
-      <div class="settings-form">
-        <n-form :model="settingsForm" label-placement="left" label-width="80px">
-          <n-form-item label="用户名">
-            <n-input v-model:value="settingsForm.username" placeholder="请输入用户名" />
-          </n-form-item>
-          <n-form-item label="邮箱">
-            <n-input v-model:value="settingsForm.email" placeholder="请输入邮箱" />
-          </n-form-item>
-          <n-form-item label="头像">
-            <n-upload
-              :default-file-list="[]"
-              :max="1"
-              accept="image/*"
-              @change="handleAvatarChange"
-            >
-              <n-button>上传头像</n-button>
-            </n-upload>
-          </n-form-item>
-        </n-form>
-        
-        <div class="settings-actions">
-          <n-button @click="showSettings = false">取消</n-button>
-          <n-button type="primary" @click="handleSaveSettings" :loading="savingSettings">
-            保存
-          </n-button>
         </div>
       </div>
     </n-modal>
@@ -326,53 +236,12 @@ const handleAvatarChange = (options) => {
 }
 
 /**
- * 保存设置
- */
-const handleSaveSettings = async () => {
-  savingSettings.value = true
-  try {
-    // TODO: 实现保存设置功能
-    message.success('设置保存成功')
-    showSettings.value = false
-  } catch (error) {
-    message.error('保存设置失败')
-  } finally {
-    savingSettings.value = false
-  }
-}
-
-/**
  * 格式化时间
  * @param {string} time - 时间字符串
  * @returns {string} 格式化后的时间
  */
 const formatTime = (time) => {
   return new Date(time).toLocaleString('zh-CN')
-}
-
-/**
- * 获取积分记录
- */
-const fetchPointsHistory = async () => {
-  try {
-    // TODO: 实现获取积分记录功能
-    pointsHistory.value = [
-      {
-        id: '1',
-        description: '每日签到',
-        points: 10,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: '2',
-        description: '完成对话',
-        points: -5,
-        createdAt: new Date(Date.now() - 86400000).toISOString()
-      }
-    ]
-  } catch (error) {
-    console.error('获取积分记录失败:', error)
-  }
 }
 
 /**

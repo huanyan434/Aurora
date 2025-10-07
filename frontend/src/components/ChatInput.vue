@@ -1,89 +1,78 @@
 <template>
   <div class="input-area">
     <div class="input-container">
-      <n-input
-        v-model:value="inputMessage"
-        type="textarea"
+      <textarea
+        v-model="inputMessage"
         placeholder="询问任何问题"
-        :autosize="{ minRows: 3, maxRows: 6 }"
         :disabled="isGenerating"
         @keydown="handleKeydown"
         ref="inputRef"
         class="message-input"
-      />
+      ></textarea>
       
       <div class="input-addons">
         <!-- 文件上传按钮 -->
-        <n-button
-          quaternary
-          circle
-          size="small"
+        <button
           class="addon-button"
           @click="handleFileUpload"
         >
           <n-tooltip trigger="hover">
             <template #trigger>
-              <n-icon>
+              <n-icon size="20">
                 <Plus />
               </n-icon>
             </template>
             <span>上传文件</span>
           </n-tooltip>
-        </n-button>
+        </button>
         
         <!-- 推理按钮 -->
-        <n-button
-          quaternary
-          size="small"
+        <button
           class="reasoning-button"
-          :type="isReasoning ? 'primary' : 'default'"
+          :class="{ 'active': isReasoning }"
           :disabled="isReasoningDisabled"
           v-if="showReasoningButton"
           @click="toggleReasoning"
         >
-          <n-icon>
+          <n-icon size="20">
             <Bulb />
           </n-icon>
           <span>推理</span>
-        </n-button>
+        </button>
       </div>
       
       <div class="input-actions">
         <!-- 停止生成/发送按钮 -->
-        <n-button
+        <button
           v-if="isGenerating"
-          quaternary
-          circle
-          size="small"
+          class="stop-button"
           @click="handleStopGeneration"
         >
           <n-tooltip trigger="hover">
             <template #trigger>
-              <n-icon>
+              <n-icon size="20">
                 <Square />
               </n-icon>
             </template>
             <span>停止生成</span>
           </n-tooltip>
-        </n-button>
+        </button>
         
-        <n-button
+        <button
           v-else
-          type="primary"
-          circle
-          size="small"
+          class="send-button"
           :disabled="!inputMessage.trim() || isGenerating"
           @click="handleSendMessage"
         >
           <n-tooltip trigger="hover">
             <template #trigger>
-              <n-icon>
+              <n-icon size="20">
                 <Send />
               </n-icon>
             </template>
             <span>发送消息</span>
           </n-tooltip>
-        </n-button>
+        </button>
       </div>
     </div>
   </div>
@@ -92,8 +81,6 @@
 <script>
 import { ref, computed } from 'vue'
 import { 
-  NInput, 
-  NButton, 
   NIcon, 
   NTooltip,
   useMessage
@@ -108,8 +95,6 @@ import {
 export default {
   name: 'ChatInput',
   components: {
-    NInput,
-    NButton,
     NIcon,
     NTooltip,
     Send,
@@ -135,7 +120,7 @@ export default {
       default: true
     }
   },
-  emits: ['sendMessage', 'stopGeneration', 'toggleReasoning', 'fileUpload'],
+  emits: ['sendMessage', 'stopGeneration', 'toggleReasoning', 'fileUpload', 'update:inputMessage'],
   setup(props, { emit }) {
     const message = useMessage()
     const inputMessage = ref('')
@@ -202,44 +187,110 @@ export default {
 }
 
 .message-input {
+  width: 100%;
+  min-height: 80px;
+  max-height: 200px;
   border: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border-radius: 20px;
-  padding: 8px 120px 8px 48px;
+  padding: 12px 120px 12px 48px;
+  resize: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-.message-input :deep(.n-input__textarea-el) {
-  padding-right: 120px;
-  padding-left: 40px;
-  text-align: left;
+.message-input:focus {
+  outline: none;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
 }
 
 .input-addons {
   position: absolute;
-  left: 8px;
-  bottom: 8px;
+  left: 12px;
+  bottom: 12px;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .addon-button,
-.reasoning-button {
+.reasoning-button,
+.stop-button,
+.send-button {
+  width: 32px;
   height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.addon-button:hover,
+.stop-button:hover,
+.send-button:not(:disabled):hover {
+  background-color: #f0f0f0;
+}
+
+.send-button:not(:disabled) {
+  background-color: #18a058;
+  color: white;
+}
+
+.send-button:not(:disabled):hover {
+  background-color: #28c76f;
+}
+
+.stop-button {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.stop-button:hover {
+  background-color: #c0392b;
 }
 
 .reasoning-button {
+  height: 32px;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 0 12px;
-  border-radius: 16px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.reasoning-button:hover {
+  background-color: #f0f0f0;
+}
+
+.reasoning-button.active {
+  background-color: #18a058;
+  color: white;
+}
+
+.reasoning-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reasoning-button.active:hover {
+  background-color: #28c76f;
 }
 
 .input-actions {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: 12px;
+  bottom: 12px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -248,10 +299,6 @@ export default {
 @media (max-width: 768px) {
   .input-area {
     padding: 12px 16px;
-  }
-  
-  .message-input :deep(.n-input__textarea-el) {
-    padding-right: 100px;
   }
 }
 </style>

@@ -1,25 +1,25 @@
 <template>
   <div class="message-item" :class="{ 'user-message': isUser, 'assistant-message': !isUser }">
-    <div class="message-avatar">
+    <div class="message-avatar" v-if="!isUser">
       <n-avatar
-        :size="32"
+        :size="40"
         :src="avatarSrc"
         :fallback-src="fallbackAvatar"
+        round
       >
         {{ avatarText }}
       </n-avatar>
     </div>
     
     <div class="message-content">
-      <div class="message-header">
+      <div class="message-header" v-if="!isUser">
         <span class="message-role">{{ roleName }}</span>
-        <span class="message-time">{{ formatTime(message.timestamp) }}</span>
       </div>
       
       <div class="message-body">
         <div 
           class="message-text"
-          :class="{ 'streaming': message.isStreaming }"
+          :class="{ 'streaming': message.isStreaming, 'user-message-text': isUser }"
           v-html="formattedContent"
         ></div>
         
@@ -38,50 +38,43 @@
           quaternary
           size="small"
           @click="handleCopy"
-          title="复制"
         >
-          <template #icon>
-            <n-icon>
-              <Copy />
-            </n-icon>
-          </template>
+          <n-tooltip trigger="hover">
+            <template #trigger>
+              <n-icon :size="20">
+                <Copy />
+              </n-icon>
+            </template>
+            <span>复制</span>
+          </n-tooltip>
         </n-button>
         
-        <n-button
-          v-if="!isUser"
-          quaternary
+        <n-dropdown 
+          :options="actionOptions" 
+          @select="handleActionSelect"
+          trigger="click"
           size="small"
-          @click="handleRegenerate"
-          title="重新生成"
         >
-          <template #icon>
-            <n-icon>
-              <Refresh />
-            </n-icon>
-          </template>
-        </n-button>
-        
-        <n-button
-          quaternary
-          size="small"
-          @click="handleDelete"
-          title="删除"
-        >
-          <template #icon>
-            <n-icon>
-              <Trash />
-            </n-icon>
-          </template>
-        </n-button>
+          <n-button quaternary size="small" class="more-actions-button">
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-icon :size="20">
+                  <DotsVertical />
+                </n-icon>
+              </template>
+              <span>更多操作</span>
+            </n-tooltip>
+          </n-button>
+        </n-dropdown>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { computed } from 'vue'
-import { NAvatar, NButton, NIcon, useMessage } from 'naive-ui'
-import { Copy, Refresh, Trash } from '@vicons/tabler'
+import { computed, h } from 'vue'
+import { NAvatar, NButton, NIcon, NDropdown, useMessage } from 'naive-ui'
+import { Copy, Refresh, Trash, Share, DotsVertical } from '@vicons/tabler'
 import { marked } from 'marked'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
@@ -92,9 +85,12 @@ export default {
     NAvatar,
     NButton,
     NIcon,
+    NDropdown,
     Copy,
     Refresh,
-    Trash
+    Trash,
+    Share,
+    DotsVertical
   },
   props: {
     /**
@@ -105,7 +101,7 @@ export default {
       required: true
     }
   },
-  emits: ['copy', 'regenerate', 'delete'],
+  emits: ['copy', 'regenerate', 'delete', 'share'],
   setup(props, { emit }) {
     const message = useMessage()
     const userStore = useUserStore()
@@ -202,6 +198,52 @@ export default {
     }
 
     /**
+     * 操作选项
+     */
+    const actionOptions = computed(() => {
+      const options = [
+        {
+          label: "分享",
+          key: "share",
+          icon: () => h(NIcon, null, { default: () => h(Share) })
+        }
+      ];
+      
+      if (!isUser.value) {
+        options.unshift({
+          label: "重新生成",
+          key: "regenerate",
+          icon: () => h(NIcon, null, { default: () => h(Refresh) })
+        });
+      }
+      
+      options.push({
+        label: "删除",
+        key: "delete",
+        icon: () => h(NIcon, null, { default: () => h(Trash) })
+      });
+      
+      return options;
+    });
+
+    /**
+     * 处理操作选择
+     */
+    const handleActionSelect = (key) => {
+      switch (key) {
+        case 'share':
+          handleShare();
+          break;
+        case 'regenerate':
+          handleRegenerate();
+          break;
+        case 'delete':
+          handleDelete();
+          break;
+      }
+    };
+
+    /**
      * 处理复制消息
      */
     const handleCopy = async () => {
@@ -232,6 +274,13 @@ export default {
     const handleDelete = () => {
       emit('delete', props.message)
     }
+    
+    /**
+     * 处理分享消息
+     */
+    const handleShare = () => {
+      emit('share', props.message)
+    }
 
     return {
       isUser,
@@ -241,9 +290,12 @@ export default {
       avatarText,
       formattedContent,
       formatTime,
+      actionOptions,
+      handleActionSelect,
       handleCopy,
       handleRegenerate,
-      handleDelete
+      handleDelete,
+      handleShare
     }
   }
 }
@@ -253,12 +305,14 @@ export default {
 .message-item {
   display: flex;
   gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid #f0f0f0;
 }
 
-.message-item:last-child {
-  border-bottom: none;
+.message-item.user-message {
+  flex-direction: row-reverse;
+}
+
+.message-item.assistant-message {
+  flex-direction: row;
 }
 
 .message-avatar {
@@ -277,33 +331,30 @@ export default {
   margin-bottom: 8px;
 }
 
-.message-role {
+.assistant-message .message-role {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
-}
-
-.user-message .message-role {
-  color: #2196f3;
-}
-
-.assistant-message .message-role {
   color: #4caf50;
-}
-
-.message-time {
-  font-size: 12px;
-  color: #999;
 }
 
 .message-body {
   position: relative;
 }
 
+.user-message .message-body {
+  background-color: #ffffff;
+  padding: 8px;
+  border-radius: 12px;
+  display: table;
+  max-width: 80%;
+  margin-left: auto;
+  text-align: right;
+}
+
 .message-text {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
-  color: #333;
+  color: #2a2424;
   word-wrap: break-word;
 }
 
@@ -356,8 +407,24 @@ export default {
   transition: opacity 0.2s ease;
 }
 
+.user-message .message-actions {
+  justify-content: flex-end;
+}
+
 .message-item:hover .message-actions {
   opacity: 1;
+}
+
+.message-actions :deep(.n-button) {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.more-actions-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
 }
 
 /* Markdown样式 */
@@ -407,11 +474,14 @@ export default {
 @media (max-width: 768px) {
   .message-item {
     gap: 8px;
-    padding: 12px 0;
   }
   
   .message-actions {
     opacity: 1;
+  }
+  
+  .assistant-message .message-body {
+    max-width: 90%;
   }
 }
 </style>

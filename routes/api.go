@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"strconv"
 	"utils"
 
 	"github.com/gin-contrib/sessions"
@@ -26,6 +27,9 @@ func ApiInit(r *gin.Engine) {
 
 		// 签到接口
 		api.POST("/sign", signHandler)
+
+		// 获取签到状态
+		api.GET("/has_signed", hasSignedHandler)
 
 		// 获取模型列表
 		api.GET("/models_list", modelsListHandler)
@@ -154,7 +158,7 @@ func signupHandler(c *gin.Context) {
 		"success": true,
 		"message": "注册成功",
 		"user": gin.H{
-			"id":       user.ID.String(),
+			"id":       strconv.FormatInt(user.ID, 10),
 			"username": user.Username,
 			"email":    user.Email,
 		},
@@ -180,7 +184,7 @@ func currentUserHandler(c *gin.Context) {
 	// 以json格式返回
 	c.JSON(200, gin.H{
 		"success":     true,
-		"id":          userInfo.ID.String(),
+		"id":          strconv.FormatInt(userInfo.ID, 10),
 		"username":    userInfo.Username,
 		"email":       userInfo.Email,
 		"isMember":    userInfo.IsMember,
@@ -241,7 +245,7 @@ func signHandler(c *gin.Context) {
 	}
 
 	// 执行签到
-	err = utils.Sign(User.Email)
+	points, err := utils.Sign(User.Email)
 	if err != nil {
 		if err.Error() == "already signed today" {
 			c.JSON(400, gin.H{
@@ -261,6 +265,39 @@ func signHandler(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"success": true,
 		"message": "签到成功",
+		"data": map[string]interface{}{
+			"points": points,
+		},
+	})
+}
+
+// @Summary 获取签到状态
+// @Description 获取当前用户今日的签到状态
+// @Tags 用户
+// @Produce json
+// @Success 200 {object} hasSignedResponseSuccess "获取签到状态成功"
+// @Failure 400 {object} hasSignedResponseFailed "获取签到状态失败"
+// @Router /api/has_signed [get]
+func hasSignedHandler(c *gin.Context) {
+	User, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取签到状态失败: " + err.Error(),
+		})
+		return
+	}
+	signed, err := utils.HasSignedToday(User.Email)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取签到状态失败: " + err.Error(),
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"success": true,
+		"signed":  signed,
 	})
 }
 
@@ -418,7 +455,7 @@ type signupResponseSuccess struct {
 }
 
 type signupUser struct {
-	ID       string `json:"id" example:"uuid-string"`
+	ID       string `json:"id" example:"1234567890"`
 	Username string `json:"username" example:"newuser"`
 	Email    string `json:"email" example:"newuser@example.com"`
 }
@@ -430,7 +467,7 @@ type signupResponseFailed struct {
 
 type currentUserResponseSuccess struct {
 	Success     bool   `json:"success" example:"true"`
-	ID          string `json:"id" example:"uuid-string"`
+	ID          string `json:"id" example:"1234567890"`
 	Username    string `json:"username" example:"currentuser"`
 	Email       string `json:"email" example:"user@example.com"`
 	IsMember    bool   `json:"isMember" example:"true"`
@@ -457,13 +494,24 @@ type sendVerifyCodeResponseFailed struct {
 }
 
 type signResponseSuccess struct {
-	Success bool   `json:"success" example:"true"`
-	Message string `json:"message" example:"签到成功"`
+	Success bool                   `json:"success" example:"true"`
+	Message string                 `json:"message" example:"签到成功"`
+	Data    map[string]interface{} `json:"data"`
 }
 
 type signResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
 	Message string `json:"message" example:"今日已签到"`
+}
+
+type hasSignedResponseSuccess struct {
+	Success bool `json:"success" example:"true"`
+	Signed  bool `json:"signed" example:"false"`
+}
+
+type hasSignedResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Error   string `json:"error"`
 }
 
 type modelsListResponse struct {

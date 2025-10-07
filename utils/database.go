@@ -4,19 +4,19 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/sashabaranov/go-openai"
-	uuid "github.com/satori/go.uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 // User 结构
 type User struct {
-	ID           uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
+	ID           int64     `gorm:"column:id;type:bigint;primaryKey"`
 	Username     string    `gorm:"column:username;type:varchar(64);uniqueIndex:idx_username;not null"`
 	Email        string    `gorm:"column:email;type:varchar(120);uniqueIndex:idx_email;not null"`
 	PasswordHash string    `gorm:"column:password_hash;type:varchar(255)"`
@@ -35,8 +35,8 @@ func (User) TableName() string {
 }
 
 type Conversation struct {
-	ID        uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
-	UserID    uuid.UUID `gorm:"column:user_id;type:char(36);index"`
+	ID        int64     `gorm:"column:id;type:bigint;primaryKey"`
+	UserID    int64     `gorm:"column:user_id;type:bigint;index"`
 	Title     string    `gorm:"column:title;type:varchar(100)"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`
@@ -48,10 +48,10 @@ func (Conversation) TableName() string {
 }
 
 type Message struct {
-	ID               uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
+	ID               int64     `gorm:"column:id;type:bigint;primaryKey"`
 	Content          string    `gorm:"column:content;type:mediumtext"`
 	Role             string    `gorm:"column:role;type:varchar(20)"`
-	ConversationID   uuid.UUID `gorm:"column:conversation_id;type:char(36);index"`
+	ConversationID   int64     `gorm:"column:conversation_id;type:bigint;index"`
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 	ReasoningContent string    `gorm:"column:reasoning_content;type:mediumtext"`
 }
@@ -73,7 +73,7 @@ func (Order) TableName() string {
 
 // VerifyCode 验证码结构
 type VerifyCode struct {
-	ID        uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
+	ID        int64     `gorm:"column:id;type:bigint;primaryKey"`
 	Email     string    `gorm:"column:email;type:varchar(120);not null;index"`
 	Code      string    `gorm:"column:code;type:varchar(6);not null"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
@@ -87,7 +87,7 @@ func (VerifyCode) TableName() string {
 
 // SignRecord 签到记录结构
 type SignRecord struct {
-	ID        uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
+	ID        int64     `gorm:"column:id;type:bigint;primaryKey"`
 	Email     string    `gorm:"column:email;type:varchar(120);not null;index"`
 	LastSign  time.Time `gorm:"column:last_sign;type:datetime;not null"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
@@ -113,8 +113,8 @@ func (Share) TableName() string {
 
 // Log 日志结构
 type Log struct {
-	ID       uuid.UUID `gorm:"column:id;type:char(36);primaryKey"`
-	UserID   uuid.UUID `gorm:"column:user_id;type:char(36);not null"`
+	ID       int64     `gorm:"column:id;type:bigint;primaryKey"`
+	UserID   int64     `gorm:"column:user_id;type:bigint;not null"`
 	Time     time.Time `gorm:"column:time;not null"`
 	Route    string    `gorm:"column:route;type:varchar(255);not null"`
 	Method   string    `gorm:"column:method;type:varchar(10);not null"`
@@ -181,7 +181,7 @@ func GetMemberStatus(u *User) map[string]interface{} {
 }
 
 // AddPoints 增加或减少用户积分
-func AddPoints(userID uuid.UUID, amount int) {
+func AddPoints(userID int64, amount int) {
 	db := GetDB()
 	var user User
 	db.Table("users").Where("id = ?", userID).First(&user)
@@ -189,13 +189,18 @@ func AddPoints(userID uuid.UUID, amount int) {
 	if user.Points < 0 {
 		user.Points = 0
 	}
+	db.Model(&user).Update("points", user.Points)
 }
 
 // RegisterUser 用户注册函数
 func RegisterUser(username, email, password string) (User, error) {
 	// 创建用户实例
+	id, err := GenerateSnowflakeId()
+	if err != nil {
+		return User{}, err
+	}
 	user := User{
-		ID:          uuid.NewV4(),
+		ID:          id,
 		Username:    username,
 		Email:       email,
 		IsMember:    false,  // 显式初始化布尔字段
@@ -283,7 +288,7 @@ func VerifyPassword(inputPassword string, passwordHash string) bool {
 }
 
 // LoadConversationHistory 加载指定conversationID的对话历史
-func LoadConversationHistory(conversationID uuid.UUID) ([]openai.ChatCompletionMessage, error) {
+func LoadConversationHistory(conversationID int64) ([]openai.ChatCompletionMessage, error) {
 	db := GetDB()
 	var messages []Message
 	result := db.Table("messages").Where("conversation_id = ?", conversationID).Order("created_at ASC").Find(&messages)
@@ -310,14 +315,14 @@ func LoadConversationHistory(conversationID uuid.UUID) ([]openai.ChatCompletionM
 }
 
 type messageFormat struct {
-	ID               uuid.UUID `json:"id"`
-	Role             string    `json:"role"`
-	Content          string    `json:"content"`
-	ReasoningContent string    `json:"reasoning_content,omitempty"`
+	ID               int64  `json:"id"`
+	Role             string `json:"role"`
+	Content          string `json:"content"`
+	ReasoningContent string `json:"reasoning_content,omitempty"`
 }
 
 // LoadConversationHistoryFormat2 加载指定conversationID的对话历史，返回自定义格式
-func LoadConversationHistoryFormat2(conversationID uuid.UUID) ([]messageFormat, error) {
+func LoadConversationHistoryFormat2(conversationID int64) ([]messageFormat, error) {
 	db := GetDB()
 	var messages []Message
 	result := db.Table("messages").Where("conversation_id = ?", conversationID).Order("created_at ASC").Find(&messages)
@@ -346,7 +351,7 @@ func LoadConversationHistoryFormat2(conversationID uuid.UUID) ([]messageFormat, 
 }
 
 // SaveConversationHistory 保存对话历史到指定conversationID
-func SaveConversationHistory(conversationID uuid.UUID, messages []openai.ChatCompletionMessage) error {
+func SaveConversationHistory(conversationID int64, messages []openai.ChatCompletionMessage) error {
 	db := GetDB()
 	// 删除现有的消息记录
 	if err := db.Table("messages").Where("conversation_id = ?", conversationID).Delete(&Message{}).Error; err != nil {
@@ -355,8 +360,12 @@ func SaveConversationHistory(conversationID uuid.UUID, messages []openai.ChatCom
 
 	// 添加新的消息记录
 	for _, msg := range messages {
+		id, err := GenerateSnowflakeId()
+		if err != nil {
+			return err
+		}
 		message := Message{
-			ID:               uuid.NewV4(),
+			ID:               id,
 			Content:          msg.Content,
 			Role:             msg.Role,
 			ConversationID:   conversationID,
@@ -371,7 +380,7 @@ func SaveConversationHistory(conversationID uuid.UUID, messages []openai.ChatCom
 }
 
 // SaveConversationHistoryFormat2 保存对话历史到指定conversationID
-func SaveConversationHistoryFormat2(conversationID uuid.UUID, messages []messageFormat) error {
+func SaveConversationHistoryFormat2(conversationID int64, messages []messageFormat) error {
 	db := GetDB()
 	// 删除现有的消息记录
 	if err := db.Table("messages").Where("conversation_id = ?", conversationID).Delete(&Message{}).Error; err != nil {
@@ -420,21 +429,21 @@ func HasSignedToday(email string) (bool, error) {
 }
 
 // Sign 用户签到
-func Sign(Email string) error {
+func Sign(Email string) (int, error) {
 	// 获取用户信息
 	user := FilterBy("", Email)
 	if user.Username == "" {
-		return fmt.Errorf("用户不存在")
+		return 0, fmt.Errorf("用户不存在")
 	}
 
 	// 检查今日是否已签到
 	signed, err := HasSignedToday(user.Email)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if signed {
-		return fmt.Errorf("今日已签到")
+		return 0, fmt.Errorf("今日已签到")
 	}
 
 	// 随机数生成
@@ -442,8 +451,12 @@ func Sign(Email string) error {
 	AddPoints(user.ID, points)
 
 	// 记录签到信息
+	id, err := GenerateSnowflakeId()
+	if err != nil {
+		return 0, err
+	}
 	signRecord := SignRecord{
-		ID:       uuid.NewV4(),
+		ID:       id,
 		Email:    user.Email,
 		LastSign: time.Now(),
 	}
@@ -452,7 +465,7 @@ func Sign(Email string) error {
 	var existingRecord SignRecord
 	db := GetDB()
 	result := db.Where("email = ?", user.Email).First(&existingRecord)
-	if result.Error != nil && result.Error == gorm.ErrRecordNotFound {
+	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// 创建新记录
 		result = db.Create(&signRecord)
 	} else if result.Error == nil {
@@ -462,17 +475,14 @@ func Sign(Email string) error {
 		})
 	} else {
 		// 其他数据库错误
-		return result.Error
+		return 0, result.Error
 	}
 
 	if result.Error != nil {
-		return result.Error
+		return 0, result.Error
 	}
 
-	// 更新用户积分
-	db.Model(&user).Update("points", user.Points)
-
-	return nil
+	return points, nil
 }
 
 // SaveVerifyCode 保存验证码到数据库
@@ -482,8 +492,12 @@ func SaveVerifyCode(email, code string) error {
 	db.Where("email = ?", email).Delete(&VerifyCode{})
 
 	// 创建新的验证码记录
+	id, err := GenerateSnowflakeId()
+	if err != nil {
+		return err
+	}
 	verifyCode := VerifyCode{
-		ID:        uuid.NewV4(),
+		ID:        id,
 		Email:     email,
 		Code:      code,
 		CreatedAt: time.Now(),
@@ -508,9 +522,13 @@ func CheckVerifyCode(email, code string) bool {
 	return true
 }
 
-func CreateConversation(userID uuid.UUID) uuid.UUID {
+func CreateConversation(userID int64) int64 {
 	db := GetDB()
-	conversationID := uuid.NewV4()
+	id, err := GenerateSnowflakeId()
+	if err != nil {
+		return 0
+	}
+	conversationID := id
 	db.Create(&Conversation{
 		ID:     conversationID,
 		UserID: userID,
@@ -520,7 +538,7 @@ func CreateConversation(userID uuid.UUID) uuid.UUID {
 }
 
 // SaveShareMessages 保存分享消息
-func SaveShareMessages(messageIDs []uuid.UUID) (string, error) {
+func SaveShareMessages(messageIDs []int64) (string, error) {
 	db := GetDB()
 	// 清理超过7天的分享
 	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
@@ -564,7 +582,7 @@ func SaveShareMessages(messageIDs []uuid.UUID) (string, error) {
 }
 
 // LoadShareMessages 根据shareID加载分享的消息
-func LoadShareMessages(shareID string) ([]uuid.UUID, error) {
+func LoadShareMessages(shareID string) ([]int64, error) {
 	db := GetDB()
 	// 清理超过7天的分享
 	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
@@ -577,7 +595,7 @@ func LoadShareMessages(shareID string) ([]uuid.UUID, error) {
 	}
 
 	// 解析messageIDs JSON
-	var messageIDs []uuid.UUID
+	var messageIDs []int64
 	err := json.Unmarshal([]byte(share.MessageIDs), &messageIDs)
 	if err != nil {
 		return nil, err
@@ -586,7 +604,7 @@ func LoadShareMessages(shareID string) ([]uuid.UUID, error) {
 	return messageIDs, nil
 }
 
-func DeleteConversation(conversationID uuid.UUID) error {
+func DeleteConversation(conversationID int64) error {
 	db := GetDB()
 	// 删除对话
 	result := db.Where("id = ?", conversationID).Delete(&Conversation{})
@@ -603,7 +621,7 @@ func DeleteConversation(conversationID uuid.UUID) error {
 	return nil
 }
 
-func RenameConversation(conversationID uuid.UUID, title string) error {
+func RenameConversation(conversationID int64, title string) error {
 	db := GetDB()
 	result := db.Table("conversations").Where("id = ?", conversationID).Update("title", title)
 	if result.Error != nil {
@@ -612,7 +630,7 @@ func RenameConversation(conversationID uuid.UUID, title string) error {
 	return nil
 }
 
-func LoadMessage(messageID uuid.UUID) (Message, error) {
+func LoadMessage(messageID int64) (Message, error) {
 	db := GetDB()
 	var message Message
 	result := db.Table("messages").Where("id = ?", messageID).First(&message)
@@ -646,7 +664,7 @@ func SearchOrder(orderId string) (bool, error) {
 	return true, nil
 }
 
-func DeleteMessage(messageID uuid.UUID) {
+func DeleteMessage(messageID int64) {
 	db := GetDB()
 	var message Message
 	db.Table("messages").Where("id = ?", messageID).First(&message).Delete(&message)

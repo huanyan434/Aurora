@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strconv"
 	"utils"
 
 	"github.com/gin-gonic/gin"
-	uuid "github.com/satori/go.uuid"
 )
 
 func ChatInit(r *gin.Engine) {
@@ -226,7 +226,7 @@ func stopHandler(c *gin.Context) {
 		})
 	}
 
-	if utils.KillThread(req.ConversationID.String()) != true {
+	if utils.KillThread(strconv.FormatInt(req.ConversationID, 10)) != true {
 		c.JSON(400, gin.H{
 			"success": false,
 			"error":   "内部错误",
@@ -258,7 +258,7 @@ func newConversationHandler(c *gin.Context) {
 	conversationID := utils.CreateConversation(User.ID)
 	c.JSON(200, gin.H{
 		"success":        true,
-		"conversationID": conversationID,
+		"conversationID": strconv.FormatInt(conversationID, 10),
 	})
 }
 
@@ -376,10 +376,10 @@ func shareMessagesHandler(c *gin.Context) {
 		})
 		return
 	}
-	// 将字符串类型的MessageIDs转换为uuid类型
-	var messageIDs []uuid.UUID
+	// 将字符串类型的MessageIDs转换为int64类型
+	var messageIDs []int64
 	for _, id := range req.MessageIDs {
-		parsedID, err := uuid.FromString(id)
+		parsedID, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			c.JSON(400, gin.H{
 				"success": false,
@@ -570,13 +570,13 @@ func sttHandler(c *gin.Context) {
 
 // 请求和响应结构体定义
 type generateRequest struct {
-	ConversationID     uuid.UUID `json:"conversationID" example:"uuid-string"`
-	MessageUserID      uuid.UUID `json:"messageUserID" example:"uuid-string"`
-	MessageAssistantID uuid.UUID `json:"messageAssistantID" example:"uuid-string"`
-	Prompt             string    `json:"prompt" example:"你好，帮我写一个Hello World程序"`
-	Model              string    `json:"model" example:"gpt-3.5-turbo"`
-	Base64             string    `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
-	Reasoning          bool      `json:"reasoning" example:"false"`
+	ConversationID     int64  `json:"conversationID" example:"1234567890"`
+	MessageUserID      int64  `json:"messageUserID" example:"1234567891"`
+	MessageAssistantID int64  `json:"messageAssistantID" example:"1234567892"`
+	Prompt             string `json:"prompt" example:"你好，帮我写一个Hello World程序"`
+	Model              string `json:"model" example:"gpt-3.5-turbo"`
+	Base64             string `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
+	Reasoning          bool   `json:"reasoning" example:"false"`
 }
 
 type generateResponseSuccess struct {
@@ -606,7 +606,7 @@ type threadListResponseFailed struct {
 }
 
 type stopRequest struct {
-	ConversationID uuid.UUID `json:"conversationID" example:"uuid-string"`
+	ConversationID int64 `json:"conversationID" example:"1234567890"`
 }
 
 type stopResponseSuccess struct {
@@ -620,7 +620,7 @@ type stopResponseFailed struct {
 
 type newConversationResponseSuccess struct {
 	Success        bool   `json:"success" example:"true"`
-	ConversationID string `json:"conversationID" example:"uuid-string"`
+	ConversationID string `json:"conversationID" example:"1234567890"`
 }
 
 type newConversationResponseFailed struct {
@@ -629,7 +629,7 @@ type newConversationResponseFailed struct {
 }
 
 type deleteConversationRequest struct {
-	ConversationID uuid.UUID `json:"conversationID" example:"uuid-string"`
+	ConversationID int64 `json:"conversationID" example:"1234567890"`
 }
 
 type deleteConversationResponseSuccess struct {
@@ -652,7 +652,7 @@ type conversationsListResponseFailed struct {
 }
 
 type messagesListRequest struct {
-	ConversationID uuid.UUID `json:"conversationID" example:"uuid-string"`
+	ConversationID int64 `json:"conversationID" example:"1234567890"`
 }
 
 type messagesListResponseSuccess struct {
@@ -690,7 +690,7 @@ type loadShareMessagesResponseFailed struct {
 }
 
 type deleteMessageRequest struct {
-	MessageID uuid.UUID `json:"messageID" example:"uuid-string"`
+	MessageID int64 `json:"messageID" example:"1234567890"`
 }
 
 type deleteMessageResponseSuccess struct {

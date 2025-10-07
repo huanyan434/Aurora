@@ -114,77 +114,19 @@
       <div v-else-if="!showSharePanel" class="welcome-state">
         <div class="welcome-content">
           <h2 class="welcome-text">{{ welcomeMessage }}</h2>
-          
-          <!-- 欢迎界面的输入区域 -->
-          <div class="welcome-input-area">
-            <div class="input-container">
-              <n-input
-                v-model:value="welcomeInputMessage"
-                type="textarea"
-                placeholder="询问任何问题"
-                :autosize="{ minRows: 3, maxRows: 6 }"
-                @keydown="handleWelcomeKeydown"
-                ref="welcomeInputRef"
-                class="welcome-message-input"
-              />
-              
-              <div class="input-addons">
-                <!-- 文件上传按钮 -->
-                <n-button
-                  quaternary
-                  circle
-                  size="small"
-                  class="addon-button"
-                  @click="handleFileUpload"
-                >
-                  <n-tooltip trigger="hover">
-                    <template #trigger>
-                      <n-icon>
-                        <Plus />
-                      </n-icon>
-                    </template>
-                    <span>上传文件</span>
-                  </n-tooltip>
-                </n-button>
-                
-                <!-- 推理按钮 -->
-                <n-button
-                  quaternary
-                  size="small"
-                  class="reasoning-button"
-                  :type="isReasoning ? 'primary' : 'default'"
-                  :disabled="isReasoningDisabled"
-                  v-if="showReasoningButton"
-                  @click="toggleReasoning"
-                >
-                  <n-icon>
-                    <Bulb />
-                  </n-icon>
-                  <span>推理</span>
-                </n-button>
-              </div>
-              
-              <n-button
-                type="primary"
-                circle
-                size="small"
-                :disabled="!welcomeInputMessage.trim()"
-                @click="handleWelcomeSendMessage"
-                class="welcome-send-button"
-              >
-                <n-tooltip trigger="hover">
-                  <template #trigger>
-                    <n-icon>
-                      <Send />
-                    </n-icon>
-                  </template>
-                  <span>发送消息</span>
-                </n-tooltip>
-              </n-button>
-            </div>
-          </div>
-
         </div>
+        
+        <!-- 欢迎界面的输入区域 -->
+        <ChatInput
+          :is-generating="isGenerating"
+          :is-reasoning="isReasoningActive"
+          :is-reasoning-disabled="isReasoningDisabled"
+          :show-reasoning-button="showReasoningButton"
+          @send-message="handleWelcomeSendMessage"
+          @stop-generation="handleStopGeneration"
+          @toggle-reasoning="toggleReasoning"
+          @file-upload="handleFileUpload"
+        />
       </div>
       
       <!-- 分享面板 -->
@@ -248,6 +190,7 @@ import {
 } from '@vicons/tabler'
 
 import ChatArea from '@/components/ChatArea.vue'
+import ChatInput from '@/components/ChatInput.vue'
 import SharePanel from '@/components/SharePanel.vue'
 import { useChatStore } from '@/stores/chat'
 import { useUserStore } from '@/stores/user'
@@ -276,12 +219,46 @@ const conversationTitleRefs = ref([])
 const sidebarWidth = ref(280)
 const isReasoning = ref(false)
 const showConversationsSkeleton = ref(true)
+const isGenerating = ref(false)
 
 // 计算属性
 const conversations = computed(() => chatStore.conversations)
 const currentConversationId = computed(() => chatStore.currentConversationId)
 const currentConversation = computed(() => chatStore.currentConversation)
 const userInfo = computed(() => userStore.userInfo)
+const currentModel = computed(() => {
+  return chatStore.models.find(model => model.id === chatStore.selectedModel)
+})
+
+// 是否显示推理按钮
+const showReasoningButton = computed(() => {
+  // 如果没有当前模型，显示按钮
+  if (!currentModel.value) return true
+  
+  // 如果模型的 reasoning 字段为空，表示不支持推理，隐藏按钮
+  return currentModel.value.reasoning !== ''
+})
+
+// 推理按钮是否禁用
+const isReasoningDisabled = computed(() => {
+  // 如果没有当前模型，不禁用
+  if (!currentModel.value) return false
+  
+  // 如果模型的 reasoning 字段等于模型 ID，表示只支持推理，禁用按钮
+  return currentModel.value.reasoning === currentModel.value.id
+})
+
+// 推理按钮是否激活
+const isReasoningActive = computed(() => {
+  // 如果没有当前模型，不激活
+  if (!currentModel.value) return false
+  
+  // 如果模型的 reasoning 字段等于模型 ID，表示只支持推理，激活按钮
+  if (currentModel.value.reasoning === currentModel.value.id) return true
+  
+  // 其他情况下，根据 isReasoning 状态
+  return isReasoning.value
+})
 
 // 根据时间显示不同的欢迎语
 const welcomeMessage = computed(() => {
@@ -610,23 +587,9 @@ watch(sidebarCollapsed, (newVal) => {
 })
 
 /**
- * 处理欢迎界面键盘事件
- * @param {KeyboardEvent} event - 键盘事件
- */
-const handleWelcomeKeydown = (event) => {
-  // Enter 发送消息，Shift+Enter 换行
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault()
-    handleWelcomeSendMessage()
-  }
-  // Shift+Enter 默认行为就是换行，不需要额外处理
-}
-
-/**
  * 处理欢迎界面发送消息
  */
-const handleWelcomeSendMessage = async () => {
-  const content = welcomeInputMessage.value.trim()
+const handleWelcomeSendMessage = async (content) => {
   if (!content) return
 
   try {
@@ -654,9 +617,6 @@ const handleWelcomeSendMessage = async () => {
             messageUserID: messageUserID,
             messageAssistantID: messageAssistantID
           }
-          
-          // 清空输入框
-          welcomeInputMessage.value = ''
           
           try {
             // 设置生成状态
@@ -751,20 +711,34 @@ const toggleReasoning = () => {
 }
 
 /**
- * 推理按钮是否禁用
+ * 处理停止生成
  */
-const isReasoningDisabled = computed(() => {
-  // 可以根据当前选择的模型来决定是否禁用推理按钮
-  return false
-})
-
-/**
- * 是否显示推理按钮
- */
-const showReasoningButton = computed(() => {
-  // 可以根据当前选择的模型来决定是否显示推理按钮
-  return true
-})
+const handleStopGeneration = async () => {
+  try {
+    // 获取当前对话ID
+    const conversationId = chatStore.currentConversation?.ID;
+    if (!conversationId) {
+      message.error('无法获取当前对话ID');
+      return;
+    }
+    
+    // 调用停止生成接口，传递对话ID
+    await chatApi.stopGeneration({ conversationID: parseInt(conversationId, 10) });
+    // 更新状态
+    chatStore.isGenerating = false;
+    
+    // 移除流式标记
+    const lastMessage = chatStore.messages[chatStore.messages.length - 1];
+    if (lastMessage && lastMessage.role === 'assistant') {
+      lastMessage.isStreaming = false;
+    }
+    
+    message.info('已停止生成');
+  } catch (error) {
+    console.error('停止生成失败:', error);
+    message.error('停止失败: ' + (error.message || '未知错误'));
+  }
+}
 
     // 监听路由变化
     watch(
@@ -894,30 +868,41 @@ const showReasoningButton = computed(() => {
 }
 
 .new-chat-btn {
-  background-color: #f8f9fa;
-  color: #333;
+  background-color: #18a058;
+  color: white;
   border-radius: 12px;
   font-weight: 500;
   height: 40px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s;
 }
 
 .new-chat-btn:hover {
-  background-color: #e9ecef;
-}
-
-.new-chat-btn:hover {
-  background-color: #e9ecef;
+  background-color: #28c76f;
 }
 
 .new-chat-btn-collapsed {
-  background-color: #f8f9fa;
-  color: #333;
-  margin: 0 auto;
+  background-color: #18a058;
+  color: white;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  transition: background-color 0.2s;
 }
 
 .new-chat-btn-collapsed:hover {
-  background-color: #e9ecef;
+  background-color: #28c76f;
 }
 
 .conversations-list {
