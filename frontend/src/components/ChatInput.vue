@@ -175,9 +175,7 @@ export default {
 <style scoped>
 .input-area {
   padding: 16px 20px;
-  border-top: 1px solid #e0e0e0;
   background-color: transparent;
-  border-radius: 20px 20px 0 0;
 }
 
 .input-container {
@@ -267,6 +265,7 @@ export default {
   font-size: 14px;
   transition: all 0.2s ease;
   white-space: nowrap;
+  width: 75px;
 }
 
 .reasoning-button:hover {

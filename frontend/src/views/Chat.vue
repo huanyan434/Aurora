@@ -104,18 +104,57 @@
 
     <!-- 右侧主内容区域 -->
     <div class="main-content">
+      <!-- 模型选择 -->
+      <div class="model-selection-header"
+           v-if="!showSharePanel && !currentConversation"
+      >
+        <div class="model-selection-wrapper">
+          <div class="model-info">
+            <!-- 自定义模型选择下拉框 -->
+            <div class="aurora-model-select" @click="toggleWelcomeModelDropdown">
+              <div class="selected-model">
+                <span class="model-name">{{ selectedModelName }}</span>
+                <n-icon class="dropdown-icon" :class="{ rotated: showWelcomeModelDropdown }">
+                  <ChevronDown />
+                </n-icon>
+              </div>
+            </div>
+
+            <!-- 下拉列表 -->
+            <div v-if="showWelcomeModelDropdown" class="model-dropdown" v-click-outside="closeWelcomeModelDropdown">
+              <div
+                  v-for="model in models"
+                  :key="model.id"
+                  class="model-option"
+                  @click="selectWelcomeModel(model.id)"
+              >
+                <div class="model-main-info">
+                  <span class="model-name">{{ model.name }}</span>
+                </div>
+                <div class="model-extra-info">
+                  <!-- 推理能力 -->
+                  <span v-if="model.reasoning" class="model-capability reasoning">推理</span>
+                  <!-- 识图能力 -->
+                  <span v-if="model.image === 1 || model.image === 3" class="model-capability image">识图</span>
+                  <!-- 积分消耗 -->
+                  <span v-if="model.points > 0" class="model-points">{{ model.points }}积分/次</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <ChatArea 
         v-if="!showSharePanel && currentConversation" 
         :conversation="currentConversation"
         @share="handleShareMessage"
       />
-      
       <!-- 空状态 - 新设计的欢迎界面 -->
       <div v-else-if="!showSharePanel" class="welcome-state">
         <div class="welcome-content">
           <h2 class="welcome-text">{{ welcomeMessage }}</h2>
         </div>
-        
+
         <!-- 欢迎界面的输入区域 -->
         <ChatInput
           :is-generating="isGenerating"
@@ -186,7 +225,8 @@ import {
   Trash,
   User,
   Logout,
-  Bulb
+  Bulb,
+  ChevronDown
 } from '@vicons/tabler'
 
 import ChatArea from '@/components/ChatArea.vue'
@@ -209,6 +249,21 @@ const dialog = useDialog()
 const chatStore = useChatStore()
 const userStore = useUserStore()
 
+// 点击外部指令
+const vClickOutside = {
+  beforeMount(el, binding) {
+    el.clickOutsideEvent = function(event) {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event)
+      }
+    }
+    document.body.addEventListener('click', el.clickOutsideEvent)
+  },
+  unmounted(el) {
+    document.body.removeEventListener('click', el.clickOutsideEvent)
+  }
+}
+
 // 响应式状态
 const sidebarCollapsed = ref(false)
 const isMobile = ref(window.innerWidth <= 768)
@@ -220,6 +275,7 @@ const sidebarWidth = ref(280)
 const isReasoning = ref(false)
 const showConversationsSkeleton = ref(true)
 const isGenerating = ref(false)
+const showWelcomeModelDropdown = ref(false)
 
 // 计算属性
 const conversations = computed(() => chatStore.conversations)
@@ -228,6 +284,15 @@ const currentConversation = computed(() => chatStore.currentConversation)
 const userInfo = computed(() => userStore.userInfo)
 const currentModel = computed(() => {
   return chatStore.models.find(model => model.id === chatStore.selectedModel)
+})
+
+// 模型选项
+const models = computed(() => chatStore.models)
+
+// 选中的模型名称
+const selectedModelName = computed(() => {
+  const model = chatStore.models.find(m => m.id === chatStore.selectedModel)
+  return model ? model.name : '选择模型'
 })
 
 // 是否显示推理按钮
@@ -615,7 +680,8 @@ const handleWelcomeSendMessage = async (content) => {
             conversationID: finalConversationId,
             model: chatStore.selectedModel,
             messageUserID: messageUserID,
-            messageAssistantID: messageAssistantID
+            messageAssistantID: messageAssistantID,
+            reasoning: isReasoning.value || (currentModel.value && currentModel.value.reasoning === currentModel.value.id)
           }
           
           try {
@@ -706,8 +772,12 @@ const handleFileUpload = () => {
  * 切换推理模式
  */
 const toggleReasoning = () => {
-  // 这里可以添加实际的推理切换逻辑
-  message.info('推理模式切换功能开发中...')
+  // 如果当前模型的 reasoning 字段等于模型 ID，表示只支持推理，不能切换
+  if (currentModel.value && currentModel.value.reasoning === currentModel.value.id) {
+    return
+  }
+  
+  isReasoning.value = !isReasoning.value
 }
 
 /**
@@ -738,6 +808,30 @@ const handleStopGeneration = async () => {
     console.error('停止生成失败:', error);
     message.error('停止失败: ' + (error.message || '未知错误'));
   }
+}
+
+/**
+ * 切换欢迎界面模型下拉框显示状态
+ */
+const toggleWelcomeModelDropdown = (event) => {
+  // 阻止事件冒泡
+  event.stopPropagation()
+  showWelcomeModelDropdown.value = !showWelcomeModelDropdown.value
+}
+
+/**
+ * 关闭欢迎界面模型下拉框
+ */
+const closeWelcomeModelDropdown = () => {
+  showWelcomeModelDropdown.value = false
+}
+
+/**
+ * 选择欢迎界面模型
+ */
+const selectWelcomeModel = (modelId) => {
+  chatStore.selectedModel = modelId
+  closeWelcomeModelDropdown()
 }
 
     // 监听路由变化
@@ -998,6 +1092,145 @@ const handleStopGeneration = async () => {
   gap: 20px;
 }
 
+/* 模型选择头部 */
+.model-selection-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px 0 20px;
+  background-color: #fafafa;
+  border-radius: 0 0 20px 20px;
+  height: 80px;
+  position: relative;
+}
+
+.model-selection-wrapper {
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.model-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+/* 自定义模型选择下拉框 */
+.aurora-model-select {
+  width: 300px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  background-color: transparent;
+  transition: background-color 0.2s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 1001; /* 确保在下拉列表之上 */
+}
+
+.aurora-model-select:hover {
+  background-color: #f0f0f0;
+}
+
+.selected-model {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.model-name {
+  font-size: 14px;
+  color: #333;
+  flex-grow: 1;
+  text-align: left;
+}
+
+.dropdown-icon {
+  transition: transform 0.3s ease;
+  color: #666;
+  margin-left: 8px;
+}
+
+.dropdown-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* 模型下拉列表 */
+.model-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 300px;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  margin-top: 4px;
+}
+
+.model-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.model-option:last-child {
+  border-bottom: none;
+}
+
+.model-option:hover {
+  background-color: #f5f5f5;
+}
+
+.model-main-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.model-main-info .model-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.model-extra-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.model-capability {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: white;
+}
+
+.model-capability.reasoning {
+  background-color: #409eff;
+}
+
+.model-capability.image {
+  background-color: #67c23a;
+}
+
+.model-points {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  color: #666;
+}
+
 /* 对话列表骨架屏 */
 .conversations-skeleton {
   padding: 8px;
@@ -1016,6 +1249,15 @@ const handleStopGeneration = async () => {
   
   .sidebar:not(.collapsed) {
     width: 280px;
+  }
+  
+  .aurora-model-select,
+  .model-dropdown {
+    width: 200px;
+  }
+  
+  .model-selection-header {
+    padding: 12px 16px 0 16px;
   }
 }
 </style>
