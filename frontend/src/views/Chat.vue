@@ -1,24 +1,24 @@
 <template>
   <div class="chat-container">
-    <!-- 侧边栏 -->
+    <!-- 左侧侧边栏 -->
     <div class="sidebar" :class="{ 'collapsed': sidebarCollapsed }">
       <div class="sidebar-header">
-        <h2 v-if="!sidebarCollapsed">对话列表</h2>
-        <n-button
-          quaternary
-          circle
-          @click="toggleSidebar"
-          class="toggle-btn"
-        >
-          <template #icon>
-            <n-icon>
-              <Menu />
-            </n-icon>
-          </template>
-        </n-button>
-      </div>
-      
-      <div class="sidebar-content">
+        <div class="sidebar-title-section">
+          <h2 v-if="sidebarWidth >= 180" class="sidebar-title">Aurora AI</h2>
+          <n-button
+            quaternary
+            circle
+            @click="toggleSidebar"
+            class="toggle-btn"
+          >
+            <template #icon>
+              <n-icon>
+                <Menu />
+              </n-icon>
+            </template>
+          </n-button>
+        </div>
+        
         <n-button
           type="primary"
           block
@@ -31,7 +31,7 @@
               <Plus />
             </n-icon>
           </template>
-          新建对话
+          开启新话题
         </n-button>
         
         <n-button
@@ -47,75 +47,143 @@
             </n-icon>
           </template>
         </n-button>
-        
-        <div class="conversations-list">
-          <ConversationItem
-          v-for="conversation in conversations"
-          :key="conversation.ID || conversation.ID || conversation"
-          :conversation="conversation"
-          :is-active="!!(currentConversationId && (currentConversationId === (conversation.ID || conversation.ID)))"
-          @select="selectConversation"
-          @rename="handleRenameConversation"
-          @share="handleShareConversation"
-        />
-        </div>
       </div>
       
-      <!-- 用户信息 -->
-      <div class="sidebar-footer" v-if="!sidebarCollapsed">
-        <div class="user-info" @click="goToProfile">
-          <n-avatar
-            :size="32"
-            :src="userInfo?.avatar"
-            :fallback-src="'/user-avatar.png'"
-          >
-            {{ userInfo?.username?.charAt(0).toUpperCase() || 'U' }}
-          </n-avatar>
-          <div class="user-details">
-            <div class="username">{{ userInfo?.username || '用户' }}</div>
-            <div class="user-points">积分: {{ userInfo?.points || 0 }}</div>
+      <div class="conversations-list" v-if="!sidebarCollapsed">
+        <!-- 骨架屏 -->
+        <div v-if="showConversationsSkeleton" class="conversations-skeleton">
+          <div class="skeleton-item" v-for="i in 5" :key="i">
+            <n-skeleton width="100%" height="30px" style="margin-bottom: 8px;" />
           </div>
         </div>
         
-        <n-button
-          quaternary
-          circle
-          size="small"
-          @click="handleLogout"
+        <div 
+          v-for="conversation in conversations" 
+          :key="conversation.ID"
+          class="conversation-item-wrapper"
+          :class="{ 'active': currentConversationId === conversation.ID }"
+          @click="selectConversation(conversation)"
         >
-          <n-tooltip trigger="hover">
-            <template #trigger>
-              <n-icon>
-                <Logout />
-              </n-icon>
-            </template>
-            <span>退出登录</span>
-          </n-tooltip>
-        </n-button>
+          <div class="conversation-item">
+            <n-tooltip trigger="hover" :disabled="!isTitleOverflow(conversation.Title || '新对话')">
+              <template #trigger>
+                <div class="conversation-title" ref="conversationTitleRefs" :data-id="conversation.ID">{{ conversation.Title || '新对话' }}</div>
+              </template>
+              <span>{{ conversation.Title || '新对话' }}</span>
+            </n-tooltip>
+          </div>
+          
+          <!-- 对话项的更多操作按钮 -->
+          <div class="conversation-actions" @click.stop>
+            <n-dropdown
+              :options="getDropdownOptions(conversation)"
+              @select="(key) => handleConversationAction(key, conversation)"
+              trigger="click"
+              placement="bottom-end"
+            >
+              <n-button
+                quaternary
+                circle
+                size="small"
+                class="action-btn"
+              >
+                <n-tooltip trigger="hover">
+                  <template #trigger>
+                    <n-icon>
+                      <DotsVertical />
+                    </n-icon>
+                  </template>
+                  <span>更多操作</span>
+                </n-tooltip>
+              </n-button>
+            </n-dropdown>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 主内容区域 -->
+    <!-- 右侧主内容区域 -->
     <div class="main-content">
       <ChatArea 
-        v-if="!showSharePanel && (currentConversation || showWelcome)" 
+        v-if="!showSharePanel && currentConversation" 
         :conversation="currentConversation"
-        @share="handleShareConversation"
+        @share="handleShareMessage"
       />
       
-      <!-- 空状态 -->
-      <div v-else-if="!showSharePanel" class="empty-state">
-        <div class="empty-content">
-          <h2>欢迎使用 Aurora AI</h2>
-          <p>选择一个对话或创建新对话开始聊天</p>
-          <n-button type="primary" @click="createNewChat">
-            <template #icon>
-              <n-icon>
-                <Plus />
-              </n-icon>
-            </template>
-            创建新对话
-          </n-button>
+      <!-- 空状态 - 新设计的欢迎界面 -->
+      <div v-else-if="!showSharePanel" class="welcome-state">
+        <div class="welcome-content">
+          <h2 class="welcome-text">{{ welcomeMessage }}</h2>
+          
+          <!-- 欢迎界面的输入区域 -->
+          <div class="welcome-input-area">
+            <div class="input-container">
+              <n-input
+                v-model:value="welcomeInputMessage"
+                type="textarea"
+                placeholder="询问任何问题"
+                :autosize="{ minRows: 3, maxRows: 6 }"
+                @keydown="handleWelcomeKeydown"
+                ref="welcomeInputRef"
+                class="welcome-message-input"
+              />
+              
+              <div class="input-addons">
+                <!-- 文件上传按钮 -->
+                <n-button
+                  quaternary
+                  circle
+                  size="small"
+                  class="addon-button"
+                  @click="handleFileUpload"
+                >
+                  <n-tooltip trigger="hover">
+                    <template #trigger>
+                      <n-icon>
+                        <Plus />
+                      </n-icon>
+                    </template>
+                    <span>上传文件</span>
+                  </n-tooltip>
+                </n-button>
+                
+                <!-- 推理按钮 -->
+                <n-button
+                  quaternary
+                  size="small"
+                  class="reasoning-button"
+                  :type="isReasoning ? 'primary' : 'default'"
+                  :disabled="isReasoningDisabled"
+                  v-if="showReasoningButton"
+                  @click="toggleReasoning"
+                >
+                  <n-icon>
+                    <Bulb />
+                  </n-icon>
+                  <span>推理</span>
+                </n-button>
+              </div>
+              
+              <n-button
+                type="primary"
+                circle
+                size="small"
+                :disabled="!welcomeInputMessage.trim()"
+                @click="handleWelcomeSendMessage"
+                class="welcome-send-button"
+              >
+                <n-tooltip trigger="hover">
+                  <template #trigger>
+                    <n-icon>
+                      <Send />
+                    </n-icon>
+                  </template>
+                  <span>发送消息</span>
+                </n-tooltip>
+              </n-button>
+            </div>
+          </div>
+
         </div>
       </div>
       
@@ -125,13 +193,29 @@
         @close="showSharePanel = false"
         @shared="handleShareSuccess"
       />
+      
+      <!-- 顶部导航栏 -->
+      <div class="top-navbar">
+        <div class="navbar-right">
+          <n-dropdown
+            :options="userDropdownOptions"
+            @select="handleUserDropdownSelect"
+            trigger="click"
+            placement="bottom-end"
+          >
+            <n-avatar
+              :size="40"
+              :src="userInfo?.avatar"
+              :fallback-src="'/user-avatar.png'"
+              class="user-avatar"
+              round
+            >
+              {{ userInfo?.username?.charAt(0).toUpperCase() || 'U' }}
+            </n-avatar>
+          </n-dropdown>
+        </div>
+      </div>
     </div>
-    
-    <!-- 分享对话弹窗 -->
-    <ShareDialog 
-      v-model:show="showShareDialog" 
-      :conversation="currentConversation"
-    />
   </div>
 </template>
 
@@ -142,26 +226,37 @@ import {
   NButton, 
   NIcon, 
   NAvatar,
+  NInput,
+  NCard,
+  NDropdown,
   NTooltip,
   useMessage,
-  useDialog
+  useDialog,
+  NSkeleton
 } from 'naive-ui'
 import { 
   Plus,
   Menu,
-  Logout
+  Send,
+  DotsVertical,
+  Edit,
+  Share as ShareIcon,
+  Trash,
+  User,
+  Logout,
+  Bulb
 } from '@vicons/tabler'
 
-import ConversationItem from '@/components/ConversationItem.vue'
 import ChatArea from '@/components/ChatArea.vue'
 import SharePanel from '@/components/SharePanel.vue'
 import { useChatStore } from '@/stores/chat'
 import { useUserStore } from '@/stores/user'
 import { chatApi } from '@/api/chat'
+import { generateSnowflakeId } from '@/utils/snowflake'
 
 /**
  * 主聊天页面组件
- * 包含左侧对话列表和右侧聊天区域
+ * 包含左侧侧边栏和右侧主内容区域
  */
 
 const router = useRouter()
@@ -175,14 +270,154 @@ const userStore = useUserStore()
 const sidebarCollapsed = ref(false)
 const isMobile = ref(window.innerWidth <= 768)
 const showSharePanel = ref(false)
-const showShareDialog = ref(false)
+const welcomeInputMessage = ref('')
+const welcomeInputRef = ref(null)
+const conversationTitleRefs = ref([])
+const sidebarWidth = ref(280)
+const isReasoning = ref(false)
+const showConversationsSkeleton = ref(true)
 
 // 计算属性
 const conversations = computed(() => chatStore.conversations)
 const currentConversationId = computed(() => chatStore.currentConversationId)
 const currentConversation = computed(() => chatStore.currentConversation)
 const userInfo = computed(() => userStore.userInfo)
-const showWelcome = computed(() => !currentConversation.value && conversations.value.length === 0)
+
+// 根据时间显示不同的欢迎语
+const welcomeMessage = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) {
+    return '早上好，今天有什么可以帮你？'
+  } else if (hour < 18) {
+    return '下午好，有什么可以帮你？'
+  } else {
+    return '晚上好，有什么可以帮你？'
+  }
+})
+
+// 推荐问题（更新为新的内容）
+const recommendations = ref([
+  { id: 1, text: '喵星人变乖的秘密？' },
+  { id: 2, text: '怎么吃出更强的大脑？' },
+  { id: 3, text: '下班三小时逆袭用法' },
+  { id: 4, text: '让AI答案又准又牛的方法！' }
+])
+
+/**
+ * 获取对话项的下拉菜单选项
+ */
+const getDropdownOptions = (conversation) => {
+  return [
+    {
+      label: '重命名',
+      key: 'rename',
+      icon: () => h(NIcon, null, { default: () => h(Edit) })
+    },
+    {
+      label: '分享',
+      key: 'share',
+      icon: () => h(NIcon, null, { default: () => h(ShareIcon) })
+    },
+    {
+      type: 'divider'
+    },
+    {
+      label: '删除',
+      key: 'delete',
+      props: {
+        style: 'color: #e74c3c;'
+      },
+      icon: () => h(NIcon, null, { default: () => h(Trash) })
+    }
+  ]
+}
+
+/**
+ * 格式化对话时间显示
+ */
+const formatConversationTime = (timeString) => {
+  if (!timeString) return ''
+  
+  const time = new Date(timeString)
+  const now = new Date()
+  const diff = now - time
+  
+  // 小于1天
+  if (diff < 86400000) {
+    return '今天'
+  }
+  
+  // 小于3天
+  if (diff < 259200000) {
+    return '3天前'
+  }
+  
+  // 小于1周
+  if (diff < 604800000) {
+    return '1周前'
+  }
+  
+  // 小于2周
+  if (diff < 1209600000) {
+    return '2周前'
+  }
+  
+  // 超过2周显示具体日期
+  return time.toLocaleDateString('zh-CN', {
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+/**
+ * 处理对话项操作
+ */
+const handleConversationAction = async (key, conversation) => {
+  switch (key) {
+    case 'rename':
+      handleRenameConversation(conversation)
+      break
+    case 'share':
+      handleShareConversation(conversation)
+      break
+    case 'delete':
+      handleDeleteConversation(conversation)
+      break
+  }
+}
+
+/**
+ * 检查标题是否溢出
+ */
+const isTitleOverflow = (title) => {
+  if (!title) return false
+  
+  // 创建临时元素来测量文本宽度
+  const tempElement = document.createElement('div')
+  tempElement.style.visibility = 'hidden'
+  tempElement.style.position = 'absolute'
+  tempElement.style.whiteSpace = 'nowrap'
+  tempElement.style.fontWeight = '500'
+  tempElement.style.fontSize = '14px'
+  tempElement.textContent = title
+  document.body.appendChild(tempElement)
+  
+  const isOverflow = tempElement.offsetWidth > 180 // 180px是标题容器的最大宽度
+  document.body.removeChild(tempElement)
+  
+  return isOverflow
+}
+
+/**
+ * 推荐问题点击处理
+ */
+const handleRecommendationClick = (item) => {
+  console.log('推荐问题点击:', item)
+  // 这里可以处理推荐问题的逻辑
+  message.info(`你选择了: ${item.text}`)
+  welcomeInputMessage.value = item.text
+  welcomeInputRef.value?.focus()
+}
 
 /**
  * 切换侧边栏
@@ -213,11 +448,6 @@ const selectConversation = (conversation) => {
   } else {
     router.push('/')
   }
-  
-  // 移动端自动收起侧边栏
-  if (isMobile.value) {
-    sidebarCollapsed.value = true
-  }
 }
 
 /**
@@ -225,7 +455,7 @@ const selectConversation = (conversation) => {
  */
 const handleRenameConversation = async (conversation) => {
   // 显示输入对话框
-  const value = ref(conversation.title)
+  const value = ref(conversation.Title)
   
   dialog.info({
     title: '重命名对话',
@@ -247,7 +477,7 @@ const handleRenameConversation = async (conversation) => {
       try {
         // 这里应该调用API更新对话标题
         // 由于API文档中没有提供更新对话标题的接口，暂时只更新本地状态
-        conversation.title = value.value.trim()
+        conversation.Title = value.value.trim()
         message.success('对话重命名成功')
         return true
       } catch (error) {
@@ -268,6 +498,36 @@ const handleShareConversation = async (conversation) => {
 }
 
 /**
+ * 处理删除对话
+ */
+const handleDeleteConversation = async (conversation) => {
+  dialog.warning({
+    title: '确认删除',
+    content: `确定要删除对话"${conversation.Title || '新对话'}"吗？此操作不可撤销。`,
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        const result = await chatStore.deleteConversation(conversation.ID)
+        if (result.success) {
+          message.success('对话删除成功')
+          
+          // 如果删除的是当前对话，跳转到首页
+          if (currentConversationId.value === conversation.ID) {
+            router.push('/')
+            chatStore.setCurrentConversation(null)
+          }
+        } else {
+          message.error(result.message || '删除失败')
+        }
+      } catch (error) {
+        message.error('删除失败')
+      }
+    }
+  })
+}
+
+/**
  * 处理分享成功
  */
 const handleShareSuccess = () => {
@@ -276,10 +536,36 @@ const handleShareSuccess = () => {
 }
 
 /**
- * 跳转到个人中心
+ * 用户下拉菜单选项
  */
-const goToProfile = () => {
-  router.push('/profile')
+const userDropdownOptions = [
+  {
+    label: '个人中心',
+    key: 'profile',
+    icon: () => h(NIcon, null, { default: () => h(User) })
+  },
+  {
+    label: '退出登录',
+    key: 'logout',
+    props: {
+      style: 'color: #e74c3c;'
+    },
+    icon: () => h(NIcon, null, { default: () => h(Logout) })
+  }
+]
+
+/**
+ * 处理用户下拉菜单选择
+ */
+const handleUserDropdownSelect = (key) => {
+  switch (key) {
+    case 'profile':
+      router.push('/profile')
+      break
+    case 'logout':
+      handleLogout()
+      break
+  }
 }
 
 /**
@@ -313,97 +599,270 @@ const handleResize = () => {
       sidebarCollapsed.value = true
     }
   }
+  
+  // 更新侧边栏宽度
+  sidebarWidth.value = sidebarCollapsed.value ? 60 : 280
 }
 
-// 监听路由变化
-watch(
-  () => route.params.conversationId,
-  async (conversationId) => {
-    console.log('路由变化，对话ID:', conversationId)
-    if (conversationId) {
-      // 查找对话是否存在
-      let conversation = chatStore.conversations.find(conv => conv.ID === conversationId)
-      
-      if (conversation) {
-        chatStore.setCurrentConversation(conversation)
-      } else {
-        // 如果对话不存在，先尝试刷新对话列表
-        console.log('对话不存在，尝试刷新对话列表')
-        const response = await chatApi.getConversations()
-        if (response.success) {
-          chatStore.conversations = response.data?.conversations || []
-          // 再次查找对话
-          let refreshedConversation = chatStore.conversations.find(conv => conv.ID === conversationId)
+// 监听侧边栏折叠状态变化
+watch(sidebarCollapsed, (newVal) => {
+  sidebarWidth.value = newVal ? 60 : 280
+})
+
+/**
+ * 处理欢迎界面键盘事件
+ * @param {KeyboardEvent} event - 键盘事件
+ */
+const handleWelcomeKeydown = (event) => {
+  // Enter 发送消息，Shift+Enter 换行
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault()
+    handleWelcomeSendMessage()
+  }
+  // Shift+Enter 默认行为就是换行，不需要额外处理
+}
+
+/**
+ * 处理欢迎界面发送消息
+ */
+const handleWelcomeSendMessage = async () => {
+  const content = welcomeInputMessage.value.trim()
+  if (!content) return
+
+  try {
+    // 创建新对话
+    const createResult = await chatStore.createConversation()
+    if (createResult.success) {
+      const newConversationId = createResult.data?.conversationID
+      if (newConversationId) {
+        // 更新路由到新对话
+        router.push(`/c/${newConversationId}`)
+        
+        // 等待路由更新完成后再发送消息
+        setTimeout(async () => {
+          // 获取最终的对话ID
+          const finalConversationId = chatStore.currentConversation?.ID
           
-          if (refreshedConversation) {
-            chatStore.setCurrentConversation(refreshedConversation)
-          } else {
-            // 如果还是不存在，跳转到首页
-            console.log('对话仍然不存在，跳转到首页')
-            router.push('/')
+          // 生成消息ID
+          const messageUserID = generateSnowflakeId()
+          const messageAssistantID = generateSnowflakeId()
+          
+          const messageData = {
+            prompt: content,
+            conversationID: finalConversationId,
+            model: chatStore.selectedModel,
+            messageUserID: messageUserID,
+            messageAssistantID: messageAssistantID
           }
-        } else {
-          // 获取对话列表失败，跳转到首页
-          console.log('获取对话列表失败，跳转到首页')
-          router.push('/')
-        }
+          
+          // 清空输入框
+          welcomeInputMessage.value = ''
+          
+          try {
+            // 设置生成状态
+            chatStore.isGenerating = true
+            
+            // 查找模型名称
+            const currentModel = chatStore.models.find(model => model.id === chatStore.selectedModel);
+            const modelName = currentModel ? currentModel.name : chatStore.selectedModel;
+            
+            // 添加用户消息到本地状态
+            const userMessage = {
+              id: messageUserID,
+              content: content,
+              role: 'user',
+              createdAt: new Date().toISOString()
+            }
+            chatStore.messages.push(userMessage)
+            
+            // 添加AI消息占位符（包含模型信息）
+            const aiMessage = {
+              id: messageAssistantID,
+              content: `<model=${chatStore.selectedModel}>`, // 添加模型标签
+              role: 'assistant',
+              createdAt: new Date().toISOString(),
+              isStreaming: true
+            }
+            chatStore.messages.push(aiMessage)
+            
+            // 使用流式发送
+            let accumulatedContent = `<model=${chatStore.selectedModel}>`
+            await chatApi.sendMessage(
+              messageData,
+              (content) => {
+                // 流式接收内容
+                accumulatedContent += content
+                // 更新最后一条消息的内容
+                const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+                if (lastMessage && lastMessage.role === 'assistant') {
+                  lastMessage.content = accumulatedContent
+                }
+              },
+              (error) => {
+                message.error('消息发送失败')
+                console.error('消息发送失败:', error)
+                chatStore.isGenerating = false
+              },
+              () => {
+                // 完成回调
+                const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+                if (lastMessage && lastMessage.role === 'assistant') {
+                  lastMessage.isStreaming = false
+                }
+                chatStore.isGenerating = false
+              }
+            )
+          } catch (error) {
+            message.error(error.message || '发送失败')
+            chatStore.isGenerating = false
+          }
+        }, 100)
       }
     } else {
-      console.log('无对话ID，清空当前对话')
-      chatStore.setCurrentConversation(null)
+      message.error(createResult.message || '创建对话失败')
     }
-  },
-  { immediate: true }
-)
-
-// 组件挂载时加载数据
-onMounted(async () => {
-  console.log('聊天页面挂载，开始加载数据')
-  // 获取对话列表
-  try {
-    const response = await chatApi.getConversations()
-    console.log('获取对话列表响应:', response)
-    
-    if (response.success) {
-      chatStore.conversations = response.data?.conversations || []
-    } else {
-      message.error(response.message || '获取对话列表失败')
-    }
-    
-    // 获取模型列表
-    await chatStore.fetchModels()
   } catch (error) {
-    console.error('获取数据失败:', error)
-    message.error('获取数据失败')
+    console.error('创建对话失败:', error)
+    message.error('创建对话失败')
   }
-  
-  // 监听窗口大小变化
-  window.addEventListener('resize', handleResize)
-  handleResize()
+}
+
+/**
+ * 处理分享消息
+ */
+const handleShareMessage = async (message) => {
+  // 显示分享面板
+  showSharePanel.value = true
+}
+
+/**
+ * 处理文件上传
+ */
+const handleFileUpload = () => {
+  message.info('文件上传功能开发中...')
+}
+
+/**
+ * 切换推理模式
+ */
+const toggleReasoning = () => {
+  // 这里可以添加实际的推理切换逻辑
+  message.info('推理模式切换功能开发中...')
+}
+
+/**
+ * 推理按钮是否禁用
+ */
+const isReasoningDisabled = computed(() => {
+  // 可以根据当前选择的模型来决定是否禁用推理按钮
+  return false
 })
 
-// 组件卸载
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
+/**
+ * 是否显示推理按钮
+ */
+const showReasoningButton = computed(() => {
+  // 可以根据当前选择的模型来决定是否显示推理按钮
+  return true
 })
+
+    // 监听路由变化
+    watch(
+      () => route.params.conversationId,
+      async (conversationId) => {
+        console.log('路由变化，对话ID:', conversationId)
+        if (conversationId) {
+          // 查找对话是否存在 (需要转换类型进行比较)
+          let conversation = chatStore.conversations.find(conv => conv.ID === parseInt(conversationId))
+          
+          if (conversation) {
+            chatStore.setCurrentConversation(conversation)
+          } else {
+            // 如果对话不存在，先尝试刷新对话列表
+            console.log('对话不存在，尝试刷新对话列表')
+            const response = await chatApi.getConversations()
+            if (response.success) {
+              chatStore.conversations = response.data?.conversations || []
+              // 再次查找对话 (需要转换类型进行比较)
+              let refreshedConversation = chatStore.conversations.find(conv => conv.ID === parseInt(conversationId))
+              
+              if (refreshedConversation) {
+                chatStore.setCurrentConversation(refreshedConversation)
+              } else {
+                // 如果还是不存在，跳转到首页
+                console.log('对话仍然不存在，跳转到首页')
+                router.push('/')
+              }
+            } else {
+              // 获取对话列表失败，跳转到首页
+              console.log('获取对话列表失败，跳转到首页')
+              router.push('/')
+            }
+          }
+        } else {
+          console.log('无对话ID，清空当前对话')
+          chatStore.setCurrentConversation(null)
+        }
+      },
+      { immediate: true }
+    )
+
+    // 组件挂载时加载数据
+    onMounted(async () => {
+      console.log('聊天页面挂载，开始加载数据')
+      // 获取对话列表
+      try {
+        const response = await chatApi.getConversations()
+        console.log('获取对话列表响应:', response)
+        
+        if (response.success) {
+          chatStore.conversations = response.data?.conversations || []
+          // 隐藏对话列表骨架屏
+          showConversationsSkeleton.value = false
+        } else {
+          message.error(response.message || '获取对话列表失败')
+          // 即使失败也隐藏骨架屏
+          showConversationsSkeleton.value = false
+        }
+        
+        // 获取模型列表
+        await chatStore.fetchModels()
+      } catch (error) {
+        console.error('获取数据失败:', error)
+        message.error('获取数据失败')
+        // 即使失败也隐藏骨架屏
+        showConversationsSkeleton.value = false
+      }
+      
+      // 监听窗口大小变化
+      window.addEventListener('resize', handleResize)
+      handleResize()
+    })
+
+    // 组件卸载
+    onUnmounted(() => {
+      window.removeEventListener('resize', handleResize)
+    })
+    
 </script>
 
 <style scoped>
 .chat-container {
   display: flex;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-color: #f8f9fa;
 }
 
+/* 左侧侧边栏 */
 .sidebar {
   width: 280px;
-  background: white;
-  border-right: 1px solid #e0e0e0;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease;
-  position: relative;
+  transition: all 0.3s ease;
+  color: #333;
   z-index: 100;
+  border-radius: 0 25px 25px 0;
 }
 
 .sidebar.collapsed {
@@ -412,147 +871,166 @@ onUnmounted(() => {
 
 .sidebar-header {
   padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: #ffffff;
+  border-radius: 0 25px 0 0;
+}
+
+.sidebar-title-section {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 16px;
 }
 
-.sidebar-header h2 {
-  font-size: 18px;
+.sidebar-title {
+  font-size: 20px;
   font-weight: 600;
   color: #333;
+  margin: 0;
 }
 
 .toggle-btn {
-  margin-left: auto;
-}
-
-.sidebar-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  color: #333;
 }
 
 .new-chat-btn {
-  margin: 16px;
-  margin-bottom: 8px;
+  background-color: #f8f9fa;
+  color: #333;
+  border-radius: 12px;
+  font-weight: 500;
+  height: 40px;
+}
+
+.new-chat-btn:hover {
+  background-color: #e9ecef;
+}
+
+.new-chat-btn:hover {
+  background-color: #e9ecef;
 }
 
 .new-chat-btn-collapsed {
-  margin: 16px auto;
-  margin-bottom: 8px;
+  background-color: #f8f9fa;
+  color: #333;
+  margin: 0 auto;
+  border-radius: 50%;
+}
+
+.new-chat-btn-collapsed:hover {
+  background-color: #e9ecef;
 }
 
 .conversations-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0 8px;
-}
-
-.sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid #e0e0e0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
   padding: 8px;
+}
+
+.conversation-item-wrapper {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
   border-radius: 8px;
-  transition: background-color 0.2s;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.conversation-item-wrapper:hover {
+  background-color: #f8f9fa;
+}
+
+.conversation-item-wrapper.active {
+  background-color: #e9ecef;
+}
+
+.conversation-item {
   flex: 1;
+  padding: 8px 12px;
 }
 
-.user-info:hover {
-  background-color: #f5f5f5;
-}
-
-.user-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.username {
+.conversation-title {
   font-size: 14px;
-  font-weight: 500;
   color: #333;
-  white-space: nowrap;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
 }
 
-.user-points {
-  font-size: 12px;
-  color: #666;
+.conversation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  margin-right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
+.conversation-item-wrapper:hover .conversation-actions {
+  opacity: 1;
+}
+
+/* 右侧主内容区域 */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  position: relative;
+  background-color: #f8f9fa;
 }
 
-.empty-state {
+/* 顶部导航栏 */
+.top-navbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 16px 24px;
+  z-index: 10;
+}
+
+.navbar-right .user-avatar {
+  cursor: pointer;
+  transition: transform 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+}
+
+.navbar-right .user-avatar:hover {
+  transform: scale(1.05);
+}
+
+/* 欢迎状态 */
+.welcome-state {
   flex: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  background: white;
+  padding: 20px;
+  gap: 20px;
 }
 
-.empty-content {
-  text-align: center;
-  padding: 40px;
+/* 对话列表骨架屏 */
+.conversations-skeleton {
+  padding: 8px;
 }
 
-.empty-content h2 {
-  font-size: 24px;
-  color: #333;
-  margin-bottom: 12px;
+.skeleton-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
 }
 
-.empty-content p {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 24px;
-}
-
-/* 响应式设计 */
 @media (max-width: 768px) {
   .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 100;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-  }
-
-  .sidebar:not(.collapsed) {
-    transform: translateX(0);
-  }
-
-  .chat-area {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .sidebar {
-    width: 100vw;
+    width: 60px;
   }
   
-  .sidebar.collapsed {
-    width: 60px;
+  .sidebar:not(.collapsed) {
+    width: 280px;
   }
 }
 </style>
