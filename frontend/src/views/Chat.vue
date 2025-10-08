@@ -72,16 +72,42 @@
           @click="selectConversation(conversation)"
         >
           <div class="conversation-item">
-            <n-tooltip trigger="hover" :disabled="!isTitleOverflow(conversation.Title || '新对话')">
+            <!-- 重命名输入框 -->
+            <div v-if="renamingConversationId === conversation.ID" class="rename-input-container">
+              <n-input 
+                ref="renameInputRef"
+                v-model:value="renamingTitle"
+                size="small"
+                autofocus
+                @keydown="handleRenameKeydown(conversation)"
+              />
+              <div class="rename-actions">
+                <n-button text @click="saveRename(conversation)">
+                  <n-icon size="16">
+                    <Check />
+                  </n-icon>
+                </n-button>
+                <n-button text @click="cancelRename">
+                  <n-icon size="16">
+                    <X />
+                  </n-icon>
+                </n-button>
+              </div>
+            </div>
+            
+            <!-- 普通标题显示 -->
+            <n-tooltip v-else trigger="hover" :disabled="!isTitleOverflow(conversation.Title || '新对话')">
               <template #trigger>
-                <div class="conversation-title" ref="conversationTitleRefs" :data-id="conversation.ID">{{ conversation.Title || '新对话' }}</div>
+                <div class="conversation-title" ref="conversationTitleRefs" :data-id="conversation.ID">
+                  {{ conversation.Title || '新对话' }}
+                </div>
               </template>
               <span>{{ conversation.Title || '新对话' }}</span>
             </n-tooltip>
           </div>
           
           <!-- 对话项的更多操作按钮 -->
-          <div class="conversation-actions" @click.stop>
+          <div v-if="renamingConversationId !== conversation.ID" class="conversation-actions" @click.stop>
             <n-dropdown
               :options="getDropdownOptions(conversation)"
               @select="(key) => handleConversationAction(key, conversation)"
@@ -225,6 +251,8 @@ import {
   Trash,
   User,
   Logout,
+  Check,
+  X
 } from '@vicons/tabler'
 
 import ChatArea from '@/components/ChatArea.vue'
@@ -247,6 +275,7 @@ const message = useMessage()
 const dialog = useDialog()
 const chatStore = useChatStore()
 const userStore = useUserStore()
+const renameInputRef = ref(null)
 
 // 点击外部指令
 const vClickOutside = {
@@ -275,6 +304,8 @@ const isReasoning = ref(false)
 const showConversationsSkeleton = ref(true)
 const isGenerating = ref(false)
 const showWelcomeModelDropdown = ref(false)
+const renamingConversationId = ref(null) // 正在重命名的对话ID
+const renamingTitle = ref('') // 正在重命名的标题
 
 // 计算属性
 const conversations = computed(() => chatStore.conversations)
@@ -371,7 +402,7 @@ const getDropdownOptions = (conversation) => {
 const handleConversationAction = async (key, conversation) => {
   switch (key) {
     case 'rename':
-      handleRenameConversation(conversation)
+      startRename(conversation)
       break
     case 'share':
       handleShareConversation(conversation)
@@ -409,6 +440,11 @@ const isTitleOverflow = (title) => {
  */
 const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
+  
+  // 仅在非移动端保存侧边栏状态
+  if (!isMobile.value) {
+    localStorage.setItem('sidebarCollapsed', sidebarCollapsed.value.toString())
+  }
 }
 
 /**
@@ -444,13 +480,23 @@ const handleRenameConversation = async (conversation) => {
   
   dialog.info({
     title: '重命名对话',
-    content: () => h('n-input', {
-      value: value.value,
-      onUpdateValue: (val) => {
-        value.value = val
-      },
-      placeholder: '请输入新的对话名称'
-    }),
+    content: () => h('div', {
+      style: {
+        width: '100%',
+        padding: '10px 0'
+      }
+    }, [
+      h('n-input', {
+        value: value.value,
+        onUpdateValue: (val) => {
+          value.value = val
+        },
+        placeholder: '请输入新的对话名称',
+        style: {
+          width: '100%'
+        }
+      })
+    ]),
     positiveText: '确定',
     negativeText: '取消',
     onPositiveClick: async () => {
@@ -793,6 +839,66 @@ const handleStopGeneration = async () => {
 }
 
 /**
+ * 开始重命名对话
+ */
+const startRename = (conversation) => {
+  renamingConversationId.value = conversation.ID
+  renamingTitle.value = conversation.Title || ''
+  
+  // 等待DOM更新后聚焦输入框
+  nextTick(() => {
+    if (renameInputRef.value) {
+      renameInputRef.value.focus()
+    }
+  })
+}
+
+/**
+ * 保存重命名
+ */
+const saveRename = async (conversation) => {
+  if (!renamingTitle.value.trim()) {
+    message.error('对话名称不能为空')
+    return
+  }
+  
+  try {
+    // 这里应该调用API更新对话标题
+    // 由于API文档中没有提供更新对话标题的接口，暂时只更新本地状态
+    conversation.Title = renamingTitle.value.trim()
+    message.success('对话重命名成功')
+  } catch (error) {
+    console.error('重命名对话失败:', error)
+    message.error('重命名对话失败')
+  } finally {
+    // 重置重命名状态
+    renamingConversationId.value = null
+    renamingTitle.value = ''
+  }
+}
+
+/**
+ * 取消重命名
+ */
+const cancelRename = () => {
+  renamingConversationId.value = null
+  renamingTitle.value = ''
+}
+
+/**
+ * 处理重命名时的键盘事件
+ */
+const handleRenameKeydown = (conversation) => (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    saveRename(conversation)
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelRename()
+  }
+}
+
+/**
  * 切换欢迎界面模型下拉框显示状态
  */
 const toggleWelcomeModelDropdown = (event) => {
@@ -864,6 +970,16 @@ const selectWelcomeModel = (modelId) => {
     // 组件挂载时加载数据
     onMounted(async () => {
       console.log('聊天页面挂载，开始加载数据')
+      
+      // 加载侧边栏折叠状态（仅在非移动端）
+      if (!isMobile.value) {
+        const savedSidebarState = localStorage.getItem('sidebarCollapsed')
+        if (savedSidebarState !== null) {
+          sidebarCollapsed.value = savedSidebarState === 'true'
+          sidebarWidth.value = sidebarCollapsed.value ? 60 : 280
+        }
+      }
+      
       // 获取对话列表
       try {
         const response = await chatApi.getConversations()
@@ -1001,6 +1117,7 @@ const selectWelcomeModel = (modelId) => {
   transition: all 0.2s ease;
   background-color: #ffffff;
   margin-bottom: 2px;
+  position: relative;
 }
 
 .conversation-item-wrapper:hover {
@@ -1014,6 +1131,9 @@ const selectWelcomeModel = (modelId) => {
 .conversation-item {
   flex: 1;
   padding: 8px 12px;
+  min-width: 0; /* 允许文本截断 */
+  display: flex;
+  align-items: center;
 }
 
 .conversation-title {
@@ -1026,6 +1146,22 @@ const selectWelcomeModel = (modelId) => {
   max-width: 180px;
 }
 
+.rename-input-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.rename-input-container :deep(.n-input) {
+  flex: 1;
+  margin-right: 4px;
+}
+
+.rename-actions {
+  display: flex;
+  gap: 4px;
+}
+
 .conversation-actions {
   display: flex;
   align-items: center;
@@ -1034,6 +1170,7 @@ const selectWelcomeModel = (modelId) => {
   margin-right: 8px;
   opacity: 0;
   transition: opacity 0.2s ease;
+  flex-shrink: 0; /* 防止操作按钮被压缩 */
 }
 
 .conversation-item-wrapper:hover .conversation-actions {
