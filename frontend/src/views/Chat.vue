@@ -11,7 +11,7 @@
     <div class="sidebar" :class="{ 'collapsed': sidebarCollapsed, 'mobile-expanded': isMobile && !sidebarCollapsed, 'mobile-collapsed': isMobile && sidebarCollapsed }">
       <div class="sidebar-header">
         <div class="sidebar-title-section">
-          <h2 v-if="sidebarWidth >= 180" class="sidebar-title">Aurora AI</h2>
+          <h2 v-if="sidebarWidth >= 180 && !sidebarCollapsed" class="sidebar-title">Aurora AI</h2>
           <n-button
             quaternary
             circle
@@ -204,7 +204,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, h } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, h, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { 
   NButton, 
@@ -264,7 +264,7 @@ const vClickOutside = {
 }
 
 // 响应式状态
-const sidebarCollapsed = ref(false)
+const sidebarCollapsed = ref(true) // 默认折叠
 const isMobile = ref(window.innerWidth <= 768)
 const showSharePanel = ref(false)
 const welcomeInputMessage = ref('')
@@ -366,43 +366,6 @@ const getDropdownOptions = (conversation) => {
 }
 
 /**
- * 格式化对话时间显示
- */
-const formatConversationTime = (timeString) => {
-  if (!timeString) return ''
-  
-  const time = new Date(timeString)
-  const now = new Date()
-  const diff = now - time
-  
-  // 小于1天
-  if (diff < 86400000) {
-    return '今天'
-  }
-  
-  // 小于3天
-  if (diff < 259200000) {
-    return '3天前'
-  }
-  
-  // 小于1周
-  if (diff < 604800000) {
-    return '1周前'
-  }
-  
-  // 小于2周
-  if (diff < 1209600000) {
-    return '2周前'
-  }
-  
-  // 超过2周显示具体日期
-  return time.toLocaleDateString('zh-CN', {
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
-/**
  * 处理对话项操作
  */
 const handleConversationAction = async (key, conversation) => {
@@ -442,17 +405,6 @@ const isTitleOverflow = (title) => {
 }
 
 /**
- * 推荐问题点击处理
- */
-const handleRecommendationClick = (item) => {
-  console.log('推荐问题点击:', item)
-  // 这里可以处理推荐问题的逻辑
-  message.info(`你选择了: ${item.text}`)
-  welcomeInputMessage.value = item.text
-  welcomeInputRef.value?.focus()
-}
-
-/**
  * 切换侧边栏
  */
 const toggleSidebar = () => {
@@ -465,7 +417,7 @@ const toggleSidebar = () => {
 const createNewChat = async () => {
   // 不再直接创建对话，而是跳转到/路由显示欢迎界面
   router.push('/')
-  chatStore.setCurrentConversation(null)
+  chatStore.setCurrentConversation(null, false)
 }
 
 /**
@@ -548,7 +500,7 @@ const handleDeleteConversation = async (conversation) => {
           // 如果删除的是当前对话，跳转到首页
           if (currentConversationId.value === conversation.ID) {
             router.push('/')
-            chatStore.setCurrentConversation(null)
+            chatStore.setCurrentConversation(null, false)
           }
         } else {
           message.error(result.message || '删除失败')
@@ -636,7 +588,7 @@ const handleResize = () => {
     if (!isMobile.value) {
       sidebarCollapsed.value = false
     } else {
-      sidebarCollapsed.value = true
+      sidebarCollapsed.value = true // 移动端默认折叠
     }
   }
   
@@ -656,82 +608,82 @@ const handleWelcomeSendMessage = async (content) => {
   if (!content) return
 
   try {
-    // 创建新对话
+    // 1. 用户在欢迎页面输入消息
+    // 2. 用户点击发送按钮
+    
+    // 3. 前端访问newconversation路由，创建新对话，返回值得到新对话id
+    isGenerating.value = true
+    
     const createResult = await chatStore.createConversation()
+    
     if (createResult.success) {
       const newConversationId = createResult.data?.conversationID
+      
       if (newConversationId) {
-        // 立即更新路由到新对话（不等待对话创建完成）
-        router.push(`/c/${newConversationId}`)
+        // 4. welcome-state删除，并跳转到具体对话界面
+        // 跳转时添加skipCheck参数，避免组件挂载后自动检查未完成对话
+        router.push(`/c/${newConversationId}?skipCheck=true`)
         
-        // 立即生成消息ID
-        const messageUserID = generateSnowflakeId()
-        const messageAssistantID = generateSnowflakeId()
+        // 使用 nextTick 确保路由跳转完成后再添加消息
+        await nextTick()
         
-        // 立即添加用户消息到本地状态（不等待对话创建完成）
+        // 设置当前对话，但不检查未完成对话以避免冲突，也不获取消息因为是新对话
+        chatStore.setCurrentConversation({
+          ID: newConversationId,
+          Title: null
+        }, false) // false表示不检查未完成对话
+        
+        // 等待状态更新完成
+        await nextTick()
+        
+        // 获取当前选中的模型信息
+        const currentModel = chatStore.models.find(m => m.id === chatStore.selectedModel)
+        const modelName = currentModel ? currentModel.name : '未知模型'
+        const modelAvatar = modelName.charAt(0).toUpperCase()
+        
+        // 添加用户消息到本地状态
         const userMessage = {
-          id: messageUserID.toString(),
+          id: generateSnowflakeId().toString(),
           content: content,
           role: 'user',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          name: userInfo.value?.username || '用户',
+          avatar: userInfo.value?.avatar || null
         }
         chatStore.messages.push(userMessage)
         
         // 添加AI消息占位符
         const aiMessage = {
-          id: messageAssistantID.toString(),
-          content: `<model=${chatStore.selectedModel}>`,
+          id: generateSnowflakeId().toString(),
+          content: '',
           role: 'assistant',
           createdAt: new Date().toISOString(),
-          isStreaming: true
+          isStreaming: true,
+          name: modelName,
+          avatar: modelAvatar
         }
         chatStore.messages.push(aiMessage)
         
-        // 异步等待对话设置完成后再发送消息
-        const waitForConversation = () => {
-          return new Promise((resolve, reject) => {
-            let attempts = 0
-            const maxAttempts = 100 // 最多等待5秒 (100 * 50ms)
-            
-            const checkConversation = setInterval(() => {
-              attempts++
-              if (chatStore.currentConversation?.ID === newConversationId) {
-                clearInterval(checkConversation)
-                resolve()
-              } else if (attempts >= maxAttempts) {
-                clearInterval(checkConversation)
-                reject(new Error('等待对话设置超时'))
-              }
-            }, 50)
-          })
-        }
+        // 强制更新以确保消息显示
+        await nextTick()
         
-        try {
-          // 等待对话设置完成
-          await waitForConversation()
-        } catch (timeoutError) {
-          console.warn('等待对话设置超时，使用备用方案:', timeoutError)
-        }
-        
-        // 确保我们有正确的对话ID
-        const finalConversationId = chatStore.currentConversation?.ID || newConversationId
-        
-        // 确保所有ID都是整数类型
+        // 5. 流式请求传输
         const messageData = {
           prompt: content,
-          conversationID: parseInt(finalConversationId, 10),
+          conversationID: parseInt(newConversationId, 10),
           model: chatStore.selectedModel,
-          messageUserID: parseInt(messageUserID.toString(), 10),
-          messageAssistantID: parseInt(messageAssistantID.toString(), 10),
-          reasoning: isReasoning.value || (currentModel.value && currentModel.value.reasoning === currentModel.value.id)
+          messageUserID: parseInt(userMessage.id, 10),
+          messageAssistantID: parseInt(aiMessage.id, 10),
+          reasoning: isReasoning.value || (currentModel && currentModel.reasoning === currentModel.id)
         }
         
         try {
           // 设置生成状态
           chatStore.isGenerating = true
+
+          let accumulatedContent = ''
           
           // 使用流式发送
-          let accumulatedContent = `<model=${chatStore.selectedModel}>`
           await chatApi.sendMessage(
             messageData,
             (content) => {
@@ -746,7 +698,7 @@ const handleWelcomeSendMessage = async (content) => {
             (error) => {
               message.error('消息发送失败')
               console.error('消息发送失败:', error)
-              chatStore.isGenerating = false
+              isGenerating.value = false
             },
             async () => {
               // 完成回调
@@ -754,65 +706,30 @@ const handleWelcomeSendMessage = async (content) => {
               if (lastMessage && lastMessage.role === 'assistant') {
                 lastMessage.isStreaming = false
               }
-              chatStore.isGenerating = false
+              isGenerating.value = false
               
-              // 如果对话标题是"新对话"，则在1分钟内检查6次标题更新
-              if (chatStore.currentConversation?.Title === '新对话') {
-                let checkCount = 0
-                const maxChecks = 6
-                const checkInterval = 10000 // 10秒
-                
-                const checkTitleUpdate = async () => {
-                  if (checkCount >= maxChecks) return
-                  
-                  checkCount++
-                  try {
-                    // 获取最新的对话列表
-                    const response = await chatApi.getConversations()
-                    if (response.success) {
-                      const updatedConversations = response.data?.conversations || []
-                      chatStore.conversations = updatedConversations
-                      
-                      // 查找当前对话是否已有新标题
-                      const updatedConversation = updatedConversations.find(
-                        conv => conv.ID === newConversationId
-                      )
-                      
-                      // 如果标题已更新且不是"新对话"，则停止检查
-                      if (updatedConversation && updatedConversation.Title !== '新对话') {
-                        // 更新当前对话的标题
-                        if (chatStore.currentConversation) {
-                          chatStore.currentConversation.Title = updatedConversation.Title
-                        }
-                        return
-                      }
-                    }
-                  } catch (error) {
-                    console.error('检查对话标题失败:', error)
-                  }
-                  
-                  // 如果还没达到最大检查次数，继续下一次检查
-                  if (checkCount < maxChecks) {
-                    setTimeout(checkTitleUpdate, checkInterval)
-                  }
-                }
-                
-                // 开始第一次检查
-                setTimeout(checkTitleUpdate, checkInterval)
+              // 移除URL中的skipCheck参数，但不刷新页面
+              if (route.query.skipCheck) {
+                router.replace({ 
+                  path: `/c/${newConversationId}`,
+                  query: {} 
+                })
               }
             }
           )
         } catch (error) {
           message.error(error.message || '发送失败')
-          chatStore.isGenerating = false
+          isGenerating.value = false
         }
       }
     } else {
       message.error(createResult.message || '创建对话失败')
+      isGenerating.value = false
     }
   } catch (error) {
     console.error('创建对话失败:', error)
     message.error('创建对话失败')
+    isGenerating.value = false
   }
 }
 
@@ -907,7 +824,9 @@ const selectWelcomeModel = (modelId) => {
           let conversation = chatStore.conversations.find(conv => conv.ID === parseInt(conversationId))
           
           if (conversation) {
-            chatStore.setCurrentConversation(conversation)
+            // 检查是否有skipCheck参数，如果有则不检查未完成对话
+            const checkUnfinished = !route.query.skipCheck
+            chatStore.setCurrentConversation(conversation, checkUnfinished)
           } else {
             // 如果对话不存在，先尝试刷新对话列表
             console.log('对话不存在，尝试刷新对话列表')
@@ -918,7 +837,9 @@ const selectWelcomeModel = (modelId) => {
               let refreshedConversation = chatStore.conversations.find(conv => conv.ID === parseInt(conversationId))
               
               if (refreshedConversation) {
-                chatStore.setCurrentConversation(refreshedConversation)
+                // 检查是否有skipCheck参数，如果有则不检查未完成对话
+                const checkUnfinished = !route.query.skipCheck
+                chatStore.setCurrentConversation(refreshedConversation, checkUnfinished)
               } else {
                 // 如果还是不存在，跳转到首页
                 console.log('对话仍然不存在，跳转到首页')
@@ -932,7 +853,7 @@ const selectWelcomeModel = (modelId) => {
           }
         } else {
           console.log('无对话ID，清空当前对话')
-          chatStore.setCurrentConversation(null)
+          chatStore.setCurrentConversation(null, false)
         }
       },
       { immediate: true }
@@ -1188,16 +1109,19 @@ const selectWelcomeModel = (modelId) => {
 
 @media (max-width: 768px) {
   .sidebar {
-    width: 280px;
+    width: 70%;
+    transition: transform 0.3s ease;
   }
   
   .sidebar:not(.collapsed) {
-    width: 280px;
+    width: 70%;
+    transition: transform 0.3s ease;
   }
   
   .sidebar.collapsed {
-    width: 0;
+    width: 70%;
     overflow: hidden;
+    transition: transform 0.3s ease;
   }
 }
 
@@ -1233,7 +1157,7 @@ const selectWelcomeModel = (modelId) => {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 100;
+  z-index: 80; /* 确保遮罩层在按钮下方但在主内容上方 */
 }
 
 /* 移动端展开的侧边栏 */
@@ -1243,7 +1167,7 @@ const selectWelcomeModel = (modelId) => {
   left: 0;
   height: 100%;
   width: 70%;
-  z-index: 101;
+  z-index: 85; /* 确保侧边栏在遮罩层上方但在按钮下方 */
   border-radius: 0;
   transform: translateX(0);
   transition: transform 0.3s ease;
@@ -1255,29 +1179,13 @@ const selectWelcomeModel = (modelId) => {
   left: 0;
   height: 100%;
   width: 70%;
-  z-index: 101;
+  z-index: 85; /* 确保侧边栏在遮罩层上方但在按钮下方 */
   border-radius: 0;
   transform: translateX(-100%);
   transition: transform 0.3s ease;
 }
 
 @media (max-width: 768px) {
-  .sidebar {
-    width: 70%;
-    transition: none;
-  }
-  
-  .sidebar:not(.collapsed) {
-    width: 70%;
-    transition: none;
-  }
-  
-  .sidebar.collapsed:not(.mobile-collapsed) {
-    width: 0;
-    overflow: hidden;
-    transition: none;
-  }
-  
   .mobile-top-buttons {
     display: flex;
   }

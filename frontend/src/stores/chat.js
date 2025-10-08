@@ -47,17 +47,7 @@ export const useChatStore = defineStore('chat', () => {
       const response = await chatApi.createConversation()
       console.log('创建对话响应:', response)
       if (response.success) {
-        // 获取新创建的对话信息
-        const newConversation = {
-          id: response.data.conversationID,
-          title: '新对话',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-        
-        conversations.value.unshift(newConversation)
-        currentConversation.value = newConversation
-        messages.value = []
+        // 注意：这里不再直接更新状态，只返回结果
         return { success: true, data: response.data }
       }
       return { success: false, message: response.message }
@@ -94,18 +84,145 @@ export const useChatStore = defineStore('chat', () => {
   /**
    * 获取对话消息
    * @param {string} conversationId - 对话ID
+   * @param {boolean} checkUnfinished - 是否检查未完成的对话，默认为 true
    * @returns {Promise<Object>} 获取结果
    */
-  const fetchMessages = async (conversationId) => {
-    console.log('获取对话消息:', conversationId)
+  const fetchMessages = async (conversationId, checkUnfinished = true) => {
+    console.log('获取对话消息:', conversationId, '检查未完成:', checkUnfinished)
     // 检查conversationId是否存在
     if (!conversationId) {
       messages.value = [];
       return { success: true, data: [] };
     }
     
+    // 如果不检查未完成对话，则直接获取消息
+    if (!checkUnfinished) {
+      try {
+        const response = await chatApi.getMessages(parseInt(conversationId, 10));
+        console.log('获取对话消息响应:', response);
+        if (response.success) {
+          // 解析消息数据
+          let parsedMessages = [];
+          if (response.data && response.data.messages) {
+            try {
+              const messagesStr = response.data.messages;
+              // 检查是否为'null'字符串
+              if (messagesStr && messagesStr !== 'null') {
+                parsedMessages = JSON.parse(messagesStr);
+              }
+            } catch (e) {
+              console.error('解析消息数据失败:', e);
+              parsedMessages = [];
+            }
+          }
+          // 只有在有新消息时才替换现有消息
+          if (parsedMessages.length > 0) {
+            messages.value = parsedMessages;
+          }
+          return { success: true, data: messages.value };
+        } else {
+          // 即使获取失败也不清空现有消息
+          return { success: false, message: response.message || '获取消息失败' };
+        }
+      } catch (error) {
+        console.error('获取对话消息失败:', error);
+        // 即使获取失败也不清空现有消息
+        return { success: false, message: error.message || '获取消息失败' };
+      }
+    }
+    
     try {
-      const response = await chatApi.getMessages(conversationId);
+      // 首先检查是否有未完成的对话
+      // 但仅当当前没有在生成消息且需要检查未完成对话时才检查（避免与正在进行的流式传输冲突）
+      if (checkUnfinished && !isGenerating.value) {
+        const threadListResponse = await chatApi.getThreadList();
+        console.log('线程列表响应:', threadListResponse);
+        
+        // 检查当前对话是否在未完成的对话列表中
+        if (threadListResponse.success && threadListResponse.data && threadListResponse.data.thread_list) {
+          const threadList = threadListResponse.data.thread_list;
+          // 明确将conversationId转换为字符串类型进行匹配
+          const currentThread = threadList[conversationId];
+        
+          // 如果当前对话有未完成的消息，则继续生成
+          if (currentThread) {
+            console.log('发现未完成的对话，继续生成:', currentThread);
+            // 获取当前对话的消息
+            const response = await chatApi.getMessages(parseInt(conversationId, 10));
+            if (response.success) {
+              let parsedMessages = [];
+              if (response.data && response.data.messages) {
+                try {
+                  const messagesStr = response.data.messages;
+                  if (messagesStr && messagesStr !== 'null') {
+                    parsedMessages = JSON.parse(messagesStr);
+                  }
+                } catch (e) {
+                  console.error('解析消息数据失败:', e);
+                  parsedMessages = [];
+                }
+              }
+            
+              // 只有在有新消息时才替换现有消息
+              if (parsedMessages.length > 0) {
+                messages.value = parsedMessages;
+              }
+            
+              // 添加AI消息占位符（包含模型信息）
+              const aiMessage = {
+                id: currentThread.messageAssistantID.toString(),
+                content: '', // 先设置为空，等待流式数据
+                role: 'assistant',
+                createdAt: new Date().toISOString(),
+                isStreaming: true
+              }
+              messages.value.push(aiMessage);
+            
+              // 设置生成状态
+              isGenerating.value = true;
+            
+              // 继续生成消息
+              let accumulatedContent = '';
+              await chatApi.sendMessage(
+                {
+                  conversationID: parseInt(conversationId, 10),
+                  messageUserID: currentThread.messageUserID,
+                  messageAssistantID: currentThread.messageAssistantID,
+                  prompt: '', // 空的prompt，因为我们只是继续生成
+                  model: '', // 空的model，后端应该能处理
+                  base64: '',
+                  reasoning: false
+                },
+                (content) => {
+                  // 流式接收内容
+                  accumulatedContent += content;
+                  // 更新最后一条消息的内容
+                  const lastMessage = messages.value[messages.value.length - 1];
+                  if (lastMessage && lastMessage.role === 'assistant') {
+                    lastMessage.content = accumulatedContent;
+                  }
+                },
+                (error) => {
+                  console.error('继续生成消息失败:', error);
+                  isGenerating.value = false;
+                },
+                () => {
+                  // 完成回调
+                  const lastMessage = messages.value[messages.value.length - 1];
+                  if (lastMessage && lastMessage.role === 'assistant') {
+                    lastMessage.isStreaming = false;
+                  }
+                  isGenerating.value = false;
+                }
+              );
+            
+              return { success: true, data: messages.value };
+            }
+          }
+        }
+      }
+    
+      const response = await chatApi.getMessages(parseInt(conversationId, 10));
       console.log('获取对话消息响应:', response);
       if (response.success) {
         // 解析消息数据
@@ -122,15 +239,18 @@ export const useChatStore = defineStore('chat', () => {
             parsedMessages = [];
           }
         }
-        messages.value = parsedMessages;
-        return { success: true, data: parsedMessages };
+        // 只有在有新消息时才替换现有消息
+        if (parsedMessages.length > 0) {
+          messages.value = parsedMessages;
+        }
+        return { success: true, data: messages.value };
       } else {
-        messages.value = [];
+        // 即使获取失败也不清空现有消息
         return { success: false, message: response.message || '获取消息失败' };
       }
     } catch (error) {
       console.error('获取对话消息失败:', error);
-      messages.value = [];
+      // 即使获取失败也不清空现有消息
       return { success: false, message: error.message || '获取消息失败' };
     }
   }
@@ -262,14 +382,16 @@ export const useChatStore = defineStore('chat', () => {
   /**
    * 设置当前对话
    * @param {Object} conversation - 对话对象
+   * @param {boolean} checkUnfinished - 是否检查未完成的对话，默认为 true
    */
-  const setCurrentConversation = (conversation) => {
-    console.log('设置当前对话:', conversation)
+  const setCurrentConversation = (conversation, checkUnfinished = true) => {
+    console.log('设置当前对话:', conversation, '是否检查未完成:', checkUnfinished)
     currentConversation.value = conversation
     if (conversation && conversation.ID) {
       const conversationId = conversation.ID;
-      fetchMessages(conversationId)
-    } else {
+      fetchMessages(conversationId, checkUnfinished)
+    } else if (!conversation) {
+      // 只有在明确设置为null时才清空消息，skipCheck场景下不触发清空
       messages.value = []
     }
   }

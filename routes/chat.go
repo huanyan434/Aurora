@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"time"
 	"utils"
 
 	"github.com/gin-gonic/gin"
@@ -52,6 +53,18 @@ func ChatInit(r *gin.Engine) {
 	}
 }
 
+type MSG struct {
+	Success          bool   `json:"success" default:"false"`
+	Error            string `json:"error" default:""`
+	ReasoningContent string `json:"reasoningContent" default:""`
+	ReasoningTime    int    `json:"reasoningTime" default:""`
+	Content          string `json:"content" default:""`
+}
+
+var (
+	resps = make(map[int64][]MSG)
+)
+
 // @Summary 生成AI回复
 // @Description 根据用户输入生成AI回复，使用SSE流式传输
 // @Tags Chat
@@ -75,6 +88,7 @@ func generateHandler(c *gin.Context) {
 		})
 		return
 	}
+
 	User, err := getCurrentUser(c)
 	if err != nil {
 		c.JSON(400, gin.H{
@@ -83,6 +97,7 @@ func generateHandler(c *gin.Context) {
 		})
 		return
 	}
+
 	config := utils.GetConfig()
 	for _, m := range config.Models {
 		if m.Name == req.Model {
@@ -133,15 +148,31 @@ func generateHandler(c *gin.Context) {
 			}
 		}
 	}
+
+	// 检查是否有之前缓存的响应数据，如果有则先发送
+	if cachedResponses, exists := resps[req.ConversationID]; exists && len(cachedResponses) > 0 {
+		fmt.Println("convID:", req.ConversationID, " len(cachedResponses):", len(cachedResponses))
+		for n := 0; ; n++ {
+			if n >= len(cachedResponses) {
+				for n := 0; n < 10; n++ {
+					time.Sleep(100 * time.Millisecond)
+					if n < len(cachedResponses) {
+						break
+					}
+				}
+				if n < len(cachedResponses) {
+					continue
+				}
+				return
+			}
+			jsonData, _ := json.Marshal(cachedResponses[n])
+			_, _ = fmt.Fprintf(c.Writer, "data:%s\n\n", jsonData)
+			flusher.Flush()
+		}
+	}
+
 	resp := utils.ThreadOpenai(req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.Prompt, req.Base64, req.Reasoning)
 	for response := range resp {
-		type MSG struct {
-			Success          bool   `json:"success" default:"false"`
-			Error            string `json:"error" default:""`
-			ReasoningContent string `json:"reasoningContent" default:""`
-			ReasoningTime    int    `json:"reasoningTime" default:""`
-			Content          string `json:"content" default:""`
-		}
 		var msg MSG
 		var parsedResponse utils.Response
 		err := json.Unmarshal([]byte(response), &parsedResponse)
@@ -153,8 +184,9 @@ func generateHandler(c *gin.Context) {
 			jsonData, _ := json.Marshal(msg)
 			_, _ = fmt.Fprintf(c.Writer, "data:%s\n\n", jsonData)
 			flusher.Flush()
-			return
+			continue
 		}
+
 		if parsedResponse.Error != "" {
 			msg = MSG{
 				Success: false,
@@ -163,8 +195,9 @@ func generateHandler(c *gin.Context) {
 			jsonData, _ := json.Marshal(msg)
 			_, _ = fmt.Fprintf(c.Writer, "data:%s\n\n", jsonData)
 			flusher.Flush()
-			return
+			continue
 		}
+
 		reasoningTime, reasoningContent, _ := utils.ParseThinkBlock(parsedResponse.ReasoningContent)
 		msg = MSG{
 			Success:          true,
@@ -172,10 +205,13 @@ func generateHandler(c *gin.Context) {
 			ReasoningTime:    reasoningTime,
 			Content:          parsedResponse.Content,
 		}
+
+		resps[req.ConversationID] = append(resps[req.ConversationID], msg)
 		jsonData, _ := json.Marshal(msg)
 		_, _ = fmt.Fprintf(c.Writer, "data:%s\n\n", jsonData)
 		flusher.Flush()
 	}
+	delete(resps, req.ConversationID)
 }
 
 // @Summary 获取线程列表

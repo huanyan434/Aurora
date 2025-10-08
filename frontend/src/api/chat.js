@@ -31,7 +31,7 @@ export const chatApi = {
 
   /**
    * 获取对话消息
-   * @param {string} conversationId - 对话ID
+   * @param {number} conversationId - 对话ID
    * @returns {Promise} 消息列表
    */
   getMessages(conversationId) {
@@ -167,5 +167,14 @@ export const chatApi = {
    */
   getSharedContent(shareId) {
     return request.get(`/chat/${shareId}`)
+  },
+  
+  /**
+   * 获取线程列表（未完成的对话）
+   * @returns {Promise} 线程列表
+   */
+  getThreadList() {
+    return request.post('/chat/thread_list');
   }
+
 }

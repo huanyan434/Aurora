@@ -460,7 +460,7 @@ func GetThreadList(userID int64) (map[int64]ConversationIDMessageID, error) {
 		return nil, result.Error
 	}
 
-	var MessageIDs map[int64]ConversationIDMessageID
+	MessageIDs := map[int64]ConversationIDMessageID{}
 	threadMutex.RLock()
 	for _, conv := range conversations {
 		conversationIDMessageID, exists := conversationIDMessageIDs[conv.ID]

@@ -18,13 +18,6 @@
           @delete="handleDeleteMessage"
           @share="handleShareMessage"
         />
-        
-        <!-- 加载指示器 -->
-        <div v-if="isGenerating && !hasStreamingMessage" class="loading-message">
-          <div class="loading-content">
-            <n-spin size="small" />
-          </div>
-        </div>
       </div>
     </div>
 
@@ -204,9 +197,11 @@ export default {
     
     // 监听对话变化
     watch(() => props.conversation, (newConversation) => {
-      if (newConversation) {
-        // 清空消息
-        chatStore.clearMessages()
+      // 只有当对话发生变化且不是初始化时才清空消息
+      // 通过检查是否存在特定属性来判断是否需要清空消息
+      if (newConversation && newConversation.ID) {
+        // 我们不在这里清空消息，因为消息会在其他地方加载
+        // chatStore.clearMessages() 的调用被移除了
       }
     }, { immediate: true })
 
@@ -292,8 +287,7 @@ export default {
         const userMessage = {
           id: messageUserID.toString(), // 使用生成的雪花ID
           content: content,
-          role: 'user',
-          createdAt: new Date().toISOString()
+          role: 'user'
         }
         chatStore.messages.push(userMessage)
 
@@ -302,7 +296,6 @@ export default {
           id: messageAssistantID.toString(), // 使用生成的雪花ID
           content: `<model=${selectedModel.value}>`, // 添加模型标签
           role: 'assistant',
-          createdAt: new Date().toISOString(),
           isStreaming: true
         }
         chatStore.messages.push(aiMessage)
@@ -478,7 +471,6 @@ export default {
               id: messageAssistantID.toString(),
               content: `<model=${selectedModel.value}>`, // 添加模型标签
               role: 'assistant',
-              createdAt: new Date().toISOString(),
               isStreaming: true
             }
             chatStore.messages.push(aiMessage)
@@ -678,6 +670,7 @@ export default {
 
 .messages-list {
   max-width: 800px;
+  width: calc(100dvw - 40px);
   margin: 0 auto;
   padding: 20px 0;
   background-color: #f8f9fa;
@@ -695,20 +688,6 @@ export default {
   font-size: 16px;
   color: #666;
   line-height: 1.6;
-}
-
-.loading-message {
-  display: flex;
-  align-items: center;
-  padding: 16px 0;
-}
-
-.loading-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #666;
-  font-size: 14px;
 }
 
 /* 滚动到底部按钮 */
@@ -748,6 +727,8 @@ export default {
   
   .messages-list {
     padding: 16px 0;
+    width: calc(100dvw - 32px);
+    max-width: calc(100dvw - 32px);
   }
 
   .scroll-to-bottom-button {
