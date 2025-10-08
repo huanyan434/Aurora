@@ -25,14 +25,10 @@ import (
 // @host localhost:5000
 // @BasePath /
 func main() {
-	// 数据库
-	db := utils.GetDB()
-	utils.InitDB(db)
-
 	r := gin.Default()
 
 	// 添加日志记录中间件
-	r.Use(loggingMiddleware(db))
+	r.Use(loggingMiddleware(utils.GetDB()))
 
 	store := cookie.NewStore([]byte("snaosnca"))
 	r.Use(sessions.Sessions("SESSIONID", store))

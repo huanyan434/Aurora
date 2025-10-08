@@ -14,6 +14,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var DB *gorm.DB
+
 // User 结构
 type User struct {
 	ID           int64     `gorm:"column:id;type:bigint;primaryKey"`
@@ -221,37 +223,50 @@ func RegisterUser(username, email, password string) (User, error) {
 	return user, nil
 }
 
-var DB *gorm.DB
-
 func GetDB() *gorm.DB {
-	// 连接数据库
-	var err error
-
-	// 获取配置
-	config := GetConfig()
-
-	// 使用配置中的数据库连接信息
-	DB, err = gorm.Open(mysql.Open(config.GetDSN()), &gorm.Config{})
-	if err != nil {
-		fmt.Println("连接数据库失败：", err)
-		return nil
+	if DB == nil {
+		// 如果连接未初始化，尝试初始化
+		InitDB()
 	}
 	return DB
 }
 
 // InitDB 初始化数据库
-func InitDB(DB *gorm.DB) *gorm.DB {
+func InitDB() {
+	// 连接数据库
+	// 获取配置
+	config := GetConfig()
+
+	var err error
+	// 使用配置中的数据库连接信息
+	DB, err = gorm.Open(mysql.Open(config.GetDSN()), &gorm.Config{})
+	if err != nil {
+		fmt.Println("连接数据库失败：", err)
+		return
+	}
 	// 自动迁移表结构
 	// 如果表不存在则创建，如果存在但结构不匹配则修改表结构
-	err := DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{})
+	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{})
 	if err != nil {
 		fmt.Println("自动迁移表结构失败：", err)
-		return nil
+		return
 	}
 
 	fmt.Println("数据库表结构初始化完成")
 
-	return DB
+	// 配置连接池
+	sqlDB, err := DB.DB()
+	if err != nil {
+		fmt.Println("获取底层数据库连接失败：%v", err)
+		return
+	}
+
+	// 设置连接池参数
+	sqlDB.SetMaxIdleConns(10)           // 最大空闲连接数
+	sqlDB.SetMaxOpenConns(100)          // 最大打开连接数
+	sqlDB.SetConnMaxLifetime(time.Hour) // 连接的最大生存期
+
+	return
 }
 
 // HashPassword 使用MD5哈希密码
