@@ -140,7 +140,7 @@ models:
     {
       name: "claude-opus-4",
       id: "claude-opus-4-20250514",
-      points: 70,
+      points: 50,
       reasoning: "claude-sonnet-4-20250514-thinking",
       tool: 1,
       image: 1,
@@ -148,7 +148,7 @@ models:
     {
       name: "claude-opus-4.1",
       id: "claude-opus-4-1-20250805",
-      points: 100,
+      points: 70,
       reasoning: "claude-opus-4-20250514-thinking",
       tool: 1,
       image: 1,

@@ -29,6 +29,11 @@ type ThreadInfo struct {
 	Resp   chan string
 }
 
+type ConversationIDMessageID struct {
+	MessageUserID      int64 `json:"messageUserID"`
+	MessageAssistantID int64 `json:"messageAssistantID"`
+}
+
 // 全局线程ID列表和相关管理结构
 var (
 	// 使用一个map来存储所有线程信息，保证数据一致性
@@ -37,6 +42,9 @@ var (
 
 	// 使用队列处理并发请求
 	taskQueue *queue.Queue
+
+	// 记录请求中的conversationID对应messageUserID和messageAssistantID
+	conversationIDMessageIDs = map[int64]ConversationIDMessageID{}
 )
 
 // 初始化队列
@@ -74,6 +82,10 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 		Resp:   resp,
 	}
 	threadMutex.Unlock()
+	conversationIDMessageIDs[conversationID] = ConversationIDMessageID{
+		MessageUserID:      messageUserID,
+		MessageAssistantID: messageAssistantID,
+	}
 
 	// 4. 提交任务到队列中执行
 	// 使用 QueueTask 方法来安排任务
@@ -271,6 +283,9 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		if err := SaveConversationHistoryFormat2(conversationID, messages); err != nil {
 			fmt.Printf("ERROR:%v\n", err)
 		}
+
+		delete(conversationIDMessageIDs, conversationID)
+
 		var conversation Conversation
 		GetDB().Table("conversations").Where("id = ?", conversationID).First(&conversation)
 		// 如果对话标题为"新对话"
@@ -389,7 +404,7 @@ func ParseThinkBlock(c string) (int, string, string) {
 	if c == "" {
 		return 0, "", ""
 	}
-	re := regexp.MustCompile(`<think time=(\d+)>(.*?)</think>`)
+	re := regexp.MustCompile(`<think time=(\d+)>([\s\S]*?)</think>`)
 	matches := re.FindStringSubmatch(c)
 	if len(matches) < 3 {
 		return 0, "", c
@@ -438,24 +453,27 @@ func ParseBase64Block(c string) (string, string) {
 }
 
 // GetThreadList 获取用户正在进行中的对话线程ID列表
-func GetThreadList(userID int64) ([]string, error) {
+func GetThreadList(userID int64) (map[int64]ConversationIDMessageID, error) {
 	var conversations []Conversation
 	result := GetDB().Where("user_id = ?", userID).Find(&conversations)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
-	var conversationIDs []string
+	var MessageIDs map[int64]ConversationIDMessageID
 	threadMutex.RLock()
 	for _, conv := range conversations {
-		convID := strconv.FormatInt(conv.ID, 10)
-		if _, exists := threadRegistry[convID]; exists {
-			conversationIDs = append(conversationIDs, convID)
+		conversationIDMessageID, exists := conversationIDMessageIDs[conv.ID]
+		if exists {
+			convID := strconv.FormatInt(conv.ID, 10)
+			if _, exists := threadRegistry[convID]; exists {
+				MessageIDs[conv.ID] = conversationIDMessageID
+			}
 		}
 	}
 	threadMutex.RUnlock()
 
-	return conversationIDs, nil
+	return MessageIDs, nil
 }
 
 func TTS(prompt string) []byte {

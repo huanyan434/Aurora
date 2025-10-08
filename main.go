@@ -44,6 +44,7 @@ func main() {
 	// Swagger路由
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	//gin.SetMode(gin.ReleaseMode)
 	r.Run(":5000")
 }
 

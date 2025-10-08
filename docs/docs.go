@@ -1368,8 +1368,10 @@ const docTemplate = `{
                     "example": true
                 },
                 "thread_list": {
-                    "type": "array",
-                    "items": {}
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/utils.ConversationIDMessageID"
+                    }
                 }
             }
         },
@@ -1491,6 +1493,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "userID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "utils.ConversationIDMessageID": {
+            "type": "object",
+            "properties": {
+                "messageAssistantID": {
+                    "type": "integer"
+                },
+                "messageUserID": {
                     "type": "integer"
                 }
             }

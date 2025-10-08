@@ -224,6 +224,7 @@ func stopHandler(c *gin.Context) {
 			"success": false,
 			"error":   err,
 		})
+		return
 	}
 
 	if utils.KillThread(strconv.FormatInt(req.ConversationID, 10)) != true {
@@ -596,8 +597,8 @@ type generateResponseFailed struct {
 }
 
 type threadListResponseSuccess struct {
-	Success    bool          `json:"success" example:"true"`
-	ThreadList []interface{} `json:"thread_list"`
+	Success    bool                                    `json:"success" example:"true"`
+	ThreadList map[int64]utils.ConversationIDMessageID `json:"thread_list"`
 }
 
 type threadListResponseFailed struct {

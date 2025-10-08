@@ -422,8 +422,9 @@ definitions:
         example: true
         type: boolean
       thread_list:
-        items: {}
-        type: array
+        additionalProperties:
+          $ref: '#/definitions/utils.ConversationIDMessageID'
+        type: object
     type: object
   routes.ttsRequest:
     properties:
@@ -505,6 +506,13 @@ definitions:
       updatedAt:
         type: string
       userID:
+        type: integer
+    type: object
+  utils.ConversationIDMessageID:
+    properties:
+      messageAssistantID:
+        type: integer
+      messageUserID:
         type: integer
     type: object
   utils.Message:
