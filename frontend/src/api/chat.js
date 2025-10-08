@@ -47,19 +47,34 @@ export const chatApi = {
    */
   async sendMessage(data, onMessage, onError, onComplete) {
     try {
+      // 处理BigInt序列化问题
+      const requestData = {
+        prompt: data.prompt,
+        conversationID: data.conversationID,
+        model: data.model,
+        messageUserID: data.messageUserID,
+        messageAssistantID: data.messageAssistantID,
+        reasoning: data.reasoning
+      };
+      
+      // 将BigInt转换为字符串
+      if (typeof requestData.messageUserID === 'bigint') {
+        requestData.messageUserID = requestData.messageUserID.toString();
+      }
+      if (typeof requestData.messageAssistantID === 'bigint') {
+        requestData.messageAssistantID = requestData.messageAssistantID.toString();
+      }
+      if (typeof requestData.conversationID === 'bigint') {
+        requestData.conversationID = requestData.conversationID.toString();
+      }
+      
       // 使用fetch实现SSE流式传输，因为EventSource不支持POST
       const response = await fetch('/chat/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt: data.prompt,
-          conversationID: data.conversationID,
-          model: data.model,
-          messageUserID: data.messageUserID,
-          messageAssistantID: data.messageAssistantID
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (!response.ok) {
@@ -91,8 +106,17 @@ export const chatApi = {
               
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.content && onMessage) {
-                  onMessage(parsed.content);
+                // 处理推理内容和实际内容
+                let messageContent = '';
+                if (parsed.reasoningContent) {
+                  // 使用后端提供的推理时间和内容
+                  messageContent = `<think time="${parsed.reasoningTime}">${parsed.reasoningContent}</think>`;
+                } else if (parsed.content) {
+                  messageContent = parsed.content;
+                }
+                
+                if (messageContent && onMessage) {
+                  onMessage(messageContent);
                 }
               } catch (e) {
                 console.warn('解析SSE数据失败:', e);

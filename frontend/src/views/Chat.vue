@@ -694,7 +694,7 @@ const handleWelcomeSendMessage = async (content) => {
             
             // 添加用户消息到本地状态
             const userMessage = {
-              id: messageUserID,
+              id: messageUserID.toString(), // 转换为字符串
               content: content,
               role: 'user',
               createdAt: new Date().toISOString()
@@ -703,7 +703,7 @@ const handleWelcomeSendMessage = async (content) => {
             
             // 添加AI消息占位符（包含模型信息）
             const aiMessage = {
-              id: messageAssistantID,
+              id: messageAssistantID.toString(), // 转换为字符串
               content: `<model=${chatStore.selectedModel}>`, // 添加模型标签
               role: 'assistant',
               createdAt: new Date().toISOString(),
@@ -1089,7 +1089,16 @@ const selectWelcomeModel = (modelId) => {
   flex-direction: column;
   justify-content: center;
   padding: 20px;
-  gap: 20px;
+  top: -3rem;
+  position: relative;
+}
+
+.welcome-content h2 {
+  margin: 0 0 16px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  text-align: center; /* 添加这行使文字水平居中 */
 }
 
 /* 模型选择头部 */

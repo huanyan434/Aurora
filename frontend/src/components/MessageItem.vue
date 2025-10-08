@@ -17,6 +17,21 @@
       </div>
       
       <div class="message-body">
+        <!-- 推理内容 -->
+        <div 
+          v-if="reasoningContent"
+          class="message-reasoning"
+          :class="{ 'collapsed': isReasoningCollapsed }"
+        >
+          <div class="reasoning-header" @click="toggleReasoning">
+            <span class="reasoning-time">思考耗时: {{ reasoningTime }}秒</span>
+            <n-icon class="collapse-icon" :class="{ 'rotated': isReasoningCollapsed }">
+              <ChevronDown />
+            </n-icon>
+          </div>
+          <div v-if="!isReasoningCollapsed" class="reasoning-content" v-html="formattedReasoningContent"></div>
+        </div>
+        
         <div 
           class="message-text"
           :class="{ 'streaming': message.isStreaming, 'user-message-text': isUser }"
@@ -72,9 +87,9 @@
 </template>
 
 <script>
-import { computed, h } from 'vue'
+import { computed, h, ref } from 'vue'
 import { NAvatar, NButton, NIcon, NDropdown, useMessage } from 'naive-ui'
-import { Copy, Refresh, Trash, Share, DotsVertical } from '@vicons/tabler'
+import { Copy, Refresh, Trash, Share, DotsVertical, ChevronDown } from '@vicons/tabler'
 import { marked } from 'marked'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
@@ -90,7 +105,8 @@ export default {
     Refresh,
     Trash,
     Share,
-    DotsVertical
+    DotsVertical,
+    ChevronDown
   },
   props: {
     /**
@@ -106,6 +122,7 @@ export default {
     const message = useMessage()
     const userStore = useUserStore()
     const chatStore = useChatStore()
+    const isReasoningCollapsed = ref(false)
 
     // 是否为用户消息
     const isUser = computed(() => props.message.role === 'user')
@@ -158,7 +175,105 @@ export default {
       return modelName?.charAt(0).toUpperCase() || 'A'
     })
 
-    // 格式化消息内容
+    // 提取推理内容
+    const reasoningContent = computed(() => {
+      if (!props.message.content || isUser.value) return null
+      
+      // 首先检查是否有独立的reasoning_content字段（历史消息）
+      if (props.message.reasoning_content) {
+        console.log('处理历史消息的reasoning_content字段:', props.message.reasoning_content);
+        
+        // 先解码HTML实体
+        let decodedReasoningContent = props.message.reasoning_content
+          .replace(/\\u003c/g, '<')
+          .replace(/\\u003e/g, '>')
+        
+        console.log('解码后的reasoning_content:', decodedReasoningContent);
+        
+        // 匹配所有<think time=x>标签中的内容并连接起来
+        const thinkMatches = decodedReasoningContent.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g)
+        const contents = []
+        let matchCount = 0;
+        for (const match of thinkMatches) {
+          matchCount++;
+          console.log(`匹配到第${matchCount}个<think>标签:`, match);
+          contents.push(match[2])
+        }
+        
+        console.log('总共匹配到的<think>标签数量:', matchCount);
+        console.log('提取的推理内容数组:', contents);
+        
+        if (contents.length > 0) {
+          const result = contents.join('')
+          console.log('最终的推理内容:', result);
+          return result;
+        }
+      }
+      
+      // 匹配所有<think time=x>标签中的内容并连接起来（流式消息）
+      console.log('处理流式消息的content字段:', props.message.content);
+      const thinkMatches = props.message.content.matchAll(/<think time=(\d+)>(.*?)/gs)
+      const contents = []
+      let matchCount = 0;
+      for (const match of thinkMatches) {
+        matchCount++;
+        console.log(`匹配到第${matchCount}个<think>标签:`, match);
+        contents.push(match[2])
+      }
+      
+      console.log('流式消息总共匹配到的<think>标签数量:', matchCount);
+      console.log('提取的推理内容数组:', contents);
+      
+      const result = contents.length > 0 ? contents.join('') : null;
+      console.log('流式消息最终的推理内容:', result);
+      return result;
+    })
+
+    // 提取推理时间（使用最后一个推理时间）
+    const reasoningTime = computed(() => {
+      if (!props.message.content || isUser.value) return 0
+      
+      // 首先检查是否有独立的reasoning_content字段（历史消息）
+      if (props.message.reasoning_content) {
+        const thinkMatches = props.message.reasoning_content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g)
+        let lastTime = 0
+        for (const match of thinkMatches) {
+          lastTime = parseInt(match[1])
+        }
+        if (lastTime > 0) {
+          return lastTime
+        }
+      }
+      
+      // 查找content中的推理时间（流式消息）
+      const thinkMatches = props.message.content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g)
+      let lastTime = 0
+      for (const match of thinkMatches) {
+        lastTime = parseInt(match[1])
+      }
+      return lastTime
+    })
+
+    // 格式化推理内容
+    const formattedReasoningContent = computed(() => {
+      if (!reasoningContent.value) return ''
+      try {
+        return marked(reasoningContent.value, {
+          breaks: true,
+          gfm: true
+        })
+      } catch (error) {
+        console.error('推理内容Markdown渲染失败:', error)
+        return reasoningContent.value.replace(/\n/g, '<br>')
+      }
+    })
+
+    // 切换推理内容折叠状态
+    const toggleReasoning = () => {
+      isReasoningCollapsed.value = !isReasoningCollapsed.value
+    }
+
+    // 格式化消息内容（移除推理内容）
     const formattedContent = computed(() => {
       if (!props.message.content) return ''
       
@@ -167,8 +282,16 @@ export default {
         return props.message.content.replace(/\n/g, '<br>')
       }
       
-      // 移除模型标签
+      // 移除模型标签和推理内容
       let content = props.message.content.replace(/<model=[^>]+>/, '')
+      
+      // 如果有独立的reasoning_content字段，则直接使用content
+      if (props.message.reasoning_content) {
+        content = content
+      } else {
+        // 否则移除content中的推理内容
+        content = content.replace(/<think time="\d+">[\s\S]*?<\/think>/g, '')
+      }
       
       // AI消息使用Markdown渲染
       try {
@@ -289,6 +412,11 @@ export default {
       fallbackAvatar,
       avatarText,
       formattedContent,
+      reasoningContent,
+      reasoningTime,
+      formattedReasoningContent,
+      isReasoningCollapsed,
+      toggleReasoning,
       formatTime,
       actionOptions,
       handleActionSelect,
@@ -356,6 +484,47 @@ export default {
   line-height: 1.6;
   color: #2a2424;
   word-wrap: break-word;
+}
+
+/* 推理内容区域 */
+.message-reasoning {
+  background-color: #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border-left: 3px solid #94a3b8;
+}
+
+.reasoning-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.reasoning-time {
+  font-weight: 500;
+}
+
+.collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+.collapse-icon.rotated {
+  transform: rotate(180deg);
+}
+
+.reasoning-content {
+  padding: 0 12px 8px 12px;
+  font-size: 14px;
+  color: #475569;
+  border-top: 1px solid #e2e8f0;
+}
+
+.message-reasoning.collapsed .reasoning-content {
+  display: none;
 }
 
 .message-text.streaming {
