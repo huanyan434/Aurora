@@ -271,6 +271,7 @@ func stopHandler(c *gin.Context) {
 		return
 	}
 
+	delete(resps, req.ConversationID)
 	c.JSON(200, gin.H{
 		"success": true,
 	})

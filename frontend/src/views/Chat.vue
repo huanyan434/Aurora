@@ -707,6 +707,7 @@ const handleWelcomeSendMessage = async (content) => {
                 lastMessage.isStreaming = false
               }
               isGenerating.value = false
+              chatStore.isGenerating = false
               
               // 移除URL中的skipCheck参数，但不刷新页面
               if (route.query.skipCheck) {
@@ -776,6 +777,7 @@ const handleStopGeneration = async () => {
     await chatApi.stopGeneration({ conversationID: parseInt(conversationId, 10) });
     // 更新状态
     chatStore.isGenerating = false;
+    isGenerating.value = false;
     
     // 移除流式标记
     const lastMessage = chatStore.messages[chatStore.messages.length - 1];
