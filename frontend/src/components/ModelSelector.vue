@@ -122,7 +122,6 @@ defineExpose({
 }
 
 .model-selection-wrapper {
-  max-width: 800px;
   width: 100%;
   margin: 0 auto;
 }
@@ -145,7 +144,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  z-index: 1001; /* 确保在下拉列表之上 */
+  z-index: 100; /* 确保在下拉列表之上 */
 }
 
 .aurora-model-select:hover {
@@ -187,7 +186,7 @@ defineExpose({
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  z-index: 99;
   margin-top: 4px;
 }
 
@@ -250,7 +249,7 @@ defineExpose({
 
 @media (max-width: 768px) {
   .model-selection-header {
-    padding-left: 16px;
+    padding-left: 134px;
   }
 
   .model-dropdown {

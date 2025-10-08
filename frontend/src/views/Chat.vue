@@ -1,7 +1,14 @@
 <template>
   <div class="chat-container">
+    <!-- 遮罩层 -->
+    <div 
+      class="sidebar-overlay" 
+      v-if="isMobile && !sidebarCollapsed" 
+      @click="toggleSidebar"
+    ></div>
+    
     <!-- 左侧侧边栏 -->
-    <div class="sidebar" :class="{ 'collapsed': sidebarCollapsed }">
+    <div class="sidebar" :class="{ 'collapsed': sidebarCollapsed, 'mobile-expanded': isMobile && !sidebarCollapsed, 'mobile-collapsed': isMobile && sidebarCollapsed }">
       <div class="sidebar-header">
         <div class="sidebar-title-section">
           <h2 v-if="sidebarWidth >= 180" class="sidebar-title">Aurora AI</h2>
@@ -101,6 +108,37 @@
         </div>
       </div>
     </div>
+    
+    <!-- 移动端顶部按钮 -->
+    <div class="mobile-top-buttons" v-if="isMobile">
+      <div class="mobile-buttons-container">
+        <n-button
+          quaternary
+          circle
+          @click="toggleSidebar"
+          class="mobile-toggle-btn"
+        >
+          <template #icon>
+            <n-icon>
+              <Menu />
+            </n-icon>
+          </template>
+        </n-button>
+        
+        <n-button
+          type="primary"
+          circle
+          @click="createNewChat"
+          class="mobile-new-chat-btn"
+        >
+          <template #icon>
+            <n-icon>
+              <Plus />
+            </n-icon>
+          </template>
+        </n-button>
+      </div>
+    </div>
 
     <!-- 右侧主内容区域 -->
     <div class="main-content">
@@ -110,12 +148,12 @@
         v-model:show-model-dropdown="showWelcomeModelDropdown"
       />
       <ChatArea 
-        v-if="!showSharePanel && currentConversation" 
+        v-show="!showSharePanel && currentConversation" 
         :conversation="currentConversation"
         @share="handleShareMessage"
       />
       <!-- 空状态 - 新设计的欢迎界面 -->
-      <div v-else-if="!showSharePanel" class="welcome-state">
+      <div v-show="!showSharePanel && !currentConversation" class="welcome-state">
         <div class="welcome-content">
           <h2 class="welcome-text">{{ welcomeMessage }}</h2>
         </div>
@@ -135,8 +173,8 @@
       
       <!-- 分享面板 -->
       <SharePanel 
-        v-if="showSharePanel"
-        @close="showSharePanel = false"
+        v-show="showSharePanel"
+        @close="handleCloseSharePanel"
         @shared="handleShareSuccess"
       />
       
@@ -172,8 +210,6 @@ import {
   NButton, 
   NIcon, 
   NAvatar,
-  NInput,
-  NCard,
   NDropdown,
   NTooltip,
   useMessage,
@@ -183,15 +219,12 @@ import {
 import { 
   Plus,
   Menu,
-  Send,
   DotsVertical,
   Edit,
   Share as ShareIcon,
   Trash,
   User,
   Logout,
-  Bulb,
-  ChevronDown
 } from '@vicons/tabler'
 
 import ChatArea from '@/components/ChatArea.vue'
@@ -302,14 +335,6 @@ const welcomeMessage = computed(() => {
     return '晚上好，有什么可以帮你？'
   }
 })
-
-// 推荐问题（更新为新的内容）
-const recommendations = ref([
-  { id: 1, text: '喵星人变乖的秘密？' },
-  { id: 2, text: '怎么吃出更强的大脑？' },
-  { id: 3, text: '下班三小时逆袭用法' },
-  { id: 4, text: '让AI答案又准又牛的方法！' }
-])
 
 /**
  * 获取对话项的下拉菜单选项
@@ -544,6 +569,13 @@ const handleShareSuccess = () => {
 }
 
 /**
+ * 处理关闭分享面板
+ */
+const handleCloseSharePanel = () => {
+  showSharePanel.value = false
+}
+
+/**
  * 用户下拉菜单选项
  */
 const userDropdownOptions = [
@@ -629,86 +661,151 @@ const handleWelcomeSendMessage = async (content) => {
     if (createResult.success) {
       const newConversationId = createResult.data?.conversationID
       if (newConversationId) {
-        // 更新路由到新对话
+        // 立即更新路由到新对话（不等待对话创建完成）
         router.push(`/c/${newConversationId}`)
         
-        // 等待路由更新完成后再发送消息
-        setTimeout(async () => {
-          // 获取最终的对话ID
-          const finalConversationId = chatStore.currentConversation?.ID
-          
-          // 生成消息ID
-          const messageUserID = generateSnowflakeId()
-          const messageAssistantID = generateSnowflakeId()
-          
-          const messageData = {
-            prompt: content,
-            conversationID: finalConversationId,
-            model: chatStore.selectedModel,
-            messageUserID: messageUserID,
-            messageAssistantID: messageAssistantID,
-            reasoning: isReasoning.value || (currentModel.value && currentModel.value.reasoning === currentModel.value.id)
-          }
-          
-          try {
-            // 设置生成状态
-            chatStore.isGenerating = true
+        // 立即生成消息ID
+        const messageUserID = generateSnowflakeId()
+        const messageAssistantID = generateSnowflakeId()
+        
+        // 立即添加用户消息到本地状态（不等待对话创建完成）
+        const userMessage = {
+          id: messageUserID.toString(),
+          content: content,
+          role: 'user',
+          createdAt: new Date().toISOString()
+        }
+        chatStore.messages.push(userMessage)
+        
+        // 添加AI消息占位符
+        const aiMessage = {
+          id: messageAssistantID.toString(),
+          content: `<model=${chatStore.selectedModel}>`,
+          role: 'assistant',
+          createdAt: new Date().toISOString(),
+          isStreaming: true
+        }
+        chatStore.messages.push(aiMessage)
+        
+        // 异步等待对话设置完成后再发送消息
+        const waitForConversation = () => {
+          return new Promise((resolve, reject) => {
+            let attempts = 0
+            const maxAttempts = 100 // 最多等待5秒 (100 * 50ms)
             
-            // 查找模型名称
-            const currentModel = chatStore.models.find(model => model.id === chatStore.selectedModel);
-            const modelName = currentModel ? currentModel.name : chatStore.selectedModel;
-            
-            // 添加用户消息到本地状态
-            const userMessage = {
-              id: messageUserID.toString(), // 转换为字符串
-              content: content,
-              role: 'user',
-              createdAt: new Date().toISOString()
-            }
-            chatStore.messages.push(userMessage)
-            
-            // 添加AI消息占位符（包含模型信息）
-            const aiMessage = {
-              id: messageAssistantID.toString(), // 转换为字符串
-              content: `<model=${chatStore.selectedModel}>`, // 添加模型标签
-              role: 'assistant',
-              createdAt: new Date().toISOString(),
-              isStreaming: true
-            }
-            chatStore.messages.push(aiMessage)
-            
-            // 使用流式发送
-            let accumulatedContent = `<model=${chatStore.selectedModel}>`
-            await chatApi.sendMessage(
-              messageData,
-              (content) => {
-                // 流式接收内容
-                accumulatedContent += content
-                // 更新最后一条消息的内容
-                const lastMessage = chatStore.messages[chatStore.messages.length - 1]
-                if (lastMessage && lastMessage.role === 'assistant') {
-                  lastMessage.content = accumulatedContent
-                }
-              },
-              (error) => {
-                message.error('消息发送失败')
-                console.error('消息发送失败:', error)
-                chatStore.isGenerating = false
-              },
-              () => {
-                // 完成回调
-                const lastMessage = chatStore.messages[chatStore.messages.length - 1]
-                if (lastMessage && lastMessage.role === 'assistant') {
-                  lastMessage.isStreaming = false
-                }
-                chatStore.isGenerating = false
+            const checkConversation = setInterval(() => {
+              attempts++
+              if (chatStore.currentConversation?.ID === newConversationId) {
+                clearInterval(checkConversation)
+                resolve()
+              } else if (attempts >= maxAttempts) {
+                clearInterval(checkConversation)
+                reject(new Error('等待对话设置超时'))
               }
-            )
-          } catch (error) {
-            message.error(error.message || '发送失败')
-            chatStore.isGenerating = false
-          }
-        }, 100)
+            }, 50)
+          })
+        }
+        
+        try {
+          // 等待对话设置完成
+          await waitForConversation()
+        } catch (timeoutError) {
+          console.warn('等待对话设置超时，使用备用方案:', timeoutError)
+        }
+        
+        // 确保我们有正确的对话ID
+        const finalConversationId = chatStore.currentConversation?.ID || newConversationId
+        
+        // 确保所有ID都是整数类型
+        const messageData = {
+          prompt: content,
+          conversationID: parseInt(finalConversationId, 10),
+          model: chatStore.selectedModel,
+          messageUserID: parseInt(messageUserID.toString(), 10),
+          messageAssistantID: parseInt(messageAssistantID.toString(), 10),
+          reasoning: isReasoning.value || (currentModel.value && currentModel.value.reasoning === currentModel.value.id)
+        }
+        
+        try {
+          // 设置生成状态
+          chatStore.isGenerating = true
+          
+          // 使用流式发送
+          let accumulatedContent = `<model=${chatStore.selectedModel}>`
+          await chatApi.sendMessage(
+            messageData,
+            (content) => {
+              // 流式接收内容
+              accumulatedContent += content
+              // 更新最后一条消息的内容
+              const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+              if (lastMessage && lastMessage.role === 'assistant') {
+                lastMessage.content = accumulatedContent
+              }
+            },
+            (error) => {
+              message.error('消息发送失败')
+              console.error('消息发送失败:', error)
+              chatStore.isGenerating = false
+            },
+            async () => {
+              // 完成回调
+              const lastMessage = chatStore.messages[chatStore.messages.length - 1]
+              if (lastMessage && lastMessage.role === 'assistant') {
+                lastMessage.isStreaming = false
+              }
+              chatStore.isGenerating = false
+              
+              // 如果对话标题是"新对话"，则在1分钟内检查6次标题更新
+              if (chatStore.currentConversation?.Title === '新对话') {
+                let checkCount = 0
+                const maxChecks = 6
+                const checkInterval = 10000 // 10秒
+                
+                const checkTitleUpdate = async () => {
+                  if (checkCount >= maxChecks) return
+                  
+                  checkCount++
+                  try {
+                    // 获取最新的对话列表
+                    const response = await chatApi.getConversations()
+                    if (response.success) {
+                      const updatedConversations = response.data?.conversations || []
+                      chatStore.conversations = updatedConversations
+                      
+                      // 查找当前对话是否已有新标题
+                      const updatedConversation = updatedConversations.find(
+                        conv => conv.ID === newConversationId
+                      )
+                      
+                      // 如果标题已更新且不是"新对话"，则停止检查
+                      if (updatedConversation && updatedConversation.Title !== '新对话') {
+                        // 更新当前对话的标题
+                        if (chatStore.currentConversation) {
+                          chatStore.currentConversation.Title = updatedConversation.Title
+                        }
+                        return
+                      }
+                    }
+                  } catch (error) {
+                    console.error('检查对话标题失败:', error)
+                  }
+                  
+                  // 如果还没达到最大检查次数，继续下一次检查
+                  if (checkCount < maxChecks) {
+                    setTimeout(checkTitleUpdate, checkInterval)
+                  }
+                }
+                
+                // 开始第一次检查
+                setTimeout(checkTitleUpdate, checkInterval)
+              }
+            }
+          )
+        } catch (error) {
+          message.error(error.message || '发送失败')
+          chatStore.isGenerating = false
+        }
       }
     } else {
       message.error(createResult.message || '创建对话失败')
@@ -889,7 +986,6 @@ const selectWelcomeModel = (modelId) => {
 
 /* 左侧侧边栏 */
 .sidebar {
-  width: 280px;
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -974,9 +1070,9 @@ const selectWelcomeModel = (modelId) => {
 }
 
 .conversation-item-wrapper {
+  width: 250px;
   display: flex;
   align-items: center;
-  padding: 3px 0;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1069,142 +1165,6 @@ const selectWelcomeModel = (modelId) => {
   text-align: center; /* 添加这行使文字水平居中 */
 }
 
-/* 模型选择头部 */
-.model-selection-header {
-  display: flex;
-  align-items: center;
-  padding-left: 20px;
-  background-color: #fafafa;
-  border-radius: 0 0 20px 20px;
-  height: 80px;
-  position: relative;
-}
-
-.model-selection-wrapper {
-  width: 100%;
-  margin: 0 auto;
-}
-
-.model-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-}
-
-/* 自定义模型选择下拉框 */
-.aurora-model-select {
-  padding: 8px 12px;
-  border-radius: 12px;
-  cursor: pointer;
-  background-color: transparent;
-  transition: background-color 0.2s;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  z-index: 1001; /* 确保在下拉列表之上 */
-}
-
-.aurora-model-select:hover {
-  background-color: #f0f0f0;
-}
-
-.selected-model {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.model-name {
-  font-size: 14px;
-  color: #333;
-  flex-grow: 1;
-  text-align: left;
-}
-
-.dropdown-icon {
-  transition: transform 0.3s ease;
-  color: #666;
-  margin-left: 8px;
-}
-
-.dropdown-icon.rotated {
-  transform: rotate(180deg);
-}
-
-/* 模型下拉列表 */
-.model-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  max-height: 300px;
-  overflow-y: auto;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  margin-top: 4px;
-}
-
-.model-option {
-  padding: 12px 16px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.model-option:last-child {
-  border-bottom: none;
-}
-
-.model-option:hover {
-  background-color: #f5f5f5;
-}
-
-.model-main-info {
-  display: flex;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.model-main-info .model-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.model-extra-info {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.model-capability {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: white;
-}
-
-.model-capability.reasoning {
-  background-color: #409eff;
-}
-
-.model-capability.image {
-  background-color: #67c23a;
-}
-
-.model-points {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background-color: #f0f0f0;
-  color: #666;
-}
-
 /* 对话列表骨架屏 */
 .conversations-skeleton {
   padding: 8px;
@@ -1216,22 +1176,120 @@ const selectWelcomeModel = (modelId) => {
   padding: 8px 0;
 }
 
+.mobile-toggle-btn {
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-new-chat-btn {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
 @media (max-width: 768px) {
   .sidebar {
-    width: 60px;
+    width: 280px;
   }
   
   .sidebar:not(.collapsed) {
     width: 280px;
   }
   
-  .aurora-model-select,
-  .model-dropdown {
-    width: 200px;
+  .sidebar.collapsed {
+    width: 0;
+    overflow: hidden;
+  }
+}
+
+/* 移动端顶部按钮 */
+.mobile-top-buttons {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 90;
+  display: none;
+}
+
+.mobile-buttons-container {
+  display: flex;
+  gap: 12px;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-toggle-btn,
+.mobile-new-chat-btn {
+  box-shadow: none;
+}
+
+/* 遮罩层 */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+/* 移动端展开的侧边栏 */
+.sidebar.mobile-expanded {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 70%;
+  z-index: 101;
+  border-radius: 0;
+  transform: translateX(0);
+  transition: transform 0.3s ease;
+}
+
+.sidebar.mobile-collapsed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 70%;
+  z-index: 101;
+  border-radius: 0;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 70%;
+    transition: none;
   }
   
-  .model-selection-header {
-    padding-left: 16px;
+  .sidebar:not(.collapsed) {
+    width: 70%;
+    transition: none;
+  }
+  
+  .sidebar.collapsed:not(.mobile-collapsed) {
+    width: 0;
+    overflow: hidden;
+    transition: none;
+  }
+  
+  .mobile-top-buttons {
+    display: flex;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-top-buttons {
+    display: none;
+  }
+  
+  .sidebar-overlay {
+    display: none;
   }
 }
 </style>

@@ -6,10 +6,7 @@
   >
     <div class="conversation-content">
       <div class="conversation-title">
-        {{ conversation.title || '新对话' }}
-      </div>
-      <div class="conversation-time">
-        {{ formatTime(conversation.updatedAt || conversation.createdAt) }}
+        {{ conversation.Title || '新对话' }}
       </div>
     </div>
     
@@ -105,45 +102,6 @@ export default {
     ])
 
     /**
-     * 格式化时间显示
-     * @param {string} timeString - 时间字符串
-     * @returns {string} 格式化后的时间
-     */
-    const formatTime = (timeString) => {
-      if (!timeString) return ''
-      
-      const time = new Date(timeString)
-      const now = new Date()
-      const diff = now - time
-      
-      // 小于1分钟
-      if (diff < 60000) {
-        return '刚刚'
-      }
-      
-      // 小于1小时
-      if (diff < 3600000) {
-        return `${Math.floor(diff / 60000)}分钟前`
-      }
-      
-      // 小于24小时
-      if (diff < 86400000) {
-        return `${Math.floor(diff / 3600000)}小时前`
-      }
-      
-      // 小于7天
-      if (diff < 604800000) {
-        return `${Math.floor(diff / 86400000)}天前`
-      }
-      
-      // 超过7天显示具体日期
-      return time.toLocaleDateString('zh-CN', {
-        month: 'short',
-        day: 'numeric'
-      })
-    }
-
-    /**
      * 处理对话点击
      */
     const handleClick = () => {
@@ -182,7 +140,6 @@ export default {
 
     return {
       dropdownOptions,
-      formatTime,
       handleClick,
       handleAction
     }

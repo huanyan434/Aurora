@@ -23,7 +23,6 @@
         <div v-if="isGenerating && !hasStreamingMessage" class="loading-message">
           <div class="loading-content">
             <n-spin size="small" />
-            <span>AI正在思考中...</span>
           </div>
         </div>
       </div>
@@ -142,6 +141,7 @@ export default {
     const isReasoning = ref(false)
     const showScrollToBottomButton = ref(false)
     const isAutoScrolling = ref(true)
+    const showModelDropdown = ref(false)
     let scrollTimeout = null
 
     // 计算属性
@@ -166,14 +166,6 @@ export default {
     const hasStreamingMessage = computed(() => {
       return messages.value.some(msg => msg.isStreaming)
     })
-
-    // 快捷操作
-    const quickActions = ref([
-      { text: '帮我写一篇文章' },
-      { text: '解释一个概念' },
-      { text: '代码调试帮助' },
-      { text: '翻译文本' }
-    ])
     
     // 当前选中的模型
     const currentModel = computed(() => {
@@ -645,12 +637,12 @@ export default {
       userInfo,
       models,
       hasStreamingMessage,
-      quickActions,
       isReasoning,
       showReasoningButton,
       isReasoningDisabled,
       isReasoningActive,
       showScrollToBottomButton,
+      showModelDropdown,
       handleSendMessage,
       handleStopGeneration,
       handleFileUpload,
@@ -675,10 +667,6 @@ export default {
   height: 100%;
   background-color: #f8f9fa;
   position: relative;
-}
-
-.user-avatar {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .messages-container {

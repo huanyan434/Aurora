@@ -137,11 +137,13 @@ export const useChatStore = defineStore('chat', () => {
 
   /**
    * 停止生成
+   * @param {Object} data - 停止生成数据
+   * @param {number} data.conversationID - 对话ID
    * @returns {Promise<Object>} 停止结果
    */
-  const stopGeneration = async () => {
+  const stopGeneration = async (data) => {
     try {
-      const response = await chatApi.stopGeneration()
+      const response = await chatApi.stopGeneration(data)
       isGenerating.value = false
       
       // 移除流式标记

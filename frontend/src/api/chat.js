@@ -132,10 +132,12 @@ export const chatApi = {
 
   /**
    * 停止生成
+   * @param {Object} data - 停止生成数据
+   * @param {number} data.conversationID - 对话ID
    * @returns {Promise} 停止结果
    */
-  stopGeneration() {
-    return request.post('/chat/stop')
+  stopGeneration(data) {
+    return request.post('/chat/stop', data)
   },
 
   /**

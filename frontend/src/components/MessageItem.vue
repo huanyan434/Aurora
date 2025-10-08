@@ -211,7 +211,7 @@ export default {
       }
       
       // 匹配所有<think time=x>标签中的内容并连接起来（流式消息）
-      const thinkMatches = props.message.content.matchAll(/<think time=(\d+)>(.*?)/gs)
+      const thinkMatches = props.message.content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g)
       const contents = []
       let matchCount = 0;
       for (const match of thinkMatches) {
@@ -284,7 +284,7 @@ export default {
         content = content
       } else {
         // 否则移除content中的推理内容
-        content = content.replace(/<think time="\d+">[\s\S]*?<\/think>/g, '')
+        content = content.replace(/<think time=(\d+)>([\s\S]*?)<\/think>/g)
       }
       
       // AI消息使用Markdown渲染
