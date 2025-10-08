@@ -216,8 +216,8 @@ export default {
 .reasoning-button,
 .stop-button,
 .send-button {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border: none;
   border-radius: 50%;
   background: transparent;

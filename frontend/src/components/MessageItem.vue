@@ -137,8 +137,22 @@ export default {
     // 获取模型名称
     const getModelName = (modelId) => {
       if (!modelId) return 'Aurora'
+
+      // 首先在模型列表中查找完全匹配的模型
       const model = chatStore.models.find(m => m.id === modelId)
-      return model ? model.name : modelId
+      if (model) {
+        return model.name
+      }
+      
+      // 如果在模型列表中没有找到完全匹配的模型，
+      // 则检查所有模型的reasoning字段中是否有匹配的
+      const foundInReasoning = chatStore.models.find(m => m.reasoning === modelId)
+      // 如果在reasoning字段中找到了，则返回原始模型ID
+      if (foundInReasoning) {
+        return foundInReasoning.name
+      }
+      // 否则仍然返回原始模型ID
+      return modelId
     }
 
     // 角色名称
@@ -181,51 +195,31 @@ export default {
       
       // 首先检查是否有独立的reasoning_content字段（历史消息）
       if (props.message.reasoning_content) {
-        console.log('处理历史消息的reasoning_content字段:', props.message.reasoning_content);
-        
-        // 先解码HTML实体
-        let decodedReasoningContent = props.message.reasoning_content
-          .replace(/\\u003c/g, '<')
-          .replace(/\\u003e/g, '>')
-        
-        console.log('解码后的reasoning_content:', decodedReasoningContent);
-        
         // 匹配所有<think time=x>标签中的内容并连接起来
-        const thinkMatches = decodedReasoningContent.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g)
+        const thinkMatches = props.message.reasoning_content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g)
         const contents = []
         let matchCount = 0;
         for (const match of thinkMatches) {
           matchCount++;
-          console.log(`匹配到第${matchCount}个<think>标签:`, match);
           contents.push(match[2])
         }
         
-        console.log('总共匹配到的<think>标签数量:', matchCount);
-        console.log('提取的推理内容数组:', contents);
-        
         if (contents.length > 0) {
           const result = contents.join('')
-          console.log('最终的推理内容:', result);
           return result;
         }
       }
       
       // 匹配所有<think time=x>标签中的内容并连接起来（流式消息）
-      console.log('处理流式消息的content字段:', props.message.content);
       const thinkMatches = props.message.content.matchAll(/<think time=(\d+)>(.*?)/gs)
       const contents = []
       let matchCount = 0;
       for (const match of thinkMatches) {
         matchCount++;
-        console.log(`匹配到第${matchCount}个<think>标签:`, match);
         contents.push(match[2])
       }
       
-      console.log('流式消息总共匹配到的<think>标签数量:', matchCount);
-      console.log('提取的推理内容数组:', contents);
-      
       const result = contents.length > 0 ? contents.join('') : null;
-      console.log('流式消息最终的推理内容:', result);
       return result;
     })
 

@@ -197,15 +197,26 @@ export const useChatStore = defineStore('chat', () => {
       const modelsData = response.data?.models || response.data || []
       if (Array.isArray(modelsData) && modelsData.length > 0) {
         models.value = modelsData.map((model) => ({
-          id: model.ID || model.id || model,
-          name: model.Name || model.name || model,
-          reasoning: model.Reasoning || model.reasoning || '',
-          image: model.Image !== undefined ? model.Image : (model.image !== undefined ? model.image : 0),
-          points: model.Points || model.points || 0
+          id: model.ID,
+          name: model.Name,
+          reasoning: model.Reasoning,
+          image: model.Image !== undefined ? model.Image : 0,
+          points: model.Points || 0
         }))
-        // 设置默认模型为列表中的第一个
-        if (models.value.length > 0 && !selectedModel.value) {
-          selectedModel.value = models.value[0].id
+        // 设置默认模型为列表中的第一个，或者恢复缓存的模型选择
+        if (models.value.length > 0) {
+          const cachedModel = localStorage.getItem('selectedModel')
+          if (cachedModel) {
+            // 检查缓存的模型是否在可用模型列表中
+            const modelExists = models.value.some(model => model.id === cachedModel)
+            if (modelExists) {
+              selectedModel.value = cachedModel
+            } else {
+              selectedModel.value = models.value[0].id
+            }
+          } else {
+            selectedModel.value = models.value[0].id
+          }
         }
         return { success: true, data: models.value }
       } else {

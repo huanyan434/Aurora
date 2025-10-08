@@ -202,6 +202,20 @@ export const useUserStore = defineStore('user', () => {
     console.log('用户状态初始化完成，已初始化:', initialized.value, '用户信息:', userInfo.value)
   }
 
+  /**
+   * 检查签到状态
+   * @returns {Promise<Object>} 签到状态结果
+   */
+  const checkSignInStatus = async () => {
+    try {
+      const response = await userApi.checkSignInStatus()
+      return response
+    } catch (error) {
+      console.error('检查签到状态失败:', error)
+      return { success: false, message: error.message || '检查签到状态失败' }
+    }
+  }
+
   return {
     // 状态
     userInfo,
@@ -216,6 +230,7 @@ export const useUserStore = defineStore('user', () => {
     signup,
     getCurrentUser,
     signIn,
+    checkSignInStatus,
     sendVerificationCode,
     sendVerifyCode,
     verifyPointsAndVip,

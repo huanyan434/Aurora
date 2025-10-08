@@ -260,24 +260,10 @@ func HashPassword(password string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// FilterBy 通过条件过滤用户
-func FilterBy(username string, email string) User {
-	db := GetDB()
+// FilterByEmail 通过条件过滤用户
+func FilterByEmail(email string) User {
 	var user User
-
-	// 创建查询
-	query := db.Table("users")
-
-	// 根据提供的参数添加查询条件
-	if username != "" {
-		query = query.Where("username = ?", username)
-	} else if email != "" {
-		query = query.Where("email = ?", email)
-	}
-
-	// 执行查询
-	query.First(&user)
-
+	GetDB().Table("users").Where("email = ?", email).First(&user)
 	return user
 }
 
@@ -431,7 +417,7 @@ func HasSignedToday(email string) (bool, error) {
 // Sign 用户签到
 func Sign(Email string) (int, error) {
 	// 获取用户信息
-	user := FilterBy("", Email)
+	user := FilterByEmail(Email)
 	if user.Username == "" {
 		return 0, fmt.Errorf("用户不存在")
 	}

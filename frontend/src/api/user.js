@@ -71,6 +71,14 @@ export const userApi = {
   },
 
   /**
+   * 检查签到状态
+   * @returns {Promise} 签到状态
+   */
+  checkSignInStatus() {
+    return request.get('/api/has_signed')
+  },
+
+  /**
    * 获取模型列表
    * @returns {Promise} 模型列表
    */

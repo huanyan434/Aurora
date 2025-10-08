@@ -458,7 +458,7 @@ definitions:
   routes.verifyPointsResponseFailed:
     properties:
       message:
-        example: 无效 orderID
+        example: 无效订单号
         type: string
       success:
         example: false
@@ -482,7 +482,7 @@ definitions:
   routes.verifyVipResponseFailed:
     properties:
       message:
-        example: 无效 orderID
+        example: 无效订单号
         type: string
       success:
         example: false

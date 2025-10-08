@@ -105,45 +105,10 @@
     <!-- 右侧主内容区域 -->
     <div class="main-content">
       <!-- 模型选择 -->
-      <div class="model-selection-header"
-           v-if="!showSharePanel && !currentConversation"
-      >
-        <div class="model-selection-wrapper">
-          <div class="model-info">
-            <!-- 自定义模型选择下拉框 -->
-            <div class="aurora-model-select" @click="toggleWelcomeModelDropdown">
-              <div class="selected-model">
-                <span class="model-name">{{ selectedModelName }}</span>
-                <n-icon class="dropdown-icon" :class="{ rotated: showWelcomeModelDropdown }">
-                  <ChevronDown />
-                </n-icon>
-              </div>
-            </div>
-
-            <!-- 下拉列表 -->
-            <div v-if="showWelcomeModelDropdown" class="model-dropdown" v-click-outside="closeWelcomeModelDropdown">
-              <div
-                  v-for="model in models"
-                  :key="model.id"
-                  class="model-option"
-                  @click="selectWelcomeModel(model.id)"
-              >
-                <div class="model-main-info">
-                  <span class="model-name">{{ model.name }}</span>
-                </div>
-                <div class="model-extra-info">
-                  <!-- 推理能力 -->
-                  <span v-if="model.reasoning" class="model-capability reasoning">推理</span>
-                  <!-- 识图能力 -->
-                  <span v-if="model.image === 1 || model.image === 3" class="model-capability image">识图</span>
-                  <!-- 积分消耗 -->
-                  <span v-if="model.points > 0" class="model-points">{{ model.points }}积分/次</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ModelSelector 
+        v-if="!showSharePanel && !currentConversation"
+        v-model:show-model-dropdown="showWelcomeModelDropdown"
+      />
       <ChatArea 
         v-if="!showSharePanel && currentConversation" 
         :conversation="currentConversation"
@@ -232,6 +197,7 @@ import {
 import ChatArea from '@/components/ChatArea.vue'
 import ChatInput from '@/components/ChatInput.vue'
 import SharePanel from '@/components/SharePanel.vue'
+import ModelSelector from '@/components/ModelSelector.vue'
 import { useChatStore } from '@/stores/chat'
 import { useUserStore } from '@/stores/user'
 import { chatApi } from '@/api/chat'
@@ -959,6 +925,8 @@ const selectWelcomeModel = (modelId) => {
 
 .toggle-btn {
   color: #333;
+  width: 34px;
+  height: 34px;
 }
 
 .new-chat-btn {
@@ -983,8 +951,8 @@ const selectWelcomeModel = (modelId) => {
 .new-chat-btn-collapsed {
   background-color: #18a058;
   color: white;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -1065,7 +1033,7 @@ const selectWelcomeModel = (modelId) => {
 /* 顶部导航栏 */
 .top-navbar {
   position: absolute;
-  top: 0;
+  top: 5px;
   right: 0;
   padding: 16px 24px;
   z-index: 10;
@@ -1105,7 +1073,7 @@ const selectWelcomeModel = (modelId) => {
 .model-selection-header {
   display: flex;
   align-items: center;
-  padding: 16px 20px 0 20px;
+  padding-left: 20px;
   background-color: #fafafa;
   border-radius: 0 0 20px 20px;
   height: 80px;
@@ -1113,7 +1081,6 @@ const selectWelcomeModel = (modelId) => {
 }
 
 .model-selection-wrapper {
-  max-width: 800px;
   width: 100%;
   margin: 0 auto;
 }
@@ -1127,7 +1094,6 @@ const selectWelcomeModel = (modelId) => {
 
 /* 自定义模型选择下拉框 */
 .aurora-model-select {
-  width: 300px;
   padding: 8px 12px;
   border-radius: 12px;
   cursor: pointer;
@@ -1173,7 +1139,6 @@ const selectWelcomeModel = (modelId) => {
   position: absolute;
   top: 100%;
   left: 0;
-  width: 300px;
   max-height: 300px;
   overflow-y: auto;
   background-color: white;
@@ -1266,7 +1231,7 @@ const selectWelcomeModel = (modelId) => {
   }
   
   .model-selection-header {
-    padding: 12px 16px 0 16px;
+    padding-left: 16px;
   }
 }
 </style>

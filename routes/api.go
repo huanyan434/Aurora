@@ -74,7 +74,7 @@ func loginHandler(c *gin.Context) {
 	}
 
 	//在数据库通过邮箱找用户
-	user := utils.FilterBy("", email)
+	user := utils.FilterByEmail(email)
 
 	if (user == utils.User{}) || !utils.VerifyPassword(password, user.PasswordHash) {
 		c.JSON(400, gin.H{
@@ -125,7 +125,7 @@ func signupHandler(c *gin.Context) {
 	}
 
 	// 检测邮箱是否存在
-	if (utils.FilterBy("", email) != utils.User{}) {
+	if (utils.FilterByEmail(email) != utils.User{}) {
 		c.JSON(400, gin.H{
 			"success": false,
 			"message": "该邮箱已被注册",
@@ -420,7 +420,11 @@ func getCurrentUser(c *gin.Context) (userInfo utils.User, err error) {
 		return
 	}
 
-	userInfo = utils.FilterBy("", userInfo.Email)
+	userInfo = utils.FilterByEmail(userInfo.Email)
+	if !utils.IsActiveMember(&userInfo) {
+		userInfo.IsMember = false
+		userInfo.MemberLevel = "free"
+	}
 	setCurrentUser(c, userInfo)
 	return userInfo, nil
 }
@@ -529,7 +533,7 @@ type verifyVipResponseSuccess struct {
 
 type verifyVipResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
-	Message string `json:"message" example:"无效 orderID"`
+	Message string `json:"message" example:"无效订单号"`
 }
 
 type verifyPointsRequest struct {
@@ -542,5 +546,5 @@ type verifyPointsResponseSuccess struct {
 
 type verifyPointsResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
-	Message string `json:"message" example:"无效 orderID"`
+	Message string `json:"message" example:"无效订单号"`
 }

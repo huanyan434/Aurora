@@ -180,7 +180,7 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 				end = time.Now()
 			}
 		} else {
-			return "无效 orderID"
+			return "无效订单号"
 		}
 
 		user.IsMember = true
@@ -189,13 +189,15 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 		user.MemberSince = begin
 		user.MemberUntil = end.AddDate(0, 0, days)
 
+		GetDB().Save(&user)
+
 		err = VerifyOrder(orderID)
 		if err != nil {
 			return "内部错误"
 		}
 		return ""
 	} else {
-		return "无效 orderID"
+		return "无效订单号"
 	}
 }
 
@@ -214,7 +216,7 @@ func VerifyPoints(userID int64, orderID string) string {
 
 		if list[0]["plan_title"] == "Aurora 积分" {
 		} else {
-			return "无效 orderID"
+			return "无效订单号"
 		}
 
 		points, err := strconv.ParseFloat(list[0]["show_amount"].(string), 64)
@@ -228,7 +230,7 @@ func VerifyPoints(userID int64, orderID string) string {
 		}
 		return ""
 	} else {
-		return "无效 orderID"
+		return "无效订单号"
 	}
 }
 

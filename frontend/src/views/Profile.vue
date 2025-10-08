@@ -41,7 +41,7 @@
               <div class="stat-item">
                 <span class="stat-label">VIP状态</span>
                 <span class="stat-value" :class="{ 'vip': userInfo?.isMember }">
-                  {{ userInfo?.isMember ? 'VIP用户' : '普通用户' }}
+                  {{ getMemberLevelText(userInfo?.memberLevel) }}
                 </span>
               </div>
             </div>
@@ -74,7 +74,7 @@
           </div>
         </n-card>
 
-        <!-- VIP升级 -->
+        <!-- 会员开通 -->
         <n-card class="feature-card">
           <div class="feature-content">
             <div class="feature-icon">
@@ -83,51 +83,130 @@
               </n-icon>
             </div>
             <div class="feature-info">
-              <h3>VIP升级</h3>
-              <p>升级VIP享受更多特权</p>
+              <h3>会员开通</h3>
+              <p>开通会员享受更多特权</p>
             </div>
             <n-button
               type="warning"
-              :disabled="userInfo?.isMember"
               @click="showVipUpgrade = true"
             >
-              {{ userInfo?.isMember ? '已是VIP' : '升级VIP' }}
+              {{ userInfo?.isMember ? '续费会员' : '开通会员' }}
             </n-button>
           </div>
         </n-card>
-    </div>
 
-    <!-- VIP升级弹窗 -->
-    <n-modal v-model:show="showVipUpgrade" preset="card" title="VIP升级" style="width: 500px;">
-      <div class="vip-upgrade">
-        <div class="vip-benefits">
-          <h3>VIP特权</h3>
-          <ul>
-            <li>无限制对话次数</li>
-            <li>优先使用最新模型</li>
-            <li>专属客服支持</li>
-            <li>更快的响应速度</li>
-          </ul>
-        </div>
-        <div class="vip-pricing">
-          <div class="price-item">
-            <h4>月度VIP</h4>
-            <div class="price">¥29.9/月</div>
-            <n-button type="primary" block @click="handleVipUpgrade('monthly')">
-              立即升级
+        <!-- 积分充值 -->
+        <n-card class="feature-card">
+          <div class="feature-content">
+            <div class="feature-icon">
+              <n-icon size="24">
+                <Currency />
+              </n-icon>
+            </div>
+            <div class="feature-info">
+              <h3>积分充值</h3>
+              <p>充值积分享受更多服务</p>
+            </div>
+            <n-button
+              type="primary"
+              @click="showPointsRecharge = true"
+            >
+              充值积分
             </n-button>
           </div>
-          <div class="price-item">
-            <h4>年度VIP</h4>
-            <div class="price">¥299/年</div>
-            <div class="price-note">节省60元</div>
-            <n-button type="primary" block @click="handleVipUpgrade('yearly')">
-              立即升级
-            </n-button>
-          </div>
-        </div>
+        </n-card>
       </div>
-    </n-modal>
+
+      <!-- 会员开通弹窗 -->
+      <n-modal v-model:show="showVipUpgrade" preset="card" title="会员开通" style="width: 500px;">
+        <div class="vip-upgrade">
+          <div class="vip-benefits">
+            <h3>会员特权</h3>
+            <ul>
+              <li>VIP使用模型半价（积分）</li>
+              <li>SVIP使用模型免费</li>
+              <li>更多内测功能</li>
+              <li>详见购买会员页面</li>
+            </ul>
+          </div>
+          
+          <!-- 购买会员按钮 -->
+          <n-button 
+            type="warning" 
+            round 
+            tag="a" 
+            href="https://afdian.com/a/mchyj"
+            target="_blank"
+            block
+            style="margin-bottom: 20px;"
+          >
+            购买会员
+          </n-button>
+          
+          <!-- 订单号验证区域 -->
+          <div class="order-verification">
+            <n-input 
+              v-model:value="vipOrderId" 
+              type="text" 
+              placeholder="请先在购买会员界面复制订单号，在此粘贴"
+              style="margin-bottom: 10px;"
+            />
+            <n-button 
+              type="primary" 
+              @click="verifyVipOrder"
+              :loading="verifyingVipOrder"
+              block
+            >
+              验证
+            </n-button>
+          </div>
+        </div>
+      </n-modal>
+
+      <!-- 积分充值弹窗 -->
+      <n-modal v-model:show="showPointsRecharge" preset="card" title="积分充值" style="width: 500px;">
+        <div class="points-recharge">
+          <div class="points-benefits">
+            <h3>积分用途</h3>
+            <ul>
+              <li>文字转语音、语音转文字（开发中）</li>
+              <li>使用对话模型</li>
+            </ul>
+          </div>
+          
+          <!-- 购买积分按钮 -->
+          <n-button 
+            type="primary" 
+            round 
+            tag="a" 
+            href="https://afdian.com/a/mchyj?tab=shop"
+            target="_blank"
+            block
+            style="margin-bottom: 20px;"
+          >
+            购买积分
+          </n-button>
+          
+          <!-- 订单号验证区域 -->
+          <div class="order-verification">
+            <n-input 
+              v-model:value="pointsOrderId" 
+              type="text" 
+              placeholder="请先在购买积分界面复制订单号，在此粘贴"
+              style="margin-bottom: 10px;"
+            />
+            <n-button 
+              type="primary" 
+              @click="verifyPointsOrder"
+              :loading="verifyingPointsOrder"
+              block
+            >
+              验证
+            </n-button>
+          </div>
+        </div>
+      </n-modal>
+    </div>
   </div>
 </template>
 
@@ -140,25 +219,20 @@ import {
   NIcon,
   NAvatar,
   NModal,
-  NEmpty,
-  NForm,
-  NFormItem,
   NInput,
-  NUpload,
   useMessage
 } from 'naive-ui'
 import {
   ArrowLeft,
   Calendar,
-  Coins,
   Crown,
-  Settings
+  Currency
 } from '@vicons/tabler'
 import { useUserStore } from '@/stores/user'
 
 /**
  * 个人中心页面组件
- * 包含用户信息、签到、积分记录、VIP升级等功能
+ * 包含用户信息、签到、积分记录、会员开通等功能
  */
 
 const router = useRouter()
@@ -170,9 +244,14 @@ const signInStatus = ref(false)
 const signingIn = ref(false)
 const showPointsHistory = ref(false)
 const showVipUpgrade = ref(false)
+const showPointsRecharge = ref(false)
 const showSettings = ref(false)
 const savingSettings = ref(false)
 const pointsHistory = ref([])
+const vipOrderId = ref('')
+const pointsOrderId = ref('')
+const verifyingVipOrder = ref(false)
+const verifyingPointsOrder = ref(false)
 
 // 设置表单
 const settingsForm = ref({
@@ -192,6 +271,18 @@ const goBack = () => {
 }
 
 /**
+ * 获取会员等级显示文本
+ * @param {string} memberLevel - 会员等级
+ * @returns {string} 显示文本
+ */
+const getMemberLevelText = (memberLevel) => {
+  if (!memberLevel || memberLevel === 'free') {
+    return '普通用户'
+  }
+  return memberLevel + '用户'
+}
+
+/**
  * 处理签到
  */
 const handleSignIn = async () => {
@@ -200,7 +291,7 @@ const handleSignIn = async () => {
     const result = await userStore.signIn()
     if (result.success) {
       signInStatus.value = true
-      message.success(`签到成功！获得 ${result.data.points} 积分`)
+      message.success(`签到成功！获得 ${result.data?.points} 积分`)
       // 刷新用户信息
       await userStore.getCurrentUser()
     } else {
@@ -214,24 +305,83 @@ const handleSignIn = async () => {
 }
 
 /**
- * 处理VIP升级
- * @param {string} type - 升级类型 (monthly/yearly)
+ * 验证VIP订单
  */
-const handleVipUpgrade = (type) => {
-  // TODO: 实现VIP升级功能
-  message.info('VIP升级功能开发中...')
-  showVipUpgrade.value = false
+const verifyVipOrder = async () => {
+  if (!vipOrderId.value.trim()) {
+    message.warning('请输入订单号')
+    return
+  }
+
+  verifyingVipOrder.value = true
+  try {
+    const response = await fetch('/api/verify_vip', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        orderID: vipOrderId.value,
+        force: false
+      })
+    })
+
+    const result = await response.json()
+    
+    if (result.success) {
+      message.success('VIP验证成功!')
+      showVipUpgrade.value = false
+      vipOrderId.value = ''
+      // 刷新用户信息以显示新的VIP状态
+      await userStore.getCurrentUser()
+    } else {
+      message.error(result.message || '验证失败')
+    }
+  } catch (error) {
+    message.error('验证过程中出现错误')
+  } finally {
+    verifyingVipOrder.value = false
+  }
 }
 
 /**
- * 处理头像上传
- * @param {Object} options - 上传选项
+ * 验证积分订单
  */
-const handleAvatarChange = (options) => {
-  const { file } = options
-  if (file) {
-    // TODO: 实现头像上传功能
-    message.info('头像上传功能开发中...')
+const verifyPointsOrder = async () => {
+  if (!pointsOrderId.value.trim()) {
+    message.warning('请输入订单号')
+    return
+  }
+
+  verifyingPointsOrder.value = true
+  try {
+    const response = await fetch('/api/verify_points', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        orderID: pointsOrderId.value
+      })
+    })
+
+    const result = await response.json()
+    
+    if (result.success) {
+      message.success('积分充值验证成功!')
+      showPointsRecharge.value = false
+      pointsOrderId.value = ''
+      // 刷新用户信息以显示新的积分
+      await userStore.getCurrentUser()
+    } else {
+      message.error(result.message || '验证失败')
+    }
+  } catch (error) {
+    message.error('验证过程中出现错误')
+  } finally {
+    verifyingPointsOrder.value = false
   }
 }
 
@@ -251,7 +401,7 @@ const checkSignInStatus = async () => {
   try {
     const result = await userStore.checkSignInStatus()
     if (result.success) {
-      signInStatus.value = result.data.hasSignedIn
+      signInStatus.value = result.data.signed
     }
   } catch (error) {
     console.error('检查签到状态失败:', error)
@@ -265,18 +415,6 @@ onMounted(async () => {
   
   // 检查签到状态
   await checkSignInStatus()
-  
-  // 获取积分记录
-  await fetchPointsHistory()
-  
-  // 初始化设置表单
-  if (userInfo.value) {
-    settingsForm.value = {
-      username: userInfo.value.username || '',
-      email: userInfo.value.email || '',
-      avatar: userInfo.value.avatar || ''
-    }
-  }
 })
 </script>
 
@@ -462,53 +600,29 @@ onMounted(async () => {
   color: #ff4d4f;
 }
 
-.vip-upgrade {
+.vip-upgrade,
+.points-recharge {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.vip-benefits ul {
+.vip-benefits ul,
+.points-benefits ul {
   margin: 12px 0 0 0;
   padding-left: 20px;
 }
 
-.vip-benefits li {
+.vip-benefits li,
+.points-benefits li {
   margin-bottom: 8px;
   color: #666;
 }
 
-.vip-pricing {
+.order-verification {
   display: flex;
-  gap: 16px;
-}
-
-.price-item {
-  flex: 1;
-  padding: 20px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.price-item h4 {
-  margin: 0 0 12px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-}
-
-.price {
-  font-size: 24px;
-  font-weight: 600;
-  color: #1890ff;
-  margin-bottom: 8px;
-}
-
-.price-note {
-  font-size: 12px;
-  color: #52c41a;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .settings-form {

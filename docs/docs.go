@@ -1423,7 +1423,7 @@ const docTemplate = `{
             "properties": {
                 "message": {
                     "type": "string",
-                    "example": "无效 orderID"
+                    "example": "无效订单号"
                 },
                 "success": {
                     "type": "boolean",
@@ -1458,7 +1458,7 @@ const docTemplate = `{
             "properties": {
                 "message": {
                     "type": "string",
-                    "example": "无效 orderID"
+                    "example": "无效订单号"
                 },
                 "success": {
                     "type": "boolean",
