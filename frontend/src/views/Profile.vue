@@ -1,665 +1,829 @@
 <template>
   <div class="profile-container">
     <!-- 头部导航 -->
-    <div class="profile-header">
-      <n-button
-        quaternary
-        circle
-        @click="goBack"
-        class="back-btn"
-      >
-        <template #icon>
-          <n-icon>
-            <ArrowLeft />
-          </n-icon>
-        </template>
-      </n-button>
-      <h1>个人中心</h1>
+    <div class="header-container">
+      <button @click="goBack" class="back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" class="back-btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <h1 class="page-title">个人中心</h1>
     </div>
 
-    <div class="profile-content">
+    <div class="content-container">
       <!-- 用户信息卡片 -->
-      <n-card class="user-info-card">
-        <div class="user-info">
-          <n-avatar
-            :size="80"
-            :src="userInfo?.avatar"
-            :fallback-src="'/user-avatar.png'"
-            class="user-avatar"
-          >
+      <div class="user-info-card">
+        <div class="user-info-content">
+          <div class="user-avatar">
             {{ userInfo?.username?.charAt(0).toUpperCase() || 'U' }}
-          </n-avatar>
-          
+          </div>
+
           <div class="user-details">
-            <h2>{{ userInfo?.username || '用户' }}</h2>
+            <h2 class="user-name">{{ userInfo?.username || '用户' }}</h2>
             <p class="user-email">{{ userInfo?.email || '未设置邮箱' }}</p>
             <div class="user-stats">
               <div class="stat-item">
-                <span class="stat-label">积分</span>
-                <span class="stat-value">{{ userInfo?.points || 0 }}</span>
+                <div class="stat-label">积分</div>
+                <div class="stat-value">{{ userInfo?.points || 0 }}</div>
               </div>
               <div class="stat-item">
-                <span class="stat-label">VIP状态</span>
-                <span class="stat-value" :class="{ 'vip': userInfo?.isMember }">
+                <div class="stat-label">VIP状态</div>
+                <div class="stat-value" :class="{ 'vip-status': userInfo?.isMember }">
                   {{ getMemberLevelText(userInfo?.memberLevel) }}
-                </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </n-card>
-
-      <!-- 功能区域 -->
-      <div class="feature-grid">
-        <!-- 签到卡片 -->
-        <n-card class="feature-card">
-          <div class="feature-content">
-            <div class="feature-icon">
-              <n-icon size="24">
-                <Calendar />
-              </n-icon>
-            </div>
-            <div class="feature-info">
-              <h3>每日签到</h3>
-              <p>{{ signInStatus ? '今日已签到' : '点击签到获取积分' }}</p>
-            </div>
-            <n-button
-              type="primary"
-              :disabled="signInStatus || signingIn"
-              :loading="signingIn"
-              @click="handleSignIn"
-            >
-              {{ signInStatus ? '已签到' : '签到' }}
-            </n-button>
-          </div>
-        </n-card>
-
-        <!-- 会员开通 -->
-        <n-card class="feature-card">
-          <div class="feature-content">
-            <div class="feature-icon">
-              <n-icon size="24">
-                <Crown />
-              </n-icon>
-            </div>
-            <div class="feature-info">
-              <h3>会员开通</h3>
-              <p>开通会员享受更多特权</p>
-            </div>
-            <n-button
-              type="warning"
-              @click="showVipUpgrade = true"
-            >
-              {{ userInfo?.isMember ? '续费会员' : '开通会员' }}
-            </n-button>
-          </div>
-        </n-card>
-
-        <!-- 积分充值 -->
-        <n-card class="feature-card">
-          <div class="feature-content">
-            <div class="feature-icon">
-              <n-icon size="24">
-                <Currency />
-              </n-icon>
-            </div>
-            <div class="feature-info">
-              <h3>积分充值</h3>
-              <p>充值积分享受更多服务</p>
-            </div>
-            <n-button
-              type="primary"
-              @click="showPointsRecharge = true"
-            >
-              充值积分
-            </n-button>
-          </div>
-        </n-card>
       </div>
 
-      <!-- 会员开通弹窗 -->
-      <n-modal v-model:show="showVipUpgrade" preset="card" title="会员开通" style="width: 500px;">
-        <div class="vip-upgrade">
-          <div class="vip-benefits">
-            <h3>会员特权</h3>
-            <ul>
-              <li>VIP使用模型半价（积分）</li>
-              <li>SVIP使用模型免费</li>
-              <li>更多内测功能</li>
-              <li>详见购买会员页面</li>
-            </ul>
-          </div>
-          
-          <!-- 购买会员按钮 -->
-          <n-button 
-            type="warning" 
-            round 
-            tag="a" 
-            href="https://afdian.com/a/mchyj"
-            target="_blank"
-            block
-            style="margin-bottom: 20px;"
-          >
-            购买会员
-          </n-button>
-          
-          <!-- 订单号验证区域 -->
-          <div class="order-verification">
-            <n-input 
-              v-model:value="vipOrderId" 
-              type="text" 
-              placeholder="请先在购买会员界面复制订单号，在此粘贴"
-              style="margin-bottom: 10px;"
-            />
-            <n-button 
-              type="primary" 
-              @click="verifyVipOrder"
-              :loading="verifyingVipOrder"
-              block
+      <!-- 功能区域 -->
+      <div class="features-grid">
+        <!-- 签到卡片 -->
+        <div class="feature-card">
+          <div class="feature-card-content">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div class="feature-text">
+              <h3 class="feature-title">每日签到</h3>
+              <p class="feature-desc">{{ signInStatus ? '今日已签到' : '点击签到获取积分' }}</p>
+            </div>
+            <button
+              :disabled="signInStatus || signingIn"
+              :class="['sign-in-btn', { 'sign-in-btn-disabled': signInStatus || signingIn }]"
+              @click="handleSignIn"
             >
-              验证
-            </n-button>
+              {{ signingIn ? '签到中...' : (signInStatus ? '已签到' : '签到') }}
+            </button>
           </div>
         </div>
-      </n-modal>
 
-      <!-- 积分充值弹窗 -->
-      <n-modal v-model:show="showPointsRecharge" preset="card" title="积分充值" style="width: 500px;">
-        <div class="points-recharge">
-          <div class="points-benefits">
-            <h3>积分用途</h3>
-            <ul>
-              <li>文字转语音、语音转文字（开发中）</li>
-              <li>使用对话模型</li>
-            </ul>
-          </div>
-          
-          <!-- 购买积分按钮 -->
-          <n-button 
-            type="primary" 
-            round 
-            tag="a" 
-            href="https://afdian.com/a/mchyj?tab=shop"
-            target="_blank"
-            block
-            style="margin-bottom: 20px;"
-          >
-            购买积分
-          </n-button>
-          
-          <!-- 订单号验证区域 -->
-          <div class="order-verification">
-            <n-input 
-              v-model:value="pointsOrderId" 
-              type="text" 
-              placeholder="请先在购买积分界面复制订单号，在此粘贴"
-              style="margin-bottom: 10px;"
-            />
-            <n-button 
-              type="primary" 
-              @click="verifyPointsOrder"
-              :loading="verifyingPointsOrder"
-              block
+        <!-- 会员开通 -->
+        <div class="feature-card">
+          <div class="feature-card-content">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <div class="feature-text">
+              <h3 class="feature-title">会员开通</h3>
+              <p class="feature-desc">开通会员享受更多特权</p>
+            </div>
+            <button
+              @click="showVipUpgrade = true"
+              class="vip-upgrade-btn"
             >
-              验证
-            </n-button>
+              {{ userInfo?.isMember ? '续费会员' : '开通会员' }}
+            </button>
           </div>
         </div>
-      </n-modal>
+
+        <!-- 积分充值 -->
+        <div class="feature-card">
+          <div class="feature-card-content">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="feature-text">
+              <h3 class="feature-title">积分充值</h3>
+              <p class="feature-desc">充值积分享受更多服务</p>
+            </div>
+            <button
+              @click="showPointsRecharge = true"
+              class="points-recharge-btn"
+            >
+              充值积分
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 会员开通弹窗 -->
+    <div v-if="showVipUpgrade" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">会员开通</h2>
+          <button @click="showVipUpgrade = false" class="modal-close-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="modal-close-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <h3 class="modal-subtitle">会员特权</h3>
+          <ul class="privileges-list">
+            <li class="privilege-item">
+              <span class="privilege-check">✓</span>
+              <span>VIP使用模型半价（积分）</span>
+            </li>
+            <li class="privilege-item">
+              <span class="privilege-check">✓</span>
+              <span>SVIP使用模型免费</span>
+            </li>
+            <li class="privilege-item">
+              <span class="privilege-check">✓</span>
+              <span>更多内测功能</span>
+            </li>
+            <li class="privilege-item">
+              <span class="privilege-check">✓</span>
+              <span>详见购买会员页面</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 购买会员按钮 -->
+        <a
+          href="https://afdian.com/a/mchyj"
+          target="_blank"
+          class="purchase-btn vip-purchase-btn"
+        >
+          购买会员
+        </a>
+
+        <!-- 订单号验证区域 -->
+        <div class="verification-section">
+          <input
+            v-model="vipOrderId"
+            type="text"
+            placeholder="请先在购买会员界面复制订单号，在此粘贴"
+            class="verification-input"
+          />
+          <button
+            @click="verifyVipOrder"
+            :disabled="verifyingVipOrder"
+            class="verification-btn"
+          >
+            {{ verifyingVipOrder ? '验证中...' : '验证' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 积分充值弹窗 -->
+    <div v-if="showPointsRecharge" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">积分充值</h2>
+          <button @click="showPointsRecharge = false" class="modal-close-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="modal-close-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <h3 class="modal-subtitle">积分用途</h3>
+          <ul class="privileges-list">
+            <li class="privilege-item">
+              <span class="privilege-check">✓</span>
+              <span>文字转语音、语音转文字（开发中）</span>
+            </li>
+            <li class="privilege-item">
+              <span class="privilege-check">✓</span>
+              <span>使用对话模型</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 购买积分按钮 -->
+        <a
+          href="https://afdian.com/a/mchyj?tab=shop"
+          target="_blank"
+          class="purchase-btn points-purchase-btn"
+        >
+          购买积分
+        </a>
+
+        <!-- 订单号验证区域 -->
+        <div class="verification-section">
+          <input
+            v-model="pointsOrderId"
+            type="text"
+            placeholder="请先在购买积分界面复制订单号，在此粘贴"
+            class="verification-input"
+          />
+          <button
+            @click="verifyPointsOrder"
+            :disabled="verifyingPointsOrder"
+            class="verification-btn"
+          >
+            {{ verifyingPointsOrder ? '验证中...' : '验证' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  NCard,
-  NButton,
-  NIcon,
-  NAvatar,
-  NModal,
-  NInput,
-  useMessage
-} from 'naive-ui'
-import {
-  ArrowLeft,
-  Calendar,
-  Crown,
-  Currency
-} from '@vicons/tabler'
-import { useUserStore } from '@/stores/user'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useUserStore } from '@/stores/user';
+import { sign, verifyPoints, verifyVip, getHasSigned } from '@/api/user';
+import { toastSuccess, toastError } from '@/components/ui/toast/use-toast';
 
-/**
- * 个人中心页面组件
- * 包含用户信息、签到、积分记录、会员开通等功能
- */
-
-const router = useRouter()
-const message = useMessage()
-const userStore = useUserStore()
+const router = useRouter();
+const userStore = useUserStore();
 
 // 响应式数据
-const signInStatus = ref(false)
-const signingIn = ref(false)
-const showPointsHistory = ref(false)
-const showVipUpgrade = ref(false)
-const showPointsRecharge = ref(false)
-const showSettings = ref(false)
-const savingSettings = ref(false)
-const pointsHistory = ref([])
-const vipOrderId = ref('')
-const pointsOrderId = ref('')
-const verifyingVipOrder = ref(false)
-const verifyingPointsOrder = ref(false)
-
-// 设置表单
-const settingsForm = ref({
-  username: '',
-  email: '',
-  avatar: ''
-})
+const signInStatus = ref(false);
+const signingIn = ref(false);
+const showVipUpgrade = ref(false);
+const showPointsRecharge = ref(false);
+const vipOrderId = ref('');
+const pointsOrderId = ref('');
+const verifyingVipOrder = ref(false);
+const verifyingPointsOrder = ref(false);
 
 // 计算属性
-const userInfo = computed(() => userStore.userInfo)
+const userInfo = computed(() => userStore.userInfo);
 
 /**
  * 返回上一页
  */
 const goBack = () => {
-  router.go(-1)
-}
+  router.go(-1);
+};
 
 /**
  * 获取会员等级显示文本
  * @param {string} memberLevel - 会员等级
  * @returns {string} 显示文本
  */
-const getMemberLevelText = (memberLevel) => {
+const getMemberLevelText = (memberLevel: string | undefined) => {
   if (!memberLevel || memberLevel === 'free') {
-    return '普通用户'
+    return '普通用户';
   }
-  return memberLevel + '用户'
-}
+  return memberLevel + '用户';
+};
 
 /**
  * 处理签到
  */
 const handleSignIn = async () => {
-  signingIn.value = true
+  signingIn.value = true;
   try {
-    const result = await userStore.signIn()
-    if (result.success) {
-      signInStatus.value = true
-      message.success(`签到成功！获得 ${result.data?.points} 积分`)
+    const result = await sign();
+    if (result.data.success) {
+      signInStatus.value = true;
+      toastSuccess(`签到成功！获得 ${result.data.data?.points} 积分` || '签到成功！');
       // 刷新用户信息
-      await userStore.getCurrentUser()
+      await userStore.init();
     } else {
-      message.error(result.message || '签到失败')
+      toastError(result.data.message || '签到失败');
     }
   } catch (error) {
-    message.error('签到失败')
+    console.error('签到失败:', error);
+    toastError('签到失败');
   } finally {
-    signingIn.value = false
+    signingIn.value = false;
   }
-}
+};
 
 /**
  * 验证VIP订单
  */
 const verifyVipOrder = async () => {
   if (!vipOrderId.value.trim()) {
-    message.warning('请输入订单号')
-    return
+    toastError('请输入订单号');
+    return;
   }
 
-  verifyingVipOrder.value = true
+  verifyingVipOrder.value = true;
   try {
-    const response = await fetch('/api/verify_vip', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        orderID: vipOrderId.value,
-        force: false
-      })
-    })
+    const response = await verifyVip({
+      orderID: vipOrderId.value,
+      force: false
+    });
 
-    const result = await response.json()
-    
-    if (result.success) {
-      message.success('VIP验证成功!')
-      showVipUpgrade.value = false
-      vipOrderId.value = ''
+    if (response.data.success) {
+      toastSuccess('VIP验证成功!');
+      showVipUpgrade.value = false;
+      vipOrderId.value = '';
       // 刷新用户信息以显示新的VIP状态
-      await userStore.getCurrentUser()
+      await userStore.init();
     } else {
-      message.error(result.message || '验证失败')
+      toastError(response.data.message || '验证失败');
     }
   } catch (error) {
-    message.error('验证过程中出现错误')
+    console.error('验证VIP订单失败:', error);
+    toastError('验证过程中出现错误');
   } finally {
-    verifyingVipOrder.value = false
+    verifyingVipOrder.value = false;
   }
-}
+};
 
 /**
  * 验证积分订单
  */
 const verifyPointsOrder = async () => {
   if (!pointsOrderId.value.trim()) {
-    message.warning('请输入订单号')
-    return
+    toastError('请输入订单号');
+    return;
   }
 
-  verifyingPointsOrder.value = true
+  verifyingPointsOrder.value = true;
   try {
-    const response = await fetch('/api/verify_points', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        orderID: pointsOrderId.value
-      })
-    })
+    const response = await verifyPoints({
+      orderID: pointsOrderId.value
+    });
 
-    const result = await response.json()
-    
-    if (result.success) {
-      message.success('积分充值验证成功!')
-      showPointsRecharge.value = false
-      pointsOrderId.value = ''
+    if (response.data.success) {
+      toastSuccess('积分充值验证成功!');
+      showPointsRecharge.value = false;
+      pointsOrderId.value = '';
       // 刷新用户信息以显示新的积分
-      await userStore.getCurrentUser()
+      await userStore.init();
     } else {
-      message.error(result.message || '验证失败')
+      toastError(response.data.message || '验证失败');
     }
   } catch (error) {
-    message.error('验证过程中出现错误')
+    console.error('验证积分订单失败:', error);
+    toastError('验证过程中出现错误');
   } finally {
-    verifyingPointsOrder.value = false
+    verifyingPointsOrder.value = false;
   }
-}
-
-/**
- * 格式化时间
- * @param {string} time - 时间字符串
- * @returns {string} 格式化后的时间
- */
-const formatTime = (time) => {
-  return new Date(time).toLocaleString('zh-CN')
-}
+};
 
 /**
  * 检查签到状态
  */
 const checkSignInStatus = async () => {
   try {
-    const result = await userStore.checkSignInStatus()
-    if (result.success) {
-      signInStatus.value = result.data.signed
+    const result = await getHasSigned();
+    if (result.data.success) {
+      signInStatus.value = result.data.signed;
     }
   } catch (error) {
-    console.error('检查签到状态失败:', error)
+    console.error('检查签到状态失败:', error);
   }
-}
+};
 
 // 组件挂载时初始化数据
 onMounted(async () => {
   // 获取用户信息
-  await userStore.getCurrentUser()
-  
+  await userStore.init();
+
   // 检查签到状态
-  await checkSignInStatus()
-})
+  await checkSignInStatus();
+});
 </script>
 
 <style scoped>
 .profile-container {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--color-white);
+  color: var(--color-gray-800);
 }
 
-.profile-header {
+.dark .profile-container {
+  background-color: var(--color-black);
+  color: var(--color-gray-100);
+}
+
+.header-container {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  padding: var(--spacing-md); /* p-4 */
+  border-bottom: 1px solid var(--color-gray-200); /* border-b border-gray-200 */
+}
+
+.dark .header-container {
+  border-bottom-color: var(--color-gray-800); /* dark:border-gray-800 */
 }
 
 .back-btn {
-  margin-right: 16px;
+  padding: var(--spacing-sm); /* p-2 */
+  border-radius: var(--border-radius-md); /* rounded-md */
 }
 
-.profile-header h1 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
+.back-btn:hover {
+  background-color: var(--color-gray-100); /* hover:bg-gray-100 */
 }
 
-.profile-content {
-  padding: 20px;
-  max-width: 800px;
-  margin: 0 auto;
+.dark .back-btn:hover {
+  background-color: var(--color-gray-800); /* dark:hover:bg-gray-800 */
+}
+
+.back-btn-icon {
+  height: var(--spacing-lg); /* h-5 */
+  width: var(--spacing-lg); /* w-5 */
+}
+
+.page-title {
+  margin-left: var(--spacing-md); /* ml-4 */
+  font-size: var(--font-size-xl); /* text-xl */
+  font-weight: var(--font-weight-semibold); /* font-semibold */
+}
+
+.content-container {
+  padding: var(--spacing-lg); /* p-6 */
+  max-width: var(--max-width-7xl); /* max-w-4xl */
+  margin-left: auto; /* mx-auto */
+  margin-right: auto; /* mx-auto */
 }
 
 .user-info-card {
-  margin-bottom: 24px;
+  background-color: var(--color-white); /* bg-white */
+  border: 1px solid var(--color-gray-200); /* border border-gray-200 */
+  border-radius: var(--border-radius-lg); /* rounded-lg */
+  padding: var(--spacing-lg); /* p-6 */
+  margin-bottom: var(--spacing-lg); /* mb-6 */
 }
 
-.user-info {
+.dark .user-info-card {
+  background-color: var(--color-black); /* dark:bg-black */
+  border-color: var(--color-gray-800); /* dark:border-gray-800 */
+}
+
+.user-info-content {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .user-info-content {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--spacing-lg); /* gap-6 */
+  }
 }
 
 .user-avatar {
-  flex-shrink: 0;
+  width: 5rem; /* w-20 */
+  height: 5rem; /* h-20 */
+  border-radius: var(--border-radius-full); /* rounded-full */
+  background-color: var(--color-gray-200); /* bg-gray-200 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xl); /* text-xl */
+  font-weight: 700; /* font-bold */
+  color: var(--color-gray-600); /* text-gray-700 */
 }
 
-.user-details h2 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
+.dark .user-avatar {
+  background-color: var(--color-gray-700); /* dark:bg-gray-700 */
+  color: var(--color-gray-300); /* dark:text-gray-300 */
+}
+
+.user-details {
+  flex: 1;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .user-details {
+    text-align: left; /* md:text-left */
+  }
+}
+
+.user-name {
+  font-size: var(--font-size-2xl); /* text-2xl */
+  font-weight: 700; /* font-bold */
 }
 
 .user-email {
-  margin: 0 0 16px 0;
-  color: #666;
-  font-size: 14px;
+  color: var(--color-gray-600); /* text-gray-600 */
+  margin-top: var(--spacing-xs); /* mt-1 */
+}
+
+.dark .user-email {
+  color: var(--color-gray-400); /* dark:text-gray-400 */
 }
 
 .user-stats {
   display: flex;
-  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-lg); /* gap-6 */
+  margin-top: var(--spacing-md); /* mt-4 */
+}
+
+@media (min-width: 768px) {
+  .user-stats {
+    justify-content: flex-start; /* md:justify-start */
+  }
 }
 
 .stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  text-align: center;
 }
 
 .stat-label {
-  font-size: 12px;
-  color: #999;
+  font-size: var(--font-size-sm); /* text-sm */
+  color: var(--color-gray-500); /* text-gray-500 */
+}
+
+.dark .stat-label {
+  color: var(--color-gray-400); /* dark:text-gray-400 */
 }
 
 .stat-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
+  font-size: var(--font-size-lg); /* text-lg */
+  font-weight: 600; /* font-semibold */
 }
 
-.stat-value.vip {
-  color: #f0a020;
+.vip-status {
+  color: #eab308; /* text-yellow-500 */
 }
 
-.feature-grid {
+.features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(1, minmax(0, 1fr)); /* grid-cols-1 */
+  gap: var(--spacing-md); /* gap-4 */
+}
+
+@media (min-width: 768px) {
+  .features-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* md:grid-cols-2 */
+  }
+}
+
+@media (min-width: 1024px) {
+  .features-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)); /* lg:grid-cols-3 */
+  }
 }
 
 .feature-card {
-  height: 100%;
+  background-color: var(--color-white); /* bg-white */
+  border: 1px solid var(--color-gray-200); /* border border-gray-200 */
+  border-radius: var(--border-radius-lg); /* rounded-lg */
+  padding: var(--spacing-md); /* p-4 */
 }
 
-.feature-content {
+.dark .feature-card {
+  background-color: var(--color-black); /* dark:bg-black */
+  border-color: var(--color-gray-800); /* dark:border-gray-800 */
+}
+
+.feature-card-content {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md); /* gap-4 */
 }
 
 .feature-icon {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+  width: 3rem; /* w-12 */
+  height: 3rem; /* h-12 */
+  border-radius: var(--border-radius-lg); /* rounded-lg */
+  background-color: #dbeafe; /* bg-blue-100 */
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f0f0;
-  border-radius: 8px;
-  color: #666;
 }
 
-.feature-info {
+.dark .feature-icon {
+  background-color: rgba(30, 58, 138, 0.3); /* dark:bg-blue-900/30 */
+}
+
+.icon {
+  height: 1.5rem; /* h-6 */
+  width: 1.5rem; /* w-6 */
+  color: #3b82f6; /* text-blue-500 */
+}
+
+.dark .icon {
+  color: #60a5fa; /* dark:text-blue-400 */
+}
+
+.feature-text {
   flex: 1;
 }
 
-.feature-info h3 {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
+.feature-title {
+  font-weight: 500; /* font-semibold */
 }
 
-.feature-info p {
-  margin: 0;
-  font-size: 14px;
-  color: #666;
+.feature-desc {
+  font-size: var(--font-size-sm); /* text-sm */
+  color: var(--color-gray-500); /* text-gray-500 */
 }
 
-.points-history {
-  max-height: 400px;
-  overflow-y: auto;
+.dark .feature-desc {
+  color: var(--color-gray-400); /* dark:text-gray-400 */
 }
 
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.sign-in-btn {
+  padding: var(--spacing-sm) var(--spacing-md); /* px-4 py-2 */
+  border-radius: var(--border-radius-md); /* rounded-md */
+  font-size: var(--font-size-sm); /* text-sm */
+  font-weight: 500; /* font-medium */
+  transition-colors: 150ms;
 }
 
-.history-item {
+.sign-in-btn:hover {
+  background-color: #2563eb; /* hover:bg-blue-600 */
+}
+
+.sign-in-btn:disabled {
+  opacity: 0.5; /* disabled:opacity-50 */
+}
+
+.sign-in-btn-disabled {
+  background-color: var(--color-gray-100); /* bg-gray-100 */
+  color: var(--color-gray-500); /* text-gray-500 */
+  cursor: not-allowed; /* cursor-not-allowed */
+}
+
+.dark .sign-in-btn-disabled {
+  background-color: var(--color-gray-800); /* dark:bg-gray-800 */
+  color: var(--color-gray-400); /* dark:text-gray-400 */
+}
+
+.vip-upgrade-btn {
+  padding: var(--spacing-sm) var(--spacing-md); /* px-4 py-2 */
+  background-color: #f59e0b; /* bg-amber-500 */
+  color: var(--color-white); /* text-white */
+  border-radius: var(--border-radius-md); /* rounded-md */
+  font-size: var(--font-size-sm); /* text-sm */
+  font-weight: 500; /* font-medium */
+  transition-colors: 150ms;
+}
+
+.vip-upgrade-btn:hover {
+  background-color: #d97706; /* hover:bg-amber-600 */
+}
+
+.points-recharge-btn {
+  padding: var(--spacing-sm) var(--spacing-md); /* px-4 py-2 */
+  background-color: #10b981; /* bg-green-500 */
+  color: var(--color-white); /* text-white */
+  border-radius: var(--border-radius-md); /* rounded-md */
+  font-size: var(--font-size-sm); /* text-sm */
+  font-weight: 500; /* font-medium */
+  transition-colors: 150ms;
+}
+
+.points-recharge-btn:hover {
+  background-color: #059669; /* hover:bg-green-600 */
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5); /* bg-black/50 */
   display: flex;
   align-items: center;
+  justify-content: center;
+  z-index: var(--z-index-modal); /* z-50 */
+  padding: var(--spacing-md); /* p-4 */
+}
+
+.modal-content {
+  background-color: var(--color-white); /* bg-white */
+  border: 1px solid var(--color-gray-200); /* border border-gray-200 */
+  border-radius: var(--border-radius-lg); /* rounded-lg */
+  width: 100%;
+  max-width: 28rem; /* max-w-md */
+  padding: var(--spacing-lg); /* p-6 */
+}
+
+.dark .modal-content {
+  background-color: var(--color-black); /* dark:bg-black */
+  border-color: var(--color-gray-800); /* dark:border-gray-800 */
+}
+
+.modal-header {
+  display: flex;
   justify-content: space-between;
-  padding: 12px;
-  background: #f8f8f8;
-  border-radius: 8px;
+  align-items: center;
+  margin-bottom: var(--spacing-md); /* mb-4 */
 }
 
-.history-info {
-  flex: 1;
+.modal-title {
+  font-size: var(--font-size-xl); /* text-xl */
+  font-weight: var(--font-weight-semibold); /* font-semibold */
 }
 
-.history-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 4px;
+.modal-close-btn {
+  padding: var(--spacing-xs); /* p-1 */
+  border-radius: var(--border-radius-md); /* rounded-md */
 }
 
-.history-time {
-  font-size: 12px;
-  color: #999;
+.modal-close-btn:hover {
+  background-color: var(--color-gray-100); /* hover:bg-gray-100 */
 }
 
-.history-points {
-  font-size: 16px;
-  font-weight: 600;
+.dark .modal-close-btn:hover {
+  background-color: var(--color-gray-800); /* dark:hover:bg-gray-800 */
 }
 
-.history-points.positive {
-  color: #52c41a;
+.modal-close-icon {
+  height: var(--spacing-lg); /* h-5 */
+  width: var(--spacing-lg); /* w-5 */
 }
 
-.history-points.negative {
-  color: #ff4d4f;
+.modal-body {
+  margin-bottom: var(--spacing-lg); /* mb-6 */
 }
 
-.vip-upgrade,
-.points-recharge {
+.modal-subtitle {
+  font-weight: 500; /* font-semibold */
+  margin-bottom: var(--spacing-sm); /* mb-2 */
+}
+
+.privileges-list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--spacing-sm); /* space-y-2 */
 }
 
-.vip-benefits ul,
-.points-benefits ul {
-  margin: 12px 0 0 0;
-  padding-left: 20px;
+.privilege-item {
+  display: flex;
+  align-items: flex-start;
+  font-size: var(--font-size-sm); /* text-sm */
+  color: var(--color-gray-600); /* text-gray-600 */
 }
 
-.vip-benefits li,
-.points-benefits li {
-  margin-bottom: 8px;
-  color: #666;
+.dark .privilege-item {
+  color: var(--color-gray-400); /* dark:text-gray-400 */
 }
 
-.order-verification {
+.privilege-check {
+  color: #10b981; /* text-green-500 */
+  margin-right: var(--spacing-sm); /* mr-2 */
+}
+
+.purchase-btn {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-md); /* px-4 py-3 */
+  background-color: #f59e0b; /* bg-amber-500 */
+  color: var(--color-white); /* text-white */
+  border-radius: var(--border-radius-md); /* rounded-md */
+  text-align: center;
+  margin-bottom: var(--spacing-md); /* mb-4 */
+  font-size: var(--font-size-sm); /* text-sm */
+  font-weight: 500; /* font-medium */
+  transition-colors: 150ms;
+}
+
+.purchase-btn:hover {
+  background-color: #d97706; /* hover:bg-amber-600 */
+}
+
+.points-purchase-btn {
+  background-color: #10b981; /* bg-green-500 */
+}
+
+.points-purchase-btn:hover {
+  background-color: #059669; /* hover:bg-green-600 */
+}
+
+.verification-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-md); /* space-y-3 */
 }
 
-.settings-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.verification-input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-sm); /* px-3 py-2 */
+  border: 1px solid var(--color-gray-300); /* border border-gray-300 */
+  border-radius: var(--border-radius-md); /* rounded-md */
+  font-size: var(--font-size-sm); /* text-sm */
 }
 
-.settings-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
+.dark .verification-input {
+  background-color: var(--color-black); /* dark:bg-black */
+  border-color: var(--color-gray-700); /* dark:border-gray-700 */
 }
 
-@media (max-width: 768px) {
-  .profile-content {
-    padding: 16px;
-  }
-  
-  .user-info {
-    flex-direction: column;
-    text-align: center;
-  }
-  
-  .feature-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .feature-content {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-  }
-  
-  .vip-pricing {
-    flex-direction: column;
-  }
+.verification-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.2); /* focus:ring-2 focus:ring-gray-500 */
+}
+
+.dark .verification-input:focus {
+  box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.2); /* dark:focus:ring-gray-400 */
+}
+
+.verification-btn {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md); /* px-4 py-2 */
+  background-color: #3b82f6; /* bg-blue-500 */
+  color: var(--color-white); /* text-white */
+  border-radius: var(--border-radius-md); /* rounded-md */
+  font-size: var(--font-size-sm); /* text-sm */
+  font-weight: 500; /* font-medium */
+  transition-colors: 150ms;
+}
+
+.verification-btn:hover {
+  background-color: #2563eb; /* hover:bg-blue-600 */
+}
+
+.verification-btn:disabled {
+  opacity: 0.5; /* disabled:opacity-50 */
 }
 </style>
