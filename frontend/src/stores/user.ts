@@ -58,6 +58,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const checkAuthenticated = () => {
+    init()
     if (!userInfo.id || !userInfo.email || !userInfo.username || !isAuthenticated.value) {
       logout()
       return false

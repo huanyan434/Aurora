@@ -3,15 +3,8 @@
     <div class="input-area-wrapper">
       <div class="input-container-wrapper">
         <div class="input-container">
-          <Textarea
-            v-model="inputMessage"
-            @keydown="handleKeydown"
-            placeholder="询问任何问题"
-            :disabled="isGenerating"
-            class="message-input"
-            rows="3"
-            ref="inputRef"
-          />
+          <Textarea v-model="inputMessage" @keydown="handleKeydown" placeholder="询问任何问题" :disabled="isGenerating"
+            class="message-input" rows="3" ref="inputRef" />
 
           <!-- 左下角按钮组 -->
           <div class="input-button-group-left">
@@ -19,12 +12,7 @@
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    class="input-addon-button"
-                    @click="handleFileUpload"
-                  >
+                  <Button variant="ghost" size="icon" class="input-addon-button" @click="handleFileUpload">
                     <Plus class="icon-small" />
                   </Button>
                 </TooltipTrigger>
@@ -35,21 +23,18 @@
             </TooltipProvider>
 
             <!-- 推理按钮 -->
-            <TooltipProvider v-if="showReasoningButton">
+            <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    :class="['input-addon-button', 'reasoning-button']"
-                    :disabled="isReasoningDisabled"
-                    @click="toggleReasoning"
-                  >
+                  <Button variant="ghost" size="icon"
+                    :class="['input-addon-button', 'reasoning-button', { 'reasoning-active': isReasoning }]"
+                    :disabled="isReasoningDisabled" @click="toggleReasoning">
                     <Lightbulb class="icon-small" />
+                    <span class="reasoning-text">推理</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>推理</p>
+                  <p>让模型思考地更深入</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -60,23 +45,12 @@
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <Button
-                    v-if="isGenerating"
-                    @click="handleStopGeneration"
-                    variant="ghost"
-                    size="icon"
-                    class="input-send-button"
-                  >
+                  <Button v-if="isGenerating" @click="handleStopGeneration" variant="ghost" size="icon"
+                    class="input-send-button">
                     <Square class="icon-small" />
                   </Button>
-                  <Button
-                    v-else
-                    @click="handleSendMessage"
-                    variant="ghost"
-                    size="icon"
-                    :disabled="!inputMessage.trim() || isGenerating"
-                    class="input-send-button"
-                  >
+                  <Button v-else @click="handleSendMessage" variant="ghost" size="icon"
+                    :disabled="!inputMessage.trim() || isGenerating" class="input-send-button">
                     <Send class="icon-small" />
                   </Button>
                 </TooltipTrigger>
@@ -105,26 +79,51 @@ import {
 } from '@/components/ui/tooltip';
 import { Plus, Lightbulb, Square, Send } from 'lucide-vue-next';
 import { useChatStore } from '@/stores/chat';
+import type { Model } from '@/stores/chat';
 
-// 引入其他可能需要的API函数
-import { generate, stopGenerate } from '@/api/chat';
 
 // 响应式数据
 const inputMessage = ref('');
 const isGenerating = ref(false);
 const isReasoning = ref(false);
 const inputRef = ref<HTMLElement | null>(null);
-
-// 计算属性
-const showReasoningButton = computed(() => {
-  const chatStore = useChatStore();
-  // 如果当前选中的模型支持推理，则显示推理按钮
-  const currentModel = chatStore.currentModel;
-  return currentModel?.reasoning === true;
-});
+const chatStore = useChatStore();
 
 const isReasoningDisabled = computed(() => {
-  return !inputMessage.value.trim() || isGenerating.value;
+  // 获取当前模型列表
+  const modelList: Model[] = chatStore.models;
+  const selectedModel = chatStore.selectedModel;
+
+  // 获取当前选中的模型
+  const currentModel = modelList.find(model => model.id === selectedModel);
+
+  // 如果新模型不支持推理，禁用推理模式
+  if (currentModel) {
+    if (!currentModel.reasoning) {
+      isReasoning.value = false;
+    } else if (currentModel.reasoning === currentModel.id) {
+      isReasoning.value = true;
+    } else {
+      isReasoning.value = false;
+      return false;
+    }
+  } else {
+    isReasoning.value = false;
+  }
+  return true;
+});
+
+// 推理按钮样式相关计算属性
+const reasoningButtonBg = computed(() => {
+  return isReasoning.value ? 'var(--reasoning-button-bg)' : 'transparent';
+});
+
+const reasoningButtonColor = computed(() => {
+  return isReasoning.value ? 'var(--reasoning-button-text)' : 'initial';
+});
+
+const reasoningButtonHoverBg = computed(() => {
+  return isReasoning.value ? 'var(--reasoning-button-hover-bg)' : '';
 });
 
 // 处理键盘事件
@@ -144,7 +143,6 @@ const handleSendMessage = async () => {
   try {
     // 在实际应用中，这里会调用发送消息的API
     // 使用chatStore获取当前选中的模型ID
-    const chatStore = useChatStore();
 
     console.log('发送消息:', inputMessage.value);
     console.log('推理模式:', isReasoning.value);
@@ -193,11 +191,31 @@ const handleFileUpload = () => {
   // 在实际应用中，这里会打开文件选择对话框
   // 也可以通过ref来触发一个隐藏的input[type="file"]元素
 };
+
 </script>
 
 <style scoped>
 .input-area-container {
   padding: var(--input-area-horizontal-padding) var(--input-area-horizontal-padding) var(--input-area-bottom-padding);
+}
+
+/* 推理按钮激活状态样式 */
+:root {
+  --reasoning-button-bg: #3b82f6;
+  /* bg-blue-500 */
+  --reasoning-button-text: #ffffff;
+  /* text-white */
+  --reasoning-button-hover-bg: #2563eb;
+  /* hover:bg-blue-600 */
+}
+
+.dark {
+  --reasoning-button-bg: #1d4ed8;
+  /* dark:bg-blue-700 */
+  --reasoning-button-text: #ffffff;
+  /* dark:text-white */
+  --reasoning-button-hover-bg: #1e40af;
+  /* dark:hover:bg-blue-800 */
 }
 
 .input-area-wrapper {
@@ -207,14 +225,18 @@ const handleFileUpload = () => {
 }
 
 .input-container-wrapper {
-  border: 1px solid var(--color-gray-200); /* border border-gray-200 */
+  border: 1px solid var(--color-gray-200);
+  /* border border-gray-200 */
   border-radius: var(--input-container-border-radius);
-  background-color: var(--color-white); /* bg-white */
+  background-color: var(--color-white);
+  /* bg-white */
 }
 
 .dark .input-container-wrapper {
-  border-color: var(--color-gray-700); /* dark:border-gray-700 */
-  background-color: var(--color-black); /* dark:bg-black */
+  border-color: var(--color-gray-700);
+  /* dark:border-gray-700 */
+  background-color: var(--color-black);
+  /* dark:bg-black */
 }
 
 .input-container {
@@ -223,20 +245,26 @@ const handleFileUpload = () => {
 
 .message-input {
   width: 100%;
-  max-width: var(--input-area-max-width); /* 设置最大宽度 */
+  max-width: var(--input-area-max-width);
+  /* 设置最大宽度 */
   resize: none;
   outline: none;
   font-size: var(--input-text-size);
   max-height: var(--input-max-height);
-  padding-right: var(--input-padding-right); /* 与右边按钮位置对齐 */
-  padding-left: var(--input-padding-left); /* 与左边按钮位置对齐 */
-  padding-bottom: var(--input-padding-bottom); /* 为底部按钮留出空间 */
+  padding-right: var(--input-padding-right);
+  /* 与右边按钮位置对齐 */
+  padding-left: var(--input-padding-left);
+  /* 与左边按钮位置对齐 */
+  padding-bottom: var(--input-padding-bottom);
+  /* 为底部按钮留出空间 */
   background-color: transparent;
-  color: var(--color-gray-800); /* text-gray-800 */
+  color: var(--color-gray-800);
+  /* text-gray-800 */
 }
 
 .dark .message-input {
-  color: var(--color-gray-200); /* dark:text-gray-200 */
+  color: var(--color-gray-200);
+  /* dark:text-gray-200 */
 }
 
 .message-input:focus {
@@ -265,24 +293,38 @@ const handleFileUpload = () => {
   height: var(--button-size);
   width: var(--button-size);
   background-color: transparent;
-  border-radius: var(--border-radius-full); /* rounded-full */
+  border-radius: var(--border-radius-full);
+  /* rounded-full */
 }
 
 .input-addon-button:hover {
-  background-color: var(--color-gray-200); /* hover:bg-gray-200 */
+  background-color: var(--color-gray-200);
+  /* hover:bg-gray-200 */
 }
 
 .dark .input-addon-button:hover {
-  background-color: var(--color-gray-700); /* dark:hover:bg-gray-700 */
+  background-color: var(--color-gray-700);
+  /* dark:hover:bg-gray-700 */
 }
 
 .reasoning-button {
-  background-color: v-bind(isReasoning ? 'var(--reasoning-button-bg)' : 'transparent');
-  color: v-bind(isReasoning ? 'var(--reasoning-button-text)' : 'initial');
+  background-color: v-bind(reasoningButtonBg);
+  color: v-bind(reasoningButtonColor);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  /* 添加图标和文字之间的间距 */
+  width: calc(var(--button-size) * 2);
+  /* 设置为默认按钮尺寸的2倍宽度 */
 }
 
 .reasoning-button:hover {
-  background-color: v-bind(isReasoning ? 'var(--reasoning-button-hover-bg)' : '');
+  background-color: v-bind(reasoningButtonHoverBg);
+}
+
+.reasoning-text {
+  font-size: var(--font-size-sm);
+  /* 设置文字大小为稍大一点 */
 }
 
 .message-input:disabled {
@@ -303,15 +345,18 @@ const handleFileUpload = () => {
   height: var(--button-size);
   width: var(--button-size);
   background-color: transparent;
-  border-radius: var(--border-radius-full); /* rounded-full */
+  border-radius: var(--border-radius-full);
+  /* rounded-full */
 }
 
 .input-send-button:hover {
-  background-color: var(--color-gray-200); /* hover:bg-gray-200 */
+  background-color: var(--color-gray-200);
+  /* hover:bg-gray-200 */
 }
 
 .dark .input-send-button:hover {
-  background-color: var(--color-gray-700); /* dark:hover:bg-gray-700 */
+  background-color: var(--color-gray-700);
+  /* dark:hover:bg-gray-700 */
 }
 
 .icon-small {

@@ -32,8 +32,8 @@ export interface ApiModel {
 export interface Model {
   id: string;
   name: string;
-  reasoning?: boolean;
-  image?: number; // 0: 无, 1: 有, 3: 有
+  reasoning?: string;
+  image?: number;
   points?: number;
   description?: string;
   tool?: number;
@@ -86,7 +86,7 @@ export const useChatStore = defineStore('chat', {
               id: apiModel.ID,
               name: apiModel.Name,
               points: apiModel.Points,
-              reasoning: !!apiModel.Reasoning && apiModel.Reasoning !== '', // 推理字段是一个字符串，非空即为true
+              reasoning: apiModel.Reasoning,
               tool: apiModel.Tool
             };
             // 如果有其他可选字段，也要处理
@@ -125,12 +125,7 @@ export const useChatStore = defineStore('chat', {
         console.error('获取模型列表失败:', error);
         // 如果获取失败，使用默认模型列表
         this.models = [
-          { id: 'gpt-4', name: 'GPT-4', reasoning: true, image: 1, points: 20 },
-          { id: 'gpt-3.5', name: 'GPT-3.5', points: 5 },
-          { id: 'claude', name: 'Claude', reasoning: true, points: 15 },
-          { id: 'llama', name: 'Llama', points: 10 },
-          { id: 'gemini', name: 'Gemini', image: 1, points: 12 },
-          { id: 'mistral', name: 'Mistral', points: 8 }
+          { id: 'gpt-4', name: 'GPT-4', reasoning: 'gpt-4', image: 1, points: 20 }
         ];
         if (this.models.length > 0) {
           this.selectedModel = this.models[0].id;

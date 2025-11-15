@@ -124,6 +124,7 @@ const handleNewConversation = () => {
   display: flex;
   align-items: center; /* items-center */
   justify-content: center; /* justify-center */
+  border-radius: var(--border-radius-lg);
 }
 
 .new-conversation-btn:hover {
