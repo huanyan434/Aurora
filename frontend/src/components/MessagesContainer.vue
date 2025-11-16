@@ -7,13 +7,21 @@
       </div>
       
       <!-- 消息列表 -->
-      <div v-else v-for="(message, index) in displayedMessages" :key="message.id || index" class="flex">
+      <div 
+        v-else 
+        v-for="(message, index) in displayedMessages" 
+        :key="message.id || index" 
+        class="flex flex-col"
+        :class="message.role === 'user' ? 'items-end' : 'items-start'"
+        @mouseenter="hoveredMessageId = message.id || null"
+        @mouseleave="hoveredMessageId = null"
+      >
         <div 
           :class="[
             'max-w-[85%] rounded-lg px-4 py-3',
             message.role === 'user' 
-              ? 'bg-gray-100 dark:bg-gray-800 ml-auto' 
-              : 'bg-white dark:bg-gray-900 mr-auto'
+              ? 'bg-gray-100 dark:bg-gray-800' 
+              : 'bg-white dark:bg-gray-900'
           ]"
         >
           <!-- 用户消息 -->
@@ -44,7 +52,83 @@
             ></div>
           </div>
         </div>
+        
+        <!-- 消息操作按钮 -->
+        <div 
+          :class="[
+            'flex flex-row items-start mt-1',
+            message.role === 'user' ? 'mr-2' : 'ml-2',
+            (hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1) ? 'opacity-100' : 'opacity-0'
+          ]"
+        >
+          <button 
+            @click="copyMessage(message.content)"
+            class="flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+            title="复制"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 3V7C14 7.26522 14.1054 7.51957 14.2929 7.70711L16.2929 9.70711C16.4804 9.89464 16.7348 10 17 10H21M14 3H10C9.44772 3 9 3.44772 9 4V7H6C5.44772 7 5 7.44772 5 8V20C5 20.5523 5.44772 21 6 21H18C18.5523 21 19 20.5523 19 20V15H16C15.4477 15 15 14.5523 15 14V11H12C11.4477 11 11 10.5523 11 10V7H8C7.44772 7 7 6.55228 7 6V4C7 3.44772 7.44772 3 8 3H14Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          
+          <div class="relative">
+            <button 
+              @click="toggleMenu(message.id)"
+              class="flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 ml-1"
+              title="更多"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                <circle cx="6" cy="12" r="1.5" fill="currentColor"/>
+                <circle cx="18" cy="12" r="1.5" fill="currentColor"/>
+              </svg>
+            </button>
+            
+            <!-- 下拉菜单 -->
+            <div 
+              v-if="openedMenuId === message.id"
+              class="absolute top-full mt-2 right-0 w-24 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700"
+            >
+              <!-- 分享功能暂时不做 -->
+              <button 
+                class="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                @click="openDeleteDialog(message.id)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
+                  <path d="M3 6H5M5 6H21M5 6V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 21.1046 19 20V6H5ZM10 11V17M14 11V17M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6H8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                删除
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+      
+      <!-- 删除确认对话框 -->
+      <Dialog :open="isDeleteDialogOpen" @update:open="isDeleteDialogOpen = $event">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+            <DialogDescription>
+              确定要删除这条消息吗？此操作无法撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button 
+              @click="isDeleteDialogOpen = false"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none"
+            >
+              取消
+            </button>
+            <button 
+              @click="confirmDeleteMessage"
+              class="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 focus:outline-none"
+            >
+              删除
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <!-- 占位消息，提示目前逻辑为空 -->
       <div v-if="!isLoading && displayedMessages.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-10">
@@ -56,11 +140,20 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, watch } from 'vue';
-import { getMessagesList } from '@/api/chat';
+import { getMessagesList, deleteMessage as deleteMessageAPI } from '@/api/chat';
 import { useRoute } from 'vue-router';
 import { marked } from 'marked';
 import { useChatStore } from '@/stores/chat';
 import ReasoningContent from './ReasoningContent.vue';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import { addToast } from '@/components/ui/toast/use-toast'
 
 // 定义消息类型
 interface DisplayMessage {
@@ -79,6 +172,10 @@ const chatStore = useChatStore();
 
 // 状态变量
 const isLoading = ref(false);
+const hoveredMessageId = ref<number | null>(null);
+const openedMenuId = ref<number | null>(null);
+const isDeleteDialogOpen = ref(false);
+const messageToDelete = ref<number | null>(null);
 
 // 获取容器元素的引用
 const containerRef = ref<HTMLElement | null>(null);
@@ -155,10 +252,9 @@ const scrollToBottom = () => {
 /**
  * 处理消息内容，过滤掉模型标识等非必要内容
  * @param content 消息内容
- * @param reasoningContent 推理内容（可选）
  * @returns 处理后的消息内容
  */
-const processMessageContent = (content: string, reasoningContent?: string) => {
+const processMessageContent = (content: string) => {
   if (!content) return '';
   
   // 移除模型标识符，如 <model=deepseek-v3.2-exp>
@@ -266,6 +362,92 @@ const renderMarkdown = (content: string) => {
   return marked.parse(processedContent);
 };
 
+// 复制消息内容到剪贴板
+const copyMessage = async (content: string) => {
+  try {
+    await navigator.clipboard.writeText(content);
+    addToast({
+      title: '复制成功',
+      description: '消息已复制到剪贴板',
+      variant: 'default',
+      duration: 3000
+    });
+  } catch (err) {
+    addToast({
+      title: '复制失败',
+      description: '无法复制消息到剪贴板',
+      variant: 'destructive',
+      duration: 3000
+    });
+    console.error('复制失败:', err);
+  }
+};
+
+// 切换菜单显示状态
+const toggleMenu = (messageId: number | undefined) => {
+  if (messageId === undefined) return;
+  
+  if (openedMenuId.value === messageId) {
+    openedMenuId.value = null;
+  } else {
+    openedMenuId.value = messageId;
+  }
+};
+
+// 打开删除确认对话框
+const openDeleteDialog = (messageId: number | undefined) => {
+  if (messageId === undefined) return;
+  
+  messageToDelete.value = messageId;
+  isDeleteDialogOpen.value = true;
+};
+
+// 确认删除消息
+const confirmDeleteMessage = async () => {
+  if (messageToDelete.value === null) return;
+  
+  try {
+    // 关闭对话框
+    isDeleteDialogOpen.value = false;
+    
+    // 调用API删除消息
+    await deleteMessageAPIFunc(messageToDelete.value);
+    
+    // 从store中移除消息
+    chatStore.removeMessage(messageToDelete.value);
+    
+    // 重置待删除消息ID
+    messageToDelete.value = null;
+  } catch (error) {
+    console.error('删除消息失败:', error);
+    // 重置待删除消息ID
+    messageToDelete.value = null;
+  }
+};
+
+// 调用API删除消息
+const deleteMessageAPIFunc = async (messageId: number) => {
+  try {
+    const response = await deleteMessageAPI({ messageID: messageId });
+    if (!response.data.success) {
+      throw new Error(response.data.error || '删除消息失败');
+    }
+  } catch (error) {
+    console.error('删除消息API调用失败:', error);
+    throw error;
+  }
+};
+
+// 点击其他地方关闭菜单
+const handleClickOutside = (event: MouseEvent) => {
+  if (openedMenuId.value !== null) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.relative')) {
+      openedMenuId.value = null;
+    }
+  }
+};
+
 // 监听消息变化，自动滚动到底部
 watch(displayedMessages, () => {
   nextTick(() => {
@@ -277,6 +459,9 @@ watch(displayedMessages, () => {
  * 挂载后检测 URL 参数
  */
 onMounted(async () => {
+  // 添加点击事件监听器，用于关闭菜单
+  document.addEventListener('click', handleClickOutside);
+  
   // 检测当前路径是否为 /c/xxx
   const cPattern = /^\/c\/.+$/;
   if (cPattern.test(route.path)) {
@@ -350,76 +535,7 @@ onMounted(async () => {
             return {
               id: msg.id,
               role: msg.role,
-              content: processMessageContent(msg.content, reasoningContent),
-              conversationID: msg.conversationID,
-              createdAt: msg.createdAt,
-              base64: msg.base64,
-              reasoningContent: reasoningContent,
-              reasoningTime: reasoningTime
-            };
-          });
-          
-          // 保存消息到 store
-          chatStore.setMessages(conversationId, formattedMessages);
-        }
-      } catch (error) {
-        console.error('获取对话历史失败:', error);
-      } finally {
-        isLoading.value = false;
-        // 确保DOM更新后再滚动到底部
-        await nextTick();
-        scrollToBottom();
-      }
-    }
-    
-    if (!isNaN(conversationId)) {
-      // 设置加载状态
-      isLoading.value = true;
-      
-      try {
-        // 获取对话历史
-        const response = await getMessagesList({ conversationID: conversationId });
-        if (response.data.success) {
-          // API 返回的消息格式为 JSON 字符串，需要解析
-          let parsedMessages = [];
-          
-          if (typeof response.data.messages === 'string') {
-            try {
-              parsedMessages = JSON.parse(response.data.messages);
-            } catch (error) {
-              console.error('解析消息数据失败:', error);
-              parsedMessages = [];
-            }
-          } else if (Array.isArray(response.data.messages)) {
-            parsedMessages = response.data.messages;
-          }
-          
-          // 转换消息格式以匹配前端要求并保存到 store
-          const formattedMessages = parsedMessages.map((msg: any) => {
-            // 提取推理内容
-            let reasoningContent = msg.reasoning_content || '';
-            let reasoningTime = 0;
-            
-            // 如果没有独立的推理内容字段，尝试从内容中提取
-            if (!reasoningContent && msg.content) {
-              // 提取内容中的推理部分
-              const thinkMatches = msg.content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g);
-              const contents = [];
-              for (const match of thinkMatches) {
-                contents.push(match[2]);
-                // 获取最后一个推理时间
-                reasoningTime = match[1] ? parseInt(match[1]) || 0 : 0;
-              }
-              
-              if (contents.length > 0) {
-                reasoningContent = contents.join('');
-              }
-            }
-            
-            return {
-              id: msg.id,
-              role: msg.role,
-              content: processMessageContent(msg.content, reasoningContent),
+              content: processMessageContent(msg.content),
               conversationID: msg.conversationID,
               createdAt: msg.createdAt,
               base64: msg.base64,
@@ -441,5 +557,12 @@ onMounted(async () => {
       }
     }
   }
+});
+
+// 组件卸载时移除事件监听器
+onMounted(() => {
+  return () => {
+    document.removeEventListener('click', handleClickOutside);
+  };
 });
 </script>

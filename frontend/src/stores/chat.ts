@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
 import { getModelsList, getConversationsList } from '@/api/chat';
 
 // 定义消息类型

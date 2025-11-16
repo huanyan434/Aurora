@@ -197,7 +197,6 @@ const handleFileSelect = (event: Event) => {
 // 处理流数据块
 const processStreamChunk = (
   chunk: string, 
-  assistantMessageId: number, 
   onUpdate: (content: string, reasoningContent: string) => void
 ) => {
   // 解析SSE数据块
@@ -334,7 +333,7 @@ const handleSendMessage = async () => {
         
         const chunk = decoder.decode(value, { stream: true });
         // 处理每个数据块
-        processStreamChunk(chunk, messageAssistantId, (content, reasoningContent) => {
+        processStreamChunk(chunk, (content, reasoningContent) => {
           accumulatedContent += content;
           accumulatedReasoningContent += reasoningContent;
           

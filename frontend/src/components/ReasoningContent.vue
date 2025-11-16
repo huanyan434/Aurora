@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { marked } from 'marked';
 
 interface Props {
@@ -91,15 +91,6 @@ const formattedContent = computed(() => {
     return props.content.replace(/\n/g, '<br>');
   }
 });
-
-// 方法
-const toggleCollapse = () => {
-  isCollapsed.value = !isCollapsed.value;
-  // 展开时重置展开状态
-  if (!isCollapsed.value) {
-    isExpanded.value = false;
-  }
-};
 
 const toggleExpand = () => {
   isExpanded.value = !isExpanded.value;
