@@ -3,7 +3,7 @@
     <div class="input-area-wrapper">
       <div class="input-container-wrapper">
         <div class="input-container">
-          <Textarea v-model="inputMessage" @keydown="handleKeydown" placeholder="询问任何问题" :disabled="isGenerating"
+          <Textarea v-model="inputMessage" @keydown="handleKeydown" placeholder="询问任何问题"
             class="message-input" rows="3" ref="inputRef" />
 
           <!-- 左下角按钮组 -->
@@ -12,7 +12,7 @@
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <Button variant="ghost" size="icon" class="input-addon-button" @click="handleFileUpload">
+                  <Button variant="ghost" size="icon" class="input-addon-button" @click="triggerFileUpload">
                     <Plus class="icon-small" />
                   </Button>
                 </TooltipTrigger>
@@ -21,6 +21,15 @@
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <!-- 隐藏的文件输入框 -->
+            <input 
+              type="file" 
+              ref="fileInputRef" 
+              @change="handleFileSelect" 
+              accept="image/*" 
+              style="display: none" 
+            />
 
             <!-- 推理按钮 -->
             <TooltipProvider>
@@ -50,7 +59,7 @@
                     <Square class="icon-small" />
                   </Button>
                   <Button v-else @click="handleSendMessage" variant="ghost" size="icon"
-                    :disabled="!inputMessage.trim() || isGenerating" class="input-send-button">
+                    :disabled="!canSendMessage" class="input-send-button">
                     <Send class="icon-small" />
                   </Button>
                 </TooltipTrigger>
@@ -68,7 +77,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, type Ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -79,15 +89,27 @@ import {
 } from '@/components/ui/tooltip';
 import { Plus, Lightbulb, Square, Send } from 'lucide-vue-next';
 import { useChatStore } from '@/stores/chat';
+import { generateSnowflakeId } from '@/utils/snowflake';
+import { newConversation, stopGenerate } from '@/api/chat';
 import type { Model } from '@/stores/chat';
-
 
 // 响应式数据
 const inputMessage = ref('');
 const isGenerating = ref(false);
 const isReasoning = ref(false);
 const inputRef = ref<HTMLElement | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const attachment = ref<string>(''); // 存储base64编码的图片
 const chatStore = useChatStore();
+const route = useRoute();
+const router = useRouter();
+
+// EventSource引用
+const eventSource: Ref<EventSource | null> = ref(null);
+
+// 存储当前正在生成的消息ID和对话ID
+const currentAssistantMessageId = ref<number | null>(null);
+const currentConversationId = ref<number | null>(null);
 
 const isReasoningDisabled = computed(() => {
   // 获取当前模型列表
@@ -113,6 +135,11 @@ const isReasoningDisabled = computed(() => {
   return true;
 });
 
+// 判断是否可以发送消息
+const canSendMessage = computed(() => {
+  return (inputMessage.value.trim() || attachment.value) && !isGenerating.value;
+});
+
 // 推理按钮样式相关计算属性
 const reasoningButtonBg = computed(() => {
   return isReasoning.value ? 'var(--reasoning-button-bg)' : 'transparent';
@@ -134,48 +161,245 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 };
 
+// 触发文件上传
+const triggerFileUpload = () => {
+  if (fileInputRef.value) {
+    fileInputRef.value.click();
+  }
+};
+
+// 处理文件选择
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (file) {
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      console.error('只支持图片文件');
+      return;
+    }
+    
+    // 转换为base64
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      attachment.value = result;
+      console.log('文件已转换为base64');
+    };
+    reader.readAsDataURL(file);
+  }
+  
+  // 清空input值，允许重复选择同一文件
+  target.value = '';
+};
+
+// 处理流数据块
+const processStreamChunk = (
+  chunk: string, 
+  assistantMessageId: number, 
+  onUpdate: (content: string, reasoningContent: string) => void
+) => {
+  // 解析SSE数据块
+  const lines = chunk.split('\n');
+  for (const line of lines) {
+    if (line.startsWith('data:')) {
+      try {
+        const data = JSON.parse(line.slice(5));
+        if (data.success) {
+          onUpdate(data.content || '', data.reasoningContent || '');
+        } else {
+          console.error('服务器返回错误:', data.error);
+        }
+      } catch (e) {
+        console.error('解析数据失败:', e);
+      }
+    }
+  }
+};
+
 // 处理发送消息
 const handleSendMessage = async () => {
-  if (!inputMessage.value.trim() || isGenerating.value) return;
+  if (!canSendMessage.value) return;
 
   isGenerating.value = true;
+  eventSource.value = null;
 
   try {
-    // 在实际应用中，这里会调用发送消息的API
-    // 使用chatStore获取当前选中的模型ID
+    // 获取当前对话ID
+    let conversationId: number | null = null;
+    
+    // 检查是否是根路由
+    const isHomeRoute = route.path === '/';
+    
+    if (isHomeRoute) {
+      // 创建新对话
+      const response = await newConversation();
+      if (response.data.success) {
+        conversationId = parseInt(response.data.conversationID);
+        currentConversationId.value = conversationId;
+        // 跳转到新对话页面
+        await router.push(`/c/${conversationId}?type=2`);
+      } else {
+        throw new Error('创建新对话失败');
+      }
+    } else {
+      // 从路由参数获取对话ID
+      const routeParams = route.params.conversationId;
+      if (typeof routeParams === 'string') {
+        conversationId = parseInt(routeParams);
+      } else if (Array.isArray(routeParams) && routeParams.length > 0) {
+        // 修复类型检查问题
+        const param = routeParams[0];
+        if (param !== undefined) {
+          conversationId = parseInt(param);
+        }
+      }
+      currentConversationId.value = conversationId;
+    }
 
-    console.log('发送消息:', inputMessage.value);
-    console.log('推理模式:', isReasoning.value);
+    if (!conversationId) {
+      throw new Error('无法确定对话ID');
+    }
 
-    // 这里会调用实际的消息发送API
-    // 示例调用:
-    // const response = await generate({
-    //   prompt: inputMessage.value,
-    //   model: chatStore.selectedModel,
-    //   reasoning: isReasoning.value,
-    //   conversationID: currentConversationId
-    // });
+    // 生成snowflake ID
+    const messageUserId = Number(generateSnowflakeId());
+    const messageAssistantId = Number(generateSnowflakeId());
+    currentAssistantMessageId.value = messageAssistantId;
 
-    // 模拟发送消息后清空输入框
+    // 准备请求参数
+    const requestData = {
+      conversationID: conversationId,
+      messageUserID: messageUserId,
+      messageAssistantID: messageAssistantId,
+      prompt: inputMessage.value,
+      model: chatStore.selectedModel,
+      base64: attachment.value,
+      reasoning: isReasoning.value
+    };
+
+    // 保存用户消息到临时变量
+    const userMessage = {
+      content: inputMessage.value,
+      base64: attachment.value
+    };
+
+    // 清空输入框和附件
     inputMessage.value = '';
+    attachment.value = '';
+
+    // 添加用户消息到聊天记录
+    chatStore.addMessage(conversationId, {
+      id: messageUserId,
+      role: 'user',
+      content: userMessage.content,
+      base64: userMessage.base64,
+      conversationID: conversationId,
+      createdAt: new Date().toISOString()
+    });
+
+    // 添加占位助手消息
+    chatStore.addMessage(conversationId, {
+      id: messageAssistantId,
+      role: 'assistant',
+      content: '',
+      conversationID: conversationId,
+      createdAt: new Date().toISOString()
+    });
+
+    // 使用 fetch + ReadableStream 处理 SSE 流（遵循规范）
+    const response = await fetch('/chat/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData),
+    });
+
+    if (!response.body) {
+      throw new Error('响应中没有body');
+    }
+
+    // 处理 SSE 流
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let accumulatedContent = '';
+    let accumulatedReasoningContent = '';
+    let lastReasoningTime = 0;
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        // 处理每个数据块
+        processStreamChunk(chunk, messageAssistantId, (content, reasoningContent) => {
+          accumulatedContent += content;
+          accumulatedReasoningContent += reasoningContent;
+          
+          // 解析推理时间
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              try {
+                const data = JSON.parse(line.slice(5));
+                if (data.success && data.reasoningTime !== undefined) {
+                  lastReasoningTime = data.reasoningTime;
+                }
+              } catch (e) {
+                // 解析失败，忽略错误
+              }
+            }
+          }
+          
+          // 更新助手消息，标记为流式传输
+          chatStore.updateMessage(messageAssistantId, {
+            content: accumulatedContent,
+            reasoningContent: accumulatedReasoningContent,
+            reasoningTime: lastReasoningTime,
+            isStreaming: true
+          });
+        });
+      }
+    } catch (error) {
+      console.error('读取流时出错:', error);
+    } finally {
+      reader.releaseLock();
+      // 流结束后更新消息状态
+      chatStore.updateMessage(messageAssistantId, {
+        isStreaming: false
+      });
+    }
+    
   } catch (error) {
     console.error('发送消息失败:', error);
   } finally {
     isGenerating.value = false;
+    currentAssistantMessageId.value = null;
   }
 };
+
 
 // 处理停止生成
 const handleStopGeneration = async () => {
   console.log('停止生成');
-  isGenerating.value = false;
-
+  
   try {
-    // 调用API停止生成
-    // 示例调用:
-    // await stopGenerate({ conversationID: currentConversationId });
+    // 调用后端API停止生成
+    if (currentConversationId.value) {
+      await stopGenerate({
+        conversationID: currentConversationId.value
+      });
+    }
+    
+    // 保留已生成的内容，只停止生成过程
+    console.log('已停止生成，保留已生成内容');
   } catch (error) {
     console.error('停止生成失败:', error);
+  } finally {
+    isGenerating.value = false;
+    currentAssistantMessageId.value = null;
   }
 };
 
@@ -183,13 +407,6 @@ const handleStopGeneration = async () => {
 const toggleReasoning = () => {
   if (isReasoningDisabled.value) return;
   isReasoning.value = !isReasoning.value;
-};
-
-// 处理文件上传
-const handleFileUpload = () => {
-  console.log('打开文件上传');
-  // 在实际应用中，这里会打开文件选择对话框
-  // 也可以通过ref来触发一个隐藏的input[type="file"]元素
 };
 
 </script>

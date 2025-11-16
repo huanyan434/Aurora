@@ -1,5 +1,19 @@
 import { defineStore } from 'pinia';
+import { ref } from 'vue';
 import { getModelsList, getConversationsList } from '@/api/chat';
+
+// 定义消息类型
+export interface Message {
+  id: number;
+  conversationID: number;
+  role: 'user' | 'assistant';
+  content: string;
+  base64?: string; // 用于存储图片的base64数据
+  reasoningContent?: string; // 推理内容
+  reasoningTime?: number; // 推理时间
+  isStreaming?: boolean; // 是否正在流式传输
+  createdAt: string;
+}
 
 // 定义API返回的对话类型
 interface ApiConversation {
@@ -50,6 +64,8 @@ export const useChatStore = defineStore('chat', {
     modelsLoaded: false, // 标记模型是否已加载
     conversations: [] as Conversation[],
     conversationsLoaded: false, // 标记对话列表是否已加载
+    // 修复 Map 响应性问题（遵循规范）- 使用普通对象代替 Map
+    messages: {} as Record<number, Message[]>,
   }),
   
   getters: {
@@ -69,6 +85,11 @@ export const useChatStore = defineStore('chat', {
     sortedConversations: (state) => {
       return [...state.conversations]
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    },
+
+    // 获取特定对话的消息
+    getMessagesByConversationId: (state) => (conversationId: number) => {
+      return state.messages[conversationId] || [];
     }
   },
   
@@ -109,11 +130,9 @@ export const useChatStore = defineStore('chat', {
         } else if (this.models.length > 0) {
           // 如果没有保存的模型或模型无效，使用第一个模型
           const firstModel = this.models[0];
-          const firstModelId = firstModel?.id;
-          console.log('第一个模型:', firstModel); // 调试日志
-          console.log('第一个模型ID:', firstModelId); // 调试日志
-          if (firstModelId) {
-            this.selectedModel = firstModelId;
+          // 修复类型检查问题
+          if (firstModel && firstModel.id) {
+            this.selectedModel = firstModel.id;
             console.log('设置默认模型:', this.selectedModel); // 调试日志
           } else {
             console.error('第一个模型ID为空或不存在:', firstModel); // 调试日志
@@ -127,8 +146,12 @@ export const useChatStore = defineStore('chat', {
         this.models = [
           { id: 'gpt-4', name: 'GPT-4', reasoning: 'gpt-4', image: 1, points: 20 }
         ];
+        // 修复类型检查问题
         if (this.models.length > 0) {
-          this.selectedModel = this.models[0].id;
+          const firstModel = this.models[0];
+          if (firstModel && firstModel.id) {
+            this.selectedModel = firstModel.id;
+          }
         }
         this.modelsLoaded = true;
       }
@@ -190,15 +213,67 @@ export const useChatStore = defineStore('chat', {
         // 这里应该调用API来删除对话
         // 为简化起见，我们直接更新本地状态
         this.conversations = this.conversations.filter(conv => conv.id !== conversationId);
+        // 同时删除该对话的所有消息
+        delete this.messages[conversationId];
       } catch (error) {
         console.error('删除对话失败:', error);
       }
+    },
+
+    // 添加消息到指定对话
+    addMessage(conversationId: number, message: Message) {
+      if (!this.messages[conversationId]) {
+        this.messages[conversationId] = [];
+      }
+      
+      this.messages[conversationId].push(message);
+    },
+
+    // 更新指定消息
+    updateMessage(messageId: number, updates: Partial<Message>) {
+      // 遍历所有对话的消息查找对应的消息
+      for (const conversationId in this.messages) {
+        const messages = this.messages[conversationId];
+        if (messages) {
+          const messageIndex = messages.findIndex(msg => msg.id === messageId);
+          if (messageIndex !== -1) {
+            // 创建更新后的消息对象
+            const updatedMessage = { ...messages[messageIndex], ...updates };
+            // 更新消息数组
+            messages[messageIndex] = updatedMessage as Message;
+            // 触发Vue的响应式更新
+            this.messages = { ...this.messages };
+            break;
+          }
+        }
+      }
+    },
+
+    // 移除指定消息
+    removeMessage(messageId: number) {
+      // 遍历所有对话的消息查找并删除对应的消息
+      for (const conversationId in this.messages) {
+        const messages = this.messages[conversationId];
+        if (messages) {
+          const messageIndex = messages.findIndex(msg => msg.id === messageId);
+          if (messageIndex !== -1) {
+            messages.splice(messageIndex, 1);
+            // 触发Vue的响应式更新
+            this.messages = { ...this.messages };
+            break;
+          }
+        }
+      }
+    },
+
+    // 设置指定对话的所有消息
+    setMessages(conversationId: number, messages: Message[]) {
+      this.messages[conversationId] = messages;
+    },
+
+    // 删除指定对话的所有消息
+    deleteMessagesByConversationId(conversationId: number) {
+      delete this.messages[conversationId];
     }
-  },
-  
-  // 启用持久化
-  persist: {
-    key: 'chat-store',
-    storage: localStorage,
   },
 });

@@ -7,26 +7,47 @@
       </div>
       
       <!-- 消息列表 -->
-      <div v-else v-for="(message, index) in messages" :key="index" class="flex">
+      <div v-else v-for="(message, index) in displayedMessages" :key="message.id || index" class="flex">
         <div 
           :class="[
             'max-w-[85%] rounded-lg px-4 py-3',
-            message.sender === 'user' 
+            message.role === 'user' 
               ? 'bg-gray-100 dark:bg-gray-800 ml-auto' 
               : 'bg-white dark:bg-gray-900 mr-auto'
           ]"
         >
-          <div 
-            v-if="message.sender === 'ai'" 
-            class="text-gray-800 dark:text-gray-200" 
-            v-html="renderMarkdown(message.content)"
-          ></div>
-          <div v-else class="text-gray-800 dark:text-gray-200">{{ message.content }}</div>
+          <!-- 用户消息 -->
+          <div v-if="message.role === 'user'">
+            <!-- 文本内容 -->
+            <div v-if="message.content" class="text-gray-800 dark:text-gray-200">{{ message.content }}</div>
+            
+            <!-- 图片附件 -->
+            <div v-if="message.base64" class="mt-2">
+              <img :src="message.base64" alt="上传的图片" class="max-w-full h-auto rounded" />
+            </div>
+          </div>
+          
+          <!-- 助手消息 -->
+          <div v-else>
+            <!-- 推理内容 -->
+            <ReasoningContent
+              v-if="message.reasoningContent"
+              :content="message.reasoningContent"
+              :reasoning-time="message.reasoningTime || 0"
+              :is-streaming="message.isStreaming || false"
+            />
+            
+            <!-- 回复内容 -->
+            <div 
+              class="text-gray-800 dark:text-gray-200" 
+              v-html="renderMarkdown(message.content)"
+            ></div>
+          </div>
         </div>
       </div>
       
       <!-- 占位消息，提示目前逻辑为空 -->
-      <div v-if="!isLoading && messages.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-10">
+      <div v-if="!isLoading && displayedMessages.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-10">
         尚无消息，开始对话吧！
       </div>
     </div>
@@ -34,28 +55,93 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, nextTick, computed, watch } from 'vue';
 import { getMessagesList } from '@/api/chat';
 import { useRoute } from 'vue-router';
 import { marked } from 'marked';
+import { useChatStore } from '@/stores/chat';
+import ReasoningContent from './ReasoningContent.vue';
 
 // 定义消息类型
-interface Message {
-  id?: string;
-  sender: typeof MESSAGE_SENDER[keyof typeof MESSAGE_SENDER];
+interface DisplayMessage {
+  id?: number;
+  role: 'user' | 'assistant';
   content: string;
-  timestamp?: Date;
+  base64?: string;
+  reasoningContent?: string;
+  reasoningTime?: number;
+  isStreaming?: boolean;
 }
 
 // 路由和路由参数
 const route = useRoute();
+const chatStore = useChatStore();
 
 // 状态变量
-const messages = ref<Message[]>([]);
 const isLoading = ref(false);
 
 // 获取容器元素的引用
 const containerRef = ref<HTMLElement | null>(null);
+
+// 计算属性：获取当前对话的消息
+const conversationMessages = computed(() => {
+  // 从路由参数获取对话ID
+  const routeParams = route.params.conversationId;
+  let conversationId: number | null = null;
+  
+  if (typeof routeParams === 'string') {
+    conversationId = parseInt(routeParams);
+  } else if (Array.isArray(routeParams) && routeParams.length > 0) {
+    // 修复类型检查问题
+    const param = routeParams[0];
+    if (param !== undefined) {
+      conversationId = parseInt(param);
+    }
+  }
+  
+  // 如果成功解析出有效的对话ID，则返回对应消息
+  if (conversationId !== null && !isNaN(conversationId)) {
+    return chatStore.getMessagesByConversationId(conversationId);
+  }
+  
+  // 否则返回空数组
+  return [];
+});
+
+// 计算属性：处理显示的消息
+const displayedMessages = computed(() => {
+  return conversationMessages.value.map((msg): DisplayMessage => {
+    // 解析历史消息中的推理内容
+    let reasoningContent = msg.reasoningContent;
+    let reasoningTime = msg.reasoningTime || 0;
+    
+    // 如果没有独立的推理内容字段，尝试从内容中提取
+    if (!reasoningContent && msg.content) {
+      // 提取内容中的推理部分
+      const thinkMatches = msg.content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g);
+      const contents = [];
+      for (const match of thinkMatches) {
+        contents.push(match[2]);
+        // 获取最后一个推理时间
+        reasoningTime = match[1] ? parseInt(match[1]) || 0 : 0;
+      }
+      
+      if (contents.length > 0) {
+        reasoningContent = contents.join('');
+      }
+    }
+    
+    return {
+      id: msg.id,
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+      base64: msg.base64,
+      reasoningContent: reasoningContent,
+      reasoningTime: reasoningTime,
+      isStreaming: msg.isStreaming
+    };
+  });
+});
 
 /**
  * 滚动到容器底部的函数
@@ -78,12 +164,8 @@ const processMessageContent = (content: string, reasoningContent?: string) => {
   // 移除模型标识符，如 <model=deepseek-v3.2-exp>
   let processedContent = content.replace(/<model=[^>]+>/g, '').trim();
   
-  // 如果有推理内容，也可以选择性地添加到主内容中
-  if (reasoningContent) {
-    // 可以选择是否显示推理内容
-    // 以下是一个示例，将推理内容作为注释添加
-    // processedContent += `\n\n[推理过程: ${reasoningContent}]`;
-  }
+  // 移除推理内容标签
+  processedContent = processedContent.replace(/<think time=(\d+)>([\s\S]*?)<\/think>/g, '').trim();
   
   return processedContent;
 };
@@ -95,6 +177,10 @@ const processMessageContent = (content: string, reasoningContent?: string) => {
  */
 const renderMarkdown = (content: string) => {
   if (!content) return '';
+  
+  // 移除模型标识符和推理内容
+  let processedContent = content.replace(/<model=[^>]+>/g, '').trim();
+  processedContent = processedContent.replace(/<think time=(\d+)>([\s\S]*?)<\/think>/g, '').trim();
   
   // 使用 marked 库解析 markdown
   const renderer = new marked.Renderer();
@@ -177,8 +263,15 @@ const renderMarkdown = (content: string) => {
   });
   
   // 使用 marked 渲染内容
-  return marked.parse(content);
+  return marked.parse(processedContent);
 };
+
+// 监听消息变化，自动滚动到底部
+watch(displayedMessages, () => {
+  nextTick(() => {
+    scrollToBottom();
+  });
+}, { deep: true });
 
 /**
  * 挂载后检测 URL 参数
@@ -210,6 +303,75 @@ onMounted(async () => {
     const conversationIdString = pathParts.length > 2 ? pathParts[2] : undefined;
     const conversationId = conversationIdString ? parseInt(conversationIdString) : NaN;
     
+    // 类型断言确保 conversationId 是有效的数字
+    if (!isNaN(conversationId)) {
+      isLoading.value = true;
+      
+      try {
+        // 获取对话历史
+        const response = await getMessagesList({ conversationID: conversationId });
+        if (response.data.success) {
+          // API 返回的消息格式为 JSON 字符串，需要解析
+          let parsedMessages = [];
+          
+          if (typeof response.data.messages === 'string') {
+            try {
+              parsedMessages = JSON.parse(response.data.messages);
+            } catch (error) {
+              console.error('解析消息数据失败:', error);
+              parsedMessages = [];
+            }
+          } else if (Array.isArray(response.data.messages)) {
+            parsedMessages = response.data.messages;
+          }
+          
+          // 转换消息格式以匹配前端要求并保存到 store
+          const formattedMessages = parsedMessages.map((msg: any) => {
+            // 提取推理内容
+            let reasoningContent = msg.reasoning_content || '';
+            let reasoningTime = 0;
+            
+            // 如果没有独立的推理内容字段，尝试从内容中提取
+            if (!reasoningContent && msg.content) {
+              // 提取内容中的推理部分
+              const thinkMatches = msg.content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g);
+              const contents = [];
+              for (const match of thinkMatches) {
+                contents.push(match[2]);
+                // 获取最后一个推理时间
+                reasoningTime = match[1] ? parseInt(match[1]) || 0 : 0;
+              }
+              
+              if (contents.length > 0) {
+                reasoningContent = contents.join('');
+              }
+            }
+            
+            return {
+              id: msg.id,
+              role: msg.role,
+              content: processMessageContent(msg.content, reasoningContent),
+              conversationID: msg.conversationID,
+              createdAt: msg.createdAt,
+              base64: msg.base64,
+              reasoningContent: reasoningContent,
+              reasoningTime: reasoningTime
+            };
+          });
+          
+          // 保存消息到 store
+          chatStore.setMessages(conversationId, formattedMessages);
+        }
+      } catch (error) {
+        console.error('获取对话历史失败:', error);
+      } finally {
+        isLoading.value = false;
+        // 确保DOM更新后再滚动到底部
+        await nextTick();
+        scrollToBottom();
+      }
+    }
+    
     if (!isNaN(conversationId)) {
       // 设置加载状态
       isLoading.value = true;
@@ -232,14 +394,42 @@ onMounted(async () => {
             parsedMessages = response.data.messages;
           }
           
-          // 转换消息格式以匹配前端要求
-          messages.value = parsedMessages.map((msg: any) => ({
-            id: msg.id?.toString(),
-            sender: msg.role === 'assistant' ? 'ai' : 'user',
-            // 处理可能包含模型标识和推理内容的消息内容
-            content: processMessageContent(msg.content, msg.reasoningContent),
-            timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date()
-          }));
+          // 转换消息格式以匹配前端要求并保存到 store
+          const formattedMessages = parsedMessages.map((msg: any) => {
+            // 提取推理内容
+            let reasoningContent = msg.reasoning_content || '';
+            let reasoningTime = 0;
+            
+            // 如果没有独立的推理内容字段，尝试从内容中提取
+            if (!reasoningContent && msg.content) {
+              // 提取内容中的推理部分
+              const thinkMatches = msg.content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g);
+              const contents = [];
+              for (const match of thinkMatches) {
+                contents.push(match[2]);
+                // 获取最后一个推理时间
+                reasoningTime = match[1] ? parseInt(match[1]) || 0 : 0;
+              }
+              
+              if (contents.length > 0) {
+                reasoningContent = contents.join('');
+              }
+            }
+            
+            return {
+              id: msg.id,
+              role: msg.role,
+              content: processMessageContent(msg.content, reasoningContent),
+              conversationID: msg.conversationID,
+              createdAt: msg.createdAt,
+              base64: msg.base64,
+              reasoningContent: reasoningContent,
+              reasoningTime: reasoningTime
+            };
+          });
+          
+          // 保存消息到 store
+          chatStore.setMessages(conversationId, formattedMessages);
         }
       } catch (error) {
         console.error('获取对话历史失败:', error);
@@ -249,128 +439,7 @@ onMounted(async () => {
         await nextTick();
         scrollToBottom();
       }
-      
-      // 如果 type 不等于 2，则获取线程列表并根据条件执行生成请求
-      if (typeValue !== 2) {
-        try {
-          const threadListResponse = await import('@/api/chat').then(mod => mod.getThreadList());
-          if (threadListResponse.data.success && threadListResponse.data.thread_list) {
-            const threadList = threadListResponse.data.thread_list;
-            const threadKeys = Object.keys(threadList);
-            
-            // 检查当前对话ID是否存在线程列表中
-            const conversationIdStr = conversationId.toString();
-            if (threadKeys.includes(conversationIdStr)) {
-              const threadData = threadList[conversationIdStr];
-              const messageUserID = threadData.messageUserID;
-              const messageAssistantID = threadData.messageAssistantID;
-              
-              // 向后端发起 generate 请求（此处先留空，由用户实现）
-              // generate({
-              //   conversationID: conversationId,
-              //   messageUserID: messageUserID,
-              //   messageAssistantID: messageAssistantID,
-              //   // ... 其他必要参数
-              // });
-            }
-          }
-        } catch (error) {
-          console.error('获取线程列表失败:', error);
-        }
-      }
     }
   }
 });
 </script>
-
-<style scoped>
-.messages-container {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  padding: var(--spacing-md); /* p-4 */
-}
-
-.messages-content {
-  max-width: var(--max-width-3xl); /* max-w-3xl */
-  margin-left: auto;
-  margin-right: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg); /* space-y-6 */
-}
-
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: var(--spacing-2xl) 0; /* py-10 */
-}
-
-.loading-spinner {
-  animation: var(--animation-spin);
-  border-radius: 50%;
-  height: var(--button-size); /* h-8 */
-  width: var(--button-size); /* w-8 */
-  border-bottom: 2px solid var(--color-gray-800); /* border-gray-900 */
-}
-
-.dark .loading-spinner {
-  border-bottom: 2px solid var(--color-gray-50); /* dark:border-gray-100 */
-}
-
-.message-row {
-  display: flex;
-}
-
-.message-content {
-  max-width: 85%;
-  border-radius: var(--border-radius-lg); /* rounded-lg */
-  padding: 0.75rem var(--spacing-md); /* px-4 py-3 */
-}
-
-.message-user {
-  background-color: var(--color-gray-100); /* bg-gray-100 */
-  margin-left: auto; /* ml-auto */
-}
-
-.dark .message-user {
-  background-color: var(--color-gray-700); /* dark:bg-gray-800 */
-}
-
-.message-ai {
-  background-color: var(--color-white); /* bg-white */
-  margin-right: auto; /* mr-auto */
-}
-
-.dark .message-ai {
-  background-color: var(--color-gray-900); /* dark:bg-gray-900 */
-}
-
-.message-text {
-  color: var(--color-gray-800); /* text-gray-800 */
-}
-
-.dark .message-text {
-  color: var(--color-gray-200); /* dark:text-gray-200 */
-}
-
-.no-messages {
-  text-align: center;
-  color: var(--color-gray-500); /* text-gray-500 */
-  padding: var(--spacing-2xl) 0; /* py-10 */
-}
-
-.dark .no-messages {
-  color: var(--color-gray-400); /* dark:text-gray-400 */
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>
