@@ -3,8 +3,14 @@
     <div class="input-area-wrapper">
       <div class="input-container-wrapper">
         <div class="input-container">
-          <Textarea v-model="inputMessage" @keydown="handleKeydown" placeholder="询问任何问题"
-            class="message-input" rows="3" ref="inputRef" />
+          <textarea 
+            v-model="inputMessage" 
+            @keydown="handleKeydown" 
+            placeholder="询问任何问题"
+            rows="3" 
+            ref="inputRef"
+            class="message-input"
+          ></textarea>
 
           <!-- 左下角按钮组 -->
           <div class="input-button-group-left">
@@ -239,6 +245,8 @@ const handleSendMessage = async () => {
         currentConversationId.value = conversationId;
         // 跳转到新对话页面
         await router.push(`/c/${conversationId}?type=2`);
+        // 刷新对话列表
+        await chatStore.fetchConversations();
       } else {
         throw new Error('创建新对话失败');
       }
@@ -297,13 +305,14 @@ const handleSendMessage = async () => {
       createdAt: new Date().toISOString()
     });
 
-    // 添加占位助手消息
+    // 添加占位助手消息，带有加载占位符
     chatStore.addMessage(conversationId, {
       id: messageAssistantId,
       role: 'assistant',
       content: '',
       conversationID: conversationId,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      isStreaming: true // 立即设置为流式传输状态
     });
 
     // 使用 fetch + ReadableStream 处理 SSE 流（遵循规范）
@@ -316,6 +325,10 @@ const handleSendMessage = async () => {
     });
 
     if (!response.body) {
+      // 如果响应没有body，设置isStreaming为false
+      chatStore.updateMessage(messageAssistantId, {
+        isStreaming: false
+      });
       throw new Error('响应中没有body');
     }
 
@@ -460,27 +473,43 @@ const toggleReasoning = () => {
 }
 
 .message-input {
+  field-sizing: content;
+  min-height: var(--input-min-height);
   width: 100%;
-  max-width: var(--input-area-max-width);
-  /* 设置最大宽度 */
-  resize: none;
+  border-radius: var(--input-field-border-radius);
+  padding: var(--input-field-padding-y) var(--input-field-padding-x);
   outline: none;
   font-size: var(--input-text-size);
+  line-height: var(--input-line-height);
+  background-color: transparent;
+  border: none;
+  resize: none;
+  width: 100%;
+  max-width: var(--input-area-max-width);
+  min-width: var(--input-area-min-width);
   max-height: var(--input-max-height);
   padding-right: var(--input-padding-right);
   /* 与右边按钮位置对齐 */
   padding-left: var(--input-padding-left);
   /* 与左边按钮位置对齐 */
-  padding-bottom: var(--input-padding-bottom);
+  margin-bottom: var(--input-margin-bottom);
   /* 为底部按钮留出空间 */
-  background-color: transparent;
   color: var(--color-gray-800);
   /* text-gray-800 */
+}
+
+.message-input::placeholder {
+  color: var(--input-placeholder-color);
+}
+
+.dark .message-input::placeholder {
+  color: var(--input-placeholder-color-dark);
 }
 
 .dark .message-input {
   color: var(--color-gray-200);
   /* dark:text-gray-200 */
+  background-color: rgba(var(--input-bg-color-dark), var(--input-bg-opacity-dark));
 }
 
 .message-input:focus {
@@ -491,7 +520,7 @@ const toggleReasoning = () => {
 }
 
 .input-button-group-left {
-  position: absolute;
+  position: relative;
   left: var(--input-button-group-left);
   bottom: var(--input-button-group-bottom);
   display: flex;
@@ -578,5 +607,66 @@ const toggleReasoning = () => {
 .icon-small {
   height: var(--button-icon-size);
   width: var(--button-icon-size);
+}
+</style>
+
+<style>
+/* 响应式文本区域字体大小 */
+.responsive-textarea {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* 小屏幕设备 (手机) */
+@media (max-width: 640px) {
+  .responsive-textarea {
+    font-size: 0.8125rem; /* 13px */
+    line-height: 1.25rem;
+  }
+  
+  .reasoning-text {
+    font-size: 0.75rem; /* 12px */
+  }
+  
+  .icon-small {
+    height: 1rem;
+    width: 1rem;
+  }
+}
+
+/* 中等屏幕设备 (平板) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .responsive-textarea {
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.25rem;
+  }
+  
+  .reasoning-text {
+    font-size: 0.8125rem; /* 13px */
+  }
+}
+
+/* 大屏幕设备 (桌面) */
+@media (min-width: 1025px) {
+  .responsive-textarea {
+    font-size: 1rem; /* 16px */
+    line-height: 1.5rem;
+  }
+  
+  .reasoning-text {
+    font-size: 0.875rem; /* 14px */
+  }
+}
+
+/* 高分辨率屏幕或远距离观看 (如外接显示器) */
+@media (min-width: 1440px) {
+  .responsive-textarea {
+    font-size: 1.125rem; /* 18px */
+    line-height: 1.75rem;
+  }
+  
+  .reasoning-text {
+    font-size: 1rem; /* 16px */
+  }
 }
 </style>

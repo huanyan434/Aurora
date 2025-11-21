@@ -33,7 +33,7 @@ onMounted(async () => {
   --input-container-padding: 1.25rem;
   --input-padding-right: 3rem;
   --input-padding-left: 1rem;
-  --input-padding-bottom: 2.5rem;
+  --input-margin-bottom: 0.5rem;
   --input-area-horizontal-padding: 1rem;
   --input-area-bottom-padding: 1rem;
   --input-area-max-width: 48rem;
@@ -43,11 +43,16 @@ onMounted(async () => {
   --button-size: 2rem;
   --button-icon-size: 1rem;
   --input-max-height: 20rem;
+  --input-min-height: 2rem;
   --input-container-border-radius: 0.75rem;
   --input-border-radius: 0.5rem;
+  --input-field-border-radius: 0.375rem; /* rounded-md */
+  --input-field-padding-x: 0.75rem; /* px-3 */
+  --input-field-padding-y: 0.5rem; /* py-2 */
 
   /* 文字变量 */
   --input-text-size: 0.875rem;
+  --input-line-height: 1.25rem;
 
   /* 颜色变量 */
   --input-container-border-color-light: #e5e7eb;
@@ -55,6 +60,10 @@ onMounted(async () => {
   --reasoning-button-bg: #3b82f6;
   --reasoning-button-hover-bg: #2563eb;
   --reasoning-button-text: #ffffff;
+  --input-placeholder-color: #6b7280; /* text-muted-foreground */
+  --input-placeholder-color-dark: #9ca3af; /* dark:text-muted-foreground */
+  --input-bg-color-dark: 255, 255, 255; /* bg-input in dark mode */
+  --input-bg-opacity-dark: 0.1; /* bg-input/30 in dark mode */
 
   /* InputArea 特定变量 */
   --input-button-group-left: 0.5rem;

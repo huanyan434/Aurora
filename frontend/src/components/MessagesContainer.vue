@@ -46,10 +46,17 @@
             />
             
             <!-- 回复内容 -->
-            <div 
+            <div v-if="message.content || !message.isStreaming" 
               class="text-gray-800 dark:text-gray-200" 
               v-html="renderMarkdown(message.content)"
             ></div>
+            
+            <!-- 加载占位符 -->
+            <div v-else-if="message.isStreaming" class="flex space-x-2">
+              <div class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce"></div>
+              <div class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce" style="animation-delay: 0.2s;"></div>
+              <div class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce" style="animation-delay: 0.4s;"></div>
+            </div>
           </div>
         </div>
         
@@ -60,6 +67,7 @@
             message.role === 'user' ? 'mr-2' : 'ml-2',
             (hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1) ? 'opacity-100' : 'opacity-0'
           ]"
+          v-show="!(message.role === 'assistant' && message.isStreaming)"
         >
           <button 
             @click="copyMessage(message.content)"
@@ -140,7 +148,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, watch } from 'vue';
-import { getMessagesList, deleteMessage as deleteMessageAPI } from '@/api/chat';
+import { getMessagesList, deleteMessage as deleteMessageAPI, getThreadList, generate } from '@/api/chat';
 import { useRoute } from 'vue-router';
 import { marked } from 'marked';
 import { useChatStore } from '@/stores/chat';
@@ -448,6 +456,125 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 };
 
+// 处理流式响应的函数
+const handleStreamedGenerate = async (
+  conversationId: number,
+  messageUserId: number,
+  messageAssistantId: number
+) => {
+  try {
+    // 添加占位助手消息
+    chatStore.addMessage(conversationId, {
+      id: messageAssistantId,
+      role: 'assistant', // 修复类型错误
+      content: '',
+      conversationID: conversationId,
+      createdAt: new Date().toISOString(),
+      reasoningContent: '',
+      reasoningTime: 0,
+      isStreaming: true
+    });
+
+    // 使用 fetch + ReadableStream 处理 SSE 流（遵循规范）
+    const response = await fetch('/chat/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        conversationID: conversationId,
+        messageUserID: messageUserId,
+        messageAssistantID: messageAssistantId,
+        prompt: '',
+        model: '',
+        base64: undefined,
+        reasoning: false
+      }),
+    });
+
+    if (!response.body) {
+      throw new Error('响应中没有body');
+    }
+
+    // 处理 SSE 流
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let accumulatedContent = '';
+    let accumulatedReasoningContent = '';
+    let lastReasoningTime = 0;
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        // 处理每个数据块
+        processStreamChunk(chunk, (content, reasoningContent) => {
+          accumulatedContent += content;
+          accumulatedReasoningContent += reasoningContent;
+          
+          // 解析推理时间
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              try {
+                const data = JSON.parse(line.slice(5));
+                if (data.success && data.reasoningTime !== undefined) {
+                  lastReasoningTime = data.reasoningTime;
+                }
+              } catch (e) {
+                // 解析失败，忽略错误
+              }
+            }
+          }
+          
+          // 更新助手消息，标记为流式传输
+          chatStore.updateMessage(messageAssistantId, {
+            content: accumulatedContent,
+            reasoningContent: accumulatedReasoningContent,
+            reasoningTime: lastReasoningTime,
+            isStreaming: true
+          });
+        });
+      }
+    } catch (error) {
+      console.error('读取流时出错:', error);
+    } finally {
+      reader.releaseLock();
+      // 流结束后更新消息状态
+      chatStore.updateMessage(messageAssistantId, {
+        isStreaming: false
+      });
+    }
+  } catch (error) {
+    console.error('流式生成失败:', error);
+  }
+};
+
+// 处理流数据块
+const processStreamChunk = (
+  chunk: string, 
+  onUpdate: (content: string, reasoningContent: string) => void
+) => {
+  // 解析SSE数据块
+  const lines = chunk.split('\n');
+  for (const line of lines) {
+    if (line.startsWith('data:')) {
+      try {
+        const data = JSON.parse(line.slice(5));
+        if (data.success) {
+          onUpdate(data.content || '', data.reasoningContent || '');
+        } else {
+          console.error('服务器返回错误:', data.error);
+        }
+      } catch (e) {
+        console.error('解析数据失败:', e);
+      }
+    }
+  }
+};
+
 // 监听消息变化，自动滚动到底部
 watch(displayedMessages, () => {
   nextTick(() => {
@@ -493,6 +620,30 @@ onMounted(async () => {
       isLoading.value = true;
       
       try {
+        // 如果type存在且不等于2，则调用thread_list接口
+        if (typeValue !== undefined && typeValue !== 2) {
+          try {
+            // 获取线程列表
+            const threadListResponse = await getThreadList();
+            if (threadListResponse.data.success) {
+              // 检查返回值中是否有当前对话id
+              const conversationKey = conversationId.toString();
+              if (threadListResponse.data.thread_list && 
+                  threadListResponse.data.thread_list[conversationKey]) {
+                // 获取user和ai的消息id
+                const threadInfo = threadListResponse.data.thread_list[conversationKey];
+                const messageUserID = threadInfo.messageUserID;
+                const messageAssistantID = threadInfo.messageAssistantID;
+                
+                // 调用/chat/generate接口并处理流式响应
+                await handleStreamedGenerate(conversationId, messageUserID, messageAssistantID);
+              }
+            }
+          } catch (error) {
+            console.error('调用thread_list或generate接口失败:', error);
+          }
+        }
+        
         // 获取对话历史
         const response = await getMessagesList({ conversationID: conversationId });
         if (response.data.success) {
