@@ -147,12 +147,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, watch } from 'vue';
+import { ref, onMounted, nextTick, computed, watch, onUnmounted } from 'vue';
 import { getMessagesList, deleteMessage as deleteMessageAPI, getThreadList, generate } from '@/api/chat';
 import { useRoute } from 'vue-router';
 import { marked } from 'marked';
 import { useChatStore } from '@/stores/chat';
 import ReasoningContent from './ReasoningContent.vue';
+import { toastSuccess, toastError } from '@/components/ui/toast/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -161,7 +162,6 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog'
-import { addToast } from '@/components/ui/toast/use-toast'
 
 // 定义消息类型
 interface DisplayMessage {
@@ -333,7 +333,7 @@ const renderMarkdown = (content: string) => {
     if (task) {
       // 如果是任务列表项，添加复选框
       const checkedAttr = checked ? ' checked' : '';
-      return `<li class="ml-4"><input type="checkbox" disabled${checkedAttr}> ${text}</li>`;
+      return `<li class="ml-4"><‘ type="checkbox" disabled${checkedAttr}> ${text}</li>`;
     }
     return `<li class="ml-4">${text}</li>`;
   };
@@ -374,17 +374,15 @@ const renderMarkdown = (content: string) => {
 const copyMessage = async (content: string) => {
   try {
     await navigator.clipboard.writeText(content);
-    addToast({
+    toastSuccess({
       title: '复制成功',
       description: '消息已复制到剪贴板',
-      variant: 'default',
       duration: 3000
     });
   } catch (err) {
-    addToast({
+    toastError({
       title: '复制失败',
       description: '无法复制消息到剪贴板',
-      variant: 'destructive',
       duration: 3000
     });
     console.error('复制失败:', err);
@@ -424,10 +422,23 @@ const confirmDeleteMessage = async () => {
     // 从store中移除消息
     chatStore.removeMessage(messageToDelete.value);
     
+    // 显示成功提示
+    toastSuccess({
+      title: '删除成功',
+      description: '消息已成功删除',
+      duration: 3000
+    });
+    
     // 重置待删除消息ID
     messageToDelete.value = null;
   } catch (error) {
     console.error('删除消息失败:', error);
+    // 显示错误提示
+    toastError({
+      title: '删除失败',
+      description: '删除消息时发生错误',
+      duration: 3000
+    });
     // 重置待删除消息ID
     messageToDelete.value = null;
   }
@@ -620,8 +631,8 @@ onMounted(async () => {
       isLoading.value = true;
       
       try {
-        // 如果type存在且不等于2，则调用thread_list接口
-        if (typeValue !== undefined && typeValue !== 2) {
+        // 如果type不存在或者type不等于2，则调用thread_list接口
+        if (typeValue === undefined || typeValue !== 2) {
           try {
             // 获取线程列表
             const threadListResponse = await getThreadList();
@@ -649,16 +660,11 @@ onMounted(async () => {
         if (response.data.success) {
           // API 返回的消息格式为 JSON 字符串，需要解析
           let parsedMessages = [];
-          
-          if (typeof response.data.messages === 'string') {
-            try {
-              parsedMessages = JSON.parse(response.data.messages);
-            } catch (error) {
-              console.error('解析消息数据失败:', error);
-              parsedMessages = [];
-            }
-          } else if (Array.isArray(response.data.messages)) {
-            parsedMessages = response.data.messages;
+          try {
+            parsedMessages = JSON.parse(response.data.messages);
+          } catch (parseError) {
+            console.error('解析消息失败:', parseError);
+            parsedMessages = [];
           }
           
           // 转换消息格式以匹配前端要求并保存到 store
@@ -674,29 +680,54 @@ onMounted(async () => {
               const contents = [];
               for (const match of thinkMatches) {
                 contents.push(match[2]);
-                // 获取最后一个推理时间
-                reasoningTime = match[1] ? parseInt(match[1]) || 0 : 0;
+                reasoningTime = Math.max(reasoningTime, parseInt(match[1]) || 0);
               }
-              
-              if (contents.length > 0) {
-                reasoningContent = contents.join('');
-              }
+              reasoningContent = contents.join('\n\n');
             }
+            
+            // 移除内容中的
+标签
+            const cleanContent = msg.content ? msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, '').trim() : '';
             
             return {
               id: msg.id,
+              conversationID: msg.conversation_id,
               role: msg.role,
-              content: processMessageContent(msg.content),
-              conversationID: msg.conversationID,
-              createdAt: msg.createdAt,
+              content: cleanContent,
               base64: msg.base64,
               reasoningContent: reasoningContent,
-              reasoningTime: reasoningTime
+              reasoningTime: reasoningTime,
+              createdAt: msg.created_at,
+              isStreaming: false
             };
           });
           
           // 保存消息到 store
           chatStore.setMessages(conversationId, formattedMessages);
+          
+          // 检查是否存在未完成的对话（只有在没有type参数或者type不等于2时才检查）
+          if (typeValue === undefined || typeValue !== 2) {
+            try {
+              // 获取线程列表
+              const threadListResponse = await getThreadList();
+              if (threadListResponse.data.success) {
+                // 检查返回值中是否有当前对话id
+                const conversationKey = conversationId.toString();
+                if (threadListResponse.data.thread_list && 
+                    threadListResponse.data.thread_list[conversationKey]) {
+                  // 获取user和ai的消息id
+                  const threadInfo = threadListResponse.data.thread_list[conversationKey];
+                  const messageUserID = threadInfo.messageUserID;
+                  const messageAssistantID = threadInfo.messageAssistantID;
+                  
+                  // 调用/chat/generate接口并处理流式响应
+                  await handleStreamedGenerate(conversationId, messageUserID, messageAssistantID);
+                }
+              }
+            } catch (error) {
+              console.error('调用thread_list或generate接口失败:', error);
+            }
+          }
         }
       } catch (error) {
         console.error('获取对话历史失败:', error);
@@ -710,10 +741,8 @@ onMounted(async () => {
   }
 });
 
-// 组件卸载时移除事件监听器
-onMounted(() => {
-  return () => {
-    document.removeEventListener('click', handleClickOutside);
-  };
+// 组件卸载前清理事件监听器
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>

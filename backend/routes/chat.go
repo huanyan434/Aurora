@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 	"utils"
 
@@ -63,6 +64,7 @@ type MSG struct {
 
 var (
 	resps = make(map[int64][]MSG)
+	respMutex sync.RWMutex
 )
 
 // @Summary 生成AI回复
@@ -150,17 +152,27 @@ func generateHandler(c *gin.Context) {
 	}
 
 	// 检查是否有之前缓存的响应数据，如果有则先发送
-	if cachedResponses, exists := resps[req.ConversationID]; exists && len(cachedResponses) > 0 {
+	respMutex.RLock()
+	cachedResponses, exists := resps[req.ConversationID]
+	respMutex.RUnlock()
+	
+	if exists && len(cachedResponses) > 0 {
 		fmt.Println("convID:", req.ConversationID, " len(cachedResponses):", len(cachedResponses))
 		for n := 0; ; n++ {
 			if n >= len(cachedResponses) {
 				for n := 0; n < 10; n++ {
 					time.Sleep(100 * time.Millisecond)
-					if n < len(cachedResponses) {
+					respMutex.RLock()
+					currentCached := resps[req.ConversationID]
+					respMutex.RUnlock()
+					if n < len(currentCached) {
 						break
 					}
 				}
-				if n < len(cachedResponses) {
+				respMutex.RLock()
+				currentCached := resps[req.ConversationID]
+				respMutex.RUnlock()
+				if n < len(currentCached) {
 					continue
 				}
 				return
@@ -206,12 +218,18 @@ func generateHandler(c *gin.Context) {
 			Content:          parsedResponse.Content,
 		}
 
+		respMutex.Lock()
 		resps[req.ConversationID] = append(resps[req.ConversationID], msg)
+		respMutex.Unlock()
+		
 		jsonData, _ := json.Marshal(msg)
 		_, _ = fmt.Fprintf(c.Writer, "data:%s\n\n", jsonData)
 		flusher.Flush()
 	}
+	
+	respMutex.Lock()
 	delete(resps, req.ConversationID)
+	respMutex.Unlock()
 }
 
 // @Summary 获取线程列表
