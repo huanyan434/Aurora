@@ -148,7 +148,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, watch, onUnmounted } from 'vue';
-import { getMessagesList, deleteMessage as deleteMessageAPI, getThreadList, generate } from '@/api/chat';
+import { getMessagesList, deleteMessage as deleteMessageAPI, getThreadList } from '@/api/chat';
 import { useRoute } from 'vue-router';
 import { marked } from 'marked';
 import { useChatStore } from '@/stores/chat';
@@ -262,6 +262,7 @@ const scrollToBottom = () => {
  * @param content 消息内容
  * @returns 处理后的消息内容
  */
+/*
 const processMessageContent = (content: string) => {
   if (!content) return '';
   
@@ -273,6 +274,7 @@ const processMessageContent = (content: string) => {
   
   return processedContent;
 };
+*/
 
 /**
  * 渲染 markdown 内容（仅用于 AI 消息）
@@ -374,17 +376,9 @@ const renderMarkdown = (content: string) => {
 const copyMessage = async (content: string) => {
   try {
     await navigator.clipboard.writeText(content);
-    toastSuccess({
-      title: '复制成功',
-      description: '消息已复制到剪贴板',
-      duration: 3000
-    });
+    toastSuccess('消息已复制到剪贴板');
   } catch (err) {
-    toastError({
-      title: '复制失败',
-      description: '无法复制消息到剪贴板',
-      duration: 3000
-    });
+    toastError('无法复制消息到剪贴板');
     console.error('复制失败:', err);
   }
 };
@@ -423,22 +417,14 @@ const confirmDeleteMessage = async () => {
     chatStore.removeMessage(messageToDelete.value);
     
     // 显示成功提示
-    toastSuccess({
-      title: '删除成功',
-      description: '消息已成功删除',
-      duration: 3000
-    });
+    toastSuccess('消息已成功删除');
     
     // 重置待删除消息ID
     messageToDelete.value = null;
   } catch (error) {
     console.error('删除消息失败:', error);
     // 显示错误提示
-    toastError({
-      title: '删除失败',
-      description: '删除消息时发生错误',
-      duration: 3000
-    });
+    toastError('删除消息时发生错误');
     // 重置待删除消息ID
     messageToDelete.value = null;
   }
@@ -631,31 +617,7 @@ onMounted(async () => {
       isLoading.value = true;
       
       try {
-        // 如果type不存在或者type不等于2，则调用thread_list接口
-        if (typeValue === undefined || typeValue !== 2) {
-          try {
-            // 获取线程列表
-            const threadListResponse = await getThreadList();
-            if (threadListResponse.data.success) {
-              // 检查返回值中是否有当前对话id
-              const conversationKey = conversationId.toString();
-              if (threadListResponse.data.thread_list && 
-                  threadListResponse.data.thread_list[conversationKey]) {
-                // 获取user和ai的消息id
-                const threadInfo = threadListResponse.data.thread_list[conversationKey];
-                const messageUserID = threadInfo.messageUserID;
-                const messageAssistantID = threadInfo.messageAssistantID;
-                
-                // 调用/chat/generate接口并处理流式响应
-                await handleStreamedGenerate(conversationId, messageUserID, messageAssistantID);
-              }
-            }
-          } catch (error) {
-            console.error('调用thread_list或generate接口失败:', error);
-          }
-        }
-        
-        // 获取对话历史
+        // 首先获取对话历史
         const response = await getMessagesList({ conversationID: conversationId });
         if (response.data.success) {
           // API 返回的消息格式为 JSON 字符串，需要解析
@@ -685,8 +647,7 @@ onMounted(async () => {
               reasoningContent = contents.join('\n\n');
             }
             
-            // 移除内容中的
-标签
+            // 删除标签
             const cleanContent = msg.content ? msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, '').trim() : '';
             
             return {
@@ -704,6 +665,11 @@ onMounted(async () => {
           
           // 保存消息到 store
           chatStore.setMessages(conversationId, formattedMessages);
+          
+          // 立即隐藏加载动画并滚动到消息底部
+          isLoading.value = false;
+          await nextTick();
+          scrollToBottom();
           
           // 检查是否存在未完成的对话（只有在没有type参数或者type不等于2时才检查）
           if (typeValue === undefined || typeValue !== 2) {
@@ -725,17 +691,14 @@ onMounted(async () => {
                 }
               }
             } catch (error) {
-              console.error('调用thread_list或generate接口失败:', error);
+              console.error('Error calling thread_list or generate API:', error);
             }
           }
         }
       } catch (error) {
-        console.error('获取对话历史失败:', error);
-      } finally {
+        console.error('Failed to get conversation history:', error);
+        // Hide loading animation even if loading history fails
         isLoading.value = false;
-        // 确保DOM更新后再滚动到底部
-        await nextTick();
-        scrollToBottom();
       }
     }
   }

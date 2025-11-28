@@ -85,7 +85,6 @@
 <script setup lang="ts">
 import { ref, computed, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -95,10 +94,8 @@ import {
 } from '@/components/ui/tooltip';
 import { Plus, Lightbulb, Square, Send } from 'lucide-vue-next';
 import { useChatStore } from '@/stores/chat';
-import { useUserStore } from '@/stores/user';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { newConversation, stopGenerate } from '@/api/chat';
-import { toastError, toastSuccess } from '@/components/ui/toast/use-toast';
 import type { Model } from '@/stores/chat';
 
 // 响应式数据
@@ -109,7 +106,6 @@ const inputRef = ref<HTMLElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const attachment = ref<string>(''); // 存储base64编码的图片
 const chatStore = useChatStore();
-const userStore = useUserStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -147,53 +143,6 @@ const isReasoningDisabled = computed(() => {
 // 判断是否可以发送消息
 const canSendMessage = computed(() => {
   return (inputMessage.value.trim() || attachment.value) && !isGenerating.value;
-});
-
-// 检查用户积分是否足够
-const checkUserPoints = (): boolean => {
-  // 获取当前选中的模型
-  const currentModel = chatStore.models.find(model => model.id === chatStore.selectedModel);
-  
-  // 如果找不到模型或模型没有积分要求，则视为通过检查
-  if (!currentModel || currentModel.points === undefined || currentModel.points <= 0) {
-    return true;
-  }
-  
-  // 获取用户当前积分
-  const userPoints = userStore.userInfo.points || 0;
-  
-  // 检查用户是否为会员以及会员等级
-  const isVip = userStore.userInfo.isMember;
-  const memberLevel = userStore.userInfo.memberLevel;
-  
-  // 计算实际需要的积分（VIP半价，SVIP免费）
-  let requiredPoints = currentModel.points;
-  if (memberLevel === 'SVIP') {
-    requiredPoints = 0;
-  } else if (isVip && memberLevel === 'VIP') {
-    requiredPoints = Math.floor(requiredPoints / 2);
-  }
-  
-  // 检查积分是否足够
-  if (userPoints < requiredPoints) {
-    toastError(`积分不足，需要${requiredPoints}积分，您当前有${userPoints}积分。请前往个人中心充值或签到获取积分。`);
-    return false;
-  }
-  
-  return true;
-};
-
-// 推理按钮样式相关计算属性
-const reasoningButtonBg = computed(() => {
-  return isReasoning.value ? 'var(--reasoning-button-bg)' : 'transparent';
-});
-
-const reasoningButtonColor = computed(() => {
-  return isReasoning.value ? 'var(--reasoning-button-text)' : 'initial';
-});
-
-const reasoningButtonHoverBg = computed(() => {
-  return isReasoning.value ? 'var(--reasoning-button-hover-bg)' : '';
 });
 
 // 处理键盘事件
@@ -590,8 +539,8 @@ const toggleReasoning = () => {
 }
 
 .reasoning-button {
-  background-color: v-bind(reasoningButtonBg);
-  color: v-bind(reasoningButtonColor);
+  background-color: var(--reasoning-button-bg);
+  color: var(--reasoning-button-text);
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
@@ -601,7 +550,7 @@ const toggleReasoning = () => {
 }
 
 .reasoning-button:hover {
-  background-color: v-bind(reasoningButtonHoverBg);
+  background-color: var(--reasoning-button-hover-bg);
 }
 
 .reasoning-text {
