@@ -27,7 +27,7 @@
                 <div class="stat-value">{{ userInfo?.points || 0 }}</div>
               </div>
               <div class="stat-item">
-                <div class="stat-label">VIP状态</div>
+                <div class="stat-label">会员状态</div>
                 <div class="stat-value" :class="{ 'vip-status': userInfo?.isMember }">
                   {{ getMemberLevelText(userInfo?.memberLevel) }}
                 </div>
@@ -51,13 +51,13 @@
               <h3 class="feature-title">每日签到</h3>
               <p class="feature-desc">{{ signInStatus ? '今日已签到' : '点击签到获取积分' }}</p>
             </div>
-            <button
+            <Button
               :disabled="signInStatus || signingIn"
-              :class="['sign-in-btn', { 'sign-in-btn-disabled': signInStatus || signingIn }]"
+              variant="secondary"
               @click="handleSignIn"
             >
               {{ signingIn ? '签到中...' : (signInStatus ? '已签到' : '签到') }}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -73,12 +73,12 @@
               <h3 class="feature-title">会员开通</h3>
               <p class="feature-desc">开通会员享受更多特权</p>
             </div>
-            <button
+            <Button
               @click="showVipUpgrade = true"
-              class="vip-upgrade-btn"
+              variant="default"
             >
               {{ userInfo?.isMember ? '续费会员' : '开通会员' }}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -94,12 +94,12 @@
               <h3 class="feature-title">积分充值</h3>
               <p class="feature-desc">充值积分享受更多服务</p>
             </div>
-            <button
+            <Button
               @click="showPointsRecharge = true"
-              class="points-recharge-btn"
+              variant="default"
             >
               充值积分
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -118,60 +118,144 @@
         </div>
 
         <div class="modal-body">
-          <h3 class="modal-subtitle">会员特权</h3>
-          <ul class="privileges-list">
-            <li class="privilege-item">
-              <span class="privilege-check">✓</span>
-              <span>VIP使用模型半价（积分）</span>
-            </li>
-            <li class="privilege-item">
-              <span class="privilege-check">✓</span>
-              <span>SVIP使用模型免费</span>
-            </li>
-            <li class="privilege-item">
-              <span class="privilege-check">✓</span>
-              <span>更多内测功能</span>
-            </li>
-            <li class="privilege-item">
-              <span class="privilege-check">✓</span>
-              <span>详见购买会员页面</span>
-            </li>
-          </ul>
-        </div>
+          <div class="pricing-section">
+            <div class="pricing-plans-container">
+              <!-- VIP套餐 -->
+              <div class="pricing-plan">
+                <div class="plan-header">
+                  <span class="plan-name">月VIP</span>
+                  <span class="plan-price">￥5.00</span>
+                </div>
+                <ul class="plan-features">
+                  <li>VIP使用模型半价（积分）</li>
+                  <li>更多内测功能</li>
+                </ul>
+                <div class="plan-action-container">
+                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  </a>
+                </div>
+              </div>
 
-        <!-- 购买会员按钮 -->
-        <a
-          href="https://afdian.com/a/mchyj"
-          target="_blank"
-          class="purchase-btn vip-purchase-btn"
-        >
-          购买会员
-        </a>
+              <div class="pricing-plan">
+                <div class="plan-header">
+                  <span class="plan-name">季VIP</span>
+                  <span class="plan-price">￥15.00</span>
+                </div>
+                <ul class="plan-features">
+                  <li>VIP使用模型半价（积分）</li>
+                  <li>更多内测功能</li>
+                </ul>
+                <div class="plan-action-container">
+                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  </a>
+                </div>
+              </div>
+
+              <div class="pricing-plan">
+                <div class="plan-header">
+                  <span class="plan-name">年VIP</span>
+                  <div class="plan-price-container">
+                    <span class="plan-original-price">￥60.00</span>
+                    <span class="plan-price">￥55.00</span>
+                  </div>
+                </div>
+                <ul class="plan-features">
+                  <li>VIP使用模型半价（积分）</li>
+                  <li>更多内测功能</li>
+                </ul>
+                <div class="plan-action-container">
+                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  </a>
+                </div>
+              </div>
+
+              <!-- SVIP套餐 -->
+              <div class="pricing-plan">
+                <div class="plan-header">
+                  <span class="plan-name">月SVIP</span>
+                  <span class="plan-price">￥10.00</span>
+                </div>
+                <ul class="plan-features">
+                  <li>SVIP使用模型免费</li>
+                  <li>更多内测功能</li>
+                </ul>
+                <div class="plan-action-container">
+                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  </a>
+                </div>
+              </div>
+
+              <div class="pricing-plan">
+                <div class="plan-header">
+                  <span class="plan-name">季SVIP</span>
+                  <div class="plan-price-container">
+                    <span class="plan-original-price">￥30.00</span>
+                    <span class="plan-price">￥25.00</span>
+                  </div>
+                </div>
+                <ul class="plan-features">
+                  <li>SVIP使用模型免费</li>
+                  <li>更多内测功能</li>
+                </ul>
+                <div class="plan-action-container">
+                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  </a>
+                </div>
+              </div>
+
+              <div class="pricing-plan">
+                <div class="plan-header">
+                  <span class="plan-name">年SVIP</span>
+                  <div class="plan-price-container">
+                    <span class="plan-original-price">￥120.00</span>
+                    <span class="plan-price">￥108.00</span>
+                  </div>
+                </div>
+                <ul class="plan-features">
+                  <li>SVIP使用模型免费</li>
+                  <li>更多内测功能</li>
+                </ul>
+                <div class="plan-action-container">
+                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- 订单号验证区域 -->
         <div class="verification-section">
-          <input
-            v-model="vipOrderId"
-            type="text"
-            placeholder="请先在购买会员界面复制订单号，在此粘贴"
-            class="verification-input"
-          />
-          <button
-            @click="verifyVipOrder"
-            :disabled="verifyingVipOrder"
-            class="verification-btn"
-          >
-            {{ verifyingVipOrder ? '验证中...' : '验证' }}
-          </button>
+          <div class="verification-input-group">
+            <input
+              v-model="vipOrderId"
+              type="text"
+              placeholder="请先在购买会员界面复制订单号，在此粘贴"
+              class="verification-input"
+            />
+            <Button
+              @click="verifyVipOrder"
+              :disabled="verifyingVipOrder"
+              variant="secondary"
+            >
+              {{ verifyingVipOrder ? '验证中...' : '验证' }}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 积分充值弹窗 -->
+    <!-- 积分套餐弹窗 -->
     <div v-if="showPointsRecharge" class="modal-overlay">
       <div class="modal-content">
         <div class="modal-header">
-          <h2 class="modal-title">积分充值</h2>
+          <h2 class="modal-title">积分套餐</h2>
           <button @click="showPointsRecharge = false" class="modal-close-btn">
             <svg xmlns="http://www.w3.org/2000/svg" class="modal-close-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -180,43 +264,46 @@
         </div>
 
         <div class="modal-body">
-          <h3 class="modal-subtitle">积分用途</h3>
-          <ul class="privileges-list">
-            <li class="privilege-item">
-              <span class="privilege-check">✓</span>
-              <span>文字转语音、语音转文字（开发中）</span>
-            </li>
-            <li class="privilege-item">
-              <span class="privilege-check">✓</span>
-              <span>使用对话模型</span>
-            </li>
-          </ul>
+          <div class="pricing-section">
+            <div class="pricing-plans-container">
+              <div class="pricing-plan">
+                <div class="plan-header">
+                  <span class="plan-name">Aurora 积分</span>
+                  <div class="plan-price-container">
+                    <span class="plan-price">¥5.00</span>
+                  </div>
+                </div>
+                <ul class="plan-features">
+                  <li>文字转语音、语音转文字（开发中）</li>
+                  <li>使用对话模型</li>
+                </ul>
+                <div class="plan-action-container">
+                  <a href="https://afdian.com/a/mchyj?tab=shop" target="_blank">
+                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <!-- 购买积分按钮 -->
-        <a
-          href="https://afdian.com/a/mchyj?tab=shop"
-          target="_blank"
-          class="purchase-btn points-purchase-btn"
-        >
-          购买积分
-        </a>
 
         <!-- 订单号验证区域 -->
         <div class="verification-section">
-          <input
-            v-model="pointsOrderId"
-            type="text"
-            placeholder="请先在购买积分界面复制订单号，在此粘贴"
-            class="verification-input"
-          />
-          <button
-            @click="verifyPointsOrder"
-            :disabled="verifyingPointsOrder"
-            class="verification-btn"
-          >
-            {{ verifyingPointsOrder ? '验证中...' : '验证' }}
-          </button>
+          <div class="verification-input-group">
+            <input
+              v-model="pointsOrderId"
+              type="text"
+              placeholder="请先在购买积分界面复制订单号，在此粘贴"
+              class="verification-input"
+            />
+            <Button
+              @click="verifyPointsOrder"
+              :disabled="verifyingPointsOrder"
+              variant="secondary"
+            >
+              {{ verifyingPointsOrder ? '验证中...' : '验证' }}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -229,6 +316,7 @@ import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import { sign, verifyPoints, verifyVip, getHasSigned } from '@/api/user';
 import { toastSuccess, toastError } from '@/components/ui/toast/use-toast';
+import { Button } from '@/components/ui/button';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -618,7 +706,7 @@ onMounted(async () => {
   border-radius: var(--border-radius-md); /* rounded-md */
   font-size: var(--font-size-sm); /* text-sm */
   font-weight: 500; /* font-medium */
-  transition-colors: 150ms;
+  transition: color 150ms;
 }
 
 .sign-in-btn:hover {
@@ -647,7 +735,7 @@ onMounted(async () => {
   border-radius: var(--border-radius-md); /* rounded-md */
   font-size: var(--font-size-sm); /* text-sm */
   font-weight: 500; /* font-medium */
-  transition-colors: 150ms;
+  transition: all 150ms;
 }
 
 .vip-upgrade-btn:hover {
@@ -661,7 +749,7 @@ onMounted(async () => {
   border-radius: var(--border-radius-md); /* rounded-md */
   font-size: var(--font-size-sm); /* text-sm */
   font-weight: 500; /* font-medium */
-  transition-colors: 150ms;
+  transition: all 150ms;
 }
 
 .points-recharge-btn:hover {
@@ -684,7 +772,9 @@ onMounted(async () => {
   border: 1px solid var(--color-gray-200); /* border border-gray-200 */
   border-radius: var(--border-radius-lg); /* rounded-lg */
   width: 100%;
-  max-width: 28rem; /* max-w-md */
+  max-width: 60rem; /* 增大最大宽度以适应网格布局 */
+  max-height: 80vh; /* 限制最大高度，允许垂直滚动 */
+  overflow-y: auto; /* 内容溢出时显示滚动条 */
   padding: var(--spacing-lg); /* p-6 */
 }
 
@@ -754,37 +844,203 @@ onMounted(async () => {
   margin-right: var(--spacing-sm); /* mr-2 */
 }
 
-.purchase-btn {
-  display: block;
-  width: 100%;
-  padding: var(--spacing-md) var(--spacing-md); /* px-4 py-3 */
-  background-color: #f59e0b; /* bg-amber-500 */
-  color: var(--color-white); /* text-white */
-  border-radius: var(--border-radius-md); /* rounded-md */
-  text-align: center;
-  margin-bottom: var(--spacing-md); /* mb-4 */
-  font-size: var(--font-size-sm); /* text-sm */
-  font-weight: 500; /* font-medium */
-  transition-colors: 150ms;
-}
-
-.purchase-btn:hover {
-  background-color: #d97706; /* hover:bg-amber-600 */
+.vip-purchase-btn {
+  margin-top: var(--spacing-md);
 }
 
 .points-purchase-btn {
-  background-color: #10b981; /* bg-green-500 */
+  margin-top: var(--spacing-md);
 }
 
-.points-purchase-btn:hover {
-  background-color: #059669; /* hover:bg-green-600 */
+.full-width {
+  width: 100%;
 }
+
 
 .verification-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md); /* space-y-3 */
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
 }
+
+.verification-input-group {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.verification-input {
+  flex: 1;
+}
+
+.pricing-section {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-gray-200);
+}
+
+.dark .pricing-section {
+  border-top: 1px solid var(--color-gray-800);
+}
+
+.pricing-plans-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.pricing-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-gray-800);
+}
+
+.dark .pricing-title {
+  color: var(--color-gray-200);
+}
+
+.pricing-plan {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  transition: all 150ms;
+  position: relative;
+  overflow: hidden;
+}
+
+.pricing-plan:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-gray-300);
+}
+
+.dark .pricing-plan {
+  background-color: var(--color-gray-900);
+  border: 1px solid var(--color-gray-800);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark .pricing-plan:hover {
+  border-color: var(--color-gray-700);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
+}
+
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-sm);
+}
+
+.plan-name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.dark .plan-name {
+  color: var(--color-gray-100);
+}
+
+.plan-price {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-900);
+  margin: 0;
+  line-height: 1;
+}
+
+.dark .plan-price {
+  color: var(--color-gray-100);
+}
+
+.plan-original-price {
+  font-size: var(--font-size-base);
+  color: var(--color-gray-500);
+  text-decoration: line-through;
+  margin: 0;
+  display: block;
+  align-self: center;
+}
+
+.dark .plan-original-price {
+  color: var(--color-gray-400);
+}
+
+.plan-duration {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.dark .plan-duration {
+  color: var(--color-gray-400);
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: var(--spacing-md) 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.plan-features li {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) 0;
+}
+
+.dark .plan-features li {
+  color: var(--color-gray-300);
+}
+
+.plan-features li::before {
+  content: "✓";
+  color: #10b981;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 50%;
+  background-color: rgba(16, 185, 129, 0.1);
+  font-size: 0.75rem;
+}
+
+.plan-action-btn {
+  text-align: right;
+  margin-top: var(--spacing-sm);
+  display: inline-block;
+  margin-left: auto;
+}
+
+.plan-price-container {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+}
+
+.plan-action-container {
+  margin-top: var(--spacing-sm);
+  display: flex;
+  justify-content: flex-end;
+}
+
 
 .verification-input {
   width: 100%;
@@ -816,7 +1072,7 @@ onMounted(async () => {
   border-radius: var(--border-radius-md); /* rounded-md */
   font-size: var(--font-size-sm); /* text-sm */
   font-weight: 500; /* font-medium */
-  transition-colors: 150ms;
+  transition: all 150ms;
 }
 
 .verification-btn:hover {
