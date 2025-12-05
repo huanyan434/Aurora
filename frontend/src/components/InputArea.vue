@@ -15,18 +15,9 @@
           <!-- 左下角按钮组 -->
           <div class="input-button-group-left">
             <!-- 文件上传按钮 -->
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <Button variant="ghost" size="icon" class="input-addon-button" @click="triggerFileUpload">
-                    <Plus class="icon-small" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>上传文件</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button variant="ghost" size="icon" class="input-addon-button" @click="triggerFileUpload">
+              <Plus class="icon-small" />
+            </Button>
 
             <!-- 隐藏的文件输入框 -->
             <input 
@@ -38,43 +29,24 @@
             />
 
             <!-- 推理按钮 -->
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <Button variant="ghost" size="icon"
-                    :class="['input-addon-button', 'reasoning-button', { 'reasoning-active': isReasoning }]"
-                    :disabled="isReasoningDisabled" @click="toggleReasoning">
-                    <Lightbulb class="icon-small" />
-                    <span class="reasoning-text">推理</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>让模型思考地更深入</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button variant="ghost" size="icon"
+              :class="['input-addon-button', 'reasoning-button', { 'reasoning-active': isReasoning }]"
+              :disabled="isReasoningDisabled" @click="toggleReasoning">
+              <Lightbulb class="icon-small" />
+              <span class="reasoning-text">推理</span>
+            </Button>
           </div>
 
           <!-- 右下角发送/停止按钮 -->
           <div class="input-button-group-right">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <Button v-if="isGenerating" @click="handleStopGeneration" variant="ghost" size="icon"
-                    class="input-send-button">
-                    <Square class="icon-small" />
-                  </Button>
-                  <Button v-else @click="handleSendMessage" variant="ghost" size="icon"
-                    :disabled="!canSendMessage" class="input-send-button">
-                    <Send class="icon-small" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p v-if="isGenerating">停止生成</p>
-                  <p v-else>发送消息</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button v-if="isGenerating" @click="handleStopGeneration" variant="ghost" size="icon"
+              class="input-send-button input-send-button-stop">
+              <Square class="icon-small" />
+            </Button>
+            <Button v-else @click="handleSendMessage" variant="ghost" size="icon"
+              :disabled="!canSendMessage" class="input-send-button">
+              <Send class="icon-small" />
+            </Button>
           </div>
         </div>
       </div>
@@ -86,12 +58,6 @@
 import { ref, computed, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip';
 import { Plus, Lightbulb, Square, Send } from 'lucide-vue-next';
 import { useChatStore } from '@/stores/chat';
 import { generateSnowflakeId } from '@/utils/snowflake';
@@ -588,6 +554,24 @@ const toggleReasoning = () => {
 .dark .input-send-button:hover {
   background-color: var(--color-gray-700);
   /* dark:hover:bg-gray-700 */
+}
+
+/* 生成状态下的停止按钮样式 */
+.input-send-button:where(:nth-child(1)):has(.icon-small[data-icon="square"]) {
+  background-color: #ef4444; /* bg-red-500 */
+  border-radius: var(--border-radius-md); /* 圆角 */
+  color: white;
+}
+
+/* 由于我们无法直接通过CSS检测按钮是否在isGenerating状态下，需要使用一个新类名 */
+.input-send-button-stop {
+  background-color: #ef4444 !important; /* bg-red-500 */
+  border-radius: var(--border-radius-md) !important; /* 圆角 */
+  color: white !important;
+}
+
+.input-send-button-stop:hover {
+  background-color: #dc2626 !important; /* hover:bg-red-600 */
 }
 
 .icon-small {
