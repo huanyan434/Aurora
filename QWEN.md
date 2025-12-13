@@ -13,7 +13,7 @@
 3. **开发语言**: 前端用TypeScript+Vue3，后端用Go
 4. **代码规范**: 前端用ESLint+Prettier，后端遵循Go标准格式
 5. **文档查询**: 遇到不确定问题时，调用context7获取最新文档
-6. **前端验证**: 每次修改前端代码后，用browser-tools-mcp检查控制台和网络错误
+6. **前端验证**: 每次修改前端代码后，用chrome-devtools调试前端，检查错误以及日志
 7. **前端约定**:
     1. 使用TypeScript，遵循类型安全
     2. 使用Vue3 Composition API和`<script setup>`语法
