@@ -19,7 +19,7 @@ var DB *gorm.DB
 // User 结构
 type User struct {
 	ID           int64     `gorm:"column:id;type:bigint;primaryKey"`
-	Username     string    `gorm:"column:username;type:varchar(64);uniqueIndex:idx_username;not null"`
+	Username     string    `gorm:"column:username;type:varchar(64);not null"`
 	Email        string    `gorm:"column:email;type:varchar(120);uniqueIndex:idx_email;not null"`
 	PasswordHash string    `gorm:"column:password_hash;type:varchar(255)"`
 	IsMember     bool      `gorm:"column:is_member;type:boolean;default:false"`
@@ -201,6 +201,15 @@ func RegisterUser(username, email, password string) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
+
+	// 检查邮箱是否已存在
+	db := GetDB()
+	var existingUser User
+	result := db.Where("email = ?", email).First(&existingUser)
+	if result.Error == nil {
+		return User{}, fmt.Errorf("邮箱已存在")
+	}
+
 	user := User{
 		ID:          id,
 		Username:    username,
@@ -214,8 +223,7 @@ func RegisterUser(username, email, password string) (User, error) {
 	SetPassword(&user, password)
 
 	// 插入数据库
-	db := GetDB()
-	result := db.Create(&user)
+	result = db.Create(&user)
 	if result.Error != nil {
 		return user, result.Error
 	}
