@@ -10,6 +10,7 @@
               variant="ghost"
               size="icon"
               class="toggle-btn"
+              :class="{ 'mobile-toggle-visible': isMobileToggleVisible }"
               @click="toggleGlobalSidebar"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="toggle-btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -45,21 +46,38 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 
+interface Props {
+  isMobileToggleVisible?: boolean;
+  toggleSidebar?: () => void;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isMobileToggleVisible: false,
+  toggleSidebar: () => {
+    // 默认行为：使用全局状态管理器
+    const store = useSidebarStore();
+    store.toggleSidebar();
+    return;
+  }
+});
+
 const router = useRouter();
-const sidebarStore = useSidebarStore();
 
-// 定义事件
-const emits = defineEmits(['newConversation']);
-
+// 使用传入的函数或默认行为
 const toggleGlobalSidebar = () => {
-  sidebarStore.toggleSidebar();
+  if (typeof props.toggleSidebar === 'function') {
+    props.toggleSidebar();
+  } else {
+    const store = useSidebarStore();
+    store.toggleSidebar();
+  }
 };
 
 const handleNewConversation = () => {
   // 跳转到根路由
   router.push('/');
-  // 发出事件通知父组件
-  emits('newConversation');
+  // 触发可能的事件通知父组件
+  // （如果父组件监听了此事件的话）
 };
 </script>
 
@@ -138,5 +156,17 @@ const handleNewConversation = () => {
 
 .dark .new-conversation-btn:hover {
   background-color: var(--color-gray-200); /* dark:hover:bg-gray-200 */
+}
+
+/* 仅在移动端开启侧边栏时显示切换按钮 */
+.toggle-btn:not(.mobile-toggle-visible) {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  /* 桌面端始终显示切换按钮 */
+  .toggle-btn:not(.mobile-toggle-visible) {
+    display: block;
+  }
 }
 </style>

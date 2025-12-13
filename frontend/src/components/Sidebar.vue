@@ -1,7 +1,11 @@
 <template>
   <div class="sidebar-container">
     <!-- 侧边栏上部 -->
-    <SidebarHeader :toggle-sidebar="props.toggleSidebar" @new-conversation="handleNewConversation" />
+    <SidebarHeader
+      :toggle-sidebar="props.toggleSidebar"
+      :is-mobile-toggle-visible="!sidebarStore.collapsed"
+      @new-conversation="handleNewConversation"
+    />
 
     <!-- 分割线 -->
     <div class="sidebar-divider"></div>
@@ -13,6 +17,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useSidebarStore } from '@/stores/sidebar';
 import SidebarHeader from './SidebarHeader.vue';
 import ConversationsList from './ConversationsList.vue';
 
@@ -23,6 +28,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   toggleSidebar: () => {}
 });
+
+const sidebarStore = useSidebarStore();
 
 // 对话列表组件引用
 const conversationsListRef = ref<InstanceType<typeof ConversationsList> | null>(null);
