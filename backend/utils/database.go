@@ -399,11 +399,12 @@ func SaveConversationHistory(conversationID int64, messages []openai.ChatComplet
 		return err
 	}
 
-	// 寻找第一个非空消息作为摘要
-	var firstMessage string
-	for _, msg := range messages {
+	// 寻找最后一个非空消息作为摘要
+	var lastMessage string
+	for i := len(messages) - 1; i >= 0; i-- {
+		msg := messages[i]
 		if msg.Content != "" {
-			firstMessage = msg.Content
+			lastMessage = msg.Content
 			break
 		}
 	}
@@ -427,8 +428,8 @@ func SaveConversationHistory(conversationID int64, messages []openai.ChatComplet
 	}
 
 	// 更新对话摘要
-	if firstMessage != "" {
-		summary := extractSummary(firstMessage)
+	if lastMessage != "" {
+		summary := extractSummary(lastMessage)
 		if err := db.Model(&Conversation{}).Where("id = ?", conversationID).Update("summary", summary).Error; err != nil {
 			return err
 		}
