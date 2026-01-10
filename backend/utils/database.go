@@ -40,6 +40,7 @@ type Conversation struct {
 	ID        int64     `gorm:"column:id;type:bigint;primaryKey"`
 	UserID    int64     `gorm:"column:user_id;type:bigint;index"`
 	Title     string    `gorm:"column:title;type:varchar(100)"`
+	Summary   string    `gorm:"column:summary;type:varchar(200)"` // 对话摘要
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`
 }
@@ -47,6 +48,39 @@ type Conversation struct {
 // TableName 指定Conversation结构体对应的表名
 func (Conversation) TableName() string {
 	return "conversations"
+}
+
+// extractSummary 从消息内容中提取摘要，去除可能的模型标签，取前20个字符
+func extractSummary(content string) string {
+	// 如果内容以 [ 开头，表示有模型标签，跳过到 ] 后面
+	startIndex := 0
+	if len(content) > 0 && content[0] == '[' {
+		endBracketIndex := -1
+		for i, char := range content {
+			if char == ']' {
+				endBracketIndex = i
+				break
+			}
+		}
+		if endBracketIndex != -1 {
+			startIndex = endBracketIndex + 1
+			// 跳过可能的空白字符
+			for startIndex < len(content) && (content[startIndex] == ' ' || content[startIndex] == '\t' || content[startIndex] == '\n') {
+				startIndex++
+			}
+		}
+	}
+
+	// 提取从startIndex开始的最多20个字符
+	text := content[startIndex:]
+
+	// 计算实际字符数（考虑到多字节字符）
+	runes := []rune(text)
+	if len(runes) > 20 {
+		runes = runes[:20]
+	}
+
+	return string(runes)
 }
 
 type Message struct {
@@ -265,7 +299,7 @@ func InitDB() {
 	// 配置连接池
 	sqlDB, err := DB.DB()
 	if err != nil {
-		fmt.Println("获取底层数据库连接失败：%v", err)
+		fmt.Printf("获取底层数据库连接失败：%v\n", err)
 		return
 	}
 
@@ -273,8 +307,6 @@ func InitDB() {
 	sqlDB.SetMaxIdleConns(10)           // 最大空闲连接数
 	sqlDB.SetMaxOpenConns(100)          // 最大打开连接数
 	sqlDB.SetConnMaxLifetime(time.Hour) // 连接的最大生存期
-
-	return
 }
 
 // HashPassword 使用MD5哈希密码
@@ -367,6 +399,15 @@ func SaveConversationHistory(conversationID int64, messages []openai.ChatComplet
 		return err
 	}
 
+	// 寻找第一个非空消息作为摘要
+	var firstMessage string
+	for _, msg := range messages {
+		if msg.Content != "" {
+			firstMessage = msg.Content
+			break
+		}
+	}
+
 	// 添加新的消息记录
 	for _, msg := range messages {
 		id, err := GenerateSnowflakeId()
@@ -385,6 +426,14 @@ func SaveConversationHistory(conversationID int64, messages []openai.ChatComplet
 		}
 	}
 
+	// 更新对话摘要
+	if firstMessage != "" {
+		summary := extractSummary(firstMessage)
+		if err := db.Model(&Conversation{}).Where("id = ?", conversationID).Update("summary", summary).Error; err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -394,6 +443,15 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 	// 删除现有的消息记录
 	if err := db.Table("messages").Where("conversation_id = ?", conversationID).Delete(&Message{}).Error; err != nil {
 		return err
+	}
+
+	// 寻找第一个非空消息作为摘要
+	var firstMessage string
+	for _, msg := range messages {
+		if msg.Content != "" {
+			firstMessage = msg.Content
+			break
+		}
 	}
 
 	// 添加新的消息记录
@@ -406,6 +464,14 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 			ReasoningContent: msg.ReasoningContent,
 		}
 		if err := db.Create(&message).Error; err != nil {
+			return err
+		}
+	}
+
+	// 更新对话摘要
+	if firstMessage != "" {
+		summary := extractSummary(firstMessage)
+		if err := db.Model(&Conversation{}).Where("id = ?", conversationID).Update("summary", summary).Error; err != nil {
 			return err
 		}
 	}
