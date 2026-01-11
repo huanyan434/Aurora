@@ -560,6 +560,10 @@ func STT(Base64 string) string {
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
 	file, err := Base64ToOsFile(Base64)
+	if err != nil {
+		fmt.Println("Error creating file from Base64:", err)
+		return ""
+	}
 	defer file.Close()
 	part1, err := writer.CreateFormFile("file", "tmp.wav")
 	_, err = io.Copy(part1, file)
