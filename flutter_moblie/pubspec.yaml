@@ -18,6 +18,7 @@ dependencies:
   flutter_statusbarcolor_ns: ^0.6.0
   http: ^1.2.2
   shared_preferences: ^2.2.3
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

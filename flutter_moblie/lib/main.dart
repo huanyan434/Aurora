@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter_statusbarcolor_ns/flutter_statusbarcolor_ns.dart';
+import 'package:window_size/window_size.dart';
 import 'api.dart';
 import 'storage.dart';
 import 'login.dart';
@@ -15,6 +16,21 @@ List<dynamic>? _preloadedConversationsList;
 void main() async {
   // 确保Flutter框架初始化完成
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 检测平台并调整窗口大小（仅在桌面平台上）
+  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.linux ||
+      defaultTargetPlatform == TargetPlatform.macOS)) {
+    try {
+      setWindowTitle('Aurora AI');
+      setWindowMinSize(const Size(300, 400));
+      setWindowMaxSize(Size.infinite);
+      // 设置窗口大小
+      setWindowFrame(const Rect.fromLTWH(0, 0, 430, 916));
+    } catch (e) {
+      debugPrint('设置窗口大小时出错: $e');
+    }
+  }
 
   // 初始化本地存储
   await LocalStorage.initialize();
@@ -98,14 +114,14 @@ class _SplashScreenState extends State<SplashScreen> {
     return MaterialApp(
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: const Color.fromARGB(255, 154, 218, 185),
           brightness: Brightness.light,
         ),
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: const Color.fromARGB(255, 40, 207, 121),
           brightness: Brightness.dark,
         ).copyWith(
           surface: const Color(0xFF1A1A1A), // 使用10%的灰色（黑色90%）
@@ -155,14 +171,14 @@ class MyApp extends StatelessWidget {
       title: 'Aurora AI',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: const Color.fromARGB(255, 154, 218, 185),
           brightness: Brightness.light, // 明亮主题
         ),
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: const Color.fromARGB(255, 40, 207, 121),
           brightness: Brightness.dark, // 深色主题
         ).copyWith(
           surface: const Color(0xFF1A1A1A), // 使用10%的灰色（黑色90%）
@@ -732,57 +748,38 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0), // 减少顶部内边距
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 16.0, top: 8.0), // 减少顶部内边距
-            child: Row(
-              children: [
-                if (_userInfo != null && _userInfo!.username != '未登录')
-                  // 用户已登录，不管是否有头像，都不添加点击事件
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    backgroundImage: _userInfo!.avatar != null ? NetworkImage(_userInfo!.avatar!) : null,
-                    child: _userInfo!.avatar == null ? Icon(Icons.person, size: 50, color: Theme.of(context).colorScheme.onSurface) : null,
-                  )
-                else
-                  // 未登录状态，添加点击事件跳转到登录页面
-                  GestureDetector(
-                    onTap: _login,
-                    child: CircleAvatar(
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0), // 减少顶部内边距
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, top: 8.0), // 减少顶部内边距
+              child: Row(
+                children: [
+                  if (_userInfo != null && _userInfo!.username != '未登录')
+                    // 用户已登录，不管是否有头像，都不添加点击事件
+                    CircleAvatar(
                       radius: 50,
                       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      child: Icon(Icons.person, size: 50, color: Theme.of(context).colorScheme.onSurface),
+                      backgroundImage: _userInfo!.avatar != null ? NetworkImage(_userInfo!.avatar!) : null,
+                      child: _userInfo!.avatar == null ? Icon(Icons.person, size: 50, color: Theme.of(context).colorScheme.onSurface) : null,
+                    )
+                  else
+                    // 未登录状态，添加点击事件跳转到登录页面
+                    GestureDetector(
+                      onTap: _login,
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        child: Icon(Icons.person, size: 50, color: Theme.of(context).colorScheme.onSurface),
+                      ),
                     ),
-                  ),
-                const SizedBox(width: 16),
-                if (_userInfo != null && _userInfo!.username != '未登录')
-                  // 已登录用户信息，不添加点击事件
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _userInfo?.username ?? '未登录',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _userInfo?.id != null && _userInfo!.username != '未登录'
-                            ? '用户ID: ${_userInfo!.id}'
-                            : '未登录',
-                        style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  )
-                else
-                  // 未登录状态，添加点击事件跳转到登录页面
-                  GestureDetector(
-                    onTap: _login,
-                    child: Column(
+                  const SizedBox(width: 16),
+                  if (_userInfo != null && _userInfo!.username != '未登录')
+                    // 已登录用户信息，不添加点击事件
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
@@ -797,96 +794,117 @@ class _ProfilePageState extends State<ProfilePage> {
                           style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                       ],
+                    )
+                  else
+                    // 未登录状态，添加点击事件跳转到登录页面
+                    GestureDetector(
+                      onTap: _login,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _userInfo?.username ?? '未登录',
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _userInfo?.id != null && _userInfo!.username != '未登录'
+                                ? '用户ID: ${_userInfo!.id}'
+                                : '未登录',
+                            style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16), // 减少间距
-          if (_userInfo != null && _userInfo!.username != '未登录')
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.star, size: 24),
-                title: const Text('积分'),
-                trailing: Text(
-                  _userInfo?.points?.toString() ?? '0',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                onTap: () {
-                  // 跳转到积分页面
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const PointsPage()),
-                  );
-                },
+                ],
               ),
             ),
-          const SizedBox(height: 16),
-          Card(
-            child: Column(
-              children: [
-                if (_userInfo != null && _userInfo!.username != '未登录') ...[
-                  ListTile(
-                    leading: const Icon(Icons.account_circle_outlined, size: 24),
-                    title: const Text('账户设置'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {},
+            const SizedBox(height: 16), // 减少间距
+            if (_userInfo != null && _userInfo!.username != '未登录')
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.star, size: 24),
+                  title: const Text('积分'),
+                  trailing: Text(
+                    _userInfo?.points?.toString() ?? '0',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.settings_outlined, size: 24),
-                    title: const Text('应用设置'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {},
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.help_outline, size: 24),
-                    title: const Text('帮助与反馈'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {},
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.logout, size: 24),
-                    title: const Text('退出登录'),
-                    onTap: _logout,
-                  ),
-                ] else
-                  ListTile(
-                    leading: const Icon(Icons.login, size: 24),
-                    title: const Text('登录/注册'),
-                    onTap: _login,
-                  ),
-              ],
+                  onTap: () {
+                    // 跳转到积分页面
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const PointsPage()),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 16),
+            Card(
+              child: Column(
+                children: [
+                  if (_userInfo != null && _userInfo!.username != '未登录') ...[
+                    ListTile(
+                      leading: const Icon(Icons.account_circle_outlined, size: 24),
+                      title: const Text('账户设置'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {},
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.settings_outlined, size: 24),
+                      title: const Text('应用设置'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {},
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.help_outline, size: 24),
+                      title: const Text('帮助与反馈'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {},
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.logout, size: 24),
+                      title: const Text('退出登录'),
+                      onTap: _logout,
+                    ),
+                  ] else
+                    ListTile(
+                      leading: const Icon(Icons.login, size: 24),
+                      title: const Text('登录/注册'),
+                      onTap: _login,
+                    ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.notifications_outlined, size: 24),
-                  title: const Text('通知设置'),
-                  trailing: Switch(value: true, onChanged: (bool value) {}),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.privacy_tip_outlined, size: 24),
-                  title: const Text('隐私政策'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {},
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.info_outlined, size: 24),
-                  title: const Text('关于应用'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {},
-                ),
-              ],
+            const SizedBox(height: 16),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.notifications_outlined, size: 24),
+                    title: const Text('通知设置'),
+                    trailing: Switch(value: true, onChanged: (bool value) {}),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.privacy_tip_outlined, size: 24),
+                    title: const Text('隐私政策'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {},
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.info_outlined, size: 24),
+                    title: const Text('关于应用'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {},
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1082,8 +1100,138 @@ class _ProfilePageState extends State<ProfilePage> {
 }
 
 // 积分页面
-class PointsPage extends StatelessWidget {
+class PointsPage extends StatefulWidget {
   const PointsPage({super.key});
+
+  @override
+  State<PointsPage> createState() => _PointsPageState();
+}
+
+class _PointsPageState extends State<PointsPage> {
+  bool _isSignedIn = false;
+  bool _isLoading = true;
+  int _currentPoints = 0; // 当前积分
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSignInStatus();
+    _getCurrentPoints(); // 获取当前积分
+  }
+
+  // 获取当前积分
+  void _getCurrentPoints() async {
+    try {
+      final response = await UserApi.getCurrentUser();
+
+      if (response.success && response.data != null) {
+        setState(() {
+          _currentPoints = response.data!['points'] ?? 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('获取当前积分失败: $e');
+    }
+  }
+
+  // 检查签到状态
+  void _checkSignInStatus() async {
+    try {
+      final response = await UserApi.getSignStatus();
+
+      if (response.success && response.data != null) {
+        setState(() {
+          _isSignedIn = response.data!['signed'] ?? false;  // 后端返回的字段是 'signed' 而不是 'has_signed'
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('获取签到状态失败: ${response.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('检查签到状态时发生错误: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 执行签到
+  void _performSignIn() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final response = await UserApi.sign();
+
+      if (response.success) {
+        setState(() {
+          _isSignedIn = true;
+          _isLoading = false;
+        });
+        if (mounted) {
+          // 从响应中获取获得的积分数量
+          int gainedPoints = 0;
+          if (response.data != null && response.data!['data'] != null) {
+            gainedPoints = response.data!['data']['points'] ?? 0;
+          }
+
+          // 更新当前积分
+          setState(() {
+            _currentPoints += gainedPoints;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('签到成功！获得 $gainedPoints 积分奖励'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('签到失败: ${response.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('签到时发生错误: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1096,26 +1244,96 @@ class PointsPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.star,
-              size: 100,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '积分页面',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '当前积分',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    '$_currentPoints',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              '功能开发中...',
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+            if (_isLoading)
+              const CircularProgressIndicator()
+            else
+              Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: _isSignedIn ? null : _performSignIn,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isSignedIn
+                          ? Colors.grey
+                          : Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: Text(
+                      _isSignedIn ? '今日已签到' : '立即签到',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _isSignedIn
+                        ? '您今天已经签到过了'
+                        : '每天签到可获得积分奖励',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 32),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '积分说明',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '• 每日签到可获得积分奖励\n• 积分可用于兑换服务或功能\n• 连续签到可获得额外奖励',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

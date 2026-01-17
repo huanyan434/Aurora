@@ -377,40 +377,45 @@ class ChatPageDetailState extends State<ChatPageDetail> {
                 // 顶部栏，包含返回按钮和标题
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      // 返回按钮
-                      IconButton(
-                        icon: Icon(
-                          Icons.arrow_back_ios_new,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                      ),
-                      // 标题
-                      Expanded(
-                        child: Text(
-                          widget.title,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                      // 左对齐的返回按钮
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.arrow_back_ios_new,
+                            size: 20,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
                         ),
                       ),
-                      // 更多选项按钮（可选）
-                      IconButton(
-                        icon: Icon(
-                          Icons.more_vert,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      // 居中对齐的标题
+                      Text(
+                        widget.title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
-                        onPressed: () {
-                          // 添加更多选项功能
-                        },
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      // 右对齐的更多选项按钮
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.more_vert,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          onPressed: () {
+                            // 添加更多选项功能
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -609,6 +614,7 @@ class ChatPageDetailState extends State<ChatPageDetail> {
 
                 // 输入区域
                 Container(
+                  margin: EdgeInsets.only(top: 16), // 添加上方间距
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   color: Theme.of(context).colorScheme.surface,
                   child: Row(
