@@ -1107,16 +1107,37 @@ class PointsPage extends StatefulWidget {
   State<PointsPage> createState() => _PointsPageState();
 }
 
-class _PointsPageState extends State<PointsPage> {
+class _PointsPageState extends State<PointsPage> with TickerProviderStateMixin {
   bool _isSignedIn = false;
   bool _isLoading = true;
   int _currentPoints = 0; // 当前积分
+  List<Map<String, dynamic>> _pointsHistory = []; // 积分历史记录
+  bool _historyLoading = true; // 历史记录加载状态
+
+  late AnimationController _signAnimationController;
+  late Animation<double> _signAnimation;
 
   @override
   void initState() {
     super.initState();
+    _signAnimationController = AnimationController(
+      duration: Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _signAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _signAnimationController, curve: Curves.elasticOut));
+
     _checkSignInStatus();
-    _getCurrentPoints(); // 获取当前积分
+    _getCurrentPoints();
+    _getPointsHistory();
+  }
+
+  @override
+  void dispose() {
+    _signAnimationController.dispose();
+    super.dispose();
   }
 
   // 获取当前积分
@@ -1172,6 +1193,72 @@ class _PointsPageState extends State<PointsPage> {
     }
   }
 
+  // 获取积分历史记录
+  void _getPointsHistory() async {
+    setState(() {
+      _historyLoading = true;
+    });
+
+    try {
+      // 调用后端API获取积分记录
+      final response = await UserApi.getPointsRecords();
+
+      if (response.success && response.data != null) {
+        setState(() {
+          _pointsHistory = response.data!.map((record) {
+            // 解析后端返回的数据
+            int amount = record['amount'] ?? 0;
+            String amountStr = amount > 0 ? '+$amount' : '$amount';
+            String type = amount > 0 ? '奖励' : '消费';
+
+            // 根据原因确定类型
+            String reason = record['reason'] ?? '';
+            if (reason.contains('签到')) {
+              type = '签到';
+            } else if (reason.contains('充值')) {
+              type = '充值';
+            }
+
+            return {
+              'type': type,
+              'amount': amountStr,
+              'date': record['timestamp']?.split(' ')[1]?.substring(0, 5) ?? '', // 提取时间部分
+              'description': reason,
+              'full_date': record['timestamp'] ?? '', // 完整日期时间
+            };
+          }).toList();
+          _historyLoading = false;
+        });
+      } else {
+        setState(() {
+          _historyLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('获取积分记录失败: ${response.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _historyLoading = false;
+      });
+      debugPrint('获取积分历史记录失败: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('获取积分历史记录失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   // 执行签到
   void _performSignIn() async {
     try {
@@ -1186,21 +1273,70 @@ class _PointsPageState extends State<PointsPage> {
           _isSignedIn = true;
           _isLoading = false;
         });
+
+        // 播放签到动画
+        if (_signAnimationController.status == AnimationStatus.dismissed) {
+          _signAnimationController.forward().then((_) {
+            // 动画结束后重置
+            Future.delayed(Duration(seconds: 1)).then((_) {
+              if (mounted) {
+                _signAnimationController.reset();
+              }
+            });
+          });
+        }
+
         if (mounted) {
           // 从响应中获取获得的积分数量
           int gainedPoints = 0;
+          int consecutiveDays = 0;
+          bool hasExtraReward = false;
+          int multiplier = 1; // 奖励倍数，默认为1
+
           if (response.data != null && response.data!['data'] != null) {
-            gainedPoints = response.data!['data']['points'] ?? 0;
+            final data = response.data!['data'];
+            gainedPoints = data['points'] ?? 0;
+            consecutiveDays = data['consecutive_days'] ?? 0;
+            hasExtraReward = data['has_extra_reward'] ?? false;
+            multiplier = data['multiplier'] ?? 1;
           }
 
-          // 更新当前积分
+          // 更新状态
           setState(() {
             _currentPoints += gainedPoints;
+
+            // 添加到历史记录顶部
+            _pointsHistory.insert(0, {
+              'type': '签到',
+              'amount': '+$gainedPoints',
+              'date': '今天 ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+              'description': '每日签到奖励${hasExtraReward ? ' (连续签到惊喜)' : ''}'
+            });
           });
+
+          // 显示签到成功的提示
+          String snackBarText = '签到成功！获得 $gainedPoints 积分奖励';
+          if (hasExtraReward && multiplier > 1) {
+            String multiplierText = '';
+            switch (multiplier) {
+              case 2:
+                multiplierText = '2倍';
+                break;
+              case 3:
+                multiplierText = '3倍';
+                break;
+              case 4:
+                multiplierText = '4倍';
+                break;
+              default:
+                multiplierText = '${multiplier}倍';
+            }
+            snackBarText += '\n🎉 连续签到 $consecutiveDays 天，获得$multiplierText奖励！';
+          }
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('签到成功！获得 $gainedPoints 积分奖励'),
+              content: Text(snackBarText),
               backgroundColor: Colors.green,
             ),
           );
@@ -1240,103 +1376,299 @@ class _PointsPageState extends State<PointsPage> {
         title: const Text('我的积分'),
         centerTitle: true,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    '当前积分',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _checkSignInStatus();
+          _getCurrentPoints();
+          _getPointsHistory();
+        },
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 积分展示卡片
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                        Theme.of(context).colorScheme.secondary.withOpacity(0.08),
+                      ],
                     ),
-                  ),
-                  Text(
-                    '$_currentPoints',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (_isLoading)
-              const CircularProgressIndicator()
-            else
-              Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: _isSignedIn ? null : _performSignIn,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isSignedIn
-                          ? Colors.grey
-                          : Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '当前积分',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      _isSignedIn ? '今日已签到' : '立即签到',
-                      style: const TextStyle(fontSize: 16),
+                      const SizedBox(height: 12),
+                      AnimatedBuilder(
+                        animation: _signAnimationController,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _signAnimation.isDismissed ? 1.0 : _signAnimation.value,
+                            child: Text(
+                              '$_currentPoints',
+                              style: TextStyle(
+                                fontSize: 64,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'POINTS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          letterSpacing: 2,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // 签到区域
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.event_available,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '每日签到',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (_isLoading)
+                          const Center(child: CircularProgressIndicator())
+                        else
+                          Column(
+                            children: [
+                              ElevatedButton(
+                                onPressed: _isSignedIn ? null : _performSignIn,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isSignedIn
+                                      ? Colors.grey
+                                      : Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: Size(double.infinity, 56),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: _isSignedIn
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.check_circle, size: 20),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '今日已签到',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Text(
+                                      '立即签到',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _isSignedIn
+                                    ? '您今天已经签到过了，明天记得再来哦！'
+                                    : '每天签到可获得积分奖励，连续签到还有额外惊喜！',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _isSignedIn
-                        ? '您今天已经签到过了'
-                        : '每天签到可获得积分奖励',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 32),
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+
+                const SizedBox(height: 24),
+
+                // 积分历史记录标题
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '积分说明',
+                      '积分历史',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '• 每日签到可获得积分奖励\n• 积分可用于兑换服务或功能\n• 连续签到可获得额外奖励',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    TextButton(
+                      onPressed: _getPointsHistory,
+                      child: Text(
+                        '刷新',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
+
+                const SizedBox(height: 12),
+
+                // 积分历史记录列表
+                if (_historyLoading)
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (_pointsHistory.isEmpty)
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.history,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            '暂无积分记录',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _pointsHistory.length,
+                      separatorBuilder: (context, index) => Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      ),
+                      itemBuilder: (context, index) {
+                        final record = _pointsHistory[index];
+                        Color amountColor = record['amount'].startsWith('+')
+                            ? Colors.green
+                            : Colors.red;
+
+                        IconData iconData = record['type'] == '签到'
+                            ? Icons.add_circle_outline
+                            : record['type'] == '奖励'
+                                ? Icons.card_giftcard_outlined
+                                : Icons.remove_circle_outline;
+
+                        return ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: amountColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              iconData,
+                              color: amountColor,
+                            ),
+                          ),
+                          title: Text(
+                            record['description'],
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            record['date'],
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          trailing: Text(
+                            record['amount'],
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: amountColor,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                const SizedBox(height: 20),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

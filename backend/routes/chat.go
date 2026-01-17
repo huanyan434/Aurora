@@ -113,7 +113,7 @@ func generateHandler(c *gin.Context) {
 							})
 							return
 						}
-						utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points/2))))*1.5))
+						utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points/2))))*1.5), "使用大语言模型")
 					}
 				} else {
 					if User.Points < int(math.Ceil((math.Ceil(float64(m.Points))))*1.5) {
@@ -123,7 +123,7 @@ func generateHandler(c *gin.Context) {
 						})
 						return
 					}
-					utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points))))*1.5))
+					utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points))))*1.5), "使用大语言模型")
 				}
 			} else {
 				if User.IsMember == true {
@@ -135,7 +135,7 @@ func generateHandler(c *gin.Context) {
 							})
 							return
 						}
-						utils.AddPoints(User.ID, -int((math.Ceil(float64(m.Points / 2)))))
+						utils.AddPoints(User.ID, -int((math.Ceil(float64(m.Points / 2)))), "使用大语言模型")
 					}
 				} else {
 					if User.Points < m.Points {
@@ -145,7 +145,7 @@ func generateHandler(c *gin.Context) {
 						})
 						return
 					}
-					utils.AddPoints(User.ID, -m.Points)
+					utils.AddPoints(User.ID, -m.Points, "使用大语言模型")
 				}
 			}
 		}
@@ -556,7 +556,7 @@ func ttsHandler(c *gin.Context) {
 				})
 				return
 			}
-			utils.AddPoints(user.ID, -1)
+			utils.AddPoints(user.ID, -1, "使用语音模型")
 		} else {
 			c.JSON(400, gin.H{
 				"success": false,
@@ -572,7 +572,7 @@ func ttsHandler(c *gin.Context) {
 			})
 			return
 		}
-		utils.AddPoints(user.ID, -2)
+		utils.AddPoints(user.ID, -2, "使用语音模型")
 	}
 	data := utils.TTS(req.Prompt)
 	c.JSON(200, gin.H{
@@ -615,7 +615,7 @@ func sttHandler(c *gin.Context) {
 			})
 			return
 		}
-		utils.AddPoints(user.ID, -1)
+		utils.AddPoints(user.ID, -1, "使用语音模型")
 	}
 	data := utils.STT(req.Base64)
 	c.JSON(200, gin.H{

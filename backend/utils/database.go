@@ -147,6 +147,20 @@ func (Share) TableName() string {
 	return "shares"
 }
 
+// PointsRecord 积分使用记录结构
+type PointsRecord struct {
+	ID        int64     `gorm:"column:id;type:bigint;primaryKey"`         // 记录ID，使用雪花算法生成
+	UserID    int64     `gorm:"column:user_id;type:bigint;not null"`      // 用户ID
+	Amount    int       `gorm:"column:amount;type:int;not null"`          // 积分变动数量，正数为增加，负数为减少
+	Reason    string    `gorm:"column:reason;type:varchar(255);not null"` // 变动原因
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`         // 创建时间
+}
+
+// TableName 指定PointsRecord结构体对应的表名
+func (PointsRecord) TableName() string {
+	return "points_records"
+}
+
 // Log 日志结构
 type Log struct {
 	ID       int64     `gorm:"column:id;type:bigint;primaryKey"`
@@ -217,7 +231,7 @@ func GetMemberStatus(u *User) map[string]interface{} {
 }
 
 // AddPoints 增加或减少用户积分
-func AddPoints(userID int64, amount int) {
+func AddPoints(userID int64, amount int, reason string) {
 	db := GetDB()
 	var user User
 	db.Table("users").Where("id = ?", userID).First(&user)
@@ -226,6 +240,9 @@ func AddPoints(userID int64, amount int) {
 		user.Points = 0
 	}
 	db.Model(&user).Update("points", user.Points)
+
+	// 记录积分变动
+	RecordPointsChange(userID, amount, reason)
 }
 
 // RegisterUser 用户注册函数
@@ -288,7 +305,7 @@ func InitDB() {
 	}
 	// 自动迁移表结构
 	// 如果表不存在则创建，如果存在但结构不匹配则修改表结构
-	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{})
+	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{}, &PointsRecord{})
 	if err != nil {
 		fmt.Println("自动迁移表结构失败：", err)
 		return
@@ -505,31 +522,60 @@ func HasSignedToday(email string) (bool, error) {
 }
 
 // Sign 用户签到
-func Sign(Email string) (int, error) {
+func Sign(Email string) (map[string]interface{}, error) {
 	// 获取用户信息
 	user := FilterByEmail(Email)
 	if user.Username == "" {
-		return 0, fmt.Errorf("用户不存在")
+		return nil, fmt.Errorf("用户不存在")
 	}
 
 	// 检查今日是否已签到
 	signed, err := HasSignedToday(user.Email)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if signed {
-		return 0, fmt.Errorf("今日已签到")
+		return nil, fmt.Errorf("今日已签到")
 	}
 
-	// 随机数生成
-	points := rand.Intn(20) + 90
-	AddPoints(user.ID, points)
+	// 计算连续签到天数
+	consecutiveDays, err := calculateConsecutiveSignDays(user.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	// 基础积分：90-110之间的随机数
+	basePoints := rand.Intn(21) + 90 // 90-110之间的随机数
+
+	// 检查是否满足连续签到奖励条件
+	hasExtraReward := false
+	multiplier := 1 // 奖励倍数
+
+	// 每7天的倍数天数给予额外奖励
+	if consecutiveDays%30 == 0 {
+		// 第30天，4倍奖励
+		multiplier = 4
+		hasExtraReward = true
+	} else if consecutiveDays%14 == 0 {
+		// 第14天，3倍奖励
+		multiplier = 3
+		hasExtraReward = true
+	} else if consecutiveDays%7 == 0 {
+		// 第7天，2倍奖励
+		multiplier = 2
+		hasExtraReward = true
+	}
+
+	// 计算总积分
+	totalPoints := basePoints * multiplier
+
+	AddPoints(user.ID, totalPoints, "每日签到")
 
 	// 记录签到信息
 	id, err := GenerateSnowflakeId()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	signRecord := SignRecord{
 		ID:       id,
@@ -551,14 +597,96 @@ func Sign(Email string) (int, error) {
 		})
 	} else {
 		// 其他数据库错误
-		return 0, result.Error
+		return nil, result.Error
 	}
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	// 返回签到结果信息
+	resultData := map[string]interface{}{
+		"points":           totalPoints,
+		"consecutive_days": consecutiveDays,
+		"has_extra_reward": hasExtraReward,
+		"multiplier":       multiplier, // 添加倍数信息
+	}
+
+	return resultData, nil
+}
+
+// calculateConsecutiveSignDays 计算用户连续签到天数
+func calculateConsecutiveSignDays(email string) (int, error) {
+	db := GetDB()
+	var signRecords []SignRecord
+
+	// 获取用户所有的签到记录，按时间倒序排列
+	result := db.Where("email = ?", email).
+		Order("last_sign DESC").
+		Find(&signRecords)
 
 	if result.Error != nil {
 		return 0, result.Error
 	}
 
-	return points, nil
+	if len(signRecords) == 0 {
+		// 如果没有任何签到记录，则连续签到天数为1
+		return 1, nil
+	}
+
+	// 计算连续签到天数
+	consecutiveDays := 0
+	currentDate := time.Now()
+
+	// 从今天开始向前检查每一天是否签到
+	for {
+		// 将当前日期调整为当天的零点
+		checkDate := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(), 0, 0, 0, 0, currentDate.Location())
+
+		// 检查用户在这一天是否签到
+		hasSignedOnDay := false
+		for _, record := range signRecords {
+			recordDate := time.Date(record.LastSign.Year(), record.LastSign.Month(), record.LastSign.Day(), 0, 0, 0, 0, record.LastSign.Location())
+
+			if recordDate.Equal(checkDate) {
+				hasSignedOnDay = true
+				break
+			}
+		}
+
+		if hasSignedOnDay {
+			consecutiveDays++
+			// 检查前一天
+			currentDate = checkDate.AddDate(0, 0, -1)
+		} else {
+			// 如果今天没签到，检查是否是今天（如果是今天没签到，则连续天数就是已计算的天数）
+			today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+			if checkDate.Equal(today) {
+				// 今天还没签到，所以连续天数就是已计算的天数
+				break
+			} else {
+				// 如果不是今天且没签到，则连续签到中断
+				break
+			}
+		}
+
+		// 限制检查范围，避免无限循环（例如用户很久以前的签到记录）
+		// 如果连续天数达到一定数量或者检查日期太远，可以提前结束
+		today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+		daysDiff := int(today.Sub(checkDate).Hours() / 24)
+		if daysDiff > 365 { // 限制检查一年内的记录
+			break
+		}
+	}
+
+	// 如果今天已经签到，连续天数就是计算出的天数
+	// 如果今天还没签到，连续天数应该是计算出的天数（不加1，因为今天没签到）
+	todaySigned, _ := HasSignedToday(email)
+	if todaySigned {
+		return consecutiveDays, nil
+	} else {
+		return consecutiveDays, nil
+	}
 }
 
 // SaveVerifyCode 保存验证码到数据库
@@ -744,4 +872,44 @@ func DeleteMessage(messageID int64) {
 	db := GetDB()
 	var message Message
 	db.Table("messages").Where("id = ?", messageID).First(&message).Delete(&message)
+}
+
+// RecordPointsChange 记录积分变动
+func RecordPointsChange(userID int64, amount int, reason string) error {
+	db := GetDB()
+
+	// 生成唯一ID
+	id, err := GenerateSnowflakeId()
+	if err != nil {
+		return err
+	}
+
+	// 创建积分变动记录
+	pointsRecord := PointsRecord{
+		ID:     id,
+		UserID: userID,
+		Amount: amount,
+		Reason: reason,
+	}
+
+	// 保存到数据库
+	result := db.Create(&pointsRecord)
+	return result.Error
+}
+
+// GetPointsRecordsByUserID 根据用户ID获取积分记录
+func GetPointsRecordsByUserID(userID int64) ([]PointsRecord, error) {
+	db := GetDB()
+	var records []PointsRecord
+
+	result := db.Where("user_id = ?", userID).
+		Order("created_at DESC"). // 按时间倒序排列
+		Limit(50).                // 限制返回最近50条记录
+		Find(&records)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return records, nil
 }

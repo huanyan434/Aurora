@@ -165,7 +165,12 @@ export const getHasSigned = async () => {
 
 // 用户签到
 export interface SignResponseSuccess {
-  data: any
+  data: {
+    points: number
+    consecutive_days: number
+    has_extra_reward: boolean
+    multiplier: number
+  }
   message: string
   success: true
 }
@@ -278,6 +283,37 @@ export const logout = async () => {
       'Content-Type': 'application/json',
     },
   })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+
+  const responseData = await response.json()
+  return {
+    data: responseData
+  }
+}
+
+// 获取积分记录
+export interface PointsRecord {
+  id: string
+  amount: number
+  reason: string
+  timestamp: string
+}
+
+export interface PointsRecordsResponseSuccess {
+  data: PointsRecord[]
+  success: true
+}
+
+export interface PointsRecordsResponseFailed {
+  message: string
+  success: false
+}
+
+export const getPointsRecords = async () => {
+  const response = await fetch('/api/points_records')
 
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`)

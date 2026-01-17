@@ -647,6 +647,44 @@ class UserApi {
       return ApiResponse<List<dynamic>>(success: false, message: e.toString());
     }
   }
+
+  // 获取积分记录
+  static Future<ApiResponse<List<Map<String, dynamic>>>> getPointsRecords() async {
+    try {
+      final response = await ApiClient.get('/points_records');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        final List<dynamic>? records = responseData['data'] as List<dynamic>?;
+
+        if (records != null) {
+          final List<Map<String, dynamic>> parsedRecords = records.cast<Map<String, dynamic>>();
+          return ApiResponse<List<Map<String, dynamic>>>.fromJson({
+            'success': true,
+            'data': parsedRecords,
+            'statusCode': response.statusCode,
+          }, dataParser: (json) => parsedRecords);
+        } else {
+          return ApiResponse<List<Map<String, dynamic>>>(
+            success: true,
+            data: [],
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        return ApiResponse<List<Map<String, dynamic>>>(
+          success: false,
+          message: ApiClient.getErrorMessage(response),
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<Map<String, dynamic>>>(
+        success: false,
+        message: e.toString(),
+      );
+    }
+  }
 }
 
 // 聊天相关API

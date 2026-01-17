@@ -223,7 +223,7 @@ func VerifyPoints(userID int64, orderID string) string {
 		if err != nil {
 			return "内部错误"
 		}
-		AddPoints(user.ID, int(points)*100)
+		AddPoints(user.ID, int(points)*100, "积分充值")
 		err = VerifyOrder(orderID)
 		if err != nil {
 			return "内部错误"

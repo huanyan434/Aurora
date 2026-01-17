@@ -267,6 +267,26 @@ definitions:
         example: true
         type: boolean
     type: object
+  routes.pointsRecordsResponseFailed:
+    properties:
+      message:
+        example: 获取积分记录失败
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  routes.pointsRecordsResponseSuccess:
+    properties:
+      data:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      success:
+        example: true
+        type: boolean
+    type: object
   routes.sendVerifyCodeRequest:
     properties:
       email:
@@ -519,6 +539,9 @@ definitions:
         type: string
       id:
         type: integer
+      summary:
+        description: 对话摘要
+        type: string
       title:
         type: string
       updatedAt:
@@ -645,6 +668,23 @@ paths:
       summary: 获取模型列表
       tags:
       - 模型
+  /api/points_records:
+    get:
+      description: 获取当前用户的积分变动记录
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取积分记录成功
+          schema:
+            $ref: '#/definitions/routes.pointsRecordsResponseSuccess'
+        "400":
+          description: 获取积分记录失败
+          schema:
+            $ref: '#/definitions/routes.pointsRecordsResponseFailed'
+      summary: 获取积分记录
+      tags:
+      - 用户
   /api/send_verify_code:
     post:
       consumes:

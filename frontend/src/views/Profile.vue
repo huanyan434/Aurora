@@ -24,7 +24,7 @@
           </div>
 
           <div class="user-stats">
-            <div class="stat-item">
+            <div class="stat-item clickable-stat" @click="showPointsRecordsDialog">
               <div class="stat-label">积分</div>
               <div class="stat-value">{{ userInfo?.points || 0 }}</div>
             </div>
@@ -54,7 +54,7 @@
             </div>
             <Button
               :disabled="signInStatus || signingIn"
-              variant="secondary"
+              variant="default"
               @click="handleSignIn"
             >
               {{ signingIn ? '签到中...' : (signInStatus ? '已签到' : '签到') }}
@@ -308,6 +308,40 @@
         </div>
       </div>
     </div>
+
+    <!-- 积分记录对话框 -->
+    <div v-if="showPointsRecords" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">积分记录</h2>
+          <button @click="showPointsRecords = false" class="modal-close-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="modal-close-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div v-if="loadingPointsRecords" class="loading-container">
+            <p>正在加载积分记录...</p>
+          </div>
+          <div v-else-if="pointsRecords.length === 0" class="empty-records">
+            <p>暂无积分记录</p>
+          </div>
+          <div v-else class="records-list">
+            <div v-for="(record, index) in pointsRecords" :key="index" class="record-item">
+              <div class="record-info">
+                <div class="record-description">{{ record.reason }}</div>
+                <div class="record-time">{{ formatTimestamp(record.timestamp) }}</div>
+              </div>
+              <div class="record-amount" :class="{ positive: record.amount > 0, negative: record.amount < 0 }">
+                {{ record.amount > 0 ? '+' : '' }}{{ record.amount }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -315,7 +349,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
-import { sign, verifyPoints, verifyVip, getHasSigned } from '@/api/user';
+import { sign, verifyPoints, verifyVip, getHasSigned, getPointsRecords } from '@/api/user';
+import type { PointsRecord } from '@/api/user';
 import { toastSuccess, toastError } from '@/components/ui/toast/use-toast';
 import { Button } from '@/components/ui/button';
 
@@ -327,10 +362,13 @@ const signInStatus = ref(false);
 const signingIn = ref(false);
 const showVipUpgrade = ref(false);
 const showPointsRecharge = ref(false);
+const showPointsRecords = ref(false);
 const vipOrderId = ref('');
 const pointsOrderId = ref('');
 const verifyingVipOrder = ref(false);
 const verifyingPointsOrder = ref(false);
+const pointsRecords = ref<PointsRecord[]>([]);
+const loadingPointsRecords = ref(false);
 
 // 计算属性
 const userInfo = computed(() => userStore.userInfo);
@@ -363,7 +401,31 @@ const handleSignIn = async () => {
     const result = await sign();
     if (result.data.success) {
       signInStatus.value = true;
-      toastSuccess(`签到成功！获得 ${result.data.data?.points} 积分` || '签到成功！');
+      const points = result.data.data?.points || 0;
+      const consecutiveDays = result.data.data?.consecutive_days || 0;
+      const hasExtraReward = result.data.data?.has_extra_reward || false;
+      const multiplier = result.data.data?.multiplier || 1;
+
+      let message = `签到成功！获得 ${points} 积分`;
+      if (hasExtraReward && multiplier > 1) {
+        let multiplierText = '';
+        switch (multiplier) {
+          case 2:
+            multiplierText = '2倍';
+            break;
+          case 3:
+            multiplierText = '3倍';
+            break;
+          case 4:
+            multiplierText = '4倍';
+            break;
+          default:
+            multiplierText = `${multiplier}倍`;
+        }
+        message += `\n连续签到 ${consecutiveDays} 天，获得${multiplierText}奖励！`;
+      }
+
+      toastSuccess(message);
       // 刷新用户信息
       await userStore.init();
     } else {
@@ -453,6 +515,84 @@ const checkSignInStatus = async () => {
     }
   } catch (error) {
     console.error('检查签到状态失败:', error);
+  }
+};
+
+/**
+ * 获取积分记录
+ */
+const fetchPointsRecords = async () => {
+  loadingPointsRecords.value = true;
+  try {
+    const result = await getPointsRecords();
+    if (result.data.success) {
+      // 按时间倒序排列，最新的在前面
+      pointsRecords.value = (result.data.data || []).sort((a: PointsRecord, b: PointsRecord) => {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+    } else {
+      toastError(result.data.message || '获取积分记录失败');
+    }
+  } catch (error) {
+    console.error('获取积分记录失败:', error);
+    toastError('获取积分记录失败');
+  } finally {
+    loadingPointsRecords.value = false;
+  }
+};
+
+/**
+ * 显示积分记录对话框
+ */
+const showPointsRecordsDialog = async () => {
+  await fetchPointsRecords();
+  showPointsRecords.value = true;
+};
+
+/**
+ * 格式化时间戳
+ * @param {string} timestamp - ISO格式的时间戳
+ * @returns {string} 格式化后的时间字符串
+ */
+const formatTimestamp = (timestamp: string): string => {
+  if (!timestamp) return '';
+
+  // 解析时间戳
+  const date = new Date(timestamp);
+
+  // 获取当前时间
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  // 获取目标日期
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  // 格式化时间部分
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+
+  // 根据日期差异返回不同格式
+  if (targetDate.getTime() === today.getTime()) {
+    // 今天
+    return `今天 ${hours}:${minutes}`;
+  } else if (targetDate.getTime() === yesterday.getTime()) {
+    // 昨天
+    return `昨天 ${hours}:${minutes}`;
+  } else {
+    // 其他日期
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1; // 月份从0开始，需要+1
+    const day = date.getDate();
+
+    if (year === now.getFullYear()) {
+      // 今年内，显示 MM-DD
+      return `${month}-${day}`;
+    } else {
+      // 不在今年内，显示 YYYY-MM-DD
+      return `${year}-${month}-${day}`;
+    }
   }
 };
 
@@ -869,6 +1009,7 @@ onMounted(async () => {
   width: 100%;
   max-width: 60rem;
   max-height: 80vh;
+  min-height: 80vh; /* 设置最小高度 */
   overflow-y: auto;
   padding: var(--spacing-lg);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -1012,11 +1153,9 @@ onMounted(async () => {
 .pricing-section {
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-md);
-  border-top: 1px solid var(--color-gray-200);
 }
 
 .dark .pricing-section {
-  border-top: 1px solid var(--color-gray-800);
 }
 
 .pricing-plans-container {
@@ -1186,7 +1325,7 @@ onMounted(async () => {
   width: 100%;
   padding: 0.625rem var(--spacing-md); /* p-2.5 */
   border: 1px solid #cbd5e1; /* border-slate-300 */
-  border-radius: var(--border-radius-md);
+  border-radius: var(--border-radius-lg);
   font-size: var(--font-size-sm);
   background-color: var(--color-white);
   color: #1e293b; /* text-slate-800 */
@@ -1259,5 +1398,98 @@ onMounted(async () => {
   .verification-input {
     width: 100%;
   }
+}
+
+.clickable-stat {
+  cursor: pointer;
+}
+
+.clickable-stat:hover {
+  cursor: pointer;
+}
+
+.loading-container,
+.empty-records {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-xl);
+  color: #64748b; /* text-slate-500 */
+}
+
+.dark .loading-container,
+.dark .empty-records {
+  color: #94a3b8; /* dark:text-slate-400 */
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+}
+
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid #e2e8f0; /* border-b border-slate-200 */
+  cursor: default; /* 设置默认光标 */
+  user-select: none; /* 禁止选中 */
+  -webkit-user-select: none; /* Safari兼容 */
+  -moz-user-select: none; /* Firefox兼容 */
+  -ms-user-select: none; /* IE/Edge兼容 */
+}
+
+.dark .record-item {
+  border-bottom-color: #334155; /* dark:border-slate-700 */
+}
+
+.record-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.record-description {
+  font-weight: 500;
+  color: #1e293b; /* text-slate-800 */
+}
+
+.dark .record-description {
+  color: #f1f5f9; /* dark:text-slate-100 */
+}
+
+.record-time {
+  font-size: var(--font-size-sm);
+  color: #64748b; /* text-slate-500 */
+  margin-top: var(--spacing-xs);
+}
+
+.dark .record-time {
+  color: #94a3b8; /* dark:text-slate-400 */
+}
+
+.record-amount {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+}
+
+.positive {
+  color: #059669; /* text-emerald-600 */
+}
+
+.negative {
+  color: #dc2626; /* text-red-600 */
+}
+
+.dark .positive {
+  color: #34d399; /* dark:text-emerald-400 */
+}
+
+.dark .negative {
+  color: #f87171; /* dark:text-red-400 */
 }
 </style>

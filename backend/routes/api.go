@@ -42,6 +42,9 @@ func ApiInit(r *gin.Engine) {
 
 		// 退出登录
 		api.POST("/logout", logoutHandler)
+
+		// 获取积分记录
+		api.GET("/points_records", pointsRecordsHandler)
 	}
 }
 
@@ -248,7 +251,7 @@ func signHandler(c *gin.Context) {
 	}
 
 	// 执行签到
-	points, err := utils.Sign(User.Email)
+	signResult, err := utils.Sign(User.Email)
 	if err != nil {
 		if err.Error() == "already signed today" {
 			c.JSON(400, gin.H{
@@ -268,9 +271,7 @@ func signHandler(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"success": true,
 		"message": "签到成功",
-		"data": map[string]interface{}{
-			"points": points,
-		},
+		"data":    signResult,
 	})
 }
 
@@ -585,4 +586,60 @@ type logoutResponseSuccess struct {
 type logoutResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
 	Message string `json:"message" example:"退出失败"`
+}
+
+// @Summary 获取积分记录
+// @Description 获取当前用户的积分变动记录
+// @Tags 用户
+// @Produce json
+// @Success 200 {object} pointsRecordsResponseSuccess "获取积分记录成功"
+// @Failure 400 {object} pointsRecordsResponseFailed "获取积分记录失败"
+// @Router /api/points_records [get]
+func pointsRecordsHandler(c *gin.Context) {
+	user, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取积分记录失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 获取用户的积分记录
+	records, err := utils.GetPointsRecordsByUserID(user.ID)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取积分记录失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 格式化响应数据
+	var formattedRecords []map[string]interface{}
+	for _, record := range records {
+		formattedRecord := map[string]interface{}{
+			"id":        strconv.FormatInt(record.ID, 10),
+			"amount":    record.Amount,
+			"reason":    record.Reason,
+			"timestamp": record.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+		formattedRecords = append(formattedRecords, formattedRecord)
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data":    formattedRecords,
+	})
+}
+
+// 积分记录响应结构体
+type pointsRecordsResponseSuccess struct {
+	Success bool                   `json:"success" example:"true"`
+	Data    []map[string]interface{} `json:"data"`
+}
+
+type pointsRecordsResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message" example:"获取积分记录失败"`
 }

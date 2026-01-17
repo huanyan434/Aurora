@@ -153,6 +153,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/points_records": {
+            "get": {
+                "description": "获取当前用户的积分变动记录",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "获取积分记录",
+                "responses": {
+                    "200": {
+                        "description": "获取积分记录成功",
+                        "schema": {
+                            "$ref": "#/definitions/routes.pointsRecordsResponseSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "获取积分记录失败",
+                        "schema": {
+                            "$ref": "#/definitions/routes.pointsRecordsResponseFailed"
+                        }
+                    }
+                }
+            }
+        },
         "/api/send_verify_code": {
             "post": {
                 "description": "向指定邮箱发送验证码",
@@ -1167,6 +1193,35 @@ const docTemplate = `{
                 }
             }
         },
+        "routes.pointsRecordsResponseFailed": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "获取积分记录失败"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "routes.pointsRecordsResponseSuccess": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "routes.sendVerifyCodeRequest": {
             "type": "object",
             "properties": {
@@ -1537,6 +1592,10 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "summary": {
+                    "description": "对话摘要",
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"
