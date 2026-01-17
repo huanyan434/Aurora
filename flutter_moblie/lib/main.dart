@@ -1329,7 +1329,7 @@ class _PointsPageState extends State<PointsPage> with TickerProviderStateMixin {
                 multiplierText = '4倍';
                 break;
               default:
-                multiplierText = '${multiplier}倍';
+                multiplierText = '$multiplier倍';
             }
             snackBarText += '\n🎉 连续签到 $consecutiveDays 天，获得$multiplierText奖励！';
           }

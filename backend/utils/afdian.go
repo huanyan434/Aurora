@@ -89,7 +89,8 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 		var days int
 
 		memberStatus := GetMemberStatus(&user)
-		if list[0]["plan_title"] == "月VIP" {
+		switch list[0]["plan_title"] {
+		case "月VIP":
 			days = 30
 			level = "VIP"
 			if IsActiveMember(&user) {
@@ -106,7 +107,7 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 				begin = time.Now()
 				end = time.Now()
 			}
-		} else if list[0]["plan_title"] == "季VIP" {
+		case "季VIP":
 			days = 90
 			level = "VIP"
 			if IsActiveMember(&user) {
@@ -123,7 +124,7 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 				begin = time.Now()
 				end = time.Now()
 			}
-		} else if list[0]["plan_title"] == "年VIP" {
+		case "年VIP":
 			days = 365
 			level = "VIP"
 			if IsActiveMember(&user) {
@@ -140,7 +141,7 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 				begin = time.Now()
 				end = time.Now()
 			}
-		} else if list[0]["plan_title"] == "月SVIP" {
+		case "月SVIP":
 			days = 30
 			level = "SVIP"
 			if IsActiveMember(&user) {
@@ -153,7 +154,7 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 				begin = time.Now()
 				end = time.Now()
 			}
-		} else if list[0]["plan_title"] == "季SVIP" {
+		case "季SVIP":
 			days = 90
 			level = "SVIP"
 			if IsActiveMember(&user) {
@@ -166,7 +167,7 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 				begin = time.Now()
 				end = time.Now()
 			}
-		} else if list[0]["plan_title"] == "年SVIP" {
+		case "年SVIP":
 			days = 365
 			level = "SVIP"
 			if IsActiveMember(&user) {
@@ -179,7 +180,7 @@ func VerifyVip(userID int64, orderID string, force bool) string {
 				begin = time.Now()
 				end = time.Now()
 			}
-		} else {
+		default:
 			return "无效订单号"
 		}
 
