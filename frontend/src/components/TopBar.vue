@@ -1,26 +1,17 @@
 <template>
   <div class="topbar-container">
     <!-- 折叠按钮 -->
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            v-if="sidebarStore.collapsed"
-            variant="ghost"
-            size="icon"
-            class="toggle-btn"
-            @click="toggleSidebar"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="toggle-btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>展开侧边栏</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Button
+      v-if="sidebarStore.collapsed"
+      variant="ghost"
+      size="icon"
+      class="toggle-btn"
+      @click="toggleSidebar"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="toggle-btn-icon" fill="currentColor" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" d="M21 5H11v14h10zM3 5h6v14H3zm0-2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm2 4.25a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5zm-.75 3.5A.75.75 0 0 1 5 10h2a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75m.75 2a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5z" clip-rule="evenodd"></path>
+      </svg>
+    </Button>
 
     <!-- 模型选择器 -->
     <ModelSelector />
@@ -91,12 +82,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { useSidebarStore } from '@/stores/sidebar';
 import { useUserStore } from '@/stores/user';
@@ -198,25 +183,30 @@ onMounted(() => {
   padding-right: var(--spacing-lg); /* px-6 */
   padding-top: var(--spacing-md); /* py-4 */
   padding-bottom: var(--spacing-md); /* py-4 */
+  background-color: #ffffff; /* 与主内容区域一致的白色背景 */
+}
+
+.dark .topbar-container {
+  background-color: #020817; /* 深色模式下的背景 */
 }
 
 .toggle-btn {
   padding: var(--spacing-xs); /* p-1 */
   border-radius: var(--border-radius-md); /* rounded-md */
   margin-right: var(--spacing-sm); /* mr-3 */
-  color: var(--color-gray-600); /* text-gray-700 */
+  color: var(--color-gray-600); /* text-gray-600 */
 }
 
 .toggle-btn:hover {
-  background-color: var(--color-gray-200); /* hover:bg-gray-200 */
+  background-color: var(--color-gray-100); /* hover:bg-gray-100 - 与新背景协调 */
 }
 
 .dark .toggle-btn:hover {
-  background-color: var(--color-gray-700); /* dark:hover:bg-gray-700 */
+  background-color: var(--color-gray-800); /* dark:hover:bg-gray-800 */
 }
 
 .dark .toggle-btn {
-  color: var(--color-gray-300); /* dark:text-gray-300 */
+  color: var(--color-gray-400); /* dark:text-gray-400 */
 }
 
 .toggle-btn-icon {

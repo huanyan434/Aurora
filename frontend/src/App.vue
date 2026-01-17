@@ -33,10 +33,12 @@ onMounted(async () => {
   --input-container-padding: 1.25rem;
   --input-padding-right: 3rem;
   --input-padding-left: 1rem;
+  --input-margin-top: 0.8rem;
   --input-margin-bottom: 0.5rem;
   --input-area-horizontal-padding: 1rem;
   --input-area-bottom-padding: 1rem;
   --input-area-max-width: 48rem;
+  --input-area-min-width: 20rem;
   --spacing-between-buttons: 0.5rem;
 
   /* 尺寸变量 */
@@ -55,19 +57,17 @@ onMounted(async () => {
   --input-line-height: 1.25rem;
 
   /* 颜色变量 */
-  --input-container-border-color-light: #e5e7eb;
-  --input-container-border-color-dark: #374151;
+  --input-container-border-color: #e5e7eb;
   --reasoning-button-bg: #3b82f6;
   --reasoning-button-hover-bg: #2563eb;
   --reasoning-button-text: #ffffff;
   --input-placeholder-color: #6b7280; /* text-muted-foreground */
-  --input-placeholder-color-dark: #9ca3af; /* dark:text-muted-foreground */
-  --input-bg-color-dark: 255, 255, 255; /* bg-input in dark mode */
-  --input-bg-opacity-dark: 0.1; /* bg-input/30 in dark mode */
+  --color-gray-800: #1f2937;
+  --color-gray-200: #e5e7eb;
 
   /* InputArea 特定变量 */
   --input-button-group-left: 0.5rem;
-  --input-button-group-bottom: 0.3rem;
+  --input-button-group-bottom: 0.5rem;
 
   /* 通用间距变量 */
   --spacing-xs: 0.25rem;          /* 4px */
@@ -95,8 +95,9 @@ onMounted(async () => {
   --font-size-sm: 0.875rem;       /* 14px */
   --font-size-base: 1rem;         /* 16px */
   --font-size-lg: 1.125rem;       /* 18px */
-  --font-size-xl: 1.25rem;        /* 20px */
+  --font-size-xl: 1.25rem;       /* 20px */
   --font-size-2xl: 1.5rem;        /* 24px */
+  --font-size-3xl: 1.875rem;      /* 30px */
   --font-size-3xl: 1.875rem;      /* 30px */
   --font-size-4xl: 2.25rem;       /* 36px */
   --font-size-5xl: 3rem;          /* 48px */
@@ -176,6 +177,31 @@ onMounted(async () => {
   --color-gray-700: #374151;
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
+
+  /* InputArea 组件的阴影和边框变量 */
+  --input-wrapper-shadow: 0 2px 4px 0px #00000005, 0px 4px 16px 0px #0000000a, 0px 8px 32px 0px #00000014;
+  --input-wrapper-active-shadow: 0 2px 4px 0 rgba(116, 158, 243, 0.02), 0 4px 12px 0 rgba(102, 188, 253, 0.04), 0 8px 24px 0 rgba(95, 178, 255, 0.17);
+  --input-wrapper-border-color: rgba(0, 0, 0, 0.12);
+  --input-wrapper-focus-border-color: rgba(178, 209, 255, 1);
+  --input-wrapper-inset-shadow: 0 0 #0000;
+  --input-wrapper-inset-ring-shadow: 0 0 #0000;
+  --input-wrapper-ring-offset-shadow: 0 0 #0000;
+  --input-wrapper-ring-shadow: 0 0 #0000;
+  
+  /* 推理按钮相关颜色变量 */
+  --reasoning-button-active-bg: #3b82f6;
+  --reasoning-button-active-text: #ffffff;
+  --reasoning-button-active-hover-bg: #2563eb;
+}
+
+.dark {
+  /* 深色模式变量 */
+  --input-container-border-color: #374151;
+  --input-placeholder-color: #9ca3af; /* dark:text-muted-foreground */
+  --input-bg-color: 255, 255, 255; /* bg-input in dark mode */
+  --input-bg-opacity: 0.1; /* bg-input/30 in dark mode */
+  --reasoning-button-active-bg: #1d4ed8;
+  --reasoning-button-active-hover-bg: #1e40af;
 }
 
 html,

@@ -1,54 +1,48 @@
 <template>
   <div class="input-area-container">
     <div class="input-area-wrapper">
-      <div class="input-container-wrapper">
-        <div class="input-container">
-          <textarea 
-            v-model="inputMessage" 
-            @keydown="handleKeydown" 
-            placeholder="询问任何问题"
-            rows="3" 
-            ref="inputRef"
-            class="message-input"
-          ></textarea>
-
-          <!-- 左下角按钮组 -->
-          <div class="input-button-group-left">
-            <!-- 文件上传按钮 -->
-            <Button variant="ghost" size="icon" class="input-addon-button" @click="triggerFileUpload">
-              <Plus class="icon-small" />
-            </Button>
-
-            <!-- 隐藏的文件输入框 -->
-            <input 
-              type="file" 
-              ref="fileInputRef" 
-              @change="handleFileSelect" 
-              accept="image/*" 
-              style="display: none" 
-            />
-
-            <!-- 推理按钮 -->
-            <Button variant="ghost" size="icon"
-              :class="['input-addon-button', 'reasoning-button', { 'reasoning-active': isReasoning }]"
-              :disabled="isReasoningDisabled" @click="toggleReasoning">
-              <Lightbulb class="icon-small" />
-              <span class="reasoning-text">推理</span>
-            </Button>
-          </div>
-
-          <!-- 右下角发送/停止按钮 -->
-          <div class="input-button-group-right">
-            <Button v-if="isGenerating" @click="handleStopGeneration" variant="ghost" size="icon"
-              class="input-send-button input-send-button-stop">
-              <Square class="icon-small" />
-            </Button>
-            <Button v-else @click="handleSendMessage" variant="ghost" size="icon"
-              :disabled="!canSendMessage" class="input-send-button">
-              <Send class="icon-small" />
-            </Button>
-          </div>
+      <!-- 图片预览区域 -->
+      <div v-if="attachment" class="image-preview-container">
+        <div class="image-wrapper">
+          <img :src="attachment" alt="预览图片" class="image-preview" />
+          <button @click="removeAttachment" class="remove-image-btn" type="button">
+            <X class="remove-icon" />
+          </button>
         </div>
+      </div>
+
+      <textarea v-model="inputMessage" @keydown="handleKeydown" placeholder="询问任何问题" rows="3" ref="inputRef"
+        id="message-input"></textarea>
+
+      <!-- 左下角按钮组 -->
+      <div class="input-button-group-left">
+        <!-- 文件上传按钮 -->
+        <Button variant="ghost" size="icon" class="input-addon-button" @click="triggerFileUpload">
+          <Paperclip class="icon-small" />
+        </Button>
+
+        <!-- 隐藏的文件输入框 -->
+        <input type="file" ref="fileInputRef" @change="handleFileSelect" accept="image/*" style="display: none" />
+
+        <!-- 推理按钮 -->
+        <Button variant="ghost" size="icon"
+          :class="['input-addon-button', 'reasoning-button', { 'reasoning-active': isReasoning }]"
+          :disabled="isReasoningDisabled" @click="toggleReasoning">
+          <Lightbulb class="icon-small" />
+          <span class="reasoning-text">推理</span>
+        </Button>
+      </div>
+
+      <!-- 右下角发送/停止按钮 -->
+      <div class="input-button-group-right">
+        <Button v-if="isGenerating" @click="handleStopGeneration" variant="ghost" size="icon"
+          class="input-send-button input-send-button-stop">
+          <Square class="icon-small" />
+        </Button>
+        <Button v-else @click="handleSendMessage" variant="ghost" size="icon" :disabled="!canSendMessage"
+          class="input-send-button">
+          <Send class="icon-small" />
+        </Button>
       </div>
     </div>
   </div>
@@ -58,7 +52,7 @@
 import { ref, computed, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
-import { Plus, Lightbulb, Square, Send } from 'lucide-vue-next';
+import { Paperclip, Lightbulb, Square, Send, X } from 'lucide-vue-next';
 import { useChatStore } from '@/stores/chat';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { newConversation, stopGenerate } from '@/api/chat';
@@ -68,7 +62,6 @@ import type { Model } from '@/stores/chat';
 const inputMessage = ref('');
 const isGenerating = ref(false);
 const isReasoning = ref(false);
-const inputRef = ref<HTMLElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const attachment = ref<string>(''); // 存储base64编码的图片
 const chatStore = useChatStore();
@@ -130,14 +123,14 @@ const triggerFileUpload = () => {
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
-  
+
   if (file) {
     // 检查文件类型
     if (!file.type.startsWith('image/')) {
       console.error('只支持图片文件');
       return;
     }
-    
+
     // 转换为base64
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -147,14 +140,22 @@ const handleFileSelect = (event: Event) => {
     };
     reader.readAsDataURL(file);
   }
-  
+
   // 清空input值，允许重复选择同一文件
   target.value = '';
 };
 
+// 移除附件
+const removeAttachment = () => {
+  attachment.value = '';
+  if (fileInputRef.value) {
+    fileInputRef.value.value = '';
+  }
+};
+
 // 处理流数据块
 const processStreamChunk = (
-  chunk: string, 
+  chunk: string,
   onUpdate: (content: string, reasoningContent: string) => void
 ) => {
   // 解析SSE数据块
@@ -185,10 +186,10 @@ const handleSendMessage = async () => {
   try {
     // 获取当前对话ID
     let conversationId: number | null = null;
-    
+
     // 检查是否是根路由
     const isHomeRoute = route.path === '/';
-    
+
     if (isHomeRoute) {
       // 创建新对话
       const response = await newConversation();
@@ -290,18 +291,18 @@ const handleSendMessage = async () => {
     let accumulatedContent = '';
     let accumulatedReasoningContent = '';
     let lastReasoningTime = 0;
-    
+
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         const chunk = decoder.decode(value, { stream: true });
         // 处理每个数据块
         processStreamChunk(chunk, (content, reasoningContent) => {
           accumulatedContent += content;
           accumulatedReasoningContent += reasoningContent;
-          
+
           // 解析推理时间
           const lines = chunk.split('\n');
           for (const line of lines) {
@@ -316,7 +317,7 @@ const handleSendMessage = async () => {
               }
             }
           }
-          
+
           // 更新助手消息，标记为流式传输
           chatStore.updateMessage(messageAssistantId, {
             content: accumulatedContent,
@@ -335,7 +336,7 @@ const handleSendMessage = async () => {
         isStreaming: false
       });
     }
-    
+
   } catch (error) {
     console.error('发送消息失败:', error);
   } finally {
@@ -348,7 +349,7 @@ const handleSendMessage = async () => {
 // 处理停止生成
 const handleStopGeneration = async () => {
   console.log('停止生成');
-  
+
   try {
     // 调用后端API停止生成
     if (currentConversationId.value) {
@@ -356,7 +357,7 @@ const handleStopGeneration = async () => {
         conversationID: currentConversationId.value
       });
     }
-    
+
     // 保留已生成的内容，只停止生成过程
     console.log('已停止生成，保留已生成内容');
   } catch (error) {
@@ -380,56 +381,27 @@ const toggleReasoning = () => {
   padding: var(--input-area-horizontal-padding) var(--input-area-horizontal-padding) var(--input-area-bottom-padding);
 }
 
-/* 推理按钮激活状态样式 */
-:root {
-  --reasoning-button-bg: #3b82f6;
-  /* bg-blue-500 */
-  --reasoning-button-text: #ffffff;
-  /* text-white */
-  --reasoning-button-hover-bg: #2563eb;
-  /* hover:bg-blue-600 */
-}
-
-.dark {
-  --reasoning-button-bg: #1d4ed8;
-  /* dark:bg-blue-700 */
-  --reasoning-button-text: #ffffff;
-  /* dark:text-white */
-  --reasoning-button-hover-bg: #1e40af;
-  /* dark:hover:bg-blue-800 */
-}
-
 .input-area-wrapper {
+  position: relative;
   max-width: var(--input-area-max-width);
   margin-left: auto;
   margin-right: auto;
+  border-radius: 1.5rem;
+  border: 1px solid var(--input-wrapper-border-color);
+  box-shadow: var(--input-wrapper-shadow);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.input-container-wrapper {
-  border: 1px solid var(--color-gray-200);
-  /* border border-gray-200 */
-  border-radius: var(--input-container-border-radius);
-  background-color: var(--color-white);
-  /* bg-white */
+.input-area-wrapper:focus-within {
+  border-color: var(--input-wrapper-focus-border-color);
+  box-shadow: var(--input-wrapper-active-shadow);
 }
 
-.dark .input-container-wrapper {
-  border-color: var(--color-gray-700);
-  /* dark:border-gray-700 */
-  background-color: var(--color-black);
-  /* dark:bg-black */
-}
-
-.input-container {
-  position: relative;
-}
-
-.message-input {
+#message-input {
   field-sizing: content;
   min-height: var(--input-min-height);
   width: 100%;
   border-radius: var(--input-field-border-radius);
-  padding: var(--input-field-padding-y) var(--input-field-padding-x);
   outline: none;
   font-size: var(--input-text-size);
   line-height: var(--input-line-height);
@@ -441,11 +413,9 @@ const toggleReasoning = () => {
   min-width: var(--input-area-min-width);
   max-height: var(--input-max-height);
   padding-right: var(--input-padding-right);
-  /* 与右边按钮位置对齐 */
   padding-left: var(--input-padding-left);
-  /* 与左边按钮位置对齐 */
+  margin-top: var(--input-margin-top);
   margin-bottom: var(--input-margin-bottom);
-  /* 为底部按钮留出空间 */
   color: var(--color-gray-800);
   /* text-gray-800 */
 }
@@ -454,21 +424,9 @@ const toggleReasoning = () => {
   color: var(--input-placeholder-color);
 }
 
-.dark .message-input::placeholder {
-  color: var(--input-placeholder-color-dark);
-}
-
-.dark .message-input {
-  color: var(--color-gray-200);
-  /* dark:text-gray-200 */
-  background-color: rgba(var(--input-bg-color-dark), var(--input-bg-opacity-dark));
-}
-
 .message-input:focus {
   outline: none;
-  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(0px + var(--tw-ring-offset-width)) var(--tw-ring-color);
-  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+  box-shadow: 0 0 #0000;
 }
 
 .input-button-group-left {
@@ -491,37 +449,20 @@ const toggleReasoning = () => {
   width: var(--button-size);
   background-color: transparent;
   border-radius: var(--border-radius-full);
-  /* rounded-full */
+  cursor: pointer;
 }
 
 .input-addon-button:hover {
   background-color: var(--color-gray-200);
-  /* hover:bg-gray-200 */
 }
 
-.dark .input-addon-button:hover {
-  background-color: var(--color-gray-700);
-  /* dark:hover:bg-gray-700 */
-}
-
+/* 推理按钮样式 */
 .reasoning-button {
-  background-color: var(--reasoning-button-bg);
-  color: var(--reasoning-button-text);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  /* 添加图标和文字之间的间距 */
-  width: calc(var(--button-size) * 2);
-  /* 设置为默认按钮尺寸的2倍宽度 */
-}
-
-.reasoning-button:hover {
-  background-color: var(--reasoning-button-hover-bg);
+  width: calc(2.2 * var(--button-size));
 }
 
 .reasoning-text {
   font-size: var(--font-size-sm);
-  /* 设置文字大小为稍大一点 */
 }
 
 .message-input:disabled {
@@ -530,12 +471,12 @@ const toggleReasoning = () => {
 }
 
 .reasoning-active {
-  background-color: var(--reasoning-button-bg);
-  color: var(--reasoning-button-text);
+  background-color: var(--reasoning-button-active-bg);
+  color: var(--reasoning-button-active-text);
 }
 
 .reasoning-active:hover {
-  background-color: var(--reasoning-button-hover-bg);
+  background-color: var(--reasoning-button-active-hover-bg);
 }
 
 .input-send-button {
@@ -543,35 +484,29 @@ const toggleReasoning = () => {
   width: var(--button-size);
   background-color: transparent;
   border-radius: var(--border-radius-full);
-  /* rounded-full */
+  cursor: pointer;
 }
 
 .input-send-button:hover {
   background-color: var(--color-gray-200);
-  /* hover:bg-gray-200 */
-}
-
-.dark .input-send-button:hover {
-  background-color: var(--color-gray-700);
-  /* dark:hover:bg-gray-700 */
 }
 
 /* 生成状态下的停止按钮样式 */
 .input-send-button:where(:nth-child(1)):has(.icon-small[data-icon="square"]) {
-  background-color: #ef4444; /* bg-red-500 */
-  border-radius: var(--border-radius-md); /* 圆角 */
+  background-color: #ef4444;
+  border-radius: var(--border-radius-md);
   color: white;
 }
 
 /* 由于我们无法直接通过CSS检测按钮是否在isGenerating状态下，需要使用一个新类名 */
 .input-send-button-stop {
-  background-color: #ef4444 !important; /* bg-red-500 */
-  border-radius: var(--border-radius-md) !important; /* 圆角 */
+  background-color: #ef4444 !important;
+  border-radius: var(--border-radius-md) !important;
   color: white !important;
 }
 
 .input-send-button-stop:hover {
-  background-color: #dc2626 !important; /* hover:bg-red-600 */
+  background-color: #dc2626 !important;
 }
 
 .icon-small {
@@ -590,14 +525,16 @@ const toggleReasoning = () => {
 /* 小屏幕设备 (手机) */
 @media (max-width: 640px) {
   .responsive-textarea {
-    font-size: 0.8125rem; /* 13px */
+    font-size: 0.8125rem;
+    /* 13px */
     line-height: 1.25rem;
   }
-  
+
   .reasoning-text {
-    font-size: 0.75rem; /* 12px */
+    font-size: 0.75rem;
+    /* 12px */
   }
-  
+
   .icon-small {
     height: 1rem;
     width: 1rem;
@@ -607,36 +544,94 @@ const toggleReasoning = () => {
 /* 中等屏幕设备 (平板) */
 @media (min-width: 641px) and (max-width: 1024px) {
   .responsive-textarea {
-    font-size: 0.875rem; /* 14px */
+    font-size: 0.875rem;
+    /* 14px */
     line-height: 1.25rem;
   }
-  
+
   .reasoning-text {
-    font-size: 0.8125rem; /* 13px */
+    font-size: 0.8125rem;
+    /* 13px */
   }
 }
 
 /* 大屏幕设备 (桌面) */
 @media (min-width: 1025px) {
   .responsive-textarea {
-    font-size: 1rem; /* 16px */
+    font-size: 1rem;
+    /* 16px */
     line-height: 1.5rem;
   }
-  
+
   .reasoning-text {
-    font-size: 0.875rem; /* 14px */
+    font-size: 0.875rem;
+    /* 14px */
   }
 }
 
 /* 高分辨率屏幕或远距离观看 (如外接显示器) */
 @media (min-width: 1440px) {
   .responsive-textarea {
-    font-size: 1.125rem; /* 18px */
+    font-size: 1.125rem;
+    /* 18px */
     line-height: 1.75rem;
   }
-  
+
   .reasoning-text {
-    font-size: 1rem; /* 16px */
+    font-size: 1rem;
+    /* 16px */
   }
+}
+
+.image-preview-container {
+  padding: 10px 0 0 10px;
+  /* 顶部padding设为0 */
+  clear: both;
+  margin-bottom: 10px;
+  /* 与下面的textarea保持一定间距 */
+}
+
+.image-wrapper {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--color-gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-gray-100);
+  /* 添加背景色 */
+}
+
+.image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  border: 2px solid white;
+  /* 添加白色边框，确保按钮可见 */
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 10;
+}
+
+.remove-icon {
+  color: white;
+  width: 14px;
+  height: 14px;
 }
 </style>

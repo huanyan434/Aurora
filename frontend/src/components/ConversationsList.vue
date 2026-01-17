@@ -319,19 +319,19 @@ defineExpose({
 }
 
 .conversation-selected {
-  background-color: var(--color-gray-200); /* bg-gray-200 */
+  background-color: #e2e8f0; /* bg-slate-200 - 与豆包风格一致 */
 }
 
 .dark .conversation-selected {
-  background-color: var(--color-gray-700); /* dark:bg-gray-700 */
+  background-color: #334155; /* dark:bg-slate-700 */
 }
 
 .conversation-unselected:hover {
-  background-color: var(--color-gray-100); /* hover:bg-gray-100 */
+  background-color: #f1f5f9; /* hover:bg-slate-100 - 与豆包风格一致 */
 }
 
 .dark .conversation-unselected:hover {
-  background-color: var(--color-gray-800); /* dark:hover:bg-gray-800 */
+  background-color: #1e293b; /* dark:hover:bg-slate-800 */
 }
 
 .conversation-title {

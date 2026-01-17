@@ -48,25 +48,13 @@ const handleNewConversation = () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--color-white); /* bg-white */
+  background-color: #f8fafc; /* light:bg-slate-50 - 豆包风格的浅灰色背景 */
   width: 18rem; /* w-72 (18*4 = 72 = 18rem) */
-  border-right-width: 1px; /* border-r */
-  border-color: var(--color-gray-200); /* border-gray-200 */
 }
 
 .dark .sidebar-container {
-  background-color: var(--color-black); /* dark:bg-black */
-  border-color: var(--color-gray-800); /* dark:border-gray-800 */
+  background-color: #0f172a; /* dark:bg-slate-900 - 深色模式下的背景 */
 }
 
-.sidebar-divider {
-  border-top-width: 1px; /* border-t */
-  border-color: var(--color-gray-200); /* border-gray-200 */
-  margin-top: var(--spacing-sm); /* my-2 */
-  margin-bottom: var(--spacing-sm); /* my-2 */
-}
-
-.dark .sidebar-divider {
-  border-color: var(--color-gray-800); /* dark:border-gray-800 */
-}
+/* 移除分割线，通过颜色区分侧边栏和主内容 */
 </style>

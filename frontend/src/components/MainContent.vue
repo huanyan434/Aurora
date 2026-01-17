@@ -57,6 +57,11 @@ const greeting = computed(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background-color: #ffffff; /* 白色背景，与侧边栏形成对比 */
+}
+
+.dark .main-content-container {
+  background-color: #020817; /* 深色模式下的主内容背景 */
 }
 
 .main-content-area {

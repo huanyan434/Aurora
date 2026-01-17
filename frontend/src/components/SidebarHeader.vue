@@ -3,26 +3,17 @@
     <!-- Aurora标题和内部折叠按钮 -->
     <div class="header-content">
       <div class="app-title">Aurora</div>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button
-              variant="ghost"
-              size="icon"
-              class="toggle-btn"
-              :class="{ 'mobile-toggle-visible': isMobileToggleVisible }"
-              @click="toggleGlobalSidebar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="toggle-btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>收起侧边栏</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Button
+        variant="ghost"
+        size="icon"
+        class="toggle-btn"
+        :class="{ 'mobile-toggle-visible': isMobileToggleVisible }"
+        @click="toggleGlobalSidebar"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="toggle-btn-icon" fill="currentColor" viewBox="0 0 24 24">
+          <path fill-rule="evenodd" d="M21 5H11v14h10zM3 5h6v14H3zm0-2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm2 4.25a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5zm-.75 3.5A.75.75 0 0 1 5 10h2a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75m.75 2a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5z" clip-rule="evenodd"></path>
+        </svg>
+      </Button>
     </div>
 
     <!-- 开启新对话按钮 -->
@@ -39,12 +30,6 @@
 import { useRouter } from 'vue-router';
 import { useSidebarStore } from '@/stores/sidebar';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip';
 
 interface Props {
   isMobileToggleVisible?: boolean;
@@ -98,29 +83,29 @@ const handleNewConversation = () => {
 .app-title {
   font-size: var(--font-size-2xl); /* text-2xl */
   font-weight: 700; /* font-bold */
-  color: var(--color-black); /* text-black */
+  color: var(--color-gray-800); /* text-gray-800 - 与新背景协调 */
 }
 
 .dark .app-title {
-  color: var(--color-white); /* dark:text-white */
+  color: var(--color-gray-100); /* dark:text-gray-100 */
 }
 
 .toggle-btn {
   padding: var(--spacing-xs); /* p-1 */
   border-radius: var(--border-radius-md); /* rounded-md */
-  color: var(--color-gray-600); /* text-gray-700 */
+  color: var(--color-gray-600); /* text-gray-600 */
 }
 
 .toggle-btn:hover {
-  background-color: var(--color-gray-200); /* hover:bg-gray-200 */
+  background-color: var(--color-gray-300); /* hover:bg-gray-300 - 与新背景协调 */
 }
 
 .dark .toggle-btn:hover {
-  background-color: var(--color-gray-700); /* dark:hover:bg-gray-700 */
+  background-color: var(--color-gray-600); /* dark:hover:bg-gray-600 */
 }
 
 .dark .toggle-btn {
-  color: var(--color-gray-300); /* dark:text-gray-300 */
+  color: var(--color-gray-400); /* dark:text-gray-400 */
 }
 
 .toggle-btn-icon {
@@ -134,28 +119,31 @@ const handleNewConversation = () => {
   padding-right: var(--spacing-md); /* px-4 */
   padding-top: var(--spacing-sm); /* py-2 */
   padding-bottom: var(--spacing-sm); /* py-2 */
-  background-color: var(--color-black); /* bg-black */
-  color: var(--color-white); /* text-white */
+  background-color: var(--color-white); /* bg-white - 与豆包风格一致 */
+  color: var(--color-gray-800); /* text-gray-800 */
+  border: 1px solid var(--color-gray-300); /* 边框与背景形成对比 */
   border-radius: var(--border-radius-md); /* rounded-md */
   transition-property: background-color, border-color, color, fill, stroke; /* transition-colors */
   transition-duration: var(--transition-duration-normal); /* duration-200 */
   display: flex;
   align-items: center; /* items-center */
   justify-content: center; /* justify-center */
-  border-radius: var(--border-radius-lg);
 }
 
 .new-conversation-btn:hover {
-  background-color: var(--color-gray-800); /* hover:bg-gray-800 */
+  background-color: var(--color-gray-100); /* hover:bg-gray-100 */
+  border-color: var(--color-gray-400); /* hover:border-gray-400 */
 }
 
 .dark .new-conversation-btn {
-  background-color: var(--color-white); /* dark:bg-white */
-  color: var(--color-black); /* dark:text-black */
+  background-color: var(--color-gray-800); /* dark:bg-gray-800 */
+  color: var(--color-white); /* dark:text-white */
+  border-color: var(--color-gray-600); /* dark:border-gray-600 */
 }
 
 .dark .new-conversation-btn:hover {
-  background-color: var(--color-gray-200); /* dark:hover:bg-gray-200 */
+  background-color: var(--color-gray-700); /* dark:hover:bg-gray-700 */
+  border-color: var(--color-gray-500); /* dark:hover:border-gray-500 */
 }
 
 /* 仅在移动端开启侧边栏时显示切换按钮 */
