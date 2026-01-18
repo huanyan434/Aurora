@@ -195,6 +195,7 @@ onMounted(() => {
   border-radius: var(--border-radius-md); /* rounded-md */
   margin-right: var(--spacing-sm); /* mr-3 */
   color: var(--color-gray-600); /* text-gray-600 */
+  cursor: pointer;
 }
 
 .toggle-btn:hover {
@@ -221,7 +222,6 @@ onMounted(() => {
 }
 
 .user-avatar-btn {
-  cursor: pointer;
   position: relative;
   height: var(--button-size); /* h-8 */
   width: var(--button-size); /* w-8 */

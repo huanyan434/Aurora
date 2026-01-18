@@ -23,6 +23,7 @@ const props = withDefaults(defineProps<Props>(), {
     :as="as"
     :as-child="asChild"
     :class="cn(buttonVariants({ variant, size }), props.class)"
+    style="cursor: pointer;"
   >
     <slot />
   </Primitive>

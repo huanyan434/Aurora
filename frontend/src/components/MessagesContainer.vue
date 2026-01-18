@@ -114,12 +114,14 @@ z"/>
               @click="isDeleteDialogOpen = false"
               class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none"
             >
+             
               取消
             </button>
             <button 
               @click="confirmDeleteMessage"
               class="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 focus:outline-none"
             >
+             
               删除
             </button>
           </DialogFooter>

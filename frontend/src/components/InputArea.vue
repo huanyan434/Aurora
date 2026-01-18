@@ -449,7 +449,6 @@ const toggleReasoning = () => {
   width: var(--button-size);
   background-color: transparent;
   border-radius: var(--border-radius-full);
-  cursor: pointer;
 }
 
 .input-addon-button:hover {
@@ -484,7 +483,6 @@ const toggleReasoning = () => {
   width: var(--button-size);
   background-color: transparent;
   border-radius: var(--border-radius-full);
-  cursor: pointer;
 }
 
 .input-send-button:hover {

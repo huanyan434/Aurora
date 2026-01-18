@@ -66,7 +66,6 @@ const props = withDefaults(defineProps<Props>(), {
 // 响应式状态
 const isCollapsed = ref(false); // 默认展开
 const isExpanded = ref(false);
-const contentRef = ref<HTMLElement | null>(null);
 
 // 计算属性
 const isCompleted = computed(() => props.reasoningTime === 0);
