@@ -29,7 +29,7 @@
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent class="more-options-dropdown">
-                <DropdownMenuItem @click.stop="renameConversationHandler(conversation)">
+                <DropdownMenuItem @click.stop="renameConversationHandler(conversation)" class="rename-menu-item">
                   <span>重命名</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem @click.stop="deleteConversationHandler(conversation)" class="delete-menu-item">
@@ -354,6 +354,7 @@ defineExpose({
   padding: var(--spacing-xs); /* p-1 */
   border-radius: var(--border-radius-md); /* rounded-md */
   color: var(--color-gray-500); /* text-gray-500 */
+  cursor: pointer;
 }
 
 .more-options-btn:hover {
@@ -377,7 +378,12 @@ defineExpose({
   width: 8rem; /* w-32 */
 }
 
+.rename-menu-item {
+  cursor: pointer;
+}
+
 .delete-menu-item {
+  cursor: pointer;
   color: #dc2626; /* text-red-600 */
 }
 

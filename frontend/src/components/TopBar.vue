@@ -28,14 +28,14 @@
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent class="user-dropdown-content" align="end">
-          <DropdownMenuItem @click="goToProfile">
+          <DropdownMenuItem @click="goToProfile" class="profile-menu-item">
             <span>个人资料</span>
           </DropdownMenuItem>
-          <DropdownMenuItem @click="openSettingsDialog">
+          <DropdownMenuItem @click="openSettingsDialog" class="settings-menu-item">
             <span>设置</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem class="logout-menu-item" @click="handleLogout">
+          <DropdownMenuItem @click="handleLogout" class="logout-menu-item">
             <span class="logout-text">退出登录</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -221,6 +221,7 @@ onMounted(() => {
 }
 
 .user-avatar-btn {
+  cursor: pointer;
   position: relative;
   height: var(--button-size); /* h-8 */
   width: var(--button-size); /* w-8 */
@@ -236,7 +237,16 @@ onMounted(() => {
   width: 14rem; /* w-56 */
 }
 
+.profile-menu-item {
+  cursor: pointer;
+}
+
+.settings-menu-item {
+  cursor: pointer;
+}
+
 .logout-menu-item {
+  cursor: pointer;
   color: #dc2626; /* text-red-600 */
 }
 

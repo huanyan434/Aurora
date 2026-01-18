@@ -27,11 +27,11 @@
           <!-- 用户消息 -->
           <div v-if="message.role === 'user'">
             <!-- 文本内容 -->
-            <div v-if="message.content" class="text-gray-800 dark:text-gray-200">{{ message.content }}</div>
-            
+            <div v-if="message.content" class="text-gray-800 dark:text-gray-200" v-html="renderUserContent(message.content)"></div>
+
             <!-- 图片附件 -->
             <div v-if="message.base64" class="mt-2">
-              <img :src="message.base64" alt="上传的图片" class="max-w-full h-auto rounded" />
+              <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-full h-auto rounded" @error="handleImageError" />
             </div>
           </div>
           
@@ -71,7 +71,7 @@
         >
           <button
             @click="copyMessage(message.content)"
-            class="flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+            class="copy-btn"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 699.428 699.428" fill="currentColor">
               <path d="M502.714,0c-2.71,0-262.286,0-262.286,0C194.178,0,153,42.425,153,87.429l-25.267,0.59
@@ -89,35 +89,14 @@ z"/>
             </svg>
           </button>
           
-          <div class="relative">
-            <button
-              @click="toggleMenu(message.id)"
-              class="flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 ml-1"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
-                <circle cx="6" cy="12" r="1.5" fill="currentColor"/>
-                <circle cx="18" cy="12" r="1.5" fill="currentColor"/>
-              </svg>
-            </button>
-            
-            <!-- 下拉菜单 -->
-            <div 
-              v-if="openedMenuId === message.id"
-              class="absolute top-full mt-2 right-0 w-24 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700"
-            >
-              <!-- 分享功能暂时不做 -->
-              <button 
-                class="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                @click="openDeleteDialog(message.id)"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
-                  <path d="M3 6H5M5 6H21M5 6V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 21.1046 19 20V6H5ZM10 11V17M14 11V17M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6H8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                删除
-              </button>
-            </div>
-          </div>
+          <button
+            @click="openDeleteDialog(message.id)"
+            class="delete-btn"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 6H5M5 6H21M5 6V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 20.1046 19 20V6H5ZM10 11V17M14 11V17M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6H8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
       </div>
       
@@ -156,7 +135,7 @@ z"/>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, watch, onUnmounted } from 'vue';
+import { ref, onMounted, nextTick, computed, watch } from 'vue';
 import { getMessagesList, deleteMessage as deleteMessageAPI, getThreadList } from '@/api/chat';
 import { useRoute } from 'vue-router';
 import { marked } from 'marked';
@@ -190,7 +169,6 @@ const chatStore = useChatStore();
 // 状态变量
 const isLoading = ref(false);
 const hoveredMessageId = ref<number | null>(null);
-const openedMenuId = ref<number | null>(null);
 const isDeleteDialogOpen = ref(false);
 const messageToDelete = ref<number | null>(null);
 
@@ -286,69 +264,178 @@ const processMessageContent = (content: string) => {
 */
 
 /**
+ * 渲染用户消息内容（仅处理base64图片标签）
+ * @param content 原始内容
+ * @returns 处理后的HTML
+ */
+const renderUserContent = (content: string) => {
+  if (!content) return '';
+
+  // 处理 <base64>xxx</base64> 标签，将其替换为图片
+  let processedContent = content.replace(/<base64>([^<]+)<\/base64>/g, (_match, base64Content) => {
+    const trimmedContent = base64Content.trim();
+
+    // 检查是否已经是完整的 data:image URL
+    if (trimmedContent.startsWith('data:image/')) {
+      // 如果是完整的 data URL，直接使用
+      return `<img src="${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
+    }
+    // 否则检查是否为纯 base64 字符串
+    else {
+      // 验证base64格式
+      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (base64Regex.test(trimmedContent)) {
+        // 如果是有效的base64，创建图片标签
+        // 尝试检测图片类型，如果没有检测到则默认使用jpeg
+        let imageType = 'jpeg'; // 默认类型
+
+        // 检查base64字符串是否包含图片类型信息
+        if (trimmedContent.startsWith('/9j/')) { // JPEG文件头
+          imageType = 'jpeg';
+        } else if (trimmedContent.startsWith('iVBORw0KGgo=')) { // PNG文件头
+          imageType = 'png';
+        } else if (trimmedContent.startsWith('R0lGODlh') || trimmedContent.startsWith('R0lGODdh')) { // GIF文件头
+          imageType = 'gif';
+        } else if (trimmedContent.startsWith('TU0AK')) { // TIFF文件头
+          imageType = 'tiff';
+        }
+
+        return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
+      } else {
+        // 如果不是有效的base64，返回空字符串（移除标签）
+        console.warn('Invalid base64 format detected and removed:', trimmedContent);
+        return ''; // 返回空字符串，移除无效标签
+      }
+    }
+  });
+
+  // 转义HTML以防止XSS攻击，但保留已处理的图片标签
+  const escapeHtml = (unsafe: string) => {
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
+
+  // 分割内容，对非图片部分进行HTML转义
+  const parts = processedContent.split(/(<img\s[^>]*>)/gi);
+  const escapedParts = parts.map(part => {
+    if (part.toLowerCase().startsWith('<img')) {
+      // 如果是图片标签，不进行转义
+      return part;
+    } else {
+      // 如果是非图片内容，进行HTML转义
+      return escapeHtml(part);
+    }
+  });
+
+  return escapedParts.join('');
+};
+
+/**
  * 渲染 markdown 内容（仅用于 AI 消息）
  * @param content 原始内容
  * @returns 渲染后的 HTML
  */
 const renderMarkdown = (content: string) => {
   if (!content) return '';
-  
+
+  // 处理 <base64>xxx</base64> 标签，将其替换为图片
+  let processedContent = content.replace(/<base64>([^<]+)<\/base64>/g, (_match, base64Content) => {
+    const trimmedContent = base64Content.trim();
+
+    // 检查是否已经是完整的 data:image URL
+    if (trimmedContent.startsWith('data:image/')) {
+      // 如果是完整的 data URL，直接使用
+      return `<img src="${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
+    }
+    // 否则检查是否为纯 base64 字符串
+    else {
+      // 验证base64格式
+      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (base64Regex.test(trimmedContent)) {
+        // 如果是有效的base64，创建图片标签
+        // 尝试检测图片类型，如果没有检测到则默认使用jpeg
+        let imageType = 'jpeg'; // 默认类型
+
+        // 检查base64字符串是否包含图片类型信息
+        if (trimmedContent.startsWith('/9j/')) { // JPEG文件头
+          imageType = 'jpeg';
+        } else if (trimmedContent.startsWith('iVBORw0KGgo=')) { // PNG文件头
+          imageType = 'png';
+        } else if (trimmedContent.startsWith('R0lGODlh') || trimmedContent.startsWith('R0lGODdh')) { // GIF文件头
+          imageType = 'gif';
+        } else if (trimmedContent.startsWith('TU0AK')) { // TIFF文件头
+          imageType = 'tiff';
+        }
+
+        return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
+      } else {
+        // 如果不是有效的base64，返回空字符串（移除标签）
+        console.warn('Invalid base64 format detected and removed:', trimmedContent);
+        return ''; // 返回空字符串，移除无效标签
+      }
+    }
+  });
+
   // 移除模型标识符和推理内容
-  let processedContent = content.replace(/<model=[^>]+>/g, '').trim();
+  processedContent = processedContent.replace(/<model=[^>]+>/g, '').trim();
   processedContent = processedContent.replace(/<think time=(\d+)>([\s\S]*?)<\/think>/g, '').trim();
-  
+
   // 使用 marked 库解析 markdown
   const renderer = new marked.Renderer();
-  
+
   // 自定义链接渲染以确保安全性
   renderer.link = ({ href, title, text }) => {
     // 确保链接是安全的协议
-    const sanitizedHref = href && (href.startsWith('http://') || href.startsWith('https://')) 
-      ? href 
+    const sanitizedHref = href && (href.startsWith('http://') || href.startsWith('https://'))
+      ? href
       : `https://${href || ''}`;
     const titleAttr = title ? ` title="${title}"` : '';
     return `<a href="${sanitizedHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text || ''}</a>`;
   };
-  
+
   // 自定义图片渲染以确保安全性
   renderer.image = ({ href, title, text }) => {
     // 只允许安全的图片链接
-    const sanitizedHref = href && (href.startsWith('http://') || href.startsWith('https://')) 
-      ? href 
+    const sanitizedHref = href && (href.startsWith('http://') || href.startsWith('https://'))
+      ? href
       : '';
     const sanitizedText = text || '';
     const titleAttr = title ? ` title="${title}"` : '';
-    return sanitizedHref 
-      ? `<img src="${sanitizedHref}" alt="${sanitizedText}"${titleAttr} class="max-w-full h-auto">` 
+    return sanitizedHref
+      ? `<img src="${sanitizedHref}" alt="${sanitizedText}"${titleAttr} class="max-w-full h-auto">`
       : '';
   };
-  
+
   // 自定义代码块渲染
   renderer.code = ({ text, lang, escaped }) => {
     // 如果内容已经被转义，则直接使用；否则可能需要转义特殊字符
     const codeContent = escaped ? text : text; // 在实际应用中可能需要使用转义函数
     return `<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded my-2 overflow-x-auto"><code class="language-${lang || 'text'}">${codeContent}</code></pre>`;
   };
-  
+
   // 自定义行内代码渲染
   renderer.codespan = ({ text }) => {
     return `<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono text-sm">${text}</code>`;
   };
-  
+
   // 自定义列表项渲染
   renderer.listitem = (item) => {
     const text = item.text || '';
     const task = item.task || false;
     const checked = item.checked || false;
-    
+
     if (task) {
       // 如果是任务列表项，添加复选框
       const checkedAttr = checked ? ' checked' : '';
-      return `<li class="ml-4"><‘ type="checkbox" disabled${checkedAttr}> ${text}</li>`;
+      return `<li class="ml-4"><input type="checkbox" disabled${checkedAttr}> ${text}</li>`;
     }
     return `<li class="ml-4">${text}</li>`;
   };
-  
+
   // 自定义表格单元格渲染
   renderer.tablecell = (token) => {
     // 安全地访问内容，避免未定义错误
@@ -356,13 +443,13 @@ const renderMarkdown = (content: string) => {
     if (token.tokens && Array.isArray(token.tokens) && token.tokens.length > 0) {
       const firstToken = token.tokens[0];
       if (firstToken && typeof firstToken === 'object') {
-        content = 'text' in firstToken ? firstToken.text || '' : 
+        content = 'text' in firstToken ? firstToken.text || '' :
                   'content' in firstToken ? firstToken.content || '' : '';
       }
     } else {
       content = token.text || '';
     }
-    
+
     const header = 'header' in token ? token.header : undefined;
     const align = 'align' in token ? token.align : undefined;
     const tag = header ? 'th' : 'td';
@@ -376,7 +463,7 @@ const renderMarkdown = (content: string) => {
     gfm: true,    // 启用 GitHub 风格的 Markdown
     breaks: true  // 启用换行符转换为 <br> 标签
   });
-  
+
   // 使用 marked 渲染内容
   return marked.parse(processedContent);
 };
@@ -392,16 +479,40 @@ const copyMessage = async (content: string) => {
   }
 };
 
-// 切换菜单显示状态
-const toggleMenu = (messageId: number | undefined) => {
-  if (messageId === undefined) return;
-  
-  if (openedMenuId.value === messageId) {
-    openedMenuId.value = null;
-  } else {
-    openedMenuId.value = messageId;
-  }
+// 处理图片加载错误
+const handleImageError = (event: Event) => {
+  const imgElement = event.target as HTMLImageElement;
+  console.error('图片加载失败:', imgElement.src);
+  // 可以选择性地隐藏图片元素或显示替代文本
+  imgElement.style.display = 'none';
 };
+
+// 获取图片源，处理Data URL或纯base64
+const getImageSrc = (src: string) => {
+  if (!src) return '';
+
+  // 如果已经是Data URL格式（以data:开头），直接返回
+  if (src.startsWith('data:')) {
+    return src;
+  }
+
+  // 如果是纯base64字符串，添加Data URL前缀
+  // 首先尝试检测图片类型
+  let imageType = 'jpeg'; // 默认类型
+
+  if (src.startsWith('/9j/')) { // JPEG文件头
+    imageType = 'jpeg';
+  } else if (src.startsWith('iVBORw0KGgo=')) { // PNG文件头
+    imageType = 'png';
+  } else if (src.startsWith('R0lGODlh') || src.startsWith('R0lGODdh')) { // GIF文件头
+    imageType = 'gif';
+  } else if (src.startsWith('TU0AK')) { // TIFF文件头
+    imageType = 'tiff';
+  }
+
+  return `data:image/${imageType};base64,${src}`;
+};
+
 
 // 打开删除确认对话框
 const openDeleteDialog = (messageId: number | undefined) => {
@@ -452,15 +563,6 @@ const deleteMessageAPIFunc = async (messageId: number) => {
   }
 };
 
-// 点击其他地方关闭菜单
-const handleClickOutside = (event: MouseEvent) => {
-  if (openedMenuId.value !== null) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.relative')) {
-      openedMenuId.value = null;
-    }
-  }
-};
 
 // 处理流式响应的函数
 const handleStreamedGenerate = async (
@@ -592,9 +694,7 @@ watch(displayedMessages, () => {
  * 挂载后检测 URL 参数
  */
 onMounted(async () => {
-  // 添加点击事件监听器，用于关闭菜单
-  document.addEventListener('click', handleClickOutside);
-  
+
   // 检测当前路径是否为 /c/xxx
   const cPattern = /^\/c\/.+$/;
   if (cPattern.test(route.path)) {
@@ -713,8 +813,51 @@ onMounted(async () => {
   }
 });
 
-// 组件卸载前清理事件监听器
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-});
 </script>
+
+<style scoped>
+.copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #6B7280; /* text-gray-500 */
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  color: #374151; /* hover:text-gray-700 */
+  background-color: #E5E7EB; /* hover:bg-gray-200 */
+}
+
+.dark .copy-btn:hover {
+  color: #D1D5DB; /* dark:hover:text-gray-300 */
+  background-color: #374151; /* dark:hover:bg-gray-700 */
+}
+
+.delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #6B7280; /* text-gray-500 */
+  border-radius: 50%;
+  cursor: pointer;
+  margin-left: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  color: #EF4444; /* red-500 */
+  background-color: #FEE2E2; /* red-100 */
+}
+
+.dark .delete-btn:hover {
+  color: #FECACA; /* dark:red-300 */
+  background-color: #7F1D1D; /* dark:red-900 */
+}
+</style>
