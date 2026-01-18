@@ -491,17 +491,9 @@ const toggleReasoning = () => {
   background-color: var(--color-gray-200);
 }
 
-/* 生成状态下的停止按钮样式 */
-.input-send-button:where(:nth-child(1)):has(.icon-small[data-icon="square"]) {
-  background-color: #ef4444;
-  border-radius: var(--border-radius-md);
-  color: white;
-}
-
 /* 由于我们无法直接通过CSS检测按钮是否在isGenerating状态下，需要使用一个新类名 */
 .input-send-button-stop {
   background-color: #ef4444 !important;
-  border-radius: var(--border-radius-md) !important;
   color: white !important;
 }
 
