@@ -5,75 +5,60 @@
       <div v-if="isLoading" class="flex justify-center items-center py-10">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
       </div>
-      
+
       <!-- 消息列表 -->
-      <div 
-        v-else 
-        v-for="(message, index) in displayedMessages" 
-        :key="message.id || index" 
-        class="flex flex-col"
+      <div v-else v-for="(message, index) in displayedMessages" :key="message.id || index" class="flex flex-col"
         :class="message.role === 'user' ? 'items-end' : 'items-start'"
-        @mouseenter="hoveredMessageId = message.id || null"
-        @mouseleave="hoveredMessageId = null"
-      >
-        <div 
-          :class="[
-            'max-w-[85%] rounded-lg px-4 py-3',
-            message.role === 'user' 
-              ? 'bg-gray-100 dark:bg-gray-800' 
-              : 'bg-white dark:bg-gray-900'
-          ]"
-        >
+        @mouseenter="hoveredMessageId = message.id || null" @mouseleave="hoveredMessageId = null">
+        <div :class="[
+          'rounded-lg px-4 py-3 markdown-body',
+          message.role === 'user'
+            ? 'bg-gray-100 dark:bg-gray-800'
+            : 'bg-white dark:bg-gray-900'
+        ]">
           <!-- 用户消息 -->
           <div v-if="message.role === 'user'">
             <!-- 文本内容 -->
-            <div v-if="message.content" class="text-gray-800 dark:text-gray-200" v-html="renderUserContent(message.content)"></div>
+            <div v-if="message.content" class="text-gray-800 dark:text-gray-200"
+              v-html="renderUserContent(message.content)"></div>
 
             <!-- 图片附件 -->
             <div v-if="message.base64" class="mt-2">
-              <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-full h-auto rounded" @error="handleImageError" />
+              <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-full h-auto rounded"
+                @error="handleImageError" />
             </div>
           </div>
-          
+
           <!-- 助手消息 -->
           <div v-else>
             <!-- 推理内容 -->
-            <ReasoningContent
-              v-if="message.reasoningContent"
-              :content="message.reasoningContent"
-              :reasoning-time="message.reasoningTime || 0"
-              :is-streaming="message.isStreaming || false"
-            />
-            
+            <ReasoningContent v-if="message.reasoningContent" :content="message.reasoningContent"
+              :reasoning-time="message.reasoningTime || 0" :is-streaming="message.isStreaming || false" />
+
             <!-- 回复内容 -->
-            <div v-if="message.content || !message.isStreaming" 
-              class="text-gray-800 dark:text-gray-200" 
-              v-html="renderMarkdown(message.content)"
-            ></div>
-            
+            <div v-if="message.content || !message.isStreaming" class="text-gray-800 dark:text-gray-200"
+              v-html="renderContent(message.content)"></div>
+
             <!-- 加载占位符 -->
             <div v-else-if="message.isStreaming" class="flex space-x-2">
               <div class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce"></div>
-              <div class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce" style="animation-delay: 0.2s;"></div>
-              <div class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce" style="animation-delay: 0.4s;"></div>
+              <div class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce"
+                style="animation-delay: 0.2s;"></div>
+              <div class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce"
+                style="animation-delay: 0.4s;"></div>
             </div>
           </div>
         </div>
-        
+
         <!-- 消息操作按钮 -->
-        <div 
-          :class="[
-            'flex flex-row items-start mt-1',
-            message.role === 'user' ? 'mr-2' : 'ml-2',
-            (hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1) ? 'opacity-100' : 'opacity-0'
-          ]"
-          v-show="!(message.role === 'assistant' && message.isStreaming)"
-        >
-          <button
-            @click="copyMessage(message.content)"
-            class="copy-btn"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 699.428 699.428" fill="currentColor">
+        <div :class="[
+          'flex flex-row items-start mt-1',
+          message.role === 'user' ? 'mr-2' : 'ml-2',
+          (hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1) ? 'opacity-100' : 'opacity-0'
+        ]" v-show="!(message.role === 'assistant' && message.isStreaming)">
+          <button @click="copyMessage(message.content)" class="copy-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 699.428 699.428"
+              fill="currentColor">
               <path d="M502.714,0c-2.71,0-262.286,0-262.286,0C194.178,0,153,42.425,153,87.429l-25.267,0.59
 c-46.228,0-84.019,41.834-84.019,86.838V612c0,45.004,41.179,87.428,87.429,87.428H459c46.249,0,87.428-42.424,87.428-87.428
 h21.857c46.25,0,87.429-42.424,87.429-87.428v-349.19L502.714,0z M459,655.715H131.143c-22.95,0-43.714-21.441-43.714-43.715
@@ -85,21 +70,20 @@ c0,0,0-22.994,0-65.484v-0.044L612,174.857H546.428z M502.714,306.394H306c-12.065,
 c0,12.065,9.792,21.835,21.857,21.835h196.714c12.065,0,21.857-9.771,21.857-21.835
 C524.571,316.164,514.779,306.394,502.714,306.394z M502.714,415.57H306c-12.065,0-21.857,9.77-21.857,21.834
 c0,12.066,9.792,21.836,21.857,21.836h196.714c12.065,0,21.857-9.77,21.857-21.836C524.571,425.34,514.779,415.57,502.714,415.57
-z"/>
+z" />
             </svg>
           </button>
-          
-          <button
-            @click="openDeleteDialog(message.id)"
-            class="delete-btn"
-          >
+
+          <button @click="openDeleteDialog(message.id)" class="delete-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 6H5M5 6H21M5 6V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 20.1046 19 20V6H5ZM10 11V17M14 11V17M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6H8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path
+                d="M3 6H5M5 6H21M5 6V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 20.1046 19 20V6H5ZM10 11V17M14 11V17M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6H8Z"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
         </div>
       </div>
-      
+
       <!-- 删除确认对话框 -->
       <Dialog :open="isDeleteDialogOpen" @update:open="isDeleteDialogOpen = $event">
         <DialogContent>
@@ -110,26 +94,23 @@ z"/>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <button 
-              @click="isDeleteDialogOpen = false"
-              class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none"
-            >
-             
+            <button @click="isDeleteDialogOpen = false"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none">
+
               取消
             </button>
-            <button 
-              @click="confirmDeleteMessage"
-              class="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 focus:outline-none"
-            >
-             
+            <button @click="confirmDeleteMessage"
+              class="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 focus:outline-none">
+
               删除
             </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       <!-- 占位消息，提示目前逻辑为空 -->
-      <div v-if="!isLoading && displayedMessages.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-10">
+      <div v-if="!isLoading && displayedMessages.length === 0"
+        class="text-center text-gray-500 dark:text-gray-400 py-10">
         尚无消息，开始对话吧！
       </div>
     </div>
@@ -137,10 +118,12 @@ z"/>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, computed, watch } from 'vue';
 import { getMessagesList, deleteMessage as deleteMessageAPI, getThreadList } from '@/api/chat';
 import { useRoute } from 'vue-router';
 import { marked } from 'marked';
+import katex from 'katex';
+import '@/github-markdown.css';
 import { useChatStore } from '@/stores/chat';
 import ReasoningContent from './ReasoningContent.vue';
 import { toastSuccess, toastError } from '@/components/ui/toast/use-toast';
@@ -182,7 +165,7 @@ const conversationMessages = computed(() => {
   // 从路由参数获取对话ID
   const routeParams = route.params.conversationId;
   let conversationId: number | null = null;
-  
+
   if (typeof routeParams === 'string') {
     conversationId = parseInt(routeParams);
   } else if (Array.isArray(routeParams) && routeParams.length > 0) {
@@ -192,12 +175,12 @@ const conversationMessages = computed(() => {
       conversationId = parseInt(param);
     }
   }
-  
+
   // 如果成功解析出有效的对话ID，则返回对应消息
   if (conversationId !== null && !isNaN(conversationId)) {
     return chatStore.getMessagesByConversationId(conversationId);
   }
-  
+
   // 否则返回空数组
   return [];
 });
@@ -208,7 +191,7 @@ const displayedMessages = computed(() => {
     // 解析历史消息中的推理内容
     let reasoningContent = msg.reasoningContent;
     let reasoningTime = msg.reasoningTime || 0;
-    
+
     // 如果没有独立的推理内容字段，尝试从内容中提取
     if (!reasoningContent && msg.content) {
       // 提取内容中的推理部分
@@ -219,12 +202,12 @@ const displayedMessages = computed(() => {
         // 获取最后一个推理时间
         reasoningTime = match[1] ? parseInt(match[1]) || 0 : 0;
       }
-      
+
       if (contents.length > 0) {
         reasoningContent = contents.join('');
       }
     }
-    
+
     return {
       id: msg.id,
       role: msg.role as 'user' | 'assistant',
@@ -238,32 +221,13 @@ const displayedMessages = computed(() => {
 });
 
 /**
- * 滚动到容器底部的函数
+ * 滚动到容器底部
  */
 const scrollToBottom = () => {
   if (containerRef.value) {
     containerRef.value.scrollTop = containerRef.value.scrollHeight;
   }
 };
-
-/**
- * 处理消息内容，过滤掉模型标识等非必要内容
- * @param content 消息内容
- * @returns 处理后的消息内容
- */
-/*
-const processMessageContent = (content: string) => {
-  if (!content) return '';
-  
-  // 移除模型标识符，如 <model=deepseek-v3.2-exp>
-  let processedContent = content.replace(/<model=[^>]+>/g, '').trim();
-  
-  // 移除推理内容标签
-  processedContent = processedContent.replace(/<think time=(\d+)>([\s\S]*?)<\/think>/g, '').trim();
-  
-  return processedContent;
-};
-*/
 
 /**
  * 渲染用户消息内容（仅处理base64图片标签）
@@ -337,11 +301,11 @@ const renderUserContent = (content: string) => {
 };
 
 /**
- * 渲染 markdown 内容（仅用于 AI 消息）
+ * 渲染内容（包括 Markdown 和 LaTeX 数学公式）
  * @param content 原始内容
  * @returns 渲染后的 HTML
  */
-const renderMarkdown = (content: string) => {
+const renderContent = (content: string) => {
   if (!content) return '';
 
   // 处理 <base64>xxx</base64> 标签，将其替换为图片
@@ -385,6 +349,7 @@ const renderMarkdown = (content: string) => {
   // 移除模型标识符和推理内容
   processedContent = processedContent.replace(/<model=[^>]+>/g, '').trim();
   processedContent = processedContent.replace(/<think time=(\d+)>([\s\S]*?)<\/think>/g, '').trim();
+
 
   // 使用 marked 库解析 markdown
   const renderer = new marked.Renderer();
@@ -446,7 +411,7 @@ const renderMarkdown = (content: string) => {
       const firstToken = token.tokens[0];
       if (firstToken && typeof firstToken === 'object') {
         content = 'text' in firstToken ? firstToken.text || '' :
-                  'content' in firstToken ? firstToken.content || '' : '';
+          'content' in firstToken ? firstToken.content || '' : '';
       }
     } else {
       content = token.text || '';
@@ -466,8 +431,88 @@ const renderMarkdown = (content: string) => {
     breaks: true  // 启用换行符转换为 <br> 标签
   });
 
-  // 使用 marked 渲染内容
-  return marked.parse(processedContent);
+  processedContent = marked.parse(processedContent) as string;
+
+  // 处理 LaTeX 数学公式
+  // 行内公式：$...$
+  processedContent = processedContent.replace(/\$(.*?)\$/g, (match, formula) => {
+    try {
+      // 清理公式内容，去除首尾空白
+      const cleanedFormula = formula.trim();
+      if (!cleanedFormula) return match; // 如果公式为空，返回原始内容
+
+      const rendered = katex.renderToString(cleanedFormula, {
+        throwOnError: false,
+        displayMode: true,
+        output: 'html'
+      });
+      // 添加KaTeX相关的CSS类以确保正确显示
+      return `${rendered}`;
+    } catch (error) {
+      console.warn('LaTeX parsing error (inline):', error);
+      // 如果解析失败，返回原始内容
+      return match;
+    }
+  });
+
+  // 块级公式：$$...$$
+  processedContent = processedContent.replace(/\$\$(.*?)\$\$/gs, (match, formula) => {
+    try {
+      // 清理公式内容，去除首尾空白
+      const cleanedFormula = formula.trim();
+      if (!cleanedFormula) return match; // 如果公式为空，返回原始内容
+
+      const rendered = katex.renderToString(cleanedFormula, {
+        throwOnError: false,
+        displayMode: false,
+        output: 'html'
+      });
+      return rendered;
+    } catch (error) {
+      console.warn('LaTeX parsing error (block):', error);
+      // 如果解析失败，返回原始内容
+      return match;
+    }
+  });
+
+  // 处理 [ ... ] 格式的块级公式（常见于AI输出）
+  processedContent = processedContent.replace(/\[([^\[\]]*)\]/g, (match, formula) => {
+    try {
+      // 清理公式内容，去除首尾空白
+      const cleanedFormula = formula.trim();
+      if (!cleanedFormula) return match; // 如果公式为空，返回原始内容
+
+      // 检查是否包含常见的LaTeX命令
+      if (!formula.includes('\\')) {
+        return match; // 如果不包含LaTeX命令，不处理
+      }
+
+      // 预处理一些常见的非标准LaTeX语法和清理意外字符
+      let processedFormula = cleanedFormula
+        .replace(/\\+$/, '')  // 移除末尾多余的反杠
+        .replace(/^\s*\\/, '') // 移除开头的意外反杠
+        .trim(); // 再次清理空白
+
+      // 检查处理后的公式是否仍然包含LaTeX命令
+      if (!processedFormula.includes('\\')) {
+        return match; // 如果处理后不再包含LaTeX命令，不处理
+      }
+
+      const rendered = katex.renderToString(processedFormula, {
+        throwOnError: false,
+        displayMode: true,  // 使用display模式渲染方括号公式
+        output: 'html'
+      });
+      return rendered;
+    } catch (error) {
+      console.error('LaTeX parsing error ([...]):', error);
+      console.log('Problematic formula:', formula);
+      // 如果解析失败，返回原始内容
+      return match;
+    }
+  });
+
+  return processedContent;
 };
 
 // 复制消息内容到剪贴板
@@ -519,7 +564,7 @@ const getImageSrc = (src: string) => {
 // 打开删除确认对话框
 const openDeleteDialog = (messageId: number | undefined) => {
   if (messageId === undefined) return;
-  
+
   messageToDelete.value = messageId;
   isDeleteDialogOpen.value = true;
 };
@@ -527,20 +572,20 @@ const openDeleteDialog = (messageId: number | undefined) => {
 // 确认删除消息
 const confirmDeleteMessage = async () => {
   if (messageToDelete.value === null) return;
-  
+
   try {
     // 关闭对话框
     isDeleteDialogOpen.value = false;
-    
+
     // 调用API删除消息
     await deleteMessageAPIFunc(messageToDelete.value);
-    
+
     // 从store中移除消息
     chatStore.removeMessage(messageToDelete.value);
-    
+
     // 显示成功提示
     toastSuccess('消息已成功删除');
-    
+
     // 重置待删除消息ID
     messageToDelete.value = null;
   } catch (error) {
@@ -567,11 +612,18 @@ const deleteMessageAPIFunc = async (messageId: number) => {
 
 
 // 处理流式响应的函数
+// 用于跟踪每个对话的abort控制器
+const abortControllers = new Map<number, AbortController>();
+
 const handleStreamedGenerate = async (
   conversationId: number,
   messageUserId: number,
   messageAssistantId: number
 ) => {
+  // 创建新的AbortController并存储
+  const abortController = new AbortController();
+  abortControllers.set(conversationId, abortController);
+
   try {
     // 添加占位助手消息
     chatStore.addMessage(conversationId, {
@@ -591,6 +643,7 @@ const handleStreamedGenerate = async (
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: abortController.signal, // 添加中止信号
       body: JSON.stringify({
         conversationID: conversationId,
         messageUserID: messageUserId,
@@ -612,18 +665,24 @@ const handleStreamedGenerate = async (
     let accumulatedContent = '';
     let accumulatedReasoningContent = '';
     let lastReasoningTime = 0;
-    
+
     try {
       while (true) {
+        // 检查是否被中止
+        if (abortController.signal.aborted) {
+          console.log('生成被中止');
+          break;
+        }
+
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         const chunk = decoder.decode(value, { stream: true });
         // 处理每个数据块
         processStreamChunk(chunk, (content, reasoningContent) => {
           accumulatedContent += content;
           accumulatedReasoningContent += reasoningContent;
-          
+
           // 解析推理时间
           const lines = chunk.split('\n');
           for (const line of lines) {
@@ -638,7 +697,7 @@ const handleStreamedGenerate = async (
               }
             }
           }
-          
+
           // 更新助手消息，标记为流式传输
           chatStore.updateMessage(messageAssistantId, {
             content: accumulatedContent,
@@ -649,22 +708,126 @@ const handleStreamedGenerate = async (
         });
       }
     } catch (error) {
-      console.error('读取流时出错:', error);
+      if (abortController.signal.aborted) {
+        console.log('生成被中止');
+      } else {
+        console.error('读取流时出错:', error);
+      }
     } finally {
       reader.releaseLock();
       // 流结束后更新消息状态
       chatStore.updateMessage(messageAssistantId, {
         isStreaming: false
       });
+      // 设置全局生成状态为false，使停止按钮变回发送按钮
+      chatStore.setIsGenerating(false);
     }
   } catch (error) {
-    console.error('流式生成失败:', error);
+    if (abortController?.signal?.aborted) {
+      console.log('生成被中止');
+    } else {
+      console.error('流式生成失败:', error);
+    }
+  } finally {
+    // 清理abort控制器
+    abortControllers.delete(conversationId);
   }
 };
 
+// 停止生成函数
+const stopStreamedGenerate = async (conversationId: number) => {
+  const abortController = abortControllers.get(conversationId);
+  if (abortController) {
+    abortController.abort();
+    console.log('已中止生成');
+  }
+  const sleep = (ms: number) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  };
+
+  for (let i = 0; i < 3; i++) {
+    sleep(200);
+    // 中断后获取最新的历史记录
+    try {
+      const response = await getMessagesList({ conversationID: conversationId });
+      if (response.data.success) {
+        // API 返回的消息格式为 JSON 字符串，需要解析
+        let parsedMessages = [];
+        try {
+          parsedMessages = JSON.parse(response.data.messages);
+          if (parsedMessages[parsedMessages.length - 1].role != "assistant") {
+            sleep(300);
+            continue
+          }
+        } catch (parseError) {
+          console.error('解析消息失败:', parseError);
+          parsedMessages = [];
+        }
+
+        // 转换消息格式以匹配前端要求并保存到 store
+        const formattedMessages = parsedMessages.map((msg: any) => {
+          // 提取推理内容
+          let reasoningContent = msg.reasoning_content || '';
+          let reasoningTime = 0;
+
+          // 如果没有独立的推理内容字段，尝试从内容中提取
+          if (!reasoningContent && msg.content) {
+            // 提取内容中的推理部分
+            const thinkMatches = msg.content.matchAll(/<think time=(\d+)>([\s\S]*?)<\/think>/g);
+            const contents = [];
+            for (const match of thinkMatches) {
+              contents.push(match[2]);
+              reasoningTime = Math.max(reasoningTime, parseInt(match[1]) || 0);
+            }
+            reasoningContent = contents.join('\n\n');
+          }
+
+          // 删除标签
+          const cleanContent = msg.content ? msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, '').trim() : '';
+
+          return {
+            id: msg.id,
+            conversationID: msg.conversation_id,
+            role: msg.role,
+            content: cleanContent,
+            base64: msg.base64,
+            reasoningContent: reasoningContent,
+            reasoningTime: reasoningTime,
+            createdAt: msg.created_at,
+            isStreaming: false
+          };
+        });
+
+        // 保存消息到 store
+        chatStore.setMessages(conversationId, formattedMessages);
+        break
+      }
+    } catch (error) {
+      console.error('获取最新历史记录失败:', error);
+    }
+
+  }
+};
+
+// 监听停止生成事件
+const handleStopStreamedGenerate = (event: Event) => {
+  const customEvent = event as CustomEvent;
+  const { conversationId } = customEvent.detail;
+  if (conversationId) {
+    stopStreamedGenerate(conversationId);
+  }
+};
+
+window.addEventListener('stopStreamedGenerate', handleStopStreamedGenerate);
+
+// 在组件卸载时移除事件监听器
+onUnmounted(() => {
+  window.removeEventListener('stopStreamedGenerate', handleStopStreamedGenerate);
+});
+
 // 处理流数据块
 const processStreamChunk = (
-  chunk: string, 
+  chunk: string,
   onUpdate: (content: string, reasoningContent: string) => void
 ) => {
   // 解析SSE数据块
@@ -703,30 +866,30 @@ onMounted(async () => {
     // 检查是否存在 type 参数且为数字
     const typeParam = route.query.type;
     let typeValue: number | undefined;
-    
+
     if (typeParam !== undefined) {
       const parsedType = Number(typeParam);
       if (!isNaN(parsedType)) {
         typeValue = parsedType;
       }
     }
-    
+
     // 修改 URL 去掉 type 参数 (使用 history API 避免页面刷新)
     if (typeParam !== undefined) {
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('type');
       window.history.replaceState({}, '', newUrl.toString());
     }
-    
+
     // 获取对话 ID (从路径的第二部分)
     const pathParts = route.path.split('/');
     const conversationIdString = pathParts.length > 2 ? pathParts[2] : undefined;
     const conversationId = conversationIdString ? parseInt(conversationIdString) : NaN;
-    
+
     // 类型断言确保 conversationId 是有效的数字
     if (!isNaN(conversationId)) {
       isLoading.value = true;
-      
+
       try {
         // 首先获取对话历史
         const response = await getMessagesList({ conversationID: conversationId });
@@ -739,13 +902,13 @@ onMounted(async () => {
             console.error('解析消息失败:', parseError);
             parsedMessages = [];
           }
-          
+
           // 转换消息格式以匹配前端要求并保存到 store
           const formattedMessages = parsedMessages.map((msg: any) => {
             // 提取推理内容
             let reasoningContent = msg.reasoning_content || '';
             let reasoningTime = 0;
-            
+
             // 如果没有独立的推理内容字段，尝试从内容中提取
             if (!reasoningContent && msg.content) {
               // 提取内容中的推理部分
@@ -757,10 +920,10 @@ onMounted(async () => {
               }
               reasoningContent = contents.join('\n\n');
             }
-            
+
             // 删除标签
             const cleanContent = msg.content ? msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, '').trim() : '';
-            
+
             return {
               id: msg.id,
               conversationID: msg.conversation_id,
@@ -773,15 +936,15 @@ onMounted(async () => {
               isStreaming: false
             };
           });
-          
+
           // 保存消息到 store
           chatStore.setMessages(conversationId, formattedMessages);
-          
+
           // 立即隐藏加载动画并滚动到消息底部
           isLoading.value = false;
           await nextTick();
           scrollToBottom();
-          
+
           // 检查是否存在未完成的对话（只有在没有type参数或者type不等于2时才检查）
           if (typeValue === undefined || typeValue !== 2) {
             try {
@@ -790,21 +953,34 @@ onMounted(async () => {
               if (threadListResponse.data.success) {
                 // 检查返回值中是否有当前对话id
                 const conversationKey = conversationId.toString();
-                if (threadListResponse.data.thread_list && 
-                    threadListResponse.data.thread_list[conversationKey]) {
+                if (threadListResponse.data.thread_list &&
+                  threadListResponse.data.thread_list[conversationKey]) {
                   // 获取user和ai的消息id
                   const threadInfo = threadListResponse.data.thread_list[conversationKey];
                   const messageUserID = threadInfo.messageUserID;
                   const messageAssistantID = threadInfo.messageAssistantID;
-                  
+
+                  // 设置全局生成状态为true，使发送按钮变为停止按钮
+                  chatStore.setIsGenerating(true);
+
                   // 调用/chat/generate接口并处理流式响应
                   await handleStreamedGenerate(conversationId, messageUserID, messageAssistantID);
+                } else {
+                  // 如果没有未完成的对话，确保isGenerating状态为false
+                  chatStore.setIsGenerating(false);
                 }
               }
             } catch (error) {
               console.error('Error calling thread_list or generate API:', error);
+              // 出错时确保isGenerating状态为false
+              chatStore.setIsGenerating(false);
             }
+          } else if (typeValue === 2) {
+            // 当type=2时，设置全局isGenerating状态，使发送按钮变为停止按钮
+            // 因为在InputArea中已经添加了待生成的消息，但跳过了自动执行生成过程
+            chatStore.setIsGenerating(true);
           }
+
         }
       } catch (error) {
         console.error('Failed to get conversation history:', error);
@@ -818,26 +994,35 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.markdown-body hr {
+  height: 0 !important;
+}
+
 .copy-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  color: #6B7280; /* text-gray-500 */
+  color: #6B7280;
+  /* text-gray-500 */
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .copy-btn:hover {
-  color: #374151; /* hover:text-gray-700 */
-  background-color: #E5E7EB; /* hover:bg-gray-200 */
+  color: #374151;
+  /* hover:text-gray-700 */
+  background-color: #E5E7EB;
+  /* hover:bg-gray-200 */
 }
 
 .dark .copy-btn:hover {
-  color: #D1D5DB; /* dark:hover:text-gray-300 */
-  background-color: #374151; /* dark:hover:bg-gray-700 */
+  color: #D1D5DB;
+  /* dark:hover:text-gray-300 */
+  background-color: #374151;
+  /* dark:hover:bg-gray-700 */
 }
 
 .delete-btn {
@@ -846,20 +1031,36 @@ onMounted(async () => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  color: #6B7280; /* text-gray-500 */
+  color: #6B7280;
+  /* text-gray-500 */
   border-radius: 50%;
   cursor: pointer;
   margin-left: 0.25rem;
   transition: all 0.2s ease;
 }
 
+.katex-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.katex-block {
+  display: block;
+  margin: 1em 0;
+  text-align: center;
+}
+
 .delete-btn:hover {
-  color: #EF4444; /* red-500 */
-  background-color: #FEE2E2; /* red-100 */
+  color: #EF4444;
+  /* red-500 */
+  background-color: #FEE2E2;
+  /* red-100 */
 }
 
 .dark .delete-btn:hover {
-  color: #FECACA; /* dark:red-300 */
-  background-color: #7F1D1D; /* dark:red-900 */
+  color: #FECACA;
+  /* dark:red-300 */
+  background-color: #7F1D1D;
+  /* dark:red-900 */
 }
 </style>

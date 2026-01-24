@@ -197,16 +197,23 @@ onMounted(async () => {
 .dark {
   /* 深色模式变量 */
   --input-container-border-color: #374151;
-  --input-placeholder-color: #9ca3af; /* dark:text-muted-foreground */
+  --input-placeholder-color: #d6d1d1; /* dark:text-muted-foreground */
   --input-bg-color: 255, 255, 255; /* bg-input in dark mode */
   --input-bg-opacity: 0.1; /* bg-input/30 in dark mode */
   --reasoning-button-active-bg: #1d4ed8;
   --reasoning-button-active-hover-bg: #1e40af;
+
+  /* 新增的输入框阴影和边框变量 */
+  --input-wrapper-shadow: 0 2px 4px 0 rgba(255, 255, 255, 0.05), 0 4px 12px 0 rgba(255, 255, 255, 0.08), 0 8px 24px 0 rgba(255, 255, 255, 0.15);
+  --input-wrapper-active-shadow: 0 2px 4px 0px #ffffff3b, 0px 4px 16px 0px #ffffff3b, 0px 8px 32px 0px #ffffff3b;
+  --input-wrapper-border-color: rgba(255, 255, 255, 0.5);
 }
 
 html,
 body {
-  width: 100dvw;
-  height: 100dvh;
+  width: 100dvw !important;
+  height: 100% !important;
+  pointer-events: inherit !important;
+  overflow: hidden !important;
 }
 </style>

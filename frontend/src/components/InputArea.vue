@@ -60,7 +60,8 @@ import type { Model } from '@/stores/chat';
 
 // 响应式数据
 const inputMessage = ref('');
-const isGenerating = ref(false);
+// 使用store中的isGenerating状态
+const isGenerating = computed(() => chatStore.getIsGenerating);
 const isReasoning = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const attachment = ref<string>(''); // 存储base64编码的图片
@@ -70,6 +71,7 @@ const router = useRouter();
 
 // EventSource引用
 const eventSource: Ref<EventSource | null> = ref(null);
+
 
 // 存储当前正在生成的消息ID和对话ID
 const currentAssistantMessageId = ref<number | null>(null);
@@ -180,7 +182,8 @@ const processStreamChunk = (
 const handleSendMessage = async () => {
   if (!canSendMessage.value) return;
 
-  isGenerating.value = true;
+  // 设置store中的isGenerating状态
+  chatStore.setIsGenerating(true);
   eventSource.value = null;
 
   try {
@@ -340,7 +343,8 @@ const handleSendMessage = async () => {
   } catch (error) {
     console.error('发送消息失败:', error);
   } finally {
-    isGenerating.value = false;
+    // 设置store中的isGenerating状态为false
+    chatStore.setIsGenerating(false);
     currentAssistantMessageId.value = null;
   }
 };
@@ -358,12 +362,18 @@ const handleStopGeneration = async () => {
       });
     }
 
+    // 通知MessagesContainer停止流式生成
+    window.dispatchEvent(new CustomEvent('stopStreamedGenerate', {
+      detail: { conversationId: currentConversationId.value }
+    }));
+
     // 保留已生成的内容，只停止生成过程
     console.log('已停止生成，保留已生成内容');
   } catch (error) {
     console.error('停止生成失败:', error);
   } finally {
-    isGenerating.value = false;
+    // 设置store中的isGenerating状态为false
+    chatStore.setIsGenerating(false);
     currentAssistantMessageId.value = null;
   }
 };
@@ -416,8 +426,6 @@ const toggleReasoning = () => {
   padding-left: var(--input-padding-left);
   margin-top: var(--input-margin-top);
   margin-bottom: var(--input-margin-bottom);
-  color: var(--color-gray-800);
-  /* text-gray-800 */
 }
 
 .message-input::placeholder {

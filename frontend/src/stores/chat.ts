@@ -65,6 +65,7 @@ export const useChatStore = defineStore('chat', {
     conversationsLoaded: false, // 标记对话列表是否已加载
     // 修复 Map 响应性问题（遵循规范）- 使用普通对象代替 Map
     messages: {} as Record<number, Message[]>,
+    isGenerating: false, // 是否正在生成AI回复
   }),
   
   getters: {
@@ -89,10 +90,18 @@ export const useChatStore = defineStore('chat', {
     // 获取特定对话的消息
     getMessagesByConversationId: (state) => (conversationId: number) => {
       return state.messages[conversationId] || [];
+    },
+
+    // 获取当前是否正在生成
+    getIsGenerating: (state) => {
+      return state.isGenerating;
     }
   },
-  
+
   actions: {
+    setIsGenerating(isGenerating: boolean) {
+      this.isGenerating = isGenerating;
+    },
     async fetchModels() {
       try {
         const response = await getModelsList();

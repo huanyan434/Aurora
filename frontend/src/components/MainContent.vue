@@ -103,6 +103,9 @@ const greeting = computed(() => {
 
 .messages-container {
   flex: 1;
-  overflow-y: auto;
+}
+
+.dark .messages-container {
+  scrollbar-color: #4b5563 #1f2937;
 }
 </style>

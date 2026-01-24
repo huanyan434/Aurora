@@ -2,7 +2,7 @@
   <div class="sidebar-header-container">
     <!-- Aurora标题和内部折叠按钮 -->
     <div class="header-content">
-      <div class="app-title">Aurora</div>
+      <div v-if="!isCollapsed" class="app-title">Aurora</div>
       <Button
         variant="ghost"
         size="icon"
@@ -18,6 +18,7 @@
 
     <!-- 开启新对话按钮 -->
     <Button
+      v-if="!isCollapsed"
       class="new-conversation-btn"
       @click="handleNewConversation"
     >
@@ -34,6 +35,7 @@ import { Button } from '@/components/ui/button';
 interface Props {
   isMobileToggleVisible?: boolean;
   toggleSidebar?: () => void;
+  isCollapsed?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,7 +45,8 @@ const props = withDefaults(defineProps<Props>(), {
     const store = useSidebarStore();
     store.toggleSidebar();
     return;
-  }
+  },
+  isCollapsed: false
 });
 
 const router = useRouter();
@@ -84,6 +87,9 @@ const handleNewConversation = () => {
   font-size: var(--font-size-2xl); /* text-2xl */
   font-weight: 700; /* font-bold */
   color: var(--color-gray-800); /* text-gray-800 - 与新背景协调 */
+  white-space: nowrap; /* 防止文本换行 */
+  overflow: hidden; /* 隐藏溢出的文本 */
+  text-overflow: ellipsis; /* 显示省略号 */
 }
 
 .dark .app-title {
@@ -128,6 +134,9 @@ const handleNewConversation = () => {
   display: flex;
   align-items: center; /* items-center */
   justify-content: center; /* justify-center */
+  white-space: nowrap; /* 防止文本换行 */
+  overflow: hidden; /* 隐藏溢出的文本 */
+  text-overflow: ellipsis; /* 显示省略号 */
 }
 
 .new-conversation-btn:hover {
@@ -157,4 +166,5 @@ const handleNewConversation = () => {
     display: block;
   }
 }
+
 </style>

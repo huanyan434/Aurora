@@ -34,22 +34,36 @@
 
 <script setup lang="ts">
 import { useSidebarStore } from '@/stores/sidebar';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import Sidebar from '@/components/Sidebar.vue';
 import MainContent from '@/components/MainContent.vue';
 
 const sidebarStore = useSidebarStore();
 const isMobile = ref(false);
 
+// 自动折叠阈值（像素）
+const COLLAPSE_THRESHOLD = 1200;
+
 // 检测屏幕尺寸并设置isMobile标志
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
 };
 
+// 检查是否需要自动折叠侧边栏
+const checkAutoCollapse = () => {
+  if (window.innerWidth < COLLAPSE_THRESHOLD && !sidebarStore.collapsed) {
+    sidebarStore.setSidebarCollapsed(true);
+  }
+};
+
 // 初始化
 onMounted(() => {
   checkScreenSize();
-  window.addEventListener('resize', checkScreenSize);
+  checkAutoCollapse(); // 检查初始状态
+  window.addEventListener('resize', () => {
+    checkScreenSize();
+    checkAutoCollapse();
+  });
 });
 
 onUnmounted(() => {
@@ -67,6 +81,18 @@ const closeSidebarOnMobile = () => {
 const toggleSidebarForMobile = () => {
   sidebarStore.toggleSidebar();
 };
+
+// 监听侧边栏状态变化
+watch(() => sidebarStore.collapsed, (newCollapsed) => {
+  // 当侧边栏展开且窗口宽度大于阈值时，允许展开
+  if (!newCollapsed && window.innerWidth >= COLLAPSE_THRESHOLD) {
+    // 什么都不做，保持展开状态
+  }
+  // 当侧边栏展开但窗口宽度小于阈值时，强制折叠
+  else if (!newCollapsed && window.innerWidth < COLLAPSE_THRESHOLD) {
+    sidebarStore.setSidebarCollapsed(true);
+  }
+});
 </script>
 
 <style scoped>
@@ -87,8 +113,8 @@ const toggleSidebarForMobile = () => {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: var(--transition-duration-slow); /* duration-300 */
-  ease-in-out: ease-in-out; /* ease-in-out */
   display: flex;
+  min-width: 0; /* 允许收缩 */
 }
 
 .main-content-wrapper {

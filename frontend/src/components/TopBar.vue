@@ -1,15 +1,11 @@
 <template>
   <div class="topbar-container">
     <!-- 折叠按钮 -->
-    <Button
-      v-if="sidebarStore.collapsed"
-      variant="ghost"
-      size="icon"
-      class="toggle-btn"
-      @click="toggleSidebar"
-    >
+    <Button v-if="sidebarStore.collapsed" variant="ghost" size="icon" class="toggle-btn" @click="toggleSidebar">
       <svg xmlns="http://www.w3.org/2000/svg" class="toggle-btn-icon" fill="currentColor" viewBox="0 0 24 24">
-        <path fill-rule="evenodd" d="M21 5H11v14h10zM3 5h6v14H3zm0-2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm2 4.25a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5zm-.75 3.5A.75.75 0 0 1 5 10h2a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75m.75 2a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5z" clip-rule="evenodd"></path>
+        <path fill-rule="evenodd"
+          d="M21 5H11v14h10zM3 5h6v14H3zm0-2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm2 4.25a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5zm-.75 3.5A.75.75 0 0 1 5 10h2a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75m.75 2a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5z"
+          clip-rule="evenodd"></path>
       </svg>
     </Button>
 
@@ -53,7 +49,7 @@
             <div class="setting-label">
               <span>深色模式</span>
             </div>
-            <Switch v-model:checked="darkMode" />
+            <Switch v-model="darkMode" />
           </div>
         </div>
         <DialogFooter>
@@ -136,13 +132,13 @@ const closeSettingsDialog = () => {
 
 // 保存设置
 const saveSettings = () => {
+  console.log(`darkMode:` + darkMode.value);
   // 保存到设置 store
   settingsStore.setSetting('darkMode', darkMode.value);
   settingsStore.setSetting('notifications', notifications.value);
 
   // 应用深色模式到整个应用
   applyDarkMode(darkMode.value);
-
   closeSettingsDialog();
 };
 
@@ -156,10 +152,10 @@ const handleLogout = async () => {
   try {
     // 调用退出登录 API
     await logout();
-    
+
     // 清除用户信息
     userStore.logout();
-    
+
     // 跳转到登录页
     router.push('/login');
   } catch (error) {
@@ -179,62 +175,84 @@ onMounted(() => {
 .topbar-container {
   display: flex;
   align-items: center;
-  padding-left: var(--spacing-lg); /* px-6 */
-  padding-right: var(--spacing-lg); /* px-6 */
-  padding-top: var(--spacing-md); /* py-4 */
-  padding-bottom: var(--spacing-md); /* py-4 */
-  background-color: #ffffff; /* 与主内容区域一致的白色背景 */
+  padding-left: var(--spacing-lg);
+  /* px-6 */
+  padding-right: var(--spacing-lg);
+  /* px-6 */
+  padding-top: var(--spacing-md);
+  /* py-4 */
+  padding-bottom: var(--spacing-md);
+  /* py-4 */
+  background-color: #ffffff;
+  /* 与主内容区域一致的白色背景 */
 }
 
 .dark .topbar-container {
-  background-color: #020817; /* 深色模式下的背景 */
+  background-color: #020817;
+  /* 深色模式下的背景 */
 }
 
 .toggle-btn {
-  padding: var(--spacing-xs); /* p-1 */
-  border-radius: var(--border-radius-md); /* rounded-md */
-  margin-right: var(--spacing-sm); /* mr-3 */
-  color: var(--color-gray-600); /* text-gray-600 */
+  padding: var(--spacing-xs);
+  /* p-1 */
+  border-radius: var(--border-radius-md);
+  /* rounded-md */
+  margin-right: var(--spacing-sm);
+  /* mr-3 */
+  color: var(--color-gray-600);
+  /* text-gray-600 */
   cursor: pointer;
 }
 
 .toggle-btn:hover {
-  background-color: var(--color-gray-100); /* hover:bg-gray-100 - 与新背景协调 */
+  background-color: var(--color-gray-100);
+  /* hover:bg-gray-100 - 与新背景协调 */
 }
 
 .dark .toggle-btn:hover {
-  background-color: var(--color-gray-800); /* dark:hover:bg-gray-800 */
+  background-color: var(--color-gray-800);
+  /* dark:hover:bg-gray-800 */
 }
 
 .dark .toggle-btn {
-  color: var(--color-gray-400); /* dark:text-gray-400 */
+  color: var(--color-gray-400);
+  /* dark:text-gray-400 */
 }
 
 .toggle-btn-icon {
-  height: var(--spacing-lg); /* h-5 */
-  width: var(--spacing-lg); /* w-5 */
+  height: var(--spacing-lg);
+  /* h-5 */
+  width: var(--spacing-lg);
+  /* w-5 */
 }
 
 .user-menu-container {
   display: flex;
   align-items: center;
-  margin-left: auto; /* ml-auto */
+  margin-left: auto;
+  /* ml-auto */
 }
 
 .user-avatar-btn {
   position: relative;
-  height: var(--button-size); /* h-8 */
-  width: var(--button-size); /* w-8 */
-  border-radius: var(--border-radius-full); /* rounded-full */
+  height: var(--button-size);
+  /* h-8 */
+  width: var(--button-size);
+  /* w-8 */
+  border-radius: var(--border-radius-full);
+  /* rounded-full */
 }
 
 .user-avatar {
-  height: var(--button-size); /* h-8 */
-  width: var(--button-size); /* w-8 */
+  height: var(--button-size);
+  /* h-8 */
+  width: var(--button-size);
+  /* w-8 */
 }
 
 .user-dropdown-content {
-  width: 14rem; /* w-56 */
+  width: 14rem;
+  /* w-56 */
 }
 
 .profile-menu-item {
@@ -247,45 +265,56 @@ onMounted(() => {
 
 .logout-menu-item {
   cursor: pointer;
-  color: #dc2626; /* text-red-600 */
+  color: #dc2626;
+  /* text-red-600 */
 }
 
 .dark .logout-menu-item {
-  color: #f87171; /* dark:text-red-400 */
+  color: #f87171;
+  /* dark:text-red-400 */
 }
 
 .logout-text {
-  color: #dc2626; /* group:text-red-600 */
+  color: #dc2626;
+  /* group:text-red-600 */
 }
 
 [data-highlighted] .logout-text {
-  color: #dc2626; /* group-data-[highlighted]:text-red-600 */
+  color: #dc2626;
+  /* group-data-[highlighted]:text-red-600 */
 }
 
 .dark [data-highlighted] .logout-text {
-  color: #f87171; /* dark:group-data-[highlighted]:text-red-400 */
+  color: #f87171;
+  /* dark:group-data-[highlighted]:text-red-400 */
 }
 
 .settings-dialog-content {
-  max-width: 21rem; /* sm:max-w-md */
+  max-width: 21rem;
+  /* sm:max-w-md */
 }
 
 .settings-dialog-body {
-  padding-top: 1rem; /* py-4 */
-  padding-bottom: 1rem; /* py-4 */
+  padding-top: 1rem;
+  /* py-4 */
+  padding-bottom: 1rem;
+  /* py-4 */
   display: flex;
   flex-direction: column;
-  gap: 1rem; /* space-y-4 */
+  gap: 1rem;
+  /* space-y-4 */
 }
 
 .dark-mode-setting {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* justify-between */
+  justify-content: space-between;
+  /* justify-between */
 }
 
 .setting-label {
   display: flex;
-  align-items: center; /* items-center */
+  align-items: center;
+  /* items-center */
 }
 </style>
