@@ -654,7 +654,9 @@ const renderContent = (content: string) => {
 // 复制消息内容到剪贴板
 const copyMessage = async (content: string) => {
     try {
-        await navigator.clipboard.writeText(content);
+        // 在复制之前移除 <model=xxx> 标签
+        const cleanContent = content.replace(/<model=[^>]+>/g, "").trim();
+        await navigator.clipboard.writeText(cleanContent);
         toastSuccess("消息已复制到剪贴板");
     } catch (err) {
         toastError("无法复制消息到剪贴板");
