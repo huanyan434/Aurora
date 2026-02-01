@@ -103,6 +103,7 @@ const greeting = computed(() => {
 
 .messages-container {
   flex: 1;
+  word-break: break-all;
 }
 
 .dark .messages-container {

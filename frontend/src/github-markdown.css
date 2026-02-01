@@ -133,6 +133,7 @@
   font-size: 16px;
   line-height: 1.5;
   word-wrap: break-word;
+  max-width: calc(100dvw - 4rem);
 }
 
 .markdown-body .octicon {
@@ -877,6 +878,7 @@
   word-wrap: normal;
   background-color: transparent;
   border: 0;
+  white-space: pre-wrap;
 }
 
 .markdown-body .csv-data td,
