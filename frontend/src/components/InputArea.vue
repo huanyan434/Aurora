@@ -400,6 +400,8 @@ const toggleReasoning = () => {
   border: 1px solid var(--input-wrapper-border-color);
   box-shadow: var(--input-wrapper-shadow);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  background-color: rgba(var(--input-bg-color), var(--input-bg-opacity)); /* 使用新的深色模式变量 */
+  backdrop-filter: blur(10px); /* 添加模糊效果，增加活力 */
 }
 
 .input-area-wrapper:focus-within {
@@ -426,6 +428,7 @@ const toggleReasoning = () => {
   padding-left: var(--input-padding-left);
   margin-top: var(--input-margin-top);
   margin-bottom: var(--input-margin-bottom);
+  color: inherit; /* 使用继承的颜色 */
 }
 
 .message-input::placeholder {

@@ -694,7 +694,7 @@ onMounted(async () => {
   width: 100%;
 }
 
-@media (min-width: 888px) {
+@media (min-width: 1135px) {
   .user-info-content {
     flex-direction: row;
     align-items: center;
@@ -732,7 +732,7 @@ onMounted(async () => {
   text-align: center;
 }
 
-@media (min-width: 888px) {
+@media (min-width: 1135px) {
   .user-details {
     align-items: flex-start;
     text-align: left;
@@ -770,7 +770,7 @@ onMounted(async () => {
   margin-top: var(--spacing-md);
 }
 
-@media (min-width: 888px) {
+@media (min-width: 1135px) {
   .user-stats {
     position: absolute;
     right: var(--spacing-xl);
@@ -798,7 +798,7 @@ onMounted(async () => {
   width: 100px;
 }
 
-@media (min-width: 888px) {
+@media (min-width: 1135px) {
   .stat-item {
     text-align: center;
   }
@@ -843,13 +843,13 @@ onMounted(async () => {
   gap: var(--spacing-md);
 }
 
-@media (min-width: 888px) {
+@media (min-width: 1135px) {
   .features-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1500px) {
   .features-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

@@ -134,12 +134,13 @@ onMounted(async () => {
 
   /* zIndex 变量 */
   --z-index-dropdown: 1000;
-  --z-index-sticky: 1100;
-  --z-index-fixed: 1200;
-  --z-index-modal-backdrop: 1300;
-  --z-index-modal: 1400;
-  --z-index-popover: 1500;
-  --z-index-tooltip: 1600;
+  --z-index-sticky: 1010;
+  --z-index-fixed: 1020;
+  --z-index-modal-backdrop: 1030;
+  --z-index-modal: 1040;
+  --z-index-popover: 1050;
+  --z-index-tooltip: 1060;
+  --z-index-dialog: 1070;
 
   /* 阴影变量 */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -195,18 +196,39 @@ onMounted(async () => {
 }
 
 .dark {
-  /* 深色模式变量 */
-  --input-container-border-color: #374151;
-  --input-placeholder-color: #d6d1d1; /* dark:text-muted-foreground */
-  --input-bg-color: 255, 255, 255; /* bg-input in dark mode */
-  --input-bg-opacity: 0.1; /* bg-input/30 in dark mode */
-  --reasoning-button-active-bg: #1d4ed8;
-  --reasoning-button-active-hover-bg: #1e40af;
+  /* 深色模式变量 - 重新设计的灰色黑色配色方案 */
+  --input-container-border-color: #404040;
+  --input-placeholder-color: #737373; /* 中灰色 */
+  --input-bg-color: 227, 227, 227; /* 保持rgb(227, 227, 227)作为输入框背景 */
+  --input-bg-opacity: 0.1; /* 轻微透明度 */
+  --reasoning-button-active-bg: #525252;
+  --reasoning-button-active-hover-bg: #404040;
 
-  /* 新增的输入框阴影和边框变量 */
-  --input-wrapper-shadow: 0 2px 4px 0 rgba(255, 255, 255, 0.05), 0 4px 12px 0 rgba(255, 255, 255, 0.08), 0 8px 24px 0 rgba(255, 255, 255, 0.15);
-  --input-wrapper-active-shadow: 0 2px 4px 0px #ffffff3b, 0px 4px 16px 0px #ffffff3b, 0px 8px 32px 0px #ffffff3b;
-  --input-wrapper-border-color: rgba(255, 255, 255, 0.5);
+  /* 重新设计的输入框阴影和边框变量 - 深色模式下移除阴影 */
+  --input-wrapper-shadow: none; /* 移除阴影 */
+  --input-wrapper-active-shadow: none; /* 移除激活状态阴影 */
+  --input-wrapper-border-color: #525252; /* 灰色边框颜色 */
+  --input-wrapper-focus-border-color: #a3a3a3; /* 灰色焦点边框 */
+
+  /* 侧边栏配色 */
+  --sidebar-bg: #0a0a0a; /* 深黑色背景 */
+  --sidebar-item-hover-bg: #262626; /* 侧边栏项目悬停背景 */
+  --sidebar-item-selected-bg: #404040; /* 侧边栏选中项目背景 */
+  --sidebar-text-color: #f5f5f5; /* 侧边栏文字颜色 */
+  --sidebar-text-secondary-color: #a3a3a3; /* 侧边栏次要文字颜色 */
+
+  /* 按钮配色 */
+  --btn-primary-bg: #525252; /* 主要按钮背景 - 灰色 */
+  --btn-primary-hover-bg: #404040; /* 主要按钮悬停背景 - 深灰色 */
+  --btn-secondary-bg: #404040; /* 次要按钮背景 - 深灰色 */
+  --btn-secondary-hover-bg: #262626; /* 次要按钮悬停背景 - 更深灰色 */
+
+  /* 对话界面配色 */
+  --chat-bg: #0f0f0f; /* 聊天界面背景 - 深黑色 */
+  --user-msg-bg: #262626; /* 用户消息背景 - 深灰色 */
+
+  /* 分割线配色 */
+  --divider-color: #404040; /* 分割线颜色 - 灰色 */
 }
 
 html,

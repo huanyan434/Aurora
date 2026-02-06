@@ -1,5 +1,5 @@
 <template>
-    <div ref="containerRef" class="w-full h-full overflow-y-auto p-4">
+    <div ref="containerRef" class="messages-scroll-container w-full h-full overflow-y-auto p-4">
         <div class="max-w-3xl mx-auto space-y-6">
             <!-- 加载动画 -->
             <div
@@ -25,8 +25,8 @@
                     :class="[
                         'rounded-lg px-4 py-3 markdown-body',
                         message.role === 'user'
-                            ? 'bg-gray-100 dark:bg-gray-800'
-                            : 'bg-white dark:bg-gray-900',
+                            ? 'bg-gray-100 dark:bg-user-msg-bg user-message'
+                            : 'assistant-message',
                     ]"
                 >
                     <!-- 用户消息 -->
@@ -1285,5 +1285,46 @@ const extractModelName = (content: string) => {
     /* dark:red-300 */
     background-color: #7f1d1d;
     /* dark:red-900 */
+}
+
+/* 使用新的深色模式变量覆盖默认背景 */
+.dark .markdown-body.user-message {
+  background-color: var(--user-msg-bg) !important;
+}
+
+/* 滚动条样式 */
+.messages-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.messages-scroll-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.messages-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 深色模式滚动条样式 */
+.dark .messages-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark .messages-scroll-container::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.dark .messages-scroll-container::-webkit-scrollbar-thumb {
+  background: #525252; /* 灰色滚动条颜色，与ConversationsContainer保持一致 */
+  border-radius: 4px;
+}
+
+.dark .messages-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #404040; /* 深灰色悬停颜色，与ConversationsContainer保持一致 */
 }
 </style>

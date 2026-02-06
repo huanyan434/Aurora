@@ -288,6 +288,42 @@ defineExpose({
   padding-right: var(--spacing-sm); /* px-2 */
 }
 
+/* 滚动条样式 */
+.conversations-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.conversations-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.conversations-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.conversations-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 深色模式滚动条样式 */
+.dark .conversations-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark .conversations-container::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.dark .conversations-container::-webkit-scrollbar-thumb {
+  background: #525252; /* 灰色滚动条颜色，与MessagesContainer保持一致 */
+  border-radius: 4px;
+}
+
+.dark .conversations-container::-webkit-scrollbar-thumb:hover {
+  background: #404040; /* 深灰色悬停颜色，与MessagesContainer保持一致 */
+}
+
 .history-title {
   padding-left: var(--spacing-sm); /* px-3 */
   padding-right: var(--spacing-sm); /* px-3 */
@@ -299,7 +335,7 @@ defineExpose({
 }
 
 .dark .history-title {
-  color: var(--color-gray-400); /* dark:text-gray-400 */
+  color: var(--sidebar-text-secondary-color); /* 使用新的深色模式变量 */
 }
 
 .conversation-item {
@@ -323,7 +359,7 @@ defineExpose({
 }
 
 .dark .conversation-selected {
-  background-color: #334155; /* dark:bg-slate-700 */
+  background-color: var(--sidebar-item-selected-bg); /* 使用新的深色模式变量 */
 }
 
 .conversation-unselected:hover {
@@ -331,7 +367,7 @@ defineExpose({
 }
 
 .dark .conversation-unselected:hover {
-  background-color: #1e293b; /* dark:hover:bg-slate-800 */
+  background-color: var(--sidebar-item-hover-bg); /* 使用新的深色模式变量 */
 }
 
 .conversation-title {
@@ -344,7 +380,7 @@ defineExpose({
 }
 
 .dark .conversation-title {
-  color: var(--color-gray-200); /* dark:text-gray-200 */
+  color: var(--sidebar-text-color); /* 使用新的深色模式变量 */
 }
 
 .more-options-btn {
@@ -362,20 +398,16 @@ defineExpose({
 }
 
 .dark .more-options-btn:hover {
-  background-color: var(--color-gray-700); /* dark:hover:bg-gray-700 */
+  background-color: var(--btn-secondary-hover-bg); /* 使用新的深色模式变量 */
 }
 
 .dark .more-options-btn {
-  color: var(--color-gray-400); /* dark:text-gray-400 */
+  color: var(--sidebar-text-secondary-color); /* 使用新的深色模式变量 */
 }
 
 .more-options-icon {
   height: var(--spacing-md); /* h-4 */
   width: var(--spacing-md); /* w-4 */
-}
-
-.more-options-dropdown {
-  width: 8rem; /* w-32 */
 }
 
 .rename-menu-item {
@@ -414,7 +446,7 @@ defineExpose({
 }
 
 .dark .loading-message {
-  color: var(--color-gray-400); /* dark:text-gray-400 */
+  color: var(--sidebar-text-secondary-color); /* 使用新的深色模式变量 */
 }
 
 .error-message {

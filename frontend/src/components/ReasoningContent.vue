@@ -206,4 +206,70 @@ watch([() => props.content, () => props.isStreaming], ([newContent, newIsStreami
   transform: translateY(1px);
   transition: all 0.1s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
+
+/* 深色模式样式 */
+.dark .message-reasoning {
+  background-color: #1f2937; /* 深色模式背景 */
+  border-color: #374151; /* 深色模式边框 */
+}
+
+.dark .reasoning-header {
+  color: #9ca3af; /* 深色模式文字颜色 */
+}
+
+.dark .reasoning-text {
+  color: #d1d5db; /* 深色模式文字颜色 */
+}
+
+.dark .reasoning-overlay {
+  background: linear-gradient(to bottom, rgba(31, 41, 55, 0.4), rgba(31, 41, 55, 0.9), #1f2937);
+}
+
+.dark .show-more-button {
+  background: rgba(31, 41, 55, 0.9);
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+
+.dark .show-more-button:hover {
+  background: #1f2937;
+  border-color: #6b7280;
+  color: #e5e7eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 滚动条样式 */
+.message-reasoning::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-reasoning::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.message-reasoning::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.message-reasoning::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.dark .message-reasoning::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dark .message-reasoning::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.dark .message-reasoning::-webkit-scrollbar-thumb {
+  background: #525252; /* 灰色滚动条颜色 */
+  border-radius: 3px;
+}
+
+.dark .message-reasoning::-webkit-scrollbar-thumb:hover {
+  background: #404040; /* 深灰色悬停颜色 */
+}
 </style>

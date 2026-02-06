@@ -61,7 +61,7 @@ const handleNewConversation = () => {
 }
 
 .dark .sidebar-container {
-    background-color: #0f172a; /* dark:bg-slate-900 - 深色模式下的背景 */
+    background-color: var(--sidebar-bg); /* 使用新的深色模式变量 */
 }
 
 /* 移除分割线，通过颜色区分侧边栏和主内容 */

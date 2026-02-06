@@ -185,11 +185,14 @@ import { onUnmounted } from 'vue';
   max-height: 20rem; /* max-h-80 */
   overflow-y: auto;
   min-width: 15rem; /* min-w-[240px] */
+  scrollbar-width: thin; /* Firefox滚动条宽度 */
+  scrollbar-color: #c1c1c1 #f1f1f1; /* 浅色模式滚动条颜色 */
 }
 
 .dark .model-selector-dropdown {
   background-color: #000000; /* dark:bg-black */
   border-color: #374151; /* dark:border-gray-700 */
+  scrollbar-color: #525252 #262626; /* 深色模式下指定滚动条颜色，使用灰色黑色主题 */
 }
 
 .model-selector-item {

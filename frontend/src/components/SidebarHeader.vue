@@ -102,7 +102,7 @@ const handleNewConversation = () => {
 }
 
 .dark .app-title {
-    color: var(--color-gray-100); /* dark:text-gray-100 */
+    color: var(--sidebar-text-color); /* 使用新的深色模式变量 */
 }
 
 .toggle-btn {
@@ -118,11 +118,11 @@ const handleNewConversation = () => {
 }
 
 .dark .toggle-btn:hover {
-    background-color: var(--color-gray-600); /* dark:hover:bg-gray-600 */
+    background-color: var(--btn-secondary-hover-bg); /* 使用新的深色模式变量 */
 }
 
 .dark .toggle-btn {
-    color: var(--color-gray-400); /* dark:text-gray-400 */
+    color: var(--sidebar-text-secondary-color); /* 使用新的深色模式变量 */
 }
 
 .toggle-btn-icon {
@@ -157,14 +157,14 @@ const handleNewConversation = () => {
 }
 
 .dark .new-conversation-btn {
-    background-color: var(--color-gray-800); /* dark:bg-gray-800 */
-    color: var(--color-white); /* dark:text-white */
-    border-color: var(--color-gray-600); /* dark:border-gray-600 */
+    background-color: var(--btn-secondary-bg); /* 使用新的深色模式变量 */
+    color: var(--sidebar-text-color); /* 使用新的深色模式变量 */
+    border-color: var(--btn-secondary-bg); /* 使用新的深色模式变量 */
 }
 
 .dark .new-conversation-btn:hover {
-    background-color: var(--color-gray-700); /* dark:hover:bg-gray-700 */
-    border-color: var(--color-gray-500); /* dark:hover:border-gray-500 */
+    background-color: var(--btn-secondary-hover-bg); /* 使用新的深色模式变量 */
+    border-color: var(--btn-secondary-hover-bg); /* 使用新的深色模式变量 */
 }
 
 /* 仅在移动端开启侧边栏时显示切换按钮 */
@@ -172,7 +172,7 @@ const handleNewConversation = () => {
     display: none;
 }
 
-@media (min-width: 888px) {
+@media (min-width: 1135px) {
   /* 桌面端始终显示切换按钮 */
     .toggle-btn:not(.mobile-toggle-visible) {
         display: block;

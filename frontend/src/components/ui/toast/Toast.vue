@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed top-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center justify-start gap-2 pointer-events-none z-[100]">
+  <div class="fixed top-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center justify-start gap-2 pointer-events-none z-[2000]">
     <transition-group
       name="toast"
       tag="div"

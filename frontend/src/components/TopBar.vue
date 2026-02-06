@@ -37,27 +37,6 @@
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-
-    <!-- 设置对话框 -->
-    <Dialog v-model:open="isSettingsDialogOpen">
-      <DialogContent class="settings-dialog-content">
-        <DialogHeader>
-          <DialogTitle>设置</DialogTitle>
-        </DialogHeader>
-        <div class="settings-dialog-body">
-          <div class="dark-mode-setting">
-            <div class="setting-label">
-              <span>深色模式</span>
-            </div>
-            <Switch v-model="darkMode" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="closeSettingsDialog">取消</Button>
-          <Button type="button" @click="saveSettings">保存</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </div>
 </template>
 
@@ -71,19 +50,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
 import { useSidebarStore } from '@/stores/sidebar';
 import { useUserStore } from '@/stores/user';
-import { useSettingsStore } from '@/stores/settings';
 import { useRouter } from 'vue-router';
-import { computed, ref, onMounted } from 'vue';
+import { computed } from 'vue';
 import { getInitial } from '@/lib/utils';
 import { logout } from '@/api/user';
 import ModelSelector from './ModelSelector.vue';
@@ -91,22 +61,9 @@ import ModelSelector from './ModelSelector.vue';
 const router = useRouter();
 const sidebarStore = useSidebarStore();
 const userStore = useUserStore();
-const settingsStore = useSettingsStore();
 
-// 设置对话框状态
-const isSettingsDialogOpen = ref(false);
-// 设置选项状态
-const darkMode = ref(false);
-const notifications = ref(true);
-
-// 应用深色模式到整个应用
-const applyDarkMode = (enabled: boolean) => {
-  if (enabled) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-};
+// 定义 emit
+const emit = defineEmits(['open-settings']);
 
 // 直接调用store方法来切换侧边栏状态
 const toggleSidebar = () => {
@@ -120,26 +77,7 @@ const goToProfile = () => {
 
 // 打开设置对话框
 const openSettingsDialog = () => {
-  // 初始化设置选项
-  darkMode.value = settingsStore.getSetting('darkMode');
-  isSettingsDialogOpen.value = true;
-};
-
-// 关闭设置对话框
-const closeSettingsDialog = () => {
-  isSettingsDialogOpen.value = false;
-};
-
-// 保存设置
-const saveSettings = () => {
-  console.log(`darkMode:` + darkMode.value);
-  // 保存到设置 store
-  settingsStore.setSetting('darkMode', darkMode.value);
-  settingsStore.setSetting('notifications', notifications.value);
-
-  // 应用深色模式到整个应用
-  applyDarkMode(darkMode.value);
-  closeSettingsDialog();
+  emit('open-settings');
 };
 
 // 获取用户昵称首字母
@@ -162,13 +100,6 @@ const handleLogout = async () => {
     console.error('退出登录失败:', error);
   }
 };
-
-// 在组件挂载时应用深色模式设置
-onMounted(() => {
-  // 从设置 store 获取深色模式设置并应用
-  const darkModeSetting = settingsStore.getSetting('darkMode');
-  applyDarkMode(darkModeSetting);
-});
 </script>
 
 <style scoped>
@@ -188,8 +119,8 @@ onMounted(() => {
 }
 
 .dark .topbar-container {
-  background-color: #020817;
-  /* 深色模式下的背景 */
+  background-color: #0f0f0f;
+  /* 深色模式下的背景，与聊天界面背景一致 */
 }
 
 .toggle-btn {
@@ -210,12 +141,12 @@ onMounted(() => {
 }
 
 .dark .toggle-btn:hover {
-  background-color: var(--color-gray-800);
+  background-color: #262626;
   /* dark:hover:bg-gray-800 */
 }
 
 .dark .toggle-btn {
-  color: var(--color-gray-400);
+  color: #a3a3a3;
   /* dark:text-gray-400 */
 }
 
@@ -253,14 +184,37 @@ onMounted(() => {
 .user-dropdown-content {
   width: 14rem;
   /* w-56 */
+  background-color: #0f0f0f;
+  /* 深色模式下拉菜单背景 */
+  border-color: #404040;
+  /* 深色模式下拉菜单边框 */
+}
+
+.dark .user-dropdown-content {
+  background-color: #0f0f0f;
+  border-color: #404040;
 }
 
 .profile-menu-item {
   cursor: pointer;
+  color: #1f2937;
+  /* 浅色模式下深色文字 */
+}
+
+.dark .profile-menu-item {
+  color: #f5f5f5;
+  /* 深色模式下浅色文字 */
 }
 
 .settings-menu-item {
   cursor: pointer;
+  color: #1f2937;
+  /* 浅色模式下深色文字 */
+}
+
+.dark .settings-menu-item {
+  color: #f5f5f5;
+  /* 深色模式下浅色文字 */
 }
 
 .logout-menu-item {
@@ -287,11 +241,6 @@ onMounted(() => {
 .dark [data-highlighted] .logout-text {
   color: #f87171;
   /* dark:group-data-[highlighted]:text-red-400 */
-}
-
-.settings-dialog-content {
-  max-width: 21rem;
-  /* sm:max-w-md */
 }
 
 .settings-dialog-body {

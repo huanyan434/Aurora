@@ -1,7 +1,7 @@
 <template>
   <div class="main-content-container">
     <!-- Top Bar -->
-    <TopBar />
+    <TopBar @open-settings="$emit('open-settings')" />
 
     <!-- Messages Container 或者欢迎界面 -->
     <div class="main-content-area">
@@ -36,6 +36,9 @@ import InputArea from './InputArea.vue';
 
 const route = useRoute();
 
+// 定义 emit
+const emit = defineEmits(['open-settings']);
+
 // 判断是否为首页路由
 const isHomeRoute = computed(() => route.path === '/');
 
@@ -61,7 +64,7 @@ const greeting = computed(() => {
 }
 
 .dark .main-content-container {
-  background-color: #020817; /* 深色模式下的主内容背景 */
+  background-color: var(--chat-bg); /* 使用新的深色模式变量 */
 }
 
 .main-content-area {
@@ -87,7 +90,7 @@ const greeting = computed(() => {
 }
 
 .dark .welcome-title {
-  color: var(--color-gray-200); /* dark:text-gray-200 */
+  color: var(--sidebar-text-color); /* 使用新的深色模式变量 */
 }
 
 .welcome-input-container {
@@ -104,9 +107,10 @@ const greeting = computed(() => {
 .messages-container {
   flex: 1;
   word-break: break-all;
+  overflow-x: hidden;
 }
 
 .dark .messages-container {
-  scrollbar-color: #4b5563 #1f2937;
+  scrollbar-color: #525252 #262626; /* 灰色黑色主题滚动条颜色 */
 }
 </style>
