@@ -552,16 +552,16 @@ func Sign(Email string) (map[string]interface{}, error) {
 	hasExtraReward := false
 	multiplier := 1 // 奖励倍数
 
-	// 每7天的倍数天数给予额外奖励
-	if consecutiveDays%30 == 0 {
+	// 每7天的倍数天数给予额外奖励（排除0天的情况）
+	if consecutiveDays > 0 && consecutiveDays%30 == 0 {
 		// 第30天，4倍奖励
 		multiplier = 4
 		hasExtraReward = true
-	} else if consecutiveDays%14 == 0 {
+	} else if consecutiveDays > 0 && consecutiveDays%14 == 0 {
 		// 第14天，3倍奖励
 		multiplier = 3
 		hasExtraReward = true
-	} else if consecutiveDays%7 == 0 {
+	} else if consecutiveDays > 0 && consecutiveDays%7 == 0 {
 		// 第7天，2倍奖励
 		multiplier = 2
 		hasExtraReward = true
@@ -630,63 +630,46 @@ func calculateConsecutiveSignDays(email string) (int, error) {
 	}
 
 	if len(signRecords) == 0 {
-		// 如果没有任何签到记录，则连续签到天数为1
-		return 1, nil
+		// 如果没有任何签到记录，则连续签到天数为0
+		return 0, nil
 	}
 
+	// 从今天开始，逐天向前检查连续签到情况
+	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+	currentCheckDate := today
+	
 	// 计算连续签到天数
 	consecutiveDays := 0
-	currentDate := time.Now()
 
-	// 从今天开始向前检查每一天是否签到
 	for {
-		// 将当前日期调整为当天的零点
-		checkDate := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(), 0, 0, 0, 0, currentDate.Location())
-
-		// 检查用户在这一天是否签到
-		hasSignedOnDay := false
+		// 检查当前日期是否签到
+		hasSignedToday := false
 		for _, record := range signRecords {
 			recordDate := time.Date(record.LastSign.Year(), record.LastSign.Month(), record.LastSign.Day(), 0, 0, 0, 0, record.LastSign.Location())
-
-			if recordDate.Equal(checkDate) {
-				hasSignedOnDay = true
+			if recordDate.Equal(currentCheckDate) {
+				hasSignedToday = true
 				break
 			}
 		}
 
-		if hasSignedOnDay {
+		// 如果当前日期已签到，增加计数，检查前一天
+		if hasSignedToday {
 			consecutiveDays++
-			// 检查前一天
-			currentDate = checkDate.AddDate(0, 0, -1)
+			currentCheckDate = currentCheckDate.AddDate(0, 0, -1) // 检查前一天
 		} else {
-			// 如果今天没签到，检查是否是今天（如果是今天没签到，则连续天数就是已计算的天数）
-			today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
-			if checkDate.Equal(today) {
-				// 今天还没签到，所以连续天数就是已计算的天数
-				break
-			} else {
-				// 如果不是今天且没签到，则连续签到中断
-				break
-			}
+			// 如果当前日期未签到，说明连续中断
+			// 特别地，如果今天都没签到，那么连续签到天数就是已累计的天数
+			break
 		}
 
-		// 限制检查范围，避免无限循环（例如用户很久以前的签到记录）
-		// 如果连续天数达到一定数量或者检查日期太远，可以提前结束
-		today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
-		daysDiff := int(today.Sub(checkDate).Hours() / 24)
+		// 限制检查范围，避免无限循环
+		daysDiff := int(today.Sub(currentCheckDate).Hours() / 24)
 		if daysDiff > 365 { // 限制检查一年内的记录
 			break
 		}
 	}
 
-	// 如果今天已经签到，连续天数就是计算出的天数
-	// 如果今天还没签到，连续天数应该是计算出的天数（不加1，因为今天没签到）
-	todaySigned, _ := HasSignedToday(email)
-	if todaySigned {
-		return consecutiveDays, nil
-	} else {
-		return consecutiveDays, nil
-	}
+	return consecutiveDays, nil
 }
 
 // SaveVerifyCode 保存验证码到数据库

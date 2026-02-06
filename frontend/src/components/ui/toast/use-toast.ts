@@ -4,7 +4,7 @@ export interface Toast {
   id: string
   title?: string
   description?: string
-  variant?: 'default' | 'destructive'
+  variant?: 'default' | 'destructive' | 'success'
   duration?: number
 }
 
@@ -38,7 +38,7 @@ export const toastSuccess = (message: string) => {
   addToast({
     title: '成功',
     description: message,
-    variant: 'default',
+    variant: 'success',
     duration: 3000
   })
 }

@@ -11,31 +11,37 @@
         :class="[
           'min-w-sm rounded-md border p-4 shadow-lg transition-all',
           'pointer-events-auto',
-          toast.variant === 'destructive' 
-            ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-900/30 dark:text-red-50' 
-            : 'border-gray-200 bg-white text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50'
+          toast.variant === 'destructive'
+            ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-900/30 dark:text-red-50'
+            : toast.variant === 'success'
+              ? 'border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-900/30 dark:text-green-50'
+              : 'border-gray-200 bg-white text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50'
         ]"
       >
         <div class="flex items-start gap-3">
           <div class="flex-1">
-            <div 
+            <div
               v-if="toast.title"
               :class="[
                 'font-semibold text-sm',
-                toast.variant === 'destructive' 
-                  ? 'text-red-800 dark:text-red-200' 
-                  : 'text-gray-900 dark:text-gray-100'
+                toast.variant === 'destructive'
+                  ? 'text-red-800 dark:text-red-200'
+                  : toast.variant === 'success'
+                    ? 'text-green-800 dark:text-green-200'
+                    : 'text-gray-900 dark:text-gray-100'
               ]"
             >
               {{ toast.title }}
             </div>
-            <div 
+            <div
               v-if="toast.description"
               :class="[
                 'text-sm mt-1',
-                toast.variant === 'destructive' 
-                  ? 'text-red-700 dark:text-red-300' 
-                  : 'text-gray-700 dark:text-gray-400'
+                toast.variant === 'destructive'
+                  ? 'text-red-700 dark:text-red-300'
+                  : toast.variant === 'success'
+                    ? 'text-green-700 dark:text-green-300'
+                    : 'text-gray-700 dark:text-gray-400'
               ]"
             >
               {{ toast.description }}
