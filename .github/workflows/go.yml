@@ -29,4 +29,10 @@ jobs:
 
     - name: Build
       # 构建当前目录 (.)，因为工作目录已经是 backend 了
-      run: go build -v ./main.go
+      run: go build -v -o ./aurora_backend ./main.go
+      
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: aurora_backend      # 下载时看到的文件名
+        path: ./aurora_backend    # 这里填你上面 go build 生成的文件路径
