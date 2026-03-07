@@ -30,14 +30,12 @@ jobs:
     - name: Build
       run: |
         echo "Building in $(pwd)"
-        go build -v -o aurora_backend ./main.go
-        # 确认文件在当前目录 (backend)
-        ls -la aurora_backend 
+        go build -v -o aurora-backend ./main.go
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: aurora_backend
+        name: aurora-backend
         # 【核心修复】明确指向 backend 子目录
-        path: backend/aurora_backend
+        path: backend/aurora-backend
         if-no-files-found: error
