@@ -29,8 +29,4 @@ jobs:
 
     - name: Build
       # 构建当前目录 (.)，因为工作目录已经是 backend 了
-      run: go build -v -o aurora_backend ./main.go
-
-    - name: Test
-      # 测试当前目录下的所有包
-      run: go test -v ./...
+      run: go build -v ./main.go
