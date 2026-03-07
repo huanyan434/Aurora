@@ -553,15 +553,15 @@ func Sign(Email string) (map[string]interface{}, error) {
 	multiplier := 1 // 奖励倍数
 
 	// 每7天的倍数天数给予额外奖励（排除0天的情况）
-	if consecutiveDays > 0 && consecutiveDays%30 == 0 {
+	if consecutiveDays >= 30 && consecutiveDays%30 == 0 {
 		// 第30天，4倍奖励
 		multiplier = 4
 		hasExtraReward = true
-	} else if consecutiveDays > 0 && consecutiveDays%14 == 0 {
+	} else if consecutiveDays >= 14 && consecutiveDays%14 == 0 {
 		// 第14天，3倍奖励
 		multiplier = 3
 		hasExtraReward = true
-	} else if consecutiveDays > 0 && consecutiveDays%7 == 0 {
+	} else if consecutiveDays >= 7 && consecutiveDays%7 == 0 {
 		// 第7天，2倍奖励
 		multiplier = 2
 		hasExtraReward = true
