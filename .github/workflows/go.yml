@@ -21,7 +21,8 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.26.1' 
+        go-version: '1.26.1'
+        cache-dependency-path: ./go.sumc
 
     - name: Download Dependencies
       # 现在这个命令会在 ./backend 目录下运行，能正确找到 go.mod
@@ -29,8 +30,16 @@ jobs:
 
     - name: Build
       # 构建当前目录 (.)，因为工作目录已经是 backend 了
-      run: go build -v -o ./aurora_backend ./main.go
-      
+      run: |
+        echo "Building from directory: $(pwd)"
+        go build -v -o aurora_backend ./main.go
+        # 再次确认文件是否生成
+        ls -la aurora_backend
+        if [ ! -f "aurora_backend" ]; then 
+          echo "ERROR: Build succeeded but file not found!"; 
+          exit 1; 
+        fi
+    
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
