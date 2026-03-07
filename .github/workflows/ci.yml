@@ -35,12 +35,12 @@ jobs:
         path: backend/aurora_backend
         if-no-files-found: error
 
-  # ================= 前端构建 (Vue3 + Vite + pnpm) =================
+  # ================= 前端构建 (Vue3 + Vite + pnpm via npm) =================
   build-frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./frontend # ⚠️ 请确认你的前端代码是否在 ./frontend 目录
 
     steps:
     - uses: actions/checkout@v4
@@ -49,30 +49,34 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '23'
-        # 开启包管理器缓存 (自动识别 pnpm)
-        cache: 'pnpm' 
-        # 如果 package-lock.json 或 pnpm-lock.yaml 不在根目录，需指定路径
-        cache-dependency-path: frontend/pnpm-lock.yaml
+        # 虽然我们用 npm 装 pnpm，但 setup-node 依然可以缓存 npm 的全局包或依赖
+        # 这里主要为了安装 Node 环境
+        cache: 'npm' 
+        cache-dependency-path: frontend/package-lock.json # 如果有 lock 文件最好写上，没有可删去此行
 
-    - name: Install pnpm
-      # GitHub 镜像不自带 pnpm，必须全局安装
-      run: npm install -g pnpm
+    # 🔥 关键步骤：用 npm 全局安装 pnpm
+    - name: Install pnpm via npm
+      run: |
+        echo "Installing pnpm..."
+        npm install -g pnpm
+        pnpm --version # 验证安装成功
 
     - name: Install Dependencies
       # 使用 pnpm 安装依赖
+      # --frozen-lockfile 确保严格匹配 pnpm-lock.yaml
       run: pnpm install --frozen-lockfile
-      # --frozen-lockfile 确保依赖版本与 lock 文件严格一致，防止意外更新
 
     - name: Build Frontend
       run: |
-        echo "Building Vue3 frontend..."
-        # 执行 vite build
+        echo "Building with Node $(node -v) and pnpm $(pnpm -v)"
         pnpm build
+
+    - name: Check Dist
+      run: ls -la dist
 
     - name: Upload Frontend Artifact
       uses: actions/upload-artifact@v4
       with:
         name: aurora_frontend_dist
-        # Vite 默认输出到 dist 目录
-        path: frontend/dist
+        path: frontend/dist # ⚠️ 对应上面的 working-directory
         if-no-files-found: error
