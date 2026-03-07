@@ -1,0 +1,78 @@
+name: CI Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ================= 后端构建 (Go) =================
+  build-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.26.1'
+        cache-dependency-path: backend/go.sum
+
+    - name: Build Backend
+      run: |
+        echo "Building Go backend..."
+        go build -v -o aurora_backend main.go
+
+    - name: Upload Backend Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: aurora_backend
+        path: backend/aurora_backend
+        if-no-files-found: error
+
+  # ================= 前端构建 (Vue3 + Vite + pnpm) =================
+  build-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '23'
+        # 开启包管理器缓存 (自动识别 pnpm)
+        cache: 'pnpm' 
+        # 如果 package-lock.json 或 pnpm-lock.yaml 不在根目录，需指定路径
+        cache-dependency-path: frontend/pnpm-lock.yaml
+
+    - name: Install pnpm
+      # GitHub 镜像不自带 pnpm，必须全局安装
+      run: npm install -g pnpm
+
+    - name: Install Dependencies
+      # 使用 pnpm 安装依赖
+      run: pnpm install --frozen-lockfile
+      # --frozen-lockfile 确保依赖版本与 lock 文件严格一致，防止意外更新
+
+    - name: Build Frontend
+      run: |
+        echo "Building Vue3 frontend..."
+        # 执行 vite build
+        pnpm build
+
+    - name: Upload Frontend Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: aurora_frontend_dist
+        # Vite 默认输出到 dist 目录
+        path: frontend/dist
+        if-no-files-found: error
