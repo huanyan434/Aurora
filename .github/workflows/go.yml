@@ -1,6 +1,3 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
 name: Go
 
 on:
@@ -10,19 +7,30 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
+    
+    # 【关键修改】全局设置所有 run 命令的工作目录为 backend
+    defaults:
+      run:
+        working-directory: ./backend
+
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.26.1'
+        go-version: '1.26.1' 
+
+    - name: Download Dependencies
+      # 现在这个命令会在 ./backend 目录下运行，能正确找到 go.mod
+      run: go mod tidy
 
     - name: Build
-      run: go build -v ./backend/main.go
+      # 构建当前目录 (.)，因为工作目录已经是 backend 了
+      run: go build -v -o aurora_backend ./main.go
 
     - name: Test
-      run: go test -v ./backend/main.go
+      # 测试当前目录下的所有包
+      run: go test -v ./...
