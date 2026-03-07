@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./frontend # ⚠️ 请确认你的前端代码是否在 ./frontend 目录
+        working-directory: ./frontend
 
     steps:
     - uses: actions/checkout@v4
@@ -49,34 +49,23 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '23'
-        # 虽然我们用 npm 装 pnpm，但 setup-node 依然可以缓存 npm 的全局包或依赖
-        # 这里主要为了安装 Node 环境
-        cache: 'npm' 
-        cache-dependency-path: frontend/package-lock.json # 如果有 lock 文件最好写上，没有可删去此行
 
-    # 🔥 关键步骤：用 npm 全局安装 pnpm
     - name: Install pnpm via npm
       run: |
         echo "Installing pnpm..."
         npm install -g pnpm
-        pnpm --version # 验证安装成功
+        pnpm --version
 
     - name: Install Dependencies
-      # 使用 pnpm 安装依赖
-      # --frozen-lockfile 确保严格匹配 pnpm-lock.yaml
+      # pnpm 会自动管理自己的存储缓存，不需要 setup-node 介入
       run: pnpm install --frozen-lockfile
 
     - name: Build Frontend
-      run: |
-        echo "Building with Node $(node -v) and pnpm $(pnpm -v)"
-        pnpm build
-
-    - name: Check Dist
-      run: ls -la dist
+      run: pnpm build
 
     - name: Upload Frontend Artifact
       uses: actions/upload-artifact@v4
       with:
         name: aurora_frontend_dist
-        path: frontend/dist # ⚠️ 对应上面的 working-directory
+        path: frontend/dist
         if-no-files-found: error
