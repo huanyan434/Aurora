@@ -130,30 +130,32 @@ const handleLogout = async () => {
   /* rounded-md */
   margin-right: var(--spacing-sm);
   /* mr-3 */
-  color: var(--color-gray-600);
+  color: #6B7280;
   /* text-gray-600 */
   cursor: pointer;
+  width: 2rem;
+  height: 2rem;
 }
 
 .toggle-btn:hover {
-  background-color: var(--color-gray-100);
+  background-color: #E5E7EB;
   /* hover:bg-gray-100 - 与新背景协调 */
 }
 
 .dark .toggle-btn:hover {
-  background-color: #262626;
+  background-color: #374151;
   /* dark:hover:bg-gray-800 */
 }
 
 .dark .toggle-btn {
-  color: #a3a3a3;
+  color: #9CA3AF;
   /* dark:text-gray-400 */
 }
 
 .toggle-btn-icon {
-  height: var(--spacing-lg);
+  height: 1.5rem;
   /* h-5 */
-  width: var(--spacing-lg);
+  width: 1.5rem;
   /* w-5 */
 }
 
