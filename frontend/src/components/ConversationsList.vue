@@ -167,11 +167,11 @@ const groupedConversations = computed(() => {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 7) {
-      groups['过去 7 天'].push(conv);
+      groups['过去 7 天']!.push(conv);
     } else if (diffDays < 30) {
-      groups['过去 30 天'].push(conv);
+      groups['过去 30 天']!.push(conv);
     } else {
-      groups['更早'].push(conv);
+      groups['更早']!.push(conv);
     }
   });
 
