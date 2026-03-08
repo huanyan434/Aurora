@@ -8,12 +8,9 @@
       @new-conversation="handleNewConversation"
     />
 
-        <!-- 分割线 -->
-        <div class="sidebar-divider"></div>
-
-        <!-- 对话列表 -->
-        <ConversationsList ref="conversationsListRef" />
-    </div>
+    <!-- 对话列表 -->
+    <ConversationsList ref="conversationsListRef" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -51,7 +48,7 @@ const handleNewConversation = () => {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background-color: #f8fafc; /* light:bg-slate-50 */
+    background-color: #F9FAFB; /* 极浅灰/淡蓝灰，模仿 Qwen */
     width: v-bind(
         'sidebarStore.collapsed ? "3rem" : "18rem"'
     ); /* 根据折叠状态动态设置宽度 */
@@ -61,8 +58,6 @@ const handleNewConversation = () => {
 }
 
 .dark .sidebar-container {
-    background-color: var(--sidebar-bg); /* 使用新的深色模式变量 */
+    background-color: #111827; /* 深色模式背景 */
 }
-
-/* 移除分割线，通过颜色区分侧边栏和主内容 */
 </style>

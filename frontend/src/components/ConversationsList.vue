@@ -1,48 +1,64 @@
 <template>
   <div class="conversations-container">
-    <!-- 历史对话标题 -->
-    <div class="history-title">
-      历史对话
+    <!-- 所有对话筛选 - 可折叠 -->
+    <div class="all-conversations-header" @click="toggleAllConversations">
+      <svg 
+        :class="['expand-icon', { 'expanded': isAllConversationsExpanded }]" 
+        xmlns="http://www.w3.org/2000/svg" 
+        fill="none" 
+        viewBox="0 0 24 24" 
+        stroke="currentColor"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+      </svg>
+      <span>所有对话</span>
     </div>
-    <div v-for="conversation in chatStore.sortedConversations" :key="conversation.id" :class="[
-      'conversation-item',
-      selectedConversationId === conversation.id ? 'conversation-selected' : 'conversation-unselected'
-    ]" @click="selectConversation(conversation.id)">
-      <div class="conversation-title">
-        {{ conversation.title }}
-      </div>
 
-      <!-- 更多操作按钮 -->
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button variant="ghost" size="icon"
-                  class="more-options-btn"
-                  @click.stop>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="more-options-icon" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                  </svg>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent class="more-options-dropdown">
-                <DropdownMenuItem @click.stop="renameConversationHandler(conversation)" class="rename-menu-item">
-                  <span>重命名</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem @click.stop="deleteConversationHandler(conversation)" class="delete-menu-item">
-                  <span class="delete-text">删除</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>更多操作</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <!-- 按时间分组的对话列表 -->
+    <div v-show="isAllConversationsExpanded">
+      <div v-for="group in groupedConversations" :key="group.title" class="time-group">
+        <div class="time-group-title">
+          {{ group.title }}
+        </div>
+        <div v-for="conversation in group.conversations" :key="conversation.id" :class="[
+          'conversation-item',
+          selectedConversationId === conversation.id ? 'conversation-selected' : 'conversation-unselected'
+        ]" @click="selectConversation(conversation.id)">
+          <div class="conversation-title">
+            {{ conversation.title }}
+          </div>
+
+          <!-- 更多操作按钮 -->
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <DropdownMenu>
+                  <DropdownMenuTrigger as-child>
+                    <Button variant="ghost" size="icon"
+                      class="more-options-btn"
+                      @click.stop>
+                      <svg xmlns="http://www.w3.org/2000/svg" class="more-options-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/>
+                      </svg>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent class="more-options-dropdown">
+                    <DropdownMenuItem @click.stop="renameConversationHandler(conversation)" class="rename-menu-item">
+                      <span>重命名</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem @click.stop="deleteConversationHandler(conversation)" class="delete-menu-item">
+                      <span class="delete-text">删除</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>更多操作</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
     </div>
     <div v-if="loading" class="loading-message">
       加载中...
@@ -88,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from '@/stores/chat';
 import { renameConversation, deleteConversation } from '@/api/chat';
@@ -124,10 +140,46 @@ const showRenameDialog = ref(false);
 const showDeleteDialog = ref(false);
 const renameInput = ref('');
 const currentConversation = ref<any>(null);
+const isAllConversationsExpanded = ref(true);
 
 // 获取路由和路由器
 const route = useRoute();
 const router = useRouter();
+
+// 切换所有对话的折叠状态
+const toggleAllConversations = () => {
+  isAllConversationsExpanded.value = !isAllConversationsExpanded.value;
+};
+
+// 按时间分组显示对话
+const groupedConversations = computed(() => {
+  const conversations = chatStore.conversations;
+  const now = new Date();
+  const groups: Record<string, any[]> = {
+    '过去 7 天': [],
+    '过去 30 天': [],
+    '更早': []
+  };
+
+  conversations.forEach(conv => {
+    const convDate = new Date(conv.createdAt);
+    const diffTime = now.getTime() - convDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 7) {
+      groups['过去 7 天'].push(conv);
+    } else if (diffDays < 30) {
+      groups['过去 30 天'].push(conv);
+    } else {
+      groups['更早'].push(conv);
+    }
+  });
+
+  // 转换为数组并过滤空组
+  return Object.entries(groups)
+    .filter(([_, items]) => items.length > 0)
+    .map(([title, conversations]) => ({ title, conversations }));
+});
 
 // 监听路由变化
 watch(
@@ -288,6 +340,69 @@ defineExpose({
   padding-right: var(--spacing-sm); /* px-2 */
 }
 
+/* 所有对话标题 */
+.all-conversations-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: var(--spacing-sm);
+  padding-right: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--border-radius-md);
+  transition: background-color 0.2s;
+}
+
+.all-conversations-header:hover {
+  background-color: #E5E7EB;
+}
+
+.dark .all-conversations-header:hover {
+  background-color: #374151;
+}
+
+.dark .all-conversations-header {
+  color: var(--sidebar-text-secondary-color);
+}
+
+.expand-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #9CA3AF;
+  transition: transform 0.2s ease;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.dark .expand-icon {
+  color: #6B7280;
+}
+
+/* 时间分组 */
+.time-group {
+  margin-top: 0.5rem;
+}
+
+.time-group-title {
+  padding-left: var(--spacing-sm);
+  padding-right: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  font-weight: 500;
+}
+
+.dark .time-group-title {
+  color: var(--sidebar-text-secondary-color);
+}
+
 /* 滚动条样式 */
 .conversations-container::-webkit-scrollbar {
   width: 8px;
@@ -322,20 +437,6 @@ defineExpose({
 
 .dark .conversations-container::-webkit-scrollbar-thumb:hover {
   background: #404040; /* 深灰色悬停颜色，与MessagesContainer保持一致 */
-}
-
-.history-title {
-  padding-left: var(--spacing-sm); /* px-3 */
-  padding-right: var(--spacing-sm); /* px-3 */
-  padding-top: var(--spacing-sm); /* py-2 */
-  padding-bottom: var(--spacing-sm); /* py-2 */
-  font-size: var(--font-size-xs); /* text-xs */
-  color: var(--color-gray-500); /* text-gray-500 */
-  font-weight: 500; /* font-medium */
-}
-
-.dark .history-title {
-  color: var(--sidebar-text-secondary-color); /* 使用新的深色模式变量 */
 }
 
 .conversation-item {
@@ -391,6 +492,7 @@ defineExpose({
   border-radius: var(--border-radius-md); /* rounded-md */
   color: var(--color-gray-500); /* text-gray-500 */
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .more-options-btn:hover {
