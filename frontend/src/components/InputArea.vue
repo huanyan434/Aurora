@@ -49,13 +49,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, type Ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
 import { Paperclip, Lightbulb, Square, Send, X } from 'lucide-vue-next';
 import { useChatStore } from '@/stores/chat';
 import { generateSnowflakeId } from '@/utils/snowflake';
-import { newConversation, stopGenerate } from '@/api/chat';
+import { newConversation, wsManager } from '@/api/chat';
 import type { Model } from '@/stores/chat';
 
 // 响应式数据
@@ -68,14 +68,6 @@ const attachment = ref<string>(''); // 存储base64编码的图片
 const chatStore = useChatStore();
 const route = useRoute();
 const router = useRouter();
-
-// EventSource引用
-const eventSource: Ref<EventSource | null> = ref(null);
-
-
-// 存储当前正在生成的消息ID和对话ID
-const currentAssistantMessageId = ref<number | null>(null);
-const currentConversationId = ref<number | null>(null);
 
 const isReasoningDisabled = computed(() => {
   // 获取当前模型列表
@@ -155,39 +147,15 @@ const removeAttachment = () => {
   }
 };
 
-// 处理流数据块
-const processStreamChunk = (
-  chunk: string,
-  onUpdate: (content: string, reasoningContent: string) => void
-) => {
-  // 解析SSE数据块
-  const lines = chunk.split('\n');
-  for (const line of lines) {
-    if (line.startsWith('data:')) {
-      try {
-        const data = JSON.parse(line.slice(5));
-        if (data.success) {
-          onUpdate(data.content || '', data.reasoningContent || '');
-        } else {
-          console.error('服务器返回错误:', data.error);
-        }
-      } catch (e) {
-        console.error('解析数据失败:', e);
-      }
-    }
-  }
-};
-
-// 处理发送消息
+// 处理发送消息（使用 WebSocket）
 const handleSendMessage = async () => {
   if (!canSendMessage.value) return;
 
-  // 设置store中的isGenerating状态
+  // 设置 store 中的 isGenerating 状态
   chatStore.setIsGenerating(true);
-  eventSource.value = null;
 
   try {
-    // 获取当前对话ID
+    // 获取当前对话 ID
     let conversationId: number | null = null;
 
     // 检查是否是根路由
@@ -198,7 +166,6 @@ const handleSendMessage = async () => {
       const response = await newConversation();
       if (response.data.success) {
         conversationId = parseInt(response.data.conversationID);
-        currentConversationId.value = conversationId;
         // 跳转到新对话页面
         await router.push(`/c/${conversationId}?type=2`);
         // 刷新对话列表
@@ -207,7 +174,7 @@ const handleSendMessage = async () => {
         throw new Error('创建新对话失败');
       }
     } else {
-      // 从路由参数获取对话ID
+      // 从路由参数获取对话 ID
       const routeParams = route.params.conversationId;
       if (typeof routeParams === 'string') {
         conversationId = parseInt(routeParams);
@@ -218,17 +185,15 @@ const handleSendMessage = async () => {
           conversationId = parseInt(param);
         }
       }
-      currentConversationId.value = conversationId;
     }
 
     if (!conversationId) {
-      throw new Error('无法确定对话ID');
+      throw new Error('无法确定对话 ID');
     }
 
-    // 生成snowflake ID
+    // 生成 snowflake ID
     const messageUserId = Number(generateSnowflakeId());
     const messageAssistantId = Number(generateSnowflakeId());
-    currentAssistantMessageId.value = messageAssistantId;
 
     // 准备请求参数
     const requestData = {
@@ -271,119 +236,35 @@ const handleSendMessage = async () => {
       isStreaming: true // 立即设置为流式传输状态
     });
 
-    // 使用 fetch + ReadableStream 处理 SSE 流（遵循规范）
-    const response = await fetch('/chat/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestData),
+    // 通过 WebSocket 发送生成请求（WebSocket 已在 MessagesContainer 中初始化）
+    wsManager.send({
+      type: 'generate',
+      conversationID: conversationId,
+      messageUserID: messageUserId,
+      messageAssistantID: messageAssistantId,
+      prompt: requestData.prompt,
+      model: requestData.model,
+      base64: requestData.base64,
+      reasoning: requestData.reasoning
     });
-
-    if (!response.body) {
-      // 如果响应没有body，设置isStreaming为false
-      chatStore.updateMessage(messageAssistantId, {
-        isStreaming: false
-      });
-      throw new Error('响应中没有body');
-    }
-
-    // 处理 SSE 流
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let accumulatedContent = '';
-    let accumulatedReasoningContent = '';
-    let lastReasoningTime = 0;
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        // 处理每个数据块
-        processStreamChunk(chunk, (content, reasoningContent) => {
-          accumulatedContent += content;
-          accumulatedReasoningContent += reasoningContent;
-
-          // 解析推理时间
-          const lines = chunk.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data:')) {
-              try {
-                const data = JSON.parse(line.slice(5));
-                if (data.success && data.reasoningTime !== undefined) {
-                  lastReasoningTime = data.reasoningTime;
-                }
-              } catch (e) {
-                // 解析失败，忽略错误
-              }
-            }
-          }
-
-          // 更新助手消息，标记为流式传输
-          chatStore.updateMessage(messageAssistantId, {
-            content: accumulatedContent,
-            reasoningContent: accumulatedReasoningContent,
-            reasoningTime: lastReasoningTime,
-            isStreaming: true
-          });
-        });
-      }
-    } catch (error) {
-      console.error('读取流时出错:', error);
-    } finally {
-      reader.releaseLock();
-      // 流结束后更新消息状态
-      chatStore.updateMessage(messageAssistantId, {
-        isStreaming: false
-      });
-    }
 
   } catch (error) {
     console.error('发送消息失败:', error);
-  } finally {
-    // 设置store中的isGenerating状态为false
     chatStore.setIsGenerating(false);
-    currentAssistantMessageId.value = null;
   }
 };
 
-
-// 处理停止生成
-const handleStopGeneration = async () => {
-  console.log('停止生成');
-
-  try {
-    // 调用后端API停止生成
-    if (currentConversationId.value) {
-      await stopGenerate({
-        conversationID: currentConversationId.value
-      });
-    }
-
-    // 通知MessagesContainer停止流式生成
-    window.dispatchEvent(new CustomEvent('stopStreamedGenerate', {
-      detail: { conversationId: currentConversationId.value }
-    }));
-
-    // 保留已生成的内容，只停止生成过程
-    console.log('已停止生成，保留已生成内容');
-  } catch (error) {
-    console.error('停止生成失败:', error);
-  } finally {
-    // 设置store中的isGenerating状态为false
-    chatStore.setIsGenerating(false);
-    currentAssistantMessageId.value = null;
-  }
+// 处理停止生成（委托给 MessagesContainer 处理）
+const handleStopGeneration = () => {
+  // 停止逻辑在 MessagesContainer 中处理
+  // 这里只需要通知 store 即可
+  chatStore.setIsGenerating(false);
 };
 
 // 切换推理模式
 const toggleReasoning = () => {
-  if (isReasoningDisabled.value) return;
   isReasoning.value = !isReasoning.value;
 };
-
 </script>
 
 <style scoped>

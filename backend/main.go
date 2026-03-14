@@ -40,6 +40,12 @@ func main() {
 	r.Use(sessions.Sessions("SESSIONID", store))
 	gob.Register(utils.User{})
 
+	// 数据库迁移 - 确保 base64 列存在
+	db := utils.GetDB()
+	if !db.Migrator().HasColumn(&utils.Message{}, "base64") {
+		db.Migrator().AddColumn(&utils.Message{}, "base64")
+	}
+
 	routes.ChatInit(r)
 	routes.ApiInit(r)
 

@@ -71,6 +71,8 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { wsManager } from '@/api/chat';
+import { toastError } from '@/components/ui/toast/use-toast';
 
 const sidebarStore = useSidebarStore();
 const isMobile = ref(false);
@@ -82,14 +84,27 @@ const darkMode = ref(false);
 const notifications = ref(true);
 const settingsStore = useSettingsStore();
 
-// 检测屏幕尺寸并设置isMobile标志
+// 检测屏幕尺寸并设置 isMobile 标志
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 1135;
 };
 
-// 初始化
-onMounted(() => {
+// 初始化 - WebSocket 连接和深色模式
+onMounted(async () => {
   checkScreenSize();
+  
+  // 建立 WebSocket 连接（所有页面都需要）
+  try {
+    await wsManager.connect();
+    console.log("✅ WebSocket 连接已建立");
+  } catch (error) {
+    console.log("❌ WebSocket 连接失败");
+    toastError("WebSocket 连接失败，请检查后端服务是否正常运行");
+  }
+  
+  // 应用深色模式设置
+  const darkModeSetting = settingsStore.getSetting('darkMode');
+  applyDarkMode(darkModeSetting);
 });
 
 // 移动端关闭侧边栏
@@ -136,13 +151,6 @@ const openSettingsDialogFromChild = () => {
   darkMode.value = settingsStore.getSetting('darkMode');
   isSettingsDialogOpen.value = true;
 };
-
-// 在组件挂载时应用深色模式设置
-onMounted(() => {
-  // 从设置 store 获取深色模式设置并应用
-  const darkModeSetting = settingsStore.getSetting('darkMode');
-  applyDarkMode(darkModeSetting);
-});
 </script>
 
 <style>
@@ -257,7 +265,7 @@ onMounted(() => {
   /* items-center */
 }
 
-/* 修复Dialog遮罩层和内容的z-index */
+/* 修复 Dialog 遮罩层和内容的 z-index */
 [data-slot="dialog-overlay"] {
   z-index: calc(var(--z-index-dialog) - 1) !important;
 }

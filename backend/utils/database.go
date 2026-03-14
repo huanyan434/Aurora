@@ -90,6 +90,7 @@ type Message struct {
 	ConversationID   int64     `gorm:"column:conversation_id;type:bigint;index"`
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 	ReasoningContent string    `gorm:"column:reasoning_content;type:mediumtext"`
+	Base64           string    `gorm:"column:base64;type:mediumtext"`
 }
 
 // TableName 指定Message结构体对应的表名
@@ -374,12 +375,15 @@ func LoadConversationHistory(conversationID int64) ([]openai.ChatCompletionMessa
 
 type messageFormat struct {
 	ID               int64  `json:"id"`
+	ConversationID   int64  `json:"conversation_id"`
 	Role             string `json:"role"`
 	Content          string `json:"content"`
+	Base64           string `json:"base64,omitempty"`
 	ReasoningContent string `json:"reasoning_content,omitempty"`
+	CreatedAt        string `json:"created_at"`
 }
 
-// LoadConversationHistoryFormat2 加载指定conversationID的对话历史，返回自定义格式
+// LoadConversationHistoryFormat2 加载指定 conversationID 的对话历史，返回自定义格式
 func LoadConversationHistoryFormat2(conversationID int64) ([]messageFormat, error) {
 	db := GetDB()
 	var messages []Message
@@ -389,25 +393,19 @@ func LoadConversationHistoryFormat2(conversationID int64) ([]messageFormat, erro
 	}
 	var chatMessages []messageFormat
 	for _, msg := range messages {
-		if msg.Role == "assistant" {
-			chatMessages = append(chatMessages, messageFormat{
-				ID:               msg.ID,
-				Role:             msg.Role,
-				Content:          msg.Content,
-				ReasoningContent: msg.ReasoningContent,
-			})
-		} else {
-			chatMessages = append(chatMessages, messageFormat{
-				ID:      msg.ID,
-				Role:    msg.Role,
-				Content: msg.Content,
-			})
-		}
+		chatMessages = append(chatMessages, messageFormat{
+			ID:               msg.ID,
+			ConversationID:   msg.ConversationID,
+			Role:             msg.Role,
+			Content:          msg.Content,
+			Base64:           msg.Base64,
+			ReasoningContent: msg.ReasoningContent,
+			CreatedAt:        msg.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
 	}
 
 	return chatMessages, nil
 }
-
 // SaveConversationHistory 保存对话历史到指定conversationID
 func SaveConversationHistory(conversationID int64, messages []openai.ChatCompletionMessage) error {
 	db := GetDB()

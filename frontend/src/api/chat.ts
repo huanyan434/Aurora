@@ -445,13 +445,169 @@ export const renameConversation = async (data: RenameConversationRequest) => {
     },
     body: JSON.stringify(data),
   })
-  
+
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`)
   }
-  
+
   const responseData = await response.json()
   return {
     data: responseData
   }
 }
+
+// WebSocket 响应类型定义
+export interface WebSocketResponse<T = any> {
+  type: string
+  data: T
+}
+
+// WebSocket 管理器类
+export class WebSocketManager {
+  private static instance: WebSocketManager
+  private ws: WebSocket | null = null
+  // 使用 Map 存储不同类型的消息处理器，key 为响应 type
+  private messageHandlers: Map<string, Set<(data: any) => void>> = new Map()
+  private connectPromise: Promise<void> | null = null
+
+  private constructor() {}
+
+  static getInstance(): WebSocketManager {
+    if (!WebSocketManager.instance) {
+      WebSocketManager.instance = new WebSocketManager()
+    }
+    return WebSocketManager.instance
+  }
+
+  // 连接到 WebSocket（全局单连接，不需要 conversationID）
+  connect(): Promise<void> {
+    console.log('WebSocketManager.connect() 被调用')
+    
+    // 如果已经有连接且处于打开状态，直接返回
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('WebSocket 已有连接且已打开')
+      return Promise.resolve()
+    }
+
+    // 如果正在连接中，返回现有的连接 Promise
+    if (this.connectPromise) {
+      console.log('WebSocket 正在连接中，返回现有 Promise')
+      return this.connectPromise
+    }
+
+    console.log('开始创建新的 WebSocket 连接...')
+    
+    // 创建连接超时计时器
+    let connectTimeout: ReturnType<typeof setTimeout> | null = null
+    
+    this.connectPromise = new Promise((resolve, reject) => {
+      // 如果已有连接，先关闭
+      if (this.ws) {
+        console.log('关闭现有 WebSocket 连接')
+        this.ws.close()
+      }
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = `${protocol === 'wss:' ? 'wss' : 'ws'}://${window.location.host}/chat/ws`
+      console.log('WebSocket URL:', wsUrl, '(通过 Vite 代理到后端 5000 端口)')
+
+      this.ws = new WebSocket(wsUrl)
+
+      // 设置连接超时（5 秒）
+      connectTimeout = setTimeout(() => {
+        console.log('⏱️ WebSocket 连接超时')
+        this.connectPromise = null
+        reject(new Error('WebSocket 连接超时'))
+      }, 5000)
+
+      this.ws.onopen = () => {
+        console.log('✅ WebSocket 连接成功 (onopen)')
+        if (connectTimeout) clearTimeout(connectTimeout)
+        resolve()
+      }
+
+      this.ws.onerror = (error) => {
+        console.log('❌ WebSocket 连接错误 (onerror):', error)
+        if (connectTimeout) clearTimeout(connectTimeout)
+        this.connectPromise = null
+        // 不 reject，避免未处理的错误
+        resolve()
+      }
+
+      this.ws.onclose = () => {
+        console.log('🔌 WebSocket 连接关闭 (onclose)')
+        if (connectTimeout) clearTimeout(connectTimeout)
+        this.connectPromise = null
+      }
+
+      this.ws.onmessage = (event) => {
+        console.log('📨 WebSocket 收到消息:', event.data)
+        try {
+          const response: WebSocketResponse = JSON.parse(event.data)
+
+          // 根据响应 type 调用对应的处理器
+          const handlers = this.messageHandlers.get(response.type)
+          if (handlers) {
+            handlers.forEach(handler => handler(response.data))
+          }
+        } catch (error) {
+          console.error('解析 WebSocket 消息失败:', error)
+        }
+      }
+    })
+
+    return this.connectPromise
+  }
+
+  // 注册消息处理器（按响应 type 注册）
+  onMessage(type: string, handler: (data: any) => void): void {
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, new Set())
+    }
+    this.messageHandlers.get(type)!.add(handler)
+  }
+
+  // 移除消息处理器
+  offMessage(type: string, handler: (data: any) => void): void {
+    const handlers = this.messageHandlers.get(type)
+    if (handlers) {
+      handlers.delete(handler)
+      if (handlers.size === 0) {
+        this.messageHandlers.delete(type)
+      }
+    }
+  }
+
+  // 移除所有指定类型的处理器
+  clearMessageHandlers(type: string): void {
+    this.messageHandlers.delete(type)
+  }
+
+  // 发送消息（简化，直接发送数据对象）
+  send(data: any): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data))
+      console.log('WebSocket 消息已发送:', data)
+    } else {
+      console.warn('WebSocket 未就绪，readyState:', this.ws?.readyState)
+      // 如果 WebSocket 未就绪，尝试重新连接
+      if (!this.ws || this.ws.readyState !== WebSocket.CONNECTING) {
+        console.log('尝试重新连接 WebSocket...')
+        this.connect()
+      }
+    }
+  }
+
+  // 关闭连接
+  close(): void {
+    if (this.ws) {
+      this.ws.close()
+      this.ws = null
+    }
+    this.connectPromise = null
+    this.messageHandlers.clear()
+  }
+}
+
+// 导出单例
+export const wsManager = WebSocketManager.getInstance()

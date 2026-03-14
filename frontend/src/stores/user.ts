@@ -58,12 +58,10 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const checkAuthenticated = () => {
-    init()
+    // 只检查本地状态，不发起网络请求
     if (!userInfo.id || !userInfo.email || !userInfo.username || !isAuthenticated.value) {
-      logout()
       return false
     }
-
     return true
   }
 
