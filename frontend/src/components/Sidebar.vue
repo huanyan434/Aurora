@@ -2,14 +2,16 @@
   <div class="sidebar-container">
     <!-- 侧边栏上部 -->
     <SidebarHeader
+      ref="sidebarHeaderRef"
       :toggle-sidebar="props.toggleSidebar"
       :is-mobile-toggle-visible="!sidebarStore.collapsed"
       :is-collapsed="sidebarStore.collapsed"
       @new-conversation="handleNewConversation"
+      @search="handleSearch"
     />
 
     <!-- 对话列表 -->
-    <ConversationsList ref="conversationsListRef" />
+    <ConversationsList ref="conversationsListRef" :search-query="searchQuery" @conversation-selected="handleConversationSelected" />
   </div>
 </template>
 
@@ -29,6 +31,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const sidebarStore = useSidebarStore();
 
+// 搜索关键词
+const searchQuery = ref('');
+
+// 侧边栏头部组件引用
+const sidebarHeaderRef = ref<InstanceType<typeof SidebarHeader> | null>(null);
+
 // 对话列表组件引用
 const conversationsListRef = ref<InstanceType<typeof ConversationsList> | null>(
     null,
@@ -39,6 +47,20 @@ const handleNewConversation = () => {
     // 刷新对话列表
     if (conversationsListRef.value) {
         conversationsListRef.value.reloadConversations();
+    }
+};
+
+// 处理搜索事件
+const handleSearch = (query: string) => {
+    searchQuery.value = query;
+};
+
+// 处理对话选择事件，清空搜索框并关闭搜索
+const handleConversationSelected = () => {
+    searchQuery.value = '';
+    // 关闭搜索框
+    if (sidebarHeaderRef.value) {
+        sidebarHeaderRef.value.closeSearch();
     }
 };
 </script>

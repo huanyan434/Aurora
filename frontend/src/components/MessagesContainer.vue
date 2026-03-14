@@ -724,19 +724,25 @@ const deleteMessageAPIFunc = async (messageId: number) => {
     }
 };
 
-// WebSocket 生成状态
-let wsGenerateState: {
-    conversationId: number | null;
+// WebSocket 生成状态 - 按对话 ID 存储
+const wsGenerateStates = new Map<number, {
     messageAssistantId: number | null;
     accumulatedContent: string;
     accumulatedReasoningContent: string;
     lastReasoningTime: number;
-} = {
-    conversationId: null,
-    messageAssistantId: null,
-    accumulatedContent: "",
-    accumulatedReasoningContent: "",
-    lastReasoningTime: 0,
+}>();
+
+// 获取当前对话的生成状态
+const getWsGenerateState = (conversationId: number) => {
+    if (!wsGenerateStates.has(conversationId)) {
+        wsGenerateStates.set(conversationId, {
+            messageAssistantId: null,
+            accumulatedContent: "",
+            accumulatedReasoningContent: "",
+            lastReasoningTime: 0,
+        });
+    }
+    return wsGenerateStates.get(conversationId)!;
 };
 
 // 保存当前的生成响应处理器引用，用于组件卸载时清理
@@ -748,32 +754,41 @@ const setupGlobalGenerateHandler = () => {
     currentGenerateHandler = (data: any) => {
         console.log('收到生成响应:', data);
         
-        if (!wsGenerateState.messageAssistantId) {
+        // 获取当前对话 ID
+        const convId = currentConversationId.value;
+        if (isNaN(convId)) {
+            console.warn('当前对话 ID 无效');
+            return;
+        }
+
+        const state = getWsGenerateState(convId);
+        
+        if (!state.messageAssistantId) {
             console.warn('没有设置 messageAssistantId，忽略响应');
             return;
         }
 
         if (data.success) {
             // 累积内容
-            wsGenerateState.accumulatedContent += data.content || "";
-            wsGenerateState.accumulatedReasoningContent += data.reasoningContent || "";
+            state.accumulatedContent += data.content || "";
+            state.accumulatedReasoningContent += data.reasoningContent || "";
             if (data.reasoningTime !== undefined) {
-                wsGenerateState.lastReasoningTime = data.reasoningTime;
+                state.lastReasoningTime = data.reasoningTime;
             }
 
             // 更新助手消息
-            chatStore.updateMessage(wsGenerateState.messageAssistantId, {
-                content: wsGenerateState.accumulatedContent,
-                reasoningContent: wsGenerateState.accumulatedReasoningContent,
-                reasoningTime: wsGenerateState.lastReasoningTime,
+            chatStore.updateMessage(state.messageAssistantId, {
+                content: state.accumulatedContent,
+                reasoningContent: state.accumulatedReasoningContent,
+                reasoningTime: state.lastReasoningTime,
                 isStreaming: true,
             });
         } else {
             console.error("服务器返回错误:", data.error);
             toastError(data.error || "生成失败");
             // 生成失败时，移除占位消息
-            if (wsGenerateState.messageAssistantId) {
-                chatStore.removeMessage(wsGenerateState.messageAssistantId);
+            if (state.messageAssistantId) {
+                chatStore.removeMessage(state.messageAssistantId);
             }
             chatStore.setIsGenerating(false);
         }
@@ -786,21 +801,29 @@ const setupGlobalGenerateHandler = () => {
     currentGenerateEndHandler = (data: any) => {
         console.log('收到生成结束信号:', data);
         
+        // 从结束信号中获取 conversationID
+        const conversationId = data.conversationID;
+        if (!conversationId) {
+            console.warn('结束信号中没有 conversationID');
+            return;
+        }
+        
+        const state = getWsGenerateState(conversationId);
+        
         // 设置消息为非流式状态
-        if (wsGenerateState.messageAssistantId) {
-            chatStore.updateMessage(wsGenerateState.messageAssistantId, {
+        if (state.messageAssistantId) {
+            chatStore.updateMessage(state.messageAssistantId, {
                 isStreaming: false,
             });
         }
         
-        // 重置状态
-        wsGenerateState = {
-            conversationId: null,
+        // 重置该对话的状态
+        wsGenerateStates.set(conversationId, {
             messageAssistantId: null,
             accumulatedContent: "",
             accumulatedReasoningContent: "",
             lastReasoningTime: 0,
-        };
+        });
         
         // 设置全局生成状态为 false
         chatStore.setIsGenerating(false);
@@ -822,30 +845,31 @@ watch(
 
 // 监听 store 中的消息变化，当有新的流式消息时设置 wsGenerateState
 watch(
-    () => chatStore.getIsGenerating,
-    (isGenerating) => {
-        if (isGenerating) {
-            // 获取当前对话 ID
-            const convId = currentConversationId.value;
-            if (isNaN(convId)) return;
+    () => chatStore.messages,
+    (newMessages) => {
+        // 获取当前对话 ID
+        const convId = currentConversationId.value;
+        if (isNaN(convId)) return;
 
-            // 获取当前对话的消息
-            const messages = chatStore.getMessagesByConversationId(convId);
-            // 找到最新的流式消息
-            const streamingMessage = messages.find(msg => msg.isStreaming);
-            if (streamingMessage && streamingMessage.role === 'assistant') {
-                // 设置 wsGenerateState
-                wsGenerateState = {
-                    conversationId: convId,
-                    messageAssistantId: streamingMessage.id!,
-                    accumulatedContent: "",
-                    accumulatedReasoningContent: "",
-                    lastReasoningTime: 0,
-                };
-                console.log('设置 wsGenerateState:', wsGenerateState);
+        // 获取当前对话的消息
+        const messages = newMessages[convId];
+        if (!messages || messages.length === 0) return;
+
+        // 找到最新的流式消息
+        const streamingMessage = messages.find(msg => msg.isStreaming && msg.role === 'assistant');
+        if (streamingMessage && streamingMessage.id) {
+            // 设置该对话的 wsGenerateState
+            const state = getWsGenerateState(convId);
+            if (state.messageAssistantId !== streamingMessage.id) {
+                state.messageAssistantId = streamingMessage.id;
+                state.accumulatedContent = "";
+                state.accumulatedReasoningContent = "";
+                state.lastReasoningTime = 0;
+                console.log('设置 wsGenerateState:', convId, state);
             }
         }
     },
+    { deep: true },
 );
 
 /**
@@ -939,6 +963,13 @@ const loadCurrentConversation = async () => {
         const conversationId = conversationIdString ? parseInt(conversationIdString) : NaN;
 
         if (!isNaN(conversationId)) {
+            // 切换对话时，重置当前对话的生成状态
+            const state = getWsGenerateState(conversationId);
+            state.messageAssistantId = null;
+            state.accumulatedContent = "";
+            state.accumulatedReasoningContent = "";
+            state.lastReasoningTime = 0;
+            
             // 检查是否存在 type 参数且为数字
             const typeParam = route.query.type;
             let typeValue: number | undefined;

@@ -42,7 +42,6 @@
                     v-model="searchQuery"
                     placeholder="搜索对话"
                     class="search-input"
-                    @keyup.enter="handleSearch"
                     @keydown.esc="closeSearch"
                 />
                 <button class="search-close-btn" @click="closeSearch">
@@ -70,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSidebarStore } from '@/stores/sidebar';
 import { Button } from '@/components/ui/button';
@@ -98,11 +97,30 @@ const isSearchActive = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const searchContainerRef = ref<HTMLDivElement | null>(null);
 
+// emit 事件
+const emit = defineEmits<{
+    search: [query: string];
+}>();
+
+// 监听搜索词变化，实时触发搜索
+watch(searchQuery, (newQuery) => {
+    emit('search', newQuery);
+});
+
 // 点击外部关闭搜索
 const handleClickOutside = (event: MouseEvent) => {
     if (isSearchActive.value && searchContainerRef.value) {
-        const target = event.target as Node;
-        if (!searchContainerRef.value.contains(target)) {
+        const targetNode = event.target as Node;
+        const targetHTMLElement = event.target as HTMLElement;
+
+        // 检查点击的元素是否是对话 item 或其子元素
+        const isConversationItem = targetHTMLElement.closest('.conversation-item');
+        
+        // 如果点击的是对话 item，不关闭搜索框
+        if (isConversationItem) {
+            return;
+        }
+        if (!searchContainerRef.value.contains(targetNode)) {
             closeSearch();
         }
     }
@@ -135,7 +153,11 @@ const openSearch = async () => {
     isSearchActive.value = true;
     await nextTick();
     if (searchInputRef.value) {
-        searchInputRef.value.focus();
+        // Input 组件实例，需要通过 $el 访问底层 input 元素
+        const inputElement = (searchInputRef.value as any).$el as HTMLInputElement;
+        if (inputElement) {
+            inputElement.focus();
+        }
     }
 };
 
@@ -143,17 +165,18 @@ const openSearch = async () => {
 const closeSearch = () => {
     isSearchActive.value = false;
     searchQuery.value = '';
-};
-
-const handleSearch = () => {
-    console.log('搜索对话:', searchQuery.value);
-    // TODO: 实现搜索功能
+    emit('search', '');
 };
 
 const handleCommunity = () => {
     console.log('打开社区');
     // TODO: 实现社区功能
 };
+
+// 暴露 closeSearch 方法供父组件调用
+defineExpose({
+    closeSearch
+});
 </script>
 
 <style scoped>

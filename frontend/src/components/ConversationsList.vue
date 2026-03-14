@@ -23,7 +23,7 @@
         <div v-for="conversation in group.conversations" :key="conversation.id" :class="[
           'conversation-item',
           selectedConversationId === conversation.id ? 'conversation-selected' : 'conversation-unselected'
-        ]" @click="selectConversation(conversation.id)">
+        ]" @click="handleSelectConversation(conversation.id)">
           <div class="conversation-title">
             {{ conversation.title }}
           </div>
@@ -131,8 +131,24 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 
+
+interface Props {
+  searchQuery?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  searchQuery: '',
+});
+
 // 获取聊天store
+
+
+const emit = defineEmits<{
+  conversationSelected: [];
+}>();
 const chatStore = useChatStore();
+
+
 const selectedConversationId = ref<number | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -141,6 +157,18 @@ const showDeleteDialog = ref(false);
 const renameInput = ref('');
 const currentConversation = ref<any>(null);
 const isAllConversationsExpanded = ref(true);
+
+// 搜索过滤后的对话列表
+const filteredConversations = computed(() => {
+  if (!props.searchQuery) {
+    return chatStore.conversations;
+  }
+  
+  const query = props.searchQuery.toLowerCase().trim();
+  return chatStore.conversations.filter(conv => 
+    conv.title.toLowerCase().includes(query)
+  );
+});
 
 // 获取路由和路由器
 const route = useRoute();
@@ -153,7 +181,7 @@ const toggleAllConversations = () => {
 
 // 按时间分组显示对话
 const groupedConversations = computed(() => {
-  const conversations = chatStore.conversations;
+  const conversations = filteredConversations.value;
   const now = new Date();
   const groups: Record<string, any[]> = {
     '过去 7 天': [],
@@ -228,6 +256,12 @@ const selectConversation = (id: number) => {
   selectedConversationId.value = id;
   // 跳转到对应的对话页面
   router.push(`/c/${id}`);
+};
+
+// 处理选择对话（先触发事件再选择）
+const handleSelectConversation = (id: number) => {
+  emit('conversationSelected');
+  selectConversation(id);
 };
 
 // 重命名对话的函数
