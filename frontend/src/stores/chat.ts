@@ -282,6 +282,20 @@ export const useChatStore = defineStore('chat', {
     // 删除指定对话的所有消息
     deleteMessagesByConversationId(conversationId: number) {
       delete this.messages[conversationId];
+    },
+
+    // 根据 ID 获取消息
+    getMessageById(messageId: number): Message | undefined {
+      for (const conversationId in this.messages) {
+        const messages = this.messages[conversationId];
+        if (messages) {
+          const message = messages.find(msg => msg.id === messageId);
+          if (message) {
+            return message;
+          }
+        }
+      }
+      return undefined;
     }
   },
 });

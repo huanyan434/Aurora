@@ -77,18 +77,19 @@
                         <!-- 加载占位符 -->
                         <div
                             v-else-if="message.isStreaming"
-                            class="flex space-x-2"
+                            class="inline-flex items-center space-x-1"
                         >
                             <div
-                                class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce"
+                                class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
+                                style="animation-duration: 0.6s"
                             ></div>
                             <div
-                                class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce"
-                                style="animation-delay: 0.2s"
+                                class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
+                                style="animation-duration: 0.6s; animation-delay: 0.1s"
                             ></div>
                             <div
-                                class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce"
-                                style="animation-delay: 0.4s"
+                                class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
+                                style="animation-duration: 0.6s; animation-delay: 0.2s"
                             ></div>
                         </div>
                     </div>
@@ -125,8 +126,7 @@ c-46.228,0-84.019,41.834-84.019,86.838V612c0,45.004,41.179,87.428,87.429,87.428H
 h21.857c46.25,0,87.429-42.424,87.429-87.428v-349.19L502.714,0z M459,655.715H131.143c-22.95,0-43.714-21.441-43.714-43.715
 V174.857c0-22.272,18.688-42.993,41.638-42.993L153,131.143v393.429C153,569.576,194.178,612,240.428,612h262.286
 C502.714,634.273,481.949,655.715,459,655.715z M612,524.572c0,22.271-20.765,43.713-43.715,43.713H240.428
-c-22.95,0-43.714-21.441-43.714-43.713V87.429c0-22.272,20.764-43.714,43.714-43.714H459c-0.351,50.337,0,87.975,0,87.975
-c0,45.419,40.872,86.882,87.428,86.882c0,0,23.213,0,65.572,0V524.572z M546.428,174.857c-23.277,0-43.714-42.293-43.714-64.981
+c-22.95,0-43.714-21.441-43.714-43.713V87.429c0-22.272,20.764-43.714,43.714-43.714L153,131.143c0,0,23.213,0,65.572,0V524.572z M546.428,174.857c-23.277,0-43.714-42.293-43.714-64.981
 c0,0,0-22.994,0-65.484v-0.044L612,174.857H546.428z M502.714,306.394H306c-12.065,0-21.857,9.77-21.857,21.835
 c0,12.065,9.792,21.835,21.857,21.835h196.714c12.065,0,21.857-9.771,21.857-21.835
 C524.571,316.164,514.779,306.394,502.714,306.394z M502.714,415.57H306c-12.065,0-21.857,9.77-21.857,21.834
@@ -202,10 +202,11 @@ z"
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
 import {
-    getMessagesList,
     deleteMessage as deleteMessageAPI,
     getThreadList,
     getModelsList,
+    getMessagesList,
+    wsManager,
 } from "@/api/chat";
 import { useRoute } from "vue-router";
 import { marked } from "marked";
@@ -223,17 +224,6 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 
-// 定义消息类型
-interface DisplayMessage {
-    id?: number;
-    role: "user" | "assistant";
-    content: string;
-    base64?: string;
-    reasoningContent?: string;
-    reasoningTime?: number;
-    isStreaming?: boolean;
-}
-
 // 路由和路由参数
 const route = useRoute();
 const chatStore = useChatStore();
@@ -248,66 +238,20 @@ const models = ref<any[]>([]);
 // 获取容器元素的引用
 const containerRef = ref<HTMLElement | null>(null);
 
-// 计算属性：获取当前对话的消息
-const conversationMessages = computed(() => {
-    // 从路由参数获取对话ID
-    const routeParams = route.params.conversationId;
-    let conversationId: number | null = null;
-
-    if (typeof routeParams === "string") {
-        conversationId = parseInt(routeParams);
-    } else if (Array.isArray(routeParams) && routeParams.length > 0) {
-        // 修复类型检查问题
-        const param = routeParams[0];
-        if (param !== undefined) {
-            conversationId = parseInt(param);
-        }
+// 使用计算属性获取当前对话 ID（从路由路径）
+const currentConversationId = computed(() => {
+    const pathParts = route.path.split("/");
+    if (pathParts[1] === "c" && pathParts[2]) {
+        return parseInt(pathParts[2]);
     }
-
-    // 如果成功解析出有效的对话ID，则返回对应消息
-    if (conversationId !== null && !isNaN(conversationId)) {
-        return chatStore.getMessagesByConversationId(conversationId);
-    }
-
-    // 否则返回空数组
-    return [];
+    return NaN;
 });
 
-// 计算属性：处理显示的消息
+// 从 store 中获取消息
 const displayedMessages = computed(() => {
-    return conversationMessages.value.map((msg): DisplayMessage => {
-        // 解析历史消息中的推理内容
-        let reasoningContent = msg.reasoningContent;
-        let reasoningTime = msg.reasoningTime || 0;
-
-        // 如果没有独立的推理内容字段，尝试从内容中提取
-        if (!reasoningContent && msg.content) {
-            // 提取内容中的推理部分
-            const thinkMatches = msg.content.matchAll(
-                /<think time=(\d+)>([\s\S]*?)<\/think>/g,
-            );
-            const contents = [];
-            for (const match of thinkMatches) {
-                contents.push(match[2]);
-                // 获取最后一个推理时间
-                reasoningTime = match[1] ? parseInt(match[1]) || 0 : 0;
-            }
-
-            if (contents.length > 0) {
-                reasoningContent = contents.join("");
-            }
-        }
-
-        return {
-            id: msg.id,
-            role: msg.role as "user" | "assistant",
-            content: msg.content,
-            base64: msg.base64,
-            reasoningContent: reasoningContent,
-            reasoningTime: reasoningTime,
-            isStreaming: msg.isStreaming,
-        };
-    });
+    const convId = currentConversationId.value;
+    if (isNaN(convId)) return [];
+    return chatStore.getMessagesByConversationId(convId) || [];
 });
 
 /**
@@ -320,9 +264,9 @@ const scrollToBottom = () => {
 };
 
 /**
- * 渲染用户消息内容（仅处理base64图片标签）
+ * 渲染用户消息内容（仅处理 base64 图片标签）
  * @param content 原始内容
- * @returns 处理后的HTML
+ * @returns 处理后的 HTML
  */
 const renderUserContent = (content: string) => {
     if (!content) return "";
@@ -340,34 +284,34 @@ const renderUserContent = (content: string) => {
             }
             // 否则检查是否为纯 base64 字符串
             else {
-                // 验证base64格式
+                // 验证 base64 格式
                 const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
                 if (base64Regex.test(trimmedContent)) {
-                    // 如果是有效的base64，创建图片标签
-                    // 尝试检测图片类型，如果没有检测到则默认使用jpeg
+                    // 如果是有效的 base64，创建图片标签
+                    // 尝试检测图片类型，如果没有检测到则默认使用 jpeg
                     let imageType = "jpeg"; // 默认类型
 
-                    // 检查base64字符串是否包含图片类型信息
+                    // 检查 base64 字符串是否包含图片类型信息
                     if (trimmedContent.startsWith("/9j/")) {
-                        // JPEG文件头
+                        // JPEG 文件头
                         imageType = "jpeg";
                     } else if (trimmedContent.startsWith("iVBORw0KGgo=")) {
-                        // PNG文件头
+                        // PNG 文件头
                         imageType = "png";
                     } else if (
                         trimmedContent.startsWith("R0lGODlh") ||
                         trimmedContent.startsWith("R0lGODdh")
                     ) {
-                        // GIF文件头
+                        // GIF 文件头
                         imageType = "gif";
                     } else if (trimmedContent.startsWith("TU0AK")) {
-                        // TIFF文件头
+                        // TIFF 文件头
                         imageType = "tiff";
                     }
 
                     return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
                 } else {
-                    // 如果不是有效的base64，返回空字符串（移除标签）
+                    // 如果不是有效的 base64，返回空字符串（移除标签）
                     console.warn(
                         "Invalid base64 format detected and removed:",
                         trimmedContent,
@@ -378,7 +322,7 @@ const renderUserContent = (content: string) => {
         },
     );
 
-    // 转义HTML以防止XSS攻击，但保留已处理的图片标签
+    // 转义 HTML 以防止 XSS 攻击，但保留已处理的图片标签
     const escapeHtml = (unsafe: string) => {
         return unsafe
             .replace(/&/g, "&amp;")
@@ -388,14 +332,14 @@ const renderUserContent = (content: string) => {
             .replace(/'/g, "&#039;");
     };
 
-    // 分割内容，对非图片部分进行HTML转义
+    // 分割内容，对非图片部分进行 HTML 转义
     const parts = processedContent.split(/(<img\s[^>]*>)/gi);
     const escapedParts = parts.map((part) => {
         if (part.toLowerCase().startsWith("<img")) {
             // 如果是图片标签，不进行转义
             return part;
         } else {
-            // 如果是非图片内容，进行HTML转义
+            // 如果是非图片内容，进行 HTML 转义
             return escapeHtml(part);
         }
     });
@@ -424,34 +368,34 @@ const renderContent = (content: string) => {
             }
             // 否则检查是否为纯 base64 字符串
             else {
-                // 验证base64格式
+                // 验证 base64 格式
                 const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
                 if (base64Regex.test(trimmedContent)) {
-                    // 如果是有效的base64，创建图片标签
-                    // 尝试检测图片类型，如果没有检测到则默认使用jpeg
+                    // 如果是有效的 base64，创建图片标签
+                    // 尝试检测图片类型，如果没有检测到则默认使用 jpeg
                     let imageType = "jpeg"; // 默认类型
 
-                    // 检查base64字符串是否包含图片类型信息
+                    // 检查 base64 字符串是否包含图片类型信息
                     if (trimmedContent.startsWith("/9j/")) {
-                        // JPEG文件头
+                        // JPEG 文件头
                         imageType = "jpeg";
                     } else if (trimmedContent.startsWith("iVBORw0KGgo=")) {
-                        // PNG文件头
+                        // PNG 文件头
                         imageType = "png";
                     } else if (
                         trimmedContent.startsWith("R0lGODlh") ||
                         trimmedContent.startsWith("R0lGODdh")
                     ) {
-                        // GIF文件头
+                        // GIF 文件头
                         imageType = "gif";
                     } else if (trimmedContent.startsWith("TU0AK")) {
-                        // TIFF文件头
+                        // TIFF 文件头
                         imageType = "tiff";
                     }
 
                     return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
                 } else {
-                    // 如果不是有效的base64，返回空字符串（移除标签）
+                    // 如果不是有效的 base64，返回空字符串（移除标签）
                     console.warn(
                         "Invalid base64 format detected and removed:",
                         trimmedContent,
@@ -575,7 +519,7 @@ const renderContent = (content: string) => {
                     displayMode: true,
                     output: "html",
                 });
-                // 添加KaTeX相关的CSS类以确保正确显示
+                // 添加 KaTeX 相关的 CSS 类以确保正确显示
                 return `${rendered}`;
             } catch (error) {
                 console.warn("LaTeX parsing error (inline):", error);
@@ -608,7 +552,7 @@ const renderContent = (content: string) => {
         },
     );
 
-    // 处理 [ ... ] 格式的块级公式（常见于AI输出）
+    // 处理 [... ] 格式的块级公式（常见于 AI 输出）
     processedContent = processedContent.replace(
         /\[([^\[\]]*)\]/g,
         (match, formula) => {
@@ -617,25 +561,25 @@ const renderContent = (content: string) => {
                 const cleanedFormula = formula.trim();
                 if (!cleanedFormula) return match; // 如果公式为空，返回原始内容
 
-                // 检查是否包含常见的LaTeX命令
+                // 检查是否包含常见的 LaTeX 命令
                 if (!formula.includes("\\")) {
-                    return match; // 如果不包含LaTeX命令，不处理
+                    return match; // 如果不包含 LaTeX 命令，不处理
                 }
 
-                // 预处理一些常见的非标准LaTeX语法和清理意外字符
+                // 预处理一些常见的非标准 LaTeX 语法和清理意外字符
                 let processedFormula = cleanedFormula
-                    .replace(/\\+$/, "") // 移除末尾多余的反杠
-                    .replace(/^\s*\\/, "") // 移除开头的意外反杠
+                    .replace(/\\+$/, "") // 移除末尾多余的反斜杠
+                    .replace(/^\s*\\/, "") // 移除开头的意外反斜杠
                     .trim(); // 再次清理空白
 
-                // 检查处理后的公式是否仍然包含LaTeX命令
+                // 检查处理后的公式是否仍然包含 LaTeX 命令
                 if (!processedFormula.includes("\\")) {
-                    return match; // 如果处理后不再包含LaTeX命令，不处理
+                    return match; // 如果处理后不再包含 LaTeX 命令，不处理
                 }
 
                 const rendered = katex.renderToString(processedFormula, {
                     throwOnError: false,
-                    displayMode: true, // 使用display模式渲染方括号公式
+                    displayMode: true, // 使用 display 模式渲染方括号公式
                     output: "html",
                 });
                 return rendered;
@@ -656,11 +600,40 @@ const copyMessage = async (content: string) => {
     try {
         // 在复制之前移除 <model=xxx> 标签
         const cleanContent = content.replace(/<model=[^>]+>/g, "").trim();
-        await navigator.clipboard.writeText(cleanContent);
+        
+        // 检查 navigator.clipboard 是否可用
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(cleanContent);
+        } else {
+            // 降级方案：使用传统的 execCommand 方法
+            const textArea = document.createElement('textarea');
+            textArea.value = cleanContent;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    toastSuccess("消息已复制到剪贴板");
+                    document.body.removeChild(textArea);
+                    return;
+                }
+            } catch (err) {
+                console.error('execCommand 复制失败:', err);
+            }
+            
+            document.body.removeChild(textArea);
+            throw new Error('剪贴板 API 不可用');
+        }
+        
         toastSuccess("消息已复制到剪贴板");
     } catch (err) {
-        toastError("无法复制消息到剪贴板");
         console.error("复制失败:", err);
+        toastError("无法复制消息到剪贴板");
     }
 };
 
@@ -672,30 +645,30 @@ const handleImageError = (event: Event) => {
     imgElement.style.display = "none";
 };
 
-// 获取图片源，处理Data URL或纯base64
+// 获取图片源，处理 Data URL 或纯 base64
 const getImageSrc = (src: string) => {
     if (!src) return "";
 
-    // 如果已经是Data URL格式（以data:开头），直接返回
+    // 如果已经是 Data URL 格式（以 data:开头），直接返回
     if (src.startsWith("data:")) {
         return src;
     }
 
-    // 如果是纯base64字符串，添加Data URL前缀
+    // 如果是纯 base64 字符串，添加 Data URL 前缀
     // 首先尝试检测图片类型
     let imageType = "jpeg"; // 默认类型
 
     if (src.startsWith("/9j/")) {
-        // JPEG文件头
+        // JPEG 文件头
         imageType = "jpeg";
     } else if (src.startsWith("iVBORw0KGgo=")) {
-        // PNG文件头
+        // PNG 文件头
         imageType = "png";
     } else if (src.startsWith("R0lGODlh") || src.startsWith("R0lGODdh")) {
-        // GIF文件头
+        // GIF 文件头
         imageType = "gif";
     } else if (src.startsWith("TU0AK")) {
-        // TIFF文件头
+        // TIFF 文件头
         imageType = "tiff";
     }
 
@@ -718,27 +691,27 @@ const confirmDeleteMessage = async () => {
         // 关闭对话框
         isDeleteDialogOpen.value = false;
 
-        // 调用API删除消息
+        // 调用 API 删除消息
         await deleteMessageAPIFunc(messageToDelete.value);
 
-        // 从store中移除消息
+        // 从 store 中移除消息
         chatStore.removeMessage(messageToDelete.value);
 
         // 显示成功提示
         toastSuccess("消息已成功删除");
 
-        // 重置待删除消息ID
+        // 重置待删除消息 ID
         messageToDelete.value = null;
     } catch (error) {
         console.error("删除消息失败:", error);
         // 显示错误提示
         toastError("删除消息时发生错误");
-        // 重置待删除消息ID
+        // 重置待删除消息 ID
         messageToDelete.value = null;
     }
 };
 
-// 调用API删除消息
+// 调用 API 删除消息
 const deleteMessageAPIFunc = async (messageId: number) => {
     try {
         const response = await deleteMessageAPI({ messageID: messageId });
@@ -746,265 +719,94 @@ const deleteMessageAPIFunc = async (messageId: number) => {
             throw new Error(response.data.error || "删除消息失败");
         }
     } catch (error) {
-        console.error("删除消息API调用失败:", error);
+        console.error("删除消息 API 调用失败:", error);
         throw error;
     }
 };
 
-// 处理流式响应的函数
-// 用于跟踪每个对话的abort控制器
-const abortControllers = new Map<number, AbortController>();
+// WebSocket 生成状态
+let wsGenerateState: {
+    conversationId: number | null;
+    messageAssistantId: number | null;
+    accumulatedContent: string;
+    accumulatedReasoningContent: string;
+    lastReasoningTime: number;
+} = {
+    conversationId: null,
+    messageAssistantId: null,
+    accumulatedContent: "",
+    accumulatedReasoningContent: "",
+    lastReasoningTime: 0,
+};
 
-const handleStreamedGenerate = async (
-    conversationId: number,
-    messageUserId: number,
-    messageAssistantId: number,
-) => {
-    // 创建新的AbortController并存储
-    const abortController = new AbortController();
-    abortControllers.set(conversationId, abortController);
+// 保存当前的生成响应处理器引用，用于组件卸载时清理
+let currentGenerateHandler: ((data: any) => void) | null = null;
+let currentGenerateEndHandler: ((data: any) => void) | null = null;
 
-    try {
-        // 添加占位助手消息
-        chatStore.addMessage(conversationId, {
-            id: messageAssistantId,
-            role: "assistant", // 修复类型错误
-            content: "",
-            conversationID: conversationId,
-            createdAt: new Date().toISOString(),
-            reasoningContent: "",
-            reasoningTime: 0,
-            isStreaming: true,
-        });
-
-        // 使用 fetch + ReadableStream 处理 SSE 流（遵循规范）
-        const response = await fetch("/chat/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            signal: abortController.signal, // 添加中止信号
-            body: JSON.stringify({
-                conversationID: conversationId,
-                messageUserID: messageUserId,
-                messageAssistantID: messageAssistantId,
-                prompt: "",
-                model: "",
-                base64: undefined,
-                reasoning: false,
-            }),
-        });
-
-        if (!response.body) {
-            throw new Error("响应中没有body");
+// 全局生成响应处理器 - 处理 InputArea 发送的生成请求的响应
+const setupGlobalGenerateHandler = () => {
+    currentGenerateHandler = (data: any) => {
+        console.log('收到生成响应:', data);
+        
+        if (!wsGenerateState.messageAssistantId) {
+            console.warn('没有设置 messageAssistantId，忽略响应');
+            return;
         }
 
-        // 处理 SSE 流
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let accumulatedContent = "";
-        let accumulatedReasoningContent = "";
-        let lastReasoningTime = 0;
-
-        try {
-            while (true) {
-                // 检查是否被中止
-                if (abortController.signal.aborted) {
-                    console.log("生成被中止");
-                    break;
-                }
-
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value, { stream: true });
-                // 处理每个数据块
-                processStreamChunk(chunk, (content, reasoningContent) => {
-                    accumulatedContent += content;
-                    accumulatedReasoningContent += reasoningContent;
-
-                    // 解析推理时间
-                    const lines = chunk.split("\n");
-                    for (const line of lines) {
-                        if (line.startsWith("data:")) {
-                            try {
-                                const data = JSON.parse(line.slice(5));
-                                if (
-                                    data.success &&
-                                    data.reasoningTime !== undefined
-                                ) {
-                                    lastReasoningTime = data.reasoningTime;
-                                }
-                            } catch (e) {
-                                // 解析失败，忽略错误
-                            }
-                        }
-                    }
-
-                    // 更新助手消息，标记为流式传输
-                    chatStore.updateMessage(messageAssistantId, {
-                        content: accumulatedContent,
-                        reasoningContent: accumulatedReasoningContent,
-                        reasoningTime: lastReasoningTime,
-                        isStreaming: true,
-                    });
-                });
+        if (data.success) {
+            // 累积内容
+            wsGenerateState.accumulatedContent += data.content || "";
+            wsGenerateState.accumulatedReasoningContent += data.reasoningContent || "";
+            if (data.reasoningTime !== undefined) {
+                wsGenerateState.lastReasoningTime = data.reasoningTime;
             }
-        } catch (error) {
-            if (abortController.signal.aborted) {
-                console.log("生成被中止");
-            } else {
-                console.error("读取流时出错:", error);
-            }
-        } finally {
-            reader.releaseLock();
-            // 流结束后更新消息状态
-            chatStore.updateMessage(messageAssistantId, {
-                isStreaming: false,
+
+            // 更新助手消息
+            chatStore.updateMessage(wsGenerateState.messageAssistantId, {
+                content: wsGenerateState.accumulatedContent,
+                reasoningContent: wsGenerateState.accumulatedReasoningContent,
+                reasoningTime: wsGenerateState.lastReasoningTime,
+                isStreaming: true,
             });
-            // 设置全局生成状态为false，使停止按钮变回发送按钮
+        } else {
+            console.error("服务器返回错误:", data.error);
+            toastError(data.error || "生成失败");
+            // 生成失败时，移除占位消息
+            if (wsGenerateState.messageAssistantId) {
+                chatStore.removeMessage(wsGenerateState.messageAssistantId);
+            }
             chatStore.setIsGenerating(false);
         }
-    } catch (error) {
-        if (abortController?.signal?.aborted) {
-            console.log("生成被中止");
-        } else {
-            console.error("流式生成失败:", error);
-        }
-    } finally {
-        // 清理abort控制器
-        abortControllers.delete(conversationId);
-    }
-};
-
-// 停止生成函数
-const stopStreamedGenerate = async (conversationId: number) => {
-    const abortController = abortControllers.get(conversationId);
-    if (abortController) {
-        abortController.abort();
-        console.log("已中止生成");
-    }
-    const sleep = (ms: number) => {
-        return new Promise((resolve) => setTimeout(resolve, ms));
     };
 
-    for (let i = 0; i < 3; i++) {
-        sleep(200);
-        // 中断后获取最新的历史记录
-        try {
-            const response = await getMessagesList({
-                conversationID: conversationId,
+    // 注册处理器
+    wsManager.onMessage("generate_response", currentGenerateHandler);
+
+    // 注册生成结束处理器
+    currentGenerateEndHandler = (data: any) => {
+        console.log('收到生成结束信号:', data);
+        
+        // 设置消息为非流式状态
+        if (wsGenerateState.messageAssistantId) {
+            chatStore.updateMessage(wsGenerateState.messageAssistantId, {
+                isStreaming: false,
             });
-            if (response.data.success) {
-                // API 返回的消息格式为 JSON 字符串，需要解析
-                let parsedMessages = [];
-                try {
-                    parsedMessages = JSON.parse(response.data.messages);
-                    if (
-                        parsedMessages[parsedMessages.length - 1].role !=
-                        "assistant"
-                    ) {
-                        sleep(300);
-                        continue;
-                    }
-                } catch (parseError) {
-                    console.error("解析消息失败:", parseError);
-                    parsedMessages = [];
-                }
-
-                // 转换消息格式以匹配前端要求并保存到 store
-                const formattedMessages = parsedMessages.map((msg: any) => {
-                    // 提取推理内容
-                    let reasoningContent = msg.reasoning_content || "";
-                    let reasoningTime = 0;
-
-                    // 如果没有独立的推理内容字段，尝试从内容中提取
-                    if (!reasoningContent && msg.content) {
-                        // 提取内容中的推理部分
-                        const thinkMatches = msg.content.matchAll(
-                            /<think time=(\d+)>([\s\S]*?)<\/think>/g,
-                        );
-                        const contents = [];
-                        for (const match of thinkMatches) {
-                            contents.push(match[2]);
-                            reasoningTime = Math.max(
-                                reasoningTime,
-                                parseInt(match[1]) || 0,
-                            );
-                        }
-                        reasoningContent = contents.join("\n\n");
-                    }
-
-                    // 删除标签
-                    const cleanContent = msg.content
-                        ? msg.content
-                              .replace(/<think time=\d+>[\s\S]*?<\/think>/g, "")
-                              .trim()
-                        : "";
-
-                    return {
-                        id: msg.id,
-                        conversationID: msg.conversation_id,
-                        role: msg.role,
-                        content: cleanContent,
-                        base64: msg.base64,
-                        reasoningContent: reasoningContent,
-                        reasoningTime: reasoningTime,
-                        createdAt: msg.created_at,
-                        isStreaming: false,
-                    };
-                });
-
-                // 保存消息到 store
-                chatStore.setMessages(conversationId, formattedMessages);
-                break;
-            }
-        } catch (error) {
-            console.error("获取最新历史记录失败:", error);
         }
-    }
-};
+        
+        // 重置状态
+        wsGenerateState = {
+            conversationId: null,
+            messageAssistantId: null,
+            accumulatedContent: "",
+            accumulatedReasoningContent: "",
+            lastReasoningTime: 0,
+        };
+        
+        // 设置全局生成状态为 false
+        chatStore.setIsGenerating(false);
+    };
 
-// 监听停止生成事件
-const handleStopStreamedGenerate = (event: Event) => {
-    const customEvent = event as CustomEvent;
-    const { conversationId } = customEvent.detail;
-    if (conversationId) {
-        stopStreamedGenerate(conversationId);
-    }
-};
-
-window.addEventListener("stopStreamedGenerate", handleStopStreamedGenerate);
-
-// 在组件卸载时移除事件监听器
-onUnmounted(() => {
-    window.removeEventListener(
-        "stopStreamedGenerate",
-        handleStopStreamedGenerate,
-    );
-});
-
-// 处理流数据块
-const processStreamChunk = (
-    chunk: string,
-    onUpdate: (content: string, reasoningContent: string) => void,
-) => {
-    // 解析SSE数据块
-    const lines = chunk.split("\n");
-    for (const line of lines) {
-        if (line.startsWith("data:")) {
-            try {
-                const data = JSON.parse(line.slice(5));
-                if (data.success) {
-                    onUpdate(data.content || "", data.reasoningContent || "");
-                } else {
-                    console.error("服务器返回错误:", data.error);
-                }
-            } catch (e) {
-                console.error("解析数据失败:", e);
-            }
-        }
-    }
+    wsManager.onMessage("generate_end", currentGenerateEndHandler);
 };
 
 // 监听消息变化，自动滚动到底部
@@ -1018,185 +820,37 @@ watch(
     { deep: true },
 );
 
+// 监听 store 中的消息变化，当有新的流式消息时设置 wsGenerateState
+watch(
+    () => chatStore.getIsGenerating,
+    (isGenerating) => {
+        if (isGenerating) {
+            // 获取当前对话 ID
+            const convId = currentConversationId.value;
+            if (isNaN(convId)) return;
+
+            // 获取当前对话的消息
+            const messages = chatStore.getMessagesByConversationId(convId);
+            // 找到最新的流式消息
+            const streamingMessage = messages.find(msg => msg.isStreaming);
+            if (streamingMessage && streamingMessage.role === 'assistant') {
+                // 设置 wsGenerateState
+                wsGenerateState = {
+                    conversationId: convId,
+                    messageAssistantId: streamingMessage.id!,
+                    accumulatedContent: "",
+                    accumulatedReasoningContent: "",
+                    lastReasoningTime: 0,
+                };
+                console.log('设置 wsGenerateState:', wsGenerateState);
+            }
+        }
+    },
+);
+
 /**
- * 挂载后检测 URL 参数
+ * 从消息内容中提取模型名称
  */
-onMounted(async () => {
-    // 首先获取模型列表
-    try {
-        const modelsResponse = await getModelsList();
-        if (modelsResponse.data.models) {
-            models.value = modelsResponse.data.models;
-        }
-    } catch (error) {
-        console.error("获取模型列表失败:", error);
-    }
-
-    // 检测当前路径是否为 /c/xxx
-    const cPattern = /^\/c\/.+$/;
-    if (cPattern.test(route.path)) {
-        // 检查是否存在 type 参数且为数字
-        const typeParam = route.query.type;
-        let typeValue: number | undefined;
-
-        if (typeParam !== undefined) {
-            const parsedType = Number(typeParam);
-            if (!isNaN(parsedType)) {
-                typeValue = parsedType;
-            }
-        }
-
-        // 修改 URL 去掉 type 参数 (使用 history API 避免页面刷新)
-        if (typeParam !== undefined) {
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete("type");
-            window.history.replaceState({}, "", newUrl.toString());
-        }
-
-        // 获取对话 ID (从路径的第二部分)
-        const pathParts = route.path.split("/");
-        const conversationIdString =
-            pathParts.length > 2 ? pathParts[2] : undefined;
-        const conversationId = conversationIdString
-            ? parseInt(conversationIdString)
-            : NaN;
-
-        // 类型断言确保 conversationId 是有效的数字
-        if (!isNaN(conversationId)) {
-            isLoading.value = true;
-
-            try {
-                // 首先获取对话历史
-                const response = await getMessagesList({
-                    conversationID: conversationId,
-                });
-                if (response.data.success) {
-                    // API 返回的消息格式为 JSON 字符串，需要解析
-                    let parsedMessages = [];
-                    try {
-                        parsedMessages = JSON.parse(response.data.messages);
-                    } catch (parseError) {
-                        console.error("解析消息失败:", parseError);
-                        parsedMessages = [];
-                    }
-
-                    // 转换消息格式以匹配前端要求并保存到 store
-                    const formattedMessages = parsedMessages.map((msg: any) => {
-                        // 提取推理内容
-                        let reasoningContent = msg.reasoning_content || "";
-                        let reasoningTime = 0;
-
-                        // 如果没有独立的推理内容字段，尝试从内容中提取
-                        if (!reasoningContent && msg.content) {
-                            // 提取内容中的推理部分
-                            const thinkMatches = msg.content.matchAll(
-                                /<think time=(\d+)>([\s\S]*?)<\/think>/g,
-                            );
-                            const contents = [];
-                            for (const match of thinkMatches) {
-                                contents.push(match[2]);
-                                reasoningTime = Math.max(
-                                    reasoningTime,
-                                    parseInt(match[1]) || 0,
-                                );
-                            }
-                            reasoningContent = contents.join("\n\n");
-                        }
-
-                        // 删除标签
-                        const cleanContent = msg.content
-                            ? msg.content
-                                  .replace(
-                                      /<think time=\d+>[\s\S]*?<\/think>/g,
-                                      "",
-                                  )
-                                  .trim()
-                            : "";
-
-                        return {
-                            id: msg.id,
-                            conversationID: msg.conversation_id,
-                            role: msg.role,
-                            content: cleanContent,
-                            base64: msg.base64,
-                            reasoningContent: reasoningContent,
-                            reasoningTime: reasoningTime,
-                            createdAt: msg.created_at,
-                            isStreaming: false,
-                        };
-                    });
-
-                    // 保存消息到 store
-                    chatStore.setMessages(conversationId, formattedMessages);
-
-                    // 立即隐藏加载动画并滚动到消息底部
-                    isLoading.value = false;
-                    await nextTick();
-                    scrollToBottom();
-
-                    // 检查是否存在未完成的对话（只有在没有type参数或者type不等于2时才检查）
-                    if (typeValue === undefined || typeValue !== 2) {
-                        try {
-                            // 获取线程列表
-                            const threadListResponse = await getThreadList();
-                            if (threadListResponse.data.success) {
-                                // 检查返回值中是否有当前对话id
-                                const conversationKey =
-                                    conversationId.toString();
-                                if (
-                                    threadListResponse.data.thread_list &&
-                                    threadListResponse.data.thread_list[
-                                        conversationKey
-                                    ]
-                                ) {
-                                    // 获取user和ai的消息id
-                                    const threadInfo =
-                                        threadListResponse.data.thread_list[
-                                            conversationKey
-                                        ];
-                                    const messageUserID =
-                                        threadInfo.messageUserID;
-                                    const messageAssistantID =
-                                        threadInfo.messageAssistantID;
-
-                                    // 设置全局生成状态为true，使发送按钮变为停止按钮
-                                    chatStore.setIsGenerating(true);
-
-                                    // 调用/chat/generate接口并处理流式响应
-                                    await handleStreamedGenerate(
-                                        conversationId,
-                                        messageUserID,
-                                        messageAssistantID,
-                                    );
-                                } else {
-                                    // 如果没有未完成的对话，确保isGenerating状态为false
-                                    chatStore.setIsGenerating(false);
-                                }
-                            }
-                        } catch (error) {
-                            console.error(
-                                "Error calling thread_list or generate API:",
-                                error,
-                            );
-                            // 出错时确保isGenerating状态为false
-                            chatStore.setIsGenerating(false);
-                        }
-                    } else if (typeValue === 2) {
-                        // 当type=2时，设置全局isGenerating状态，使发送按钮变为停止按钮
-                        // 因为在InputArea中已经添加了待生成的消息，但跳过了自动执行生成过程
-                        chatStore.setIsGenerating(true);
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to get conversation history:", error);
-                // Hide loading animation even if loading history fails
-                isLoading.value = false;
-            }
-        }
-    }
-});
-
-// 从消息内容中提取模型名称
 const extractModelName = (content: string) => {
     if (!content) return null;
 
@@ -1214,6 +868,206 @@ const extractModelName = (content: string) => {
 
     return null;
 };
+
+// 加载对话历史消息（使用 HTTP）
+const loadConversationHistory = async (conversationId: number) => {
+    isLoading.value = true;
+    try {
+        const response = await getMessagesList({
+            conversationID: conversationId,
+        });
+        if (response.data.success) {
+            let parsedMessages = [];
+            try {
+                parsedMessages = JSON.parse(response.data.messages);
+            } catch (parseError) {
+                console.error("解析消息失败:", parseError);
+                parsedMessages = [];
+            }
+
+            const formattedMessages = parsedMessages.map((msg: any) => {
+                let reasoningContent = msg.reasoning_content || "";
+                let reasoningTime = 0;
+
+                if (!reasoningContent && msg.content) {
+                    const thinkMatches = msg.content.matchAll(
+                        /<think time=(\d+)>([\s\S]*?)<\/think>/g,
+                    );
+                    const contents = [];
+                    for (const match of thinkMatches) {
+                        contents.push(match[2]);
+                        reasoningTime = Math.max(reasoningTime, parseInt(match[1]) || 0);
+                    }
+                    reasoningContent = contents.join("\n\n");
+                }
+
+                const cleanContent = msg.content
+                    ? msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, "").trim()
+                    : "";
+
+                return {
+                    id: msg.id,
+                    conversationID: msg.conversation_id,
+                    role: msg.role,
+                    content: cleanContent,
+                    base64: msg.base64,
+                    reasoningContent,
+                    reasoningTime,
+                    createdAt: msg.created_at,
+                    isStreaming: false,
+                };
+            });
+
+            chatStore.setMessages(conversationId, formattedMessages);
+            isLoading.value = false;
+            await nextTick();
+            scrollToBottom();
+        }
+    } catch (error) {
+        console.error("获取历史消息失败:", error);
+        isLoading.value = false;
+    }
+};
+
+// 加载当前对话
+const loadCurrentConversation = async () => {
+    console.log('loadCurrentConversation 被调用，当前路径:', route.path);
+    const cPattern = /^\/c\/.+$/;
+    if (cPattern.test(route.path)) {
+        const pathParts = route.path.split("/");
+        const conversationIdString = pathParts.length > 2 ? pathParts[2] : undefined;
+        const conversationId = conversationIdString ? parseInt(conversationIdString) : NaN;
+
+        if (!isNaN(conversationId)) {
+            // 检查是否存在 type 参数且为数字
+            const typeParam = route.query.type;
+            let typeValue: number | undefined;
+
+            if (typeParam !== undefined) {
+                const parsedType = Number(typeParam);
+                if (!isNaN(parsedType)) {
+                    typeValue = parsedType;
+                }
+            }
+
+            // 修改 URL 去掉 type 参数 (使用 history API 避免页面刷新)
+            if (typeParam !== undefined) {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.delete("type");
+                window.history.replaceState({}, "", newUrl.toString());
+            }
+
+            // 加载历史消息
+            await loadConversationHistory(conversationId);
+
+            // 检查是否存在未完成的对话（只有在没有 type 参数或者 type 不等于 2 时才检查）
+            if (typeValue === undefined || typeValue !== 2) {
+                try {
+                    // 获取线程列表
+                    const threadListResponse = await getThreadList();
+                    if (threadListResponse.data.success) {
+                        // 检查返回值中是否有当前对话 id
+                        const conversationKey = conversationId.toString();
+                        if (
+                            threadListResponse.data.thread_list &&
+                            threadListResponse.data.thread_list[conversationKey]
+                        ) {
+                            // 获取 user 和 ai 的消息 id
+                            const threadInfo = threadListResponse.data.thread_list[conversationKey];
+                            const messageUserID = threadInfo.messageUserID;
+                            const messageAssistantID = threadInfo.messageAssistantID;
+
+                            // 设置全局生成状态为 true，使发送按钮变为停止按钮
+                            chatStore.setIsGenerating(true);
+
+                            // 添加占位助手消息（如果不存在）
+                            const messages = chatStore.getMessagesByConversationId(conversationId);
+                            const hasAssistantMessage = messages.some(msg => msg.role === 'assistant' && msg.isStreaming);
+                            if (!hasAssistantMessage) {
+                                chatStore.addMessage(conversationId, {
+                                    id: messageAssistantID,
+                                    role: 'assistant',
+                                    content: '',
+                                    conversationID: conversationId,
+                                    createdAt: new Date().toISOString(),
+                                    isStreaming: true,
+                                });
+                            }
+
+                            // 通过 WebSocket 发送生成请求
+                            wsManager.send({
+                                type: 'generate',
+                                conversationID: conversationId,
+                                messageUserID: messageUserID,
+                                messageAssistantID: messageAssistantID,
+                                prompt: '',
+                                model: chatStore.selectedModel,
+                                base64: undefined,
+                                reasoning: false,
+                            });
+                        } else {
+                            // 如果没有未完成的对话，确保 isGenerating 状态为 false
+                            chatStore.setIsGenerating(false);
+                        }
+                    }
+                } catch (error) {
+                    console.error(
+                        "Error calling thread_list or generate API:",
+                        error,
+                    );
+                    // 出错时确保 isGenerating 状态为 false
+                    chatStore.setIsGenerating(false);
+                }
+            } else if (typeValue === 2) {
+                // 当 type=2 时，设置全局 isGenerating 状态，使发送按钮变为停止按钮
+                // 因为在 InputArea 中已经添加了待生成的消息，但跳过了自动执行生成过程
+                chatStore.setIsGenerating(true);
+            }
+        }
+    }
+};
+
+// 监听路由变化，加载新对话的历史消息
+watch(
+    () => route.path,
+    () => {
+        loadCurrentConversation();
+    },
+    { immediate: true } // 立即执行，包括初始加载时
+);
+
+/**
+ * 挂载后获取模型列表并注册 WebSocket 处理器
+ */
+onMounted(async () => {
+    // 首先获取模型列表
+    try {
+        const modelsResponse = await getModelsList();
+        if (modelsResponse.data.models) {
+            models.value = modelsResponse.data.models;
+        }
+    } catch (error) {
+        console.error("获取模型列表失败:", error);
+    }
+
+    // 注册全局 WebSocket 生成响应处理器
+    setupGlobalGenerateHandler();
+    console.log('已注册全局 generate_response 处理器');
+});
+
+// 在组件卸载时清理资源
+onUnmounted(() => {
+    // 清理 WebSocket 生成响应处理器
+    if (currentGenerateHandler) {
+        wsManager.offMessage("generate_response", currentGenerateHandler);
+        currentGenerateHandler = null;
+    }
+    // 清理生成结束处理器
+    if (currentGenerateEndHandler) {
+        wsManager.offMessage("generate_end", currentGenerateEndHandler);
+        currentGenerateEndHandler = null;
+    }
+});
 </script>
 
 <style scoped>
@@ -1320,11 +1174,11 @@ const extractModelName = (content: string) => {
 }
 
 .dark .messages-scroll-container::-webkit-scrollbar-thumb {
-  background: #525252; /* 灰色滚动条颜色，与ConversationsContainer保持一致 */
+  background: #525252; /* 灰色滚动条颜色，与 ConversationsContainer 保持一致 */
   border-radius: 4px;
 }
 
 .dark .messages-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #404040; /* 深灰色悬停颜色，与ConversationsContainer保持一致 */
+  background: #404040; /* 深灰色悬停颜色，与 ConversationsContainer 保持一致 */
 }
 </style>

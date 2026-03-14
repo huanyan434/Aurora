@@ -92,7 +92,12 @@ const checkScreenSize = () => {
 // 初始化 - WebSocket 连接和深色模式
 onMounted(async () => {
   checkScreenSize();
-  
+
+  // 如果是移动端，初始化时默认折叠侧边栏
+  if (isMobile.value) {
+    sidebarStore.setSidebarCollapsed(true);
+  }
+
   // 建立 WebSocket 连接（所有页面都需要）
   try {
     await wsManager.connect();
@@ -101,7 +106,7 @@ onMounted(async () => {
     console.log("❌ WebSocket 连接失败");
     toastError("WebSocket 连接失败，请检查后端服务是否正常运行");
   }
-  
+
   // 应用深色模式设置
   const darkModeSetting = settingsStore.getSetting('darkMode');
   applyDarkMode(darkModeSetting);

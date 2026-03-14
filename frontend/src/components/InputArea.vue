@@ -236,7 +236,7 @@ const handleSendMessage = async () => {
       isStreaming: true // 立即设置为流式传输状态
     });
 
-    // 通过 WebSocket 发送生成请求（WebSocket 已在 MessagesContainer 中初始化）
+    // 通过 WebSocket 发送生成请求
     wsManager.send({
       type: 'generate',
       conversationID: conversationId,

@@ -233,6 +233,12 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		}
 		sendWSResponse(conn, "generate_response", msg)
 	}
+
+	// 生成结束，发送结束信号
+	sendWSResponse(conn, "generate_end", gin.H{
+		"conversationID": req.ConversationID,
+		"messageAssistantID": req.MessageAssistantID,
+	})
 }
 
 // WebSocket: 停止生成
