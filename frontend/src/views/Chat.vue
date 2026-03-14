@@ -91,6 +91,7 @@ const checkScreenSize = () => {
 
 // 初始化 - WebSocket 连接和深色模式
 onMounted(async () => {
+  window.addEventListener("resize", checkScreenSize)
   checkScreenSize();
 
   // 如果是移动端，初始化时默认折叠侧边栏
