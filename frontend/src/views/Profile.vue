@@ -132,7 +132,7 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                  <a href="https://ifdian.net/a/mchyj" target="_blank">
                     <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
                   </a>
                 </div>
@@ -148,7 +148,7 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                  <a href="https://ifdian.net/a/mchyj" target="_blank">
                     <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
                   </a>
                 </div>
@@ -167,7 +167,7 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                  <a href="https://ifdian.net/a/mchyj" target="_blank">
                     <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
                   </a>
                 </div>
@@ -184,7 +184,7 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                  <a href="https://ifdian.net/a/mchyj" target="_blank">
                     <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
                   </a>
                 </div>
@@ -203,7 +203,7 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                  <a href="https://ifdian.net/a/mchyj" target="_blank">
                     <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
                   </a>
                 </div>
@@ -222,7 +222,7 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://afdian.com/a/mchyj" target="_blank">
+                  <a href="https://ifdian.net/a/mchyj" target="_blank">
                     <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
                   </a>
                 </div>
@@ -279,7 +279,7 @@
                   <li>使用对话模型</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://afdian.com/a/mchyj?tab=shop" target="_blank">
+                  <a href="https://ifdian.net/a/mchyj?tab=shop" target="_blank">
                     <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
                   </a>
                 </div>

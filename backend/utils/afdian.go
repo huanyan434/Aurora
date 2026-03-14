@@ -24,7 +24,7 @@ func QueryOrder(orderID string) (bool, []map[string]interface{}) {
 	params = fmt.Sprintf(`{\"out_trade_no\":\"%s\"}`, orderID)
 
 	Json := fmt.Sprintf(`{"user_id":"%s","params":"%s","ts":%s,"sign":"%s"}`, userID, params, ts, sign)
-	url := "https://afdian.com/api/open/query-order"
+	url := "https://ifdian.net/api/open/query-order"
 
 	payload := strings.NewReader(Json)
 	req, _ := http.NewRequest("POST", url, payload)
