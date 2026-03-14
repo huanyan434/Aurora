@@ -26,13 +26,13 @@ jobs:
     - name: Build Backend
       run: |
         echo "Building Go backend..."
-        go build -v -o aurora_backend main.go
+        go build -v -o aurora-backend main.go
 
     - name: Upload Backend Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: aurora_backend
-        path: backend/aurora_backend
+        name: aurora-backend
+        path: backend/aurora-backend
         if-no-files-found: error
 
   # ================= 前端构建 (Vue3 + Vite + pnpm via npm) =================
