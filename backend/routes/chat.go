@@ -26,6 +26,7 @@ func ChatInit(r *gin.Engine) {
 		chat.POST("/stop", stopHandler)
 		chat.GET("/new_conversation", newConversationHandler)
 		chat.POST("/delete_conversation", deleteConversationHandler)
+		chat.POST("/rename_conversation", renameConversationHandler)
 		chat.GET("/conversations_list", conversationsListHandler)
 		chat.POST("/messages_list", messagesListHandler)
 		chat.POST("/share_messages", shareMessagesHandler)
@@ -596,6 +597,37 @@ func deleteConversationHandler(c *gin.Context) {
 	})
 }
 
+// @Summary 重命名对话
+// @Description 重命名指定的对话
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Param request body renameConversationRequest true "重命名对话请求参数"
+// @Success 200 {object} renameConversationResponseSuccess "重命名对话成功"
+// @Failure 400 {object} renameConversationResponseFailed "重命名对话失败"
+// @Router /chat/rename_conversation [post]
+func renameConversationHandler(c *gin.Context) {
+	var req renameConversationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+	err := utils.RenameConversation(req.ConversationID, req.Title)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"success": true,
+	})
+}
+
 // @Summary 获取对话列表
 // @Description 获取当前用户的所有对话列表
 // @Tags Chat
@@ -940,6 +972,20 @@ type deleteConversationResponseSuccess struct {
 }
 
 type deleteConversationResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Error   string `json:"error"`
+}
+
+type renameConversationRequest struct {
+	ConversationID int64  `json:"conversationID" example:"1234567890"`
+	Title          string `json:"title" example:"新的对话标题"`
+}
+
+type renameConversationResponseSuccess struct {
+	Success bool `json:"success" example:"true"`
+}
+
+type renameConversationResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
 	Error   string `json:"error"`
 }
