@@ -232,21 +232,62 @@ func GetMemberStatus(u *User) map[string]interface{} {
 }
 
 // AddPoints 增加或减少用户积分
-func AddPoints(userID int64, amount int, reason string) {
+// @param userID 用户 ID
+// @param amount 积分变动数量，正数为增加，负数为减少
+// @param reason 变动原因
+func AddPoints(userID int64, amount int, reason string) error {
 	db := GetDB()
+
+	// 开启事务
+	tx := db.Begin()
+
+	// 使用 defer + recover 防止 panic 导致事务未回滚
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 获取用户信息
 	var user User
-	db.Table("users").Where("id = ?", userID).First(&user)
+	result := tx.Table("users").Where("id = ?", userID).First(&user)
+	if result.Error != nil {
+		tx.Rollback()
+		return result.Error
+	}
+
+	// 更新积分
 	user.Points += amount
 	if user.Points < 0 {
 		user.Points = 0
 	}
-	db.Model(&user).Update("points", user.Points)
+
+	result = tx.Model(&user).Update("points", user.Points)
+	if result.Error != nil {
+		tx.Rollback()
+		return result.Error
+	}
 
 	// 记录积分变动
-	RecordPointsChange(userID, amount, reason)
+	err := RecordPointsChangeWithTx(tx, userID, amount, reason)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // RegisterUser 用户注册函数
+// @param username 用户名
+// @param email 邮箱
+// @param password 密码
+// @return User 用户对象，error 错误信息
 func RegisterUser(username, email, password string) (User, error) {
 	// 创建用户实例
 	id, err := GenerateSnowflakeId()
@@ -254,12 +295,28 @@ func RegisterUser(username, email, password string) (User, error) {
 		return User{}, err
 	}
 
-	// 检查邮箱是否已存在
 	db := GetDB()
+
+	// 开启事务
+	tx := db.Begin()
+
+	// 使用 defer + recover 防止 panic 导致事务未回滚
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 检查邮箱是否已存在
 	var existingUser User
-	result := db.Where("email = ?", email).First(&existingUser)
+	result := tx.Where("email = ?", email).First(&existingUser)
 	if result.Error == nil {
+		tx.Rollback()
 		return User{}, fmt.Errorf("邮箱已存在")
+	}
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		tx.Rollback()
+		return User{}, result.Error
 	}
 
 	user := User{
@@ -275,9 +332,15 @@ func RegisterUser(username, email, password string) (User, error) {
 	SetPassword(&user, password)
 
 	// 插入数据库
-	result = db.Create(&user)
+	result = tx.Create(&user)
 	if result.Error != nil {
+		tx.Rollback()
 		return user, result.Error
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return user, err
 	}
 
 	return user, nil
@@ -406,6 +469,7 @@ func LoadConversationHistoryFormat2(conversationID int64) ([]messageFormat, erro
 
 	return chatMessages, nil
 }
+
 // SaveConversationHistory 保存对话历史到指定conversationID
 func SaveConversationHistory(conversationID int64, messages []openai.ChatCompletionMessage) error {
 	db := GetDB()
@@ -520,6 +584,8 @@ func HasSignedToday(email string) (bool, error) {
 }
 
 // Sign 用户签到
+// @param Email 用户邮箱
+// @return map[string]interface{} 签到结果信息，error 错误信息
 func Sign(Email string) (map[string]interface{}, error) {
 	// 获取用户信息
 	user := FilterByEmail(Email)
@@ -543,32 +609,30 @@ func Sign(Email string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	// 基础积分：90-110之间的随机数
-	basePoints := rand.Intn(21) + 90 // 90-110之间的随机数
+	// 基础积分：90-110 之间的随机数
+	basePoints := rand.Intn(21) + 90 // 90-110 之间的随机数
 
 	// 检查是否满足连续签到奖励条件
 	hasExtraReward := false
 	multiplier := 1 // 奖励倍数
 
-	// 每7天的倍数天数给予额外奖励（排除0天的情况）
+	// 每 7 天的倍数天数给予额外奖励（排除 0 天的情况）
 	if consecutiveDays >= 30 && consecutiveDays%30 == 0 {
-		// 第30天，4倍奖励
+		// 第 30 天，4 倍奖励
 		multiplier = 4
 		hasExtraReward = true
 	} else if consecutiveDays >= 14 && consecutiveDays%14 == 0 {
-		// 第14天，3倍奖励
+		// 第 14 天，3 倍奖励
 		multiplier = 3
 		hasExtraReward = true
 	} else if consecutiveDays >= 7 && consecutiveDays%7 == 0 {
-		// 第7天，2倍奖励
+		// 第 7 天，2 倍奖励
 		multiplier = 2
 		hasExtraReward = true
 	}
 
 	// 计算总积分
 	totalPoints := basePoints * multiplier
-
-	AddPoints(user.ID, totalPoints, "每日签到")
 
 	// 记录签到信息
 	id, err := GenerateSnowflakeId()
@@ -581,25 +645,69 @@ func Sign(Email string) (map[string]interface{}, error) {
 		LastSign: time.Now(),
 	}
 
+	db := GetDB()
+
+	// 开启事务
+	tx := db.Begin()
+
+	// 使用 defer + recover 防止 panic 导致事务未回滚
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 增加积分
+	var targetUser User
+	result := tx.Table("users").Where("id = ?", user.ID).First(&targetUser)
+	if result.Error != nil {
+		tx.Rollback()
+		return nil, result.Error
+	}
+
+	targetUser.Points += totalPoints
+	if targetUser.Points < 0 {
+		targetUser.Points = 0
+	}
+
+	result = tx.Model(&targetUser).Update("points", targetUser.Points)
+	if result.Error != nil {
+		tx.Rollback()
+		return nil, result.Error
+	}
+
+	// 记录积分变动
+	err = RecordPointsChangeWithTx(tx, user.ID, totalPoints, "每日签到")
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	// 检查用户是否已有签到记录
 	var existingRecord SignRecord
-	db := GetDB()
-	result := db.Where("email = ?", user.Email).First(&existingRecord)
+	result = tx.Where("email = ?", user.Email).First(&existingRecord)
 	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// 创建新记录
-		result = db.Create(&signRecord)
+		result = tx.Create(&signRecord)
 	} else if result.Error == nil {
 		// 更新现有记录
-		result = db.Model(&existingRecord).Updates(map[string]interface{}{
+		result = tx.Model(&existingRecord).Updates(map[string]interface{}{
 			"last_sign": time.Now(),
 		})
 	} else {
 		// 其他数据库错误
+		tx.Rollback()
 		return nil, result.Error
 	}
 
 	if result.Error != nil {
+		tx.Rollback()
 		return nil, result.Error
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
 	}
 
 	// 返回签到结果信息
@@ -635,7 +743,7 @@ func calculateConsecutiveSignDays(email string) (int, error) {
 	// 从今天开始，逐天向前检查连续签到情况
 	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
 	currentCheckDate := today
-	
+
 	// 计算连续签到天数
 	consecutiveDays := 0
 
@@ -723,30 +831,44 @@ func CreateConversation(userID int64) int64 {
 }
 
 // SaveShareMessages 保存分享消息
+// @param messageIDs 消息 ID 列表
+// @return string 分享 ID，error 错误信息
 func SaveShareMessages(messageIDs []int64) (string, error) {
 	db := GetDB()
-	// 清理超过7天的分享
-	db.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
 
-	// 将messageIDs转换为JSON字符串
+	// 开启事务
+	tx := db.Begin()
+
+	// 使用 defer + recover 防止 panic 导致事务未回滚
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 清理超过 7 天的分享
+	tx.Where("created_at < ?", time.Now().AddDate(0, 0, -7)).Delete(&Share{})
+
+	// 将 messageIDs 转换为 JSON 字符串
 	messageIDsJSON, err := json.Marshal(messageIDs)
 	if err != nil {
+		tx.Rollback()
 		return "", err
 	}
 
-	// 循环生成唯一的shareID直到不重复为止
+	// 循环生成唯一的 shareID 直到不重复为止
 	var shareID string
 	for {
-		// 生成16位随机十六进制字符串
-		bytes := make([]byte, 8) // 8字节=16个十六进制字符
+		// 生成 16 位随机十六进制字符串
+		bytes := make([]byte, 8) // 8 字节=16 个十六进制字符
 		rand.Read(bytes)
 		shareID = hex.EncodeToString(bytes)
 
 		// 检查是否已经存在
 		var count int64
-		db.Model(&Share{}).Where("share_id = ?", shareID).Count(&count)
+		tx.Model(&Share{}).Where("share_id = ?", shareID).Count(&count)
 		if count == 0 {
-			break // 找到唯一的shareID
+			break // 找到唯一的 shareID
 		}
 		// 如果重复，则重新生成
 	}
@@ -758,9 +880,15 @@ func SaveShareMessages(messageIDs []int64) (string, error) {
 		CreatedAt:  time.Now(),
 	}
 
-	result := db.Create(&share)
+	result := tx.Create(&share)
 	if result.Error != nil {
+		tx.Rollback()
 		return "", result.Error
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return "", err
 	}
 
 	return shareID, nil
@@ -791,16 +919,32 @@ func LoadShareMessages(shareID string) ([]int64, error) {
 
 func DeleteConversation(conversationID int64) error {
 	db := GetDB()
-	// 删除对话
-	result := db.Where("id = ?", conversationID).Delete(&Conversation{})
+
+	// 使用事务保证数据一致性
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 先删除该对话下的所有消息记录
+	result := tx.Where("conversation_id = ?", conversationID).Delete(&Message{})
 	if result.Error != nil {
+		tx.Rollback()
 		return result.Error
 	}
 
-	// 删除对话中的消息记录
-	result = db.Where("conversation_id = ?", conversationID).Delete(&Message{})
+	// 再删除对话本身
+	result = tx.Where("id = ?", conversationID).Delete(&Conversation{})
 	if result.Error != nil {
+		tx.Rollback()
 		return result.Error
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return err
 	}
 
 	return nil
@@ -893,4 +1037,25 @@ func GetPointsRecordsByUserID(userID int64) ([]PointsRecord, error) {
 	}
 
 	return records, nil
+}
+
+// RecordPointsChangeWithTx 使用指定事务记录积分变动
+func RecordPointsChangeWithTx(tx *gorm.DB, userID int64, amount int, reason string) error {
+	// 生成唯一 ID
+	id, err := GenerateSnowflakeId()
+	if err != nil {
+		return err
+	}
+
+	// 创建积分变动记录
+	pointsRecord := PointsRecord{
+		ID:     id,
+		UserID: userID,
+		Amount: amount,
+		Reason: reason,
+	}
+
+	// 保存到数据库
+	result := tx.Create(&pointsRecord)
+	return result.Error
 }
