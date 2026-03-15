@@ -121,7 +121,7 @@ import { onUnmounted } from 'vue';
   padding-top: 0.5rem; /* py-2 */
   padding-bottom: 0.5rem; /* py-2 */
   border: 1px solid #d1d5db; /* border border-gray-300 */
-  border-radius: 0.375rem; /* rounded-md */
+  border-radius: 0.7rem;
   background-color: #ffffff; /* bg-white */
   font-size: 1rem; /* text-base */
   outline: none; /* focus:outline-none */
@@ -180,7 +180,7 @@ import { onUnmounted } from 'vue';
   width: 100%;
   background-color: #ffffff; /* bg-white */
   border: 1px solid #d1d5db; /* border border-gray-300 */
-  border-radius: 0.375rem; /* rounded-md */
+  border-radius: 0.7rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
   max-height: 20rem; /* max-h-80 */
   overflow-y: auto;
