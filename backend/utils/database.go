@@ -1059,3 +1059,119 @@ func RecordPointsChangeWithTx(tx *gorm.DB, userID int64, amount int, reason stri
 	result := tx.Create(&pointsRecord)
 	return result.Error
 }
+
+// GetDashboardOverview 获取管理面板概览数据
+func GetDashboardOverview(userID int64) (map[string]interface{}, error) {
+	db := GetDB()
+
+	// 获取今日开始时间
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	// 总用户数
+	var totalUsers int64
+	db.Model(&User{}).Count(&totalUsers)
+
+	// 今日新增用户
+	var todayNewUsers int64
+	db.Model(&User{}).Where("created_at >= ?", today).Count(&todayNewUsers)
+
+	// 总对话数
+	var totalConversations int64
+	db.Model(&Conversation{}).Count(&totalConversations)
+
+	// 今日新增对话
+	var todayConversations int64
+	db.Model(&Conversation{}).Where("created_at >= ?", today).Count(&todayConversations)
+
+	// 总积分发放
+	var totalPointsIssued int64
+	db.Model(&PointsRecord{}).Where("amount > 0").Select("SUM(amount)").Scan(&totalPointsIssued)
+
+	// 今日积分发放
+	var todayPointsIssued int64
+	db.Model(&PointsRecord{}).Where("amount > 0 AND created_at >= ?", today).Select("SUM(amount)").Scan(&todayPointsIssued)
+
+	// VIP 用户数
+	var vipUsers int64
+	db.Model(&User{}).Where("is_member = ? AND member_level IN ?", true, []string{"VIP", "SVIP"}).Count(&vipUsers)
+
+	return map[string]interface{}{
+		"totalUsers":         totalUsers,
+		"todayNewUsers":      todayNewUsers,
+		"totalConversations": totalConversations,
+		"todayConversations": todayConversations,
+		"totalPointsIssued":  totalPointsIssued,
+		"todayPointsIssued":  todayPointsIssued,
+		"vipUsers":           vipUsers,
+	}, nil
+}
+
+// GetUserList 获取用户列表（分页）
+func GetUserList(page, pageSize int) ([]User, int64, error) {
+	db := GetDB()
+	var users []User
+	var total int64
+
+	// 获取总数
+	db.Model(&User{}).Count(&total)
+
+	// 获取分页数据
+	offset := (page - 1) * pageSize
+	result := db.Order("created_at DESC").
+		Limit(pageSize).
+		Offset(offset).
+		Find(&users)
+
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	return users, total, nil
+}
+
+// GetConversationList 获取对话列表（分页）
+func GetConversationList(page, pageSize int) ([]Conversation, int64, error) {
+	db := GetDB()
+	var conversations []Conversation
+	var total int64
+
+	// 获取总数
+	db.Model(&Conversation{}).Count(&total)
+
+	// 获取分页数据
+	offset := (page - 1) * pageSize
+	result := db.Order("updated_at DESC").
+		Limit(pageSize).
+		Offset(offset).
+		Find(&conversations)
+
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	return conversations, total, nil
+}
+
+// GetAllPointsRecords 获取所有积分记录（分页）
+func GetAllPointsRecords(page, pageSize int) ([]PointsRecord, int64, error) {
+	db := GetDB()
+	var records []PointsRecord
+	var total int64
+
+	// 获取总数
+	db.Model(&PointsRecord{}).Count(&total)
+
+	// 获取分页数据
+	offset := (page - 1) * pageSize
+	result := db.Order("created_at DESC").
+		Limit(pageSize).
+		Offset(offset).
+		Find(&records)
+
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	return records, total, nil
+}

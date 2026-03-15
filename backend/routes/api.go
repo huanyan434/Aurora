@@ -45,6 +45,12 @@ func ApiInit(r *gin.Engine) {
 
 		// 获取积分记录
 		api.GET("/points_records", pointsRecordsHandler)
+
+		// Dashboard 管理面板接口
+		api.GET("/dashboard/overview", dashboardOverviewHandler)
+		api.GET("/dashboard/users", dashboardUsersHandler)
+		api.GET("/dashboard/conversations", dashboardConversationsHandler)
+		api.GET("/dashboard/points_records", dashboardPointsRecordsHandler)
 	}
 }
 
@@ -642,4 +648,273 @@ type pointsRecordsResponseSuccess struct {
 type pointsRecordsResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
 	Message string `json:"message" example:"获取积分记录失败"`
+}
+
+// @Summary 获取管理面板概览数据
+// @Description 获取管理面板的概览统计数据
+// @Tags Dashboard
+// @Produce json
+// @Success 200 {object} dashboardOverviewResponseSuccess "获取概览数据成功"
+// @Failure 400 {object} dashboardOverviewResponseFailed "获取概览数据失败"
+// @Router /api/dashboard/overview [get]
+func dashboardOverviewHandler(c *gin.Context) {
+	// 获取管理员用户
+	user, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取用户信息失败：" + err.Error(),
+		})
+		return
+	}
+
+	// 获取概览数据
+	overview, err := utils.GetDashboardOverview(user.ID)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取概览数据失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data":    overview,
+	})
+}
+
+// @Summary 获取用户列表
+// @Description 获取所有用户列表（支持分页）
+// @Tags Dashboard
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量" default(20)
+// @Success 200 {object} dashboardUsersResponseSuccess "获取用户列表成功"
+// @Failure 400 {object} dashboardUsersResponseFailed "获取用户列表失败"
+// @Router /api/dashboard/users [get]
+func dashboardUsersHandler(c *gin.Context) {
+	_, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取用户信息失败：" + err.Error(),
+		})
+		return
+	}
+
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "20")
+
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	users, total, err := utils.GetUserList(page, pageSize)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取用户列表失败：" + err.Error(),
+		})
+		return
+	}
+
+	// 格式化用户数据
+	var formattedUsers []map[string]interface{}
+	for _, user := range users {
+		formattedUser := map[string]interface{}{
+			"id":           strconv.FormatInt(user.ID, 10),
+			"username":     user.Username,
+			"email":        user.Email,
+			"isMember":     user.IsMember,
+			"memberLevel":  user.MemberLevel,
+			"points":       user.Points,
+			"createdAt":    user.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+		formattedUsers = append(formattedUsers, formattedUser)
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data": gin.H{
+			"users":    formattedUsers,
+			"total":    total,
+			"page":     page,
+			"pageSize": pageSize,
+		},
+	})
+}
+
+// @Summary 获取对话列表
+// @Description 获取所有对话列表（支持分页）
+// @Tags Dashboard
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量" default(20)
+// @Success 200 {object} dashboardConversationsResponseSuccess "获取对话列表成功"
+// @Failure 400 {object} dashboardConversationsResponseFailed "获取对话列表失败"
+// @Router /api/dashboard/conversations [get]
+func dashboardConversationsHandler(c *gin.Context) {
+	_, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取用户信息失败：" + err.Error(),
+		})
+		return
+	}
+
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "20")
+
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	conversations, total, err := utils.GetConversationList(page, pageSize)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取对话列表失败：" + err.Error(),
+		})
+		return
+	}
+
+	// 格式化对话数据
+	var formattedConversations []map[string]interface{}
+	for _, conv := range conversations {
+		formattedConv := map[string]interface{}{
+			"id":        strconv.FormatInt(conv.ID, 10),
+			"userId":    strconv.FormatInt(conv.UserID, 10),
+			"title":     conv.Title,
+			"summary":   conv.Summary,
+			"createdAt": conv.CreatedAt.Format("2006-01-02 15:04:05"),
+			"updatedAt": conv.UpdatedAt.Format("2006-01-02 15:04:05"),
+		}
+		formattedConversations = append(formattedConversations, formattedConv)
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data": gin.H{
+			"conversations": formattedConversations,
+			"total":         total,
+		},
+	})
+}
+
+// @Summary 获取积分记录列表
+// @Description 获取所有积分记录列表（支持分页）
+// @Tags Dashboard
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量" default(20)
+// @Success 200 {object} dashboardPointsRecordsResponseSuccess "获取积分记录成功"
+// @Failure 400 {object} dashboardPointsRecordsResponseFailed "获取积分记录失败"
+// @Router /api/dashboard/points_records [get]
+func dashboardPointsRecordsHandler(c *gin.Context) {
+	_, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取用户信息失败：" + err.Error(),
+		})
+		return
+	}
+
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "20")
+
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	records, total, err := utils.GetAllPointsRecords(page, pageSize)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取积分记录失败：" + err.Error(),
+		})
+		return
+	}
+
+	// 格式化积分记录数据
+	var formattedRecords []map[string]interface{}
+	for _, record := range records {
+		formattedRecord := map[string]interface{}{
+			"id":        strconv.FormatInt(record.ID, 10),
+			"userId":    strconv.FormatInt(record.UserID, 10),
+			"amount":    record.Amount,
+			"reason":    record.Reason,
+			"createdAt": record.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+		formattedRecords = append(formattedRecords, formattedRecord)
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data": gin.H{
+			"records": formattedRecords,
+			"total":   total,
+		},
+	})
+}
+
+// Dashboard 响应结构体
+type dashboardOverviewResponseSuccess struct {
+	Success bool                   `json:"success" example:"true"`
+	Data    map[string]interface{} `json:"data"`
+}
+
+type dashboardOverviewResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message"`
+}
+
+type dashboardUsersResponseSuccess struct {
+	Success bool                   `json:"success" example:"true"`
+	Data    map[string]interface{} `json:"data"`
+}
+
+type dashboardUsersResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message"`
+}
+
+type dashboardConversationsResponseSuccess struct {
+	Success bool                   `json:"success" example:"true"`
+	Data    map[string]interface{} `json:"data"`
+}
+
+type dashboardConversationsResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message"`
+}
+
+type dashboardPointsRecordsResponseSuccess struct {
+	Success bool                   `json:"success" example:"true"`
+	Data    map[string]interface{} `json:"data"`
+}
+
+type dashboardPointsRecordsResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message"`
 }
