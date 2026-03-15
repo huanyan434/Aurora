@@ -3,6 +3,7 @@ package routes
 import (
 	"fmt"
 	"strconv"
+	"time"
 	"utils"
 
 	"github.com/gin-contrib/sessions"
@@ -47,10 +48,18 @@ func ApiInit(r *gin.Engine) {
 		api.GET("/points_records", pointsRecordsHandler)
 
 		// Dashboard 管理面板接口
-		api.GET("/dashboard/overview", dashboardOverviewHandler)
-		api.GET("/dashboard/users", dashboardUsersHandler)
-		api.GET("/dashboard/conversations", dashboardConversationsHandler)
-		api.GET("/dashboard/points_records", dashboardPointsRecordsHandler)
+		api.POST("/dashboard/login", dashboardLoginHandler)
+		
+		// 需要验证的 Dashboard 接口
+		dashboard := api.Group("/dashboard")
+		dashboard.Use(dashboardAuthMiddleware())
+		{
+			dashboard.GET("/overview", dashboardOverviewHandler)
+			dashboard.GET("/users", dashboardUsersHandler)
+			dashboard.POST("/users/update", dashboardUpdateUserHandler)
+			dashboard.GET("/conversations", dashboardConversationsHandler)
+			dashboard.GET("/points_records", dashboardPointsRecordsHandler)
+		}
 	}
 }
 
@@ -650,6 +659,118 @@ type pointsRecordsResponseFailed struct {
 	Message string `json:"message" example:"获取积分记录失败"`
 }
 
+// @Summary Dashboard 登录
+// @Description 管理后台登录验证
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param request body dashboardLoginRequest true "登录信息"
+// @Success 200 {object} dashboardLoginResponseSuccess "登录成功"
+// @Failure 400 {object} dashboardLoginResponseFailed "登录失败"
+// @Router /api/dashboard/login [post]
+func dashboardLoginHandler(c *gin.Context) {
+	var req dashboardLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误：" + err.Error(),
+		})
+		return
+	}
+
+	// 获取配置中的 dashboard 密码
+	config := utils.GetConfig()
+	hashedPassword := config.DashboardPassword
+
+	// 验证密码
+	if !utils.CheckPasswordHash(req.Password, hashedPassword) {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "密码错误",
+		})
+		return
+	}
+
+	// 设置 session 标记为 dashboard 管理员
+	session := sessions.Default(c)
+	session.Set("dashboard_admin", true)
+	session.Set("dashboard_login_time", time.Now())
+	if err := session.Save(); err != nil {
+		fmt.Println("Session save error:", err)
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "登录失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "登录成功",
+	})
+}
+
+// dashboardAuthMiddleware Dashboard 权限验证中间件
+func dashboardAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		admin := session.Get("dashboard_admin")
+		if admin == nil || admin != true {
+			c.JSON(401, gin.H{
+				"success": false,
+				"message": "未授权访问",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// @Summary 更新用户信息
+// @Description 更新用户的积分和会员等级
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param request body dashboardUpdateUserRequest true "更新信息"
+// @Success 200 {object} dashboardUpdateUserResponseSuccess "更新成功"
+// @Failure 400 {object} dashboardUpdateUserResponseFailed "更新失败"
+// @Router /api/dashboard/users/update [post]
+func dashboardUpdateUserHandler(c *gin.Context) {
+	var req dashboardUpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误",
+		})
+		return
+	}
+
+	// 验证用户 ID
+	if req.UserID <= 0 {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "用户 ID 无效",
+		})
+		return
+	}
+
+	// 更新用户信息
+	err := utils.UpdateUserByID(req.UserID, req.Points, req.IsMember, req.MemberLevel)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "更新失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "更新成功",
+	})
+}
+
 // @Summary 获取管理面板概览数据
 // @Description 获取管理面板的概览统计数据
 // @Tags Dashboard
@@ -917,4 +1038,37 @@ type dashboardPointsRecordsResponseSuccess struct {
 type dashboardPointsRecordsResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
 	Message string `json:"message"`
+}
+
+// Dashboard 登录请求
+type dashboardLoginRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
+type dashboardLoginResponseSuccess struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"登录成功"`
+}
+
+type dashboardLoginResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message" example:"密码错误"`
+}
+
+// 更新用户请求
+type dashboardUpdateUserRequest struct {
+	UserID     int64  `json:"userId" binding:"required"`
+	Points     int    `json:"points"`
+	IsMember   bool   `json:"isMember"`
+	MemberLevel string `json:"memberLevel"`
+}
+
+type dashboardUpdateUserResponseSuccess struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"更新成功"`
+}
+
+type dashboardUpdateUserResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message" example:"更新失败"`
 }

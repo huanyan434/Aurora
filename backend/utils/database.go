@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sashabaranov/go-openai"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -1174,4 +1175,90 @@ func GetAllPointsRecords(page, pageSize int) ([]PointsRecord, int64, error) {
 	}
 
 	return records, total, nil
+}
+
+// CheckPasswordHash 验证密码哈希（使用 bcrypt）
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+// HashPasswordBcrypt 对密码进行 bcrypt 哈希（用于 Dashboard）
+func HashPasswordBcrypt(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+// UpdateUserByID 根据 ID 更新用户信息
+func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string) error {
+	db := GetDB()
+
+	// 使用事务
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 查找用户
+	var user User
+	result := tx.Where("id = ?", userID).First(&user)
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("用户不存在")
+	}
+
+	// 更新积分（如果提供了新值）
+	if points != user.Points {
+		// 记录积分变动
+		pointsDiff := points - user.Points
+		reason := "管理员手动调整"
+		if pointsDiff > 0 {
+			reason = "管理员增加积分"
+		} else if pointsDiff < 0 {
+			reason = "管理员扣除积分"
+		}
+		
+		// 更新用户积分
+		user.Points = points
+		if err := tx.Save(&user).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		// 记录积分变动
+		if err := RecordPointsChangeWithTx(tx, userID, pointsDiff, reason); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// 更新会员信息
+	user.IsMember = isMember
+	user.MemberLevel = memberLevel
+	
+	// 如果是会员但没有设置会员到期时间，设置为一年后
+	if isMember && user.MemberUntil.IsZero() {
+		user.MemberUntil = time.Now().AddDate(1, 0, 0)
+	}
+	
+	// 如果不是会员，清空会员相关信息
+	if !isMember {
+		user.MemberLevel = "free"
+		user.MemberUntil = time.Time{}
+		user.MemberSince = time.Time{}
+	}
+
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
 }

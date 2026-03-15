@@ -1,5 +1,5 @@
 import api from '.'
-import type { DashboardOverview, User, Conversation, PointsRecord } from '@/types'
+import type { DashboardOverview, User, PointsRecord } from '@/types'
 
 export interface OverviewResponse {
   success: boolean
@@ -16,14 +16,6 @@ export interface UsersResponse {
   }
 }
 
-export interface ConversationsResponse {
-  success: boolean
-  data: {
-    conversations: Conversation[]
-    total: number
-  }
-}
-
 export interface PointsResponse {
   success: boolean
   data: {
@@ -32,7 +24,31 @@ export interface PointsResponse {
   }
 }
 
+export interface UpdateUserRequest {
+  userId: number
+  points?: number
+  isMember?: boolean
+  memberLevel?: string
+}
+
+export interface UpdateUserResponse {
+  success: boolean
+  message: string
+}
+
+export interface LoginRequest {
+  password: string
+}
+
+export interface LoginResponse {
+  success: boolean
+  message: string
+}
+
 export const dashboardApi = {
+  // 登录
+  login: (data: LoginRequest) => api.post<LoginResponse>('/dashboard/login', data),
+  
   // 获取概览数据
   getOverview: () => api.get<OverviewResponse>('/dashboard/overview'),
   
@@ -40,9 +56,9 @@ export const dashboardApi = {
   getUsers: (page = 1, pageSize = 20) => 
     api.get<UsersResponse>(`/dashboard/users?page=${page}&pageSize=${pageSize}`),
   
-  // 获取对话列表
-  getConversations: (page = 1, pageSize = 20) => 
-    api.get<ConversationsResponse>(`/dashboard/conversations?page=${page}&pageSize=${pageSize}`),
+  // 更新用户信息
+  updateUser: (data: UpdateUserRequest) => 
+    api.post<UpdateUserResponse>('/dashboard/users/update', data),
   
   // 获取积分记录
   getPointsRecords: (page = 1, pageSize = 20) => 

@@ -15,6 +15,7 @@
             <th>邮箱</th>
             <th>会员等级</th>
             <th>积分</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -43,9 +44,14 @@
                 <span class="points-value">{{ user.points.toLocaleString() }}</span>
               </div>
             </td>
+            <td>
+              <button class="edit-btn" @click="openEditModal(user)">
+                编辑
+              </button>
+            </td>
           </tr>
           <tr v-if="users.length === 0">
-            <td colspan="5" class="empty-state">
+            <td colspan="6" class="empty-state">
               <span class="empty-icon">📭</span>
               <p>暂无用户数据</p>
             </td>
@@ -77,6 +83,60 @@
         </div>
       </div>
     </div>
+
+    <!-- 编辑弹窗 -->
+    <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+      <div class="modal-container" @click.stop>
+        <div class="modal-header">
+          <h2 class="modal-title">编辑用户</h2>
+          <button class="modal-close" @click="closeEditModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">用户名</label>
+            <input type="text" :value="editingUser?.username" class="form-input" disabled />
+          </div>
+          <div class="form-group">
+            <label class="form-label">邮箱</label>
+            <input type="email" :value="editingUser?.email" class="form-input" disabled />
+          </div>
+          <div class="form-group">
+            <label class="form-label">积分</label>
+            <input 
+              v-model.number="editForm.points" 
+              type="number" 
+              class="form-input" 
+              min="0"
+              placeholder="输入积分"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">会员等级</label>
+            <select v-model="editForm.memberLevel" class="form-input">
+              <option value="free">免费用户</option>
+              <option value="VIP">VIP 会员</option>
+              <option value="SVIP">SVIP 会员</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              <input 
+                v-model="editForm.isMember" 
+                type="checkbox" 
+                style="width: auto; margin-right: 8px;"
+              />
+              是否为会员
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="closeEditModal">取消</button>
+          <button class="btn-submit" @click="saveUser" :disabled="saving">
+            {{ saving ? '保存中...' : '保存' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -89,6 +149,16 @@ const users = ref<User[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
+
+const showEditModal = ref(false)
+const editingUser = ref<User | null>(null)
+const saving = ref(false)
+
+const editForm = ref({
+  points: 0,
+  isMember: false,
+  memberLevel: 'free'
+})
 
 const getMemberLevelClass = (level: string) => {
   const classes: Record<string, string> = {
@@ -115,6 +185,54 @@ const getMemberLevelText = (level: string) => {
     SVIP: 'SVIP 会员'
   }
   return texts[level] || '免费用户'
+}
+
+const openEditModal = (user: User) => {
+  editingUser.value = user
+  editForm.value = {
+    points: user.points,
+    isMember: user.isMember,
+    memberLevel: user.memberLevel
+  }
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  editingUser.value = null
+}
+
+const saveUser = async () => {
+  if (!editingUser.value) return
+  
+  saving.value = true
+  try {
+    await dashboardApi.updateUser({
+      userId: parseInt(editingUser.value.id),
+      points: editForm.value.points,
+      isMember: editForm.value.isMember,
+      memberLevel: editForm.value.memberLevel
+    })
+    
+    // 更新本地数据
+    const index = users.value.findIndex(u => u.id === editingUser.value?.id)
+    if (index !== -1 && editingUser.value) {
+      users.value[index] = {
+        ...editingUser.value,
+        points: editForm.value.points,
+        isMember: editForm.value.isMember,
+        memberLevel: editForm.value.memberLevel
+      }
+    }
+    
+    closeEditModal()
+    alert('更新成功')
+  } catch (error) {
+    console.error('更新失败:', error)
+    alert('更新失败，请重试')
+  } finally {
+    saving.value = false
+  }
 }
 
 const loadUsers = async () => {
@@ -280,6 +398,24 @@ onMounted(() => {
   color: var(--primary-color);
 }
 
+/* 编辑按钮 */
+.edit-btn {
+  padding: 6px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
 /* 表格底部 */
 .table-footer {
   display: flex;
@@ -350,6 +486,149 @@ onMounted(() => {
   font-size: 48px;
   display: block;
   margin-bottom: 16px;
+}
+
+/* 弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s;
+}
+
+.modal-container {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: var(--shadow-xl);
+  animation: slideIn 0.3s;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #f1f5f9;
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.2s;
+  background: #f8fafc;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+.form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-cancel {
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #f1f5f9;
+}
+
+.btn-submit {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* 响应式设计 */

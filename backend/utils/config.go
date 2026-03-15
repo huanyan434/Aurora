@@ -43,8 +43,9 @@ type Config struct {
 		DBName   string `yaml:"dbname"`
 		Charset  string `yaml:"charset"`
 	} `yaml:"database"`
-	UserID string `yaml:"userID"`
-	Token  string `yaml:"token"`
+	UserID           string `yaml:"userID"`
+	Token            string `yaml:"token"`
+	DashboardPassword string `yaml:"dashboardPassword"`
 }
 
 var AppConfig *Config

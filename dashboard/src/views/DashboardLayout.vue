@@ -74,7 +74,6 @@ const showMobileMenu = computed(() => {
 const navItems = [
   { path: '/dashboard/overview', name: '数据概览', icon: '📊' },
   { path: '/dashboard/users', name: '用户管理', icon: '👥' },
-  { path: '/dashboard/conversations', name: '对话管理', icon: '💬' },
   { path: '/dashboard/points', name: '积分统计', icon: '💰' }
 ]
 

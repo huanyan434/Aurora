@@ -36,6 +36,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { dashboardApi } from '@/api/dashboard'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -43,8 +44,6 @@ const userStore = useUserStore()
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
-
-const DASHBOARD_PASSWORD = 'LxyGwQf'
 
 const handleLogin = async () => {
   if (!password.value) {
@@ -55,21 +54,28 @@ const handleLogin = async () => {
   loading.value = true
   error.value = ''
 
-  // 模拟延迟
-  await new Promise(resolve => setTimeout(resolve, 500))
-
-  if (password.value === DASHBOARD_PASSWORD) {
-    userStore.setUser({
-      id: '1',
-      username: 'Admin',
-      email: 'admin@aurora.com',
-      isMember: true,
-      memberLevel: 'SVIP',
-      points: 999999
+  try {
+    const response = await dashboardApi.login({
+      password: password.value
     })
-    router.push('/dashboard/overview')
-  } else {
-    error.value = '管理密码错误'
+
+    if (response.data.success) {
+      userStore.setUser({
+        id: '1',
+        username: 'Admin',
+        email: 'admin@aurora.com',
+        isMember: true,
+        memberLevel: 'SVIP',
+        points: 999999
+      })
+      router.push('/dashboard/overview')
+    } else {
+      error.value = response.data.message || '管理密码错误'
+      loading.value = false
+    }
+  } catch (err) {
+    error.value = '登录失败，请检查网络连接'
+    console.error(err)
     loading.value = false
   }
 }
