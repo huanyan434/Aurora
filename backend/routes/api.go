@@ -756,7 +756,7 @@ func dashboardUpdateUserHandler(c *gin.Context) {
 	}
 
 	// 更新用户信息
-	err := utils.UpdateUserByID(req.UserID, req.Points, req.IsMember, req.MemberLevel)
+	err := utils.UpdateUserByID(req.UserID, req.Points, req.IsMember, req.MemberLevel, req.MemberSince, req.MemberUntil)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
@@ -856,8 +856,19 @@ func dashboardUsersHandler(c *gin.Context) {
 			"isMember":     user.IsMember,
 			"memberLevel":  user.MemberLevel,
 			"points":       user.Points,
+			"memberSince":  "",
+			"memberUntil":  "",
 			"createdAt":    user.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
+		
+		// 格式化会员时间
+		if !(user.MemberSince.IsZero()) {
+			formattedUser["memberSince"] = user.MemberSince.Format("2006-01-02T15:04")
+		}
+		if !(user.MemberUntil.IsZero()) {
+			formattedUser["memberUntil"] = user.MemberUntil.Format("2006-01-02T15:04")
+		}
+		
 		formattedUsers = append(formattedUsers, formattedUser)
 	}
 
@@ -1057,10 +1068,12 @@ type dashboardLoginResponseFailed struct {
 
 // 更新用户请求
 type dashboardUpdateUserRequest struct {
-	UserID     int64  `json:"userId" binding:"required"`
-	Points     int    `json:"points"`
-	IsMember   bool   `json:"isMember"`
-	MemberLevel string `json:"memberLevel"`
+	UserID       int64  `json:"userId" binding:"required"`
+	Points       int    `json:"points"`
+	IsMember     bool   `json:"isMember"`
+	MemberLevel  string `json:"memberLevel"`
+	MemberSince  string `json:"memberSince,omitempty"`
+	MemberUntil  string `json:"memberUntil,omitempty"`
 }
 
 type dashboardUpdateUserResponseSuccess struct {

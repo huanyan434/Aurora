@@ -7,57 +7,65 @@
 
     <!-- 用户表格 -->
     <div class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>用户</th>
-            <th>用户名</th>
-            <th>邮箱</th>
-            <th>会员等级</th>
-            <th>积分</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in users" :key="user.id" class="table-row">
-            <td>
-              <div class="user-info">
-                <div class="user-avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
-                <span class="user-id">{{ user.id }}</span>
-              </div>
-            </td>
-            <td>
-              <span class="font-semibold">{{ user.username }}</span>
-            </td>
-            <td>
-              <span class="text-muted">{{ user.email }}</span>
-            </td>
-            <td>
-              <span :class="['badge', getMemberLevelClass(user.memberLevel)]">
-                <span class="badge-icon">{{ getMemberLevelIcon(user.memberLevel) }}</span>
-                {{ getMemberLevelText(user.memberLevel) }}
-              </span>
-            </td>
-            <td>
-              <div class="points-display">
-                <span class="points-icon">💎</span>
-                <span class="points-value">{{ user.points.toLocaleString() }}</span>
-              </div>
-            </td>
-            <td>
-              <button class="edit-btn" @click="openEditModal(user)">
-                编辑
-              </button>
-            </td>
-          </tr>
-          <tr v-if="users.length === 0">
-            <td colspan="6" class="empty-state">
-              <span class="empty-icon">📭</span>
-              <p>暂无用户数据</p>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>用户</th>
+              <th>用户名</th>
+              <th>邮箱</th>
+              <th class="member-level-col">会员等级</th>
+              <th>会员到期时间</th>
+              <th>积分</th>
+              <th class="action-column">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in users" :key="user.id" class="table-row">
+              <td>
+                <div class="user-info">
+                  <div class="user-avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
+                  <span class="user-id">{{ user.id }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="font-semibold">{{ user.username }}</span>
+              </td>
+              <td>
+                <span class="text-muted">{{ user.email }}</span>
+              </td>
+              <td>
+                <span :class="['badge', getMemberLevelClass(user.memberLevel)]">
+                  <span class="badge-icon">{{ getMemberLevelIcon(user.memberLevel) }}</span>
+                  {{ getMemberLevelText(user.memberLevel) }}
+                </span>
+              </td>
+              <td>
+                <span class="member-until-text">
+                  {{ formatMemberUntil(user.memberUntil) }}
+                </span>
+              </td>
+              <td>
+                <div class="points-display">
+                  <span class="points-icon">💎</span>
+                  <span class="points-value">{{ user.points.toLocaleString() }}</span>
+                </div>
+              </td>
+              <td class="action-cell">
+                <button class="edit-btn" @click="openEditModal(user)">
+                  编辑
+                </button>
+              </td>
+            </tr>
+            <tr v-if="users.length === 0">
+              <td colspan="7" class="empty-state">
+                <span class="empty-icon">📭</span>
+                <p>暂无用户数据</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <!-- 分页 -->
       <div class="table-footer">
@@ -92,13 +100,15 @@
           <button class="modal-close" @click="closeEditModal">×</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">用户名</label>
-            <input type="text" :value="editingUser?.username" class="form-input" disabled />
-          </div>
-          <div class="form-group">
-            <label class="form-label">邮箱</label>
-            <input type="email" :value="editingUser?.email" class="form-input" disabled />
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">用户名</label>
+              <input type="text" :value="editingUser?.username" class="form-input" disabled />
+            </div>
+            <div class="form-group">
+              <label class="form-label">邮箱</label>
+              <input type="email" :value="editingUser?.email" class="form-input" disabled />
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">积分</label>
@@ -112,21 +122,29 @@
           </div>
           <div class="form-group">
             <label class="form-label">会员等级</label>
-            <select v-model="editForm.memberLevel" class="form-input">
+            <select v-model="editForm.memberLevel" class="form-input" @change="onMemberLevelChange">
               <option value="free">免费用户</option>
               <option value="VIP">VIP 会员</option>
               <option value="SVIP">SVIP 会员</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">
+          <div class="form-row" v-if="editForm.memberLevel !== 'free'">
+            <div class="form-group">
+              <label class="form-label">会员开始时间</label>
               <input 
-                v-model="editForm.isMember" 
-                type="checkbox" 
-                style="width: auto; margin-right: 8px;"
+                v-model="editForm.memberSince" 
+                type="datetime-local" 
+                class="form-input form-input-short" 
               />
-              是否为会员
-            </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">会员到期时间</label>
+              <input 
+                v-model="editForm.memberUntil" 
+                type="datetime-local" 
+                class="form-input form-input-short" 
+              />
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -143,6 +161,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { dashboardApi } from '@/api/dashboard'
+import { addToast } from '@/components/ui/toast/use-toast'
 import type { User } from '@/types'
 
 const users = ref<User[]>([])
@@ -156,8 +175,9 @@ const saving = ref(false)
 
 const editForm = ref({
   points: 0,
-  isMember: false,
-  memberLevel: 'free'
+  memberLevel: 'free' as 'free' | 'VIP' | 'SVIP',
+  memberSince: '',
+  memberUntil: ''
 })
 
 const getMemberLevelClass = (level: string) => {
@@ -187,12 +207,23 @@ const getMemberLevelText = (level: string) => {
   return texts[level] || '免费用户'
 }
 
+const formatMemberUntil = (dateString: string | undefined) => {
+  if (!dateString) return '—'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+}
+
 const openEditModal = (user: User) => {
   editingUser.value = user
   editForm.value = {
     points: user.points,
-    isMember: user.isMember,
-    memberLevel: user.memberLevel
+    memberLevel: user.memberLevel as 'free' | 'VIP' | 'SVIP',
+    memberSince: user.memberSince ? new Date(user.memberSince).toISOString().slice(0, 16) : '',
+    memberUntil: user.memberUntil ? new Date(user.memberUntil).toISOString().slice(0, 16) : ''
   }
   showEditModal.value = true
 }
@@ -202,34 +233,80 @@ const closeEditModal = () => {
   editingUser.value = null
 }
 
+const onMemberLevelChange = () => {
+  // 当会员等级变化时，如果不是免费用户且没有时间，设置默认值
+  if (editForm.value.memberLevel !== 'free') {
+    if (!editForm.value.memberSince) {
+      editForm.value.memberSince = new Date().toISOString().slice(0, 16)
+    }
+    if (!editForm.value.memberUntil) {
+      const oneYearLater = new Date()
+      oneYearLater.setFullYear(oneYearLater.getFullYear() + 1)
+      editForm.value.memberUntil = oneYearLater.toISOString().slice(0, 16)
+    }
+  } else {
+    editForm.value.memberSince = ''
+    editForm.value.memberUntil = ''
+  }
+}
+
 const saveUser = async () => {
   if (!editingUser.value) return
-  
+
   saving.value = true
   try {
+    // 将字符串 ID 转换为数字
+    const userIdNum = Number(editingUser.value.id)
+    if (isNaN(userIdNum) || userIdNum <= 0) {
+      addToast({
+        title: '错误',
+        description: '用户 ID 无效',
+        variant: 'destructive',
+        duration: 3000
+      })
+      saving.value = false
+      return
+    }
+
+    // 根据会员等级自动判断是否为会员
+    const isMember = editForm.value.memberLevel !== 'free'
+
     await dashboardApi.updateUser({
-      userId: parseInt(editingUser.value.id),
+      userId: userIdNum,
       points: editForm.value.points,
-      isMember: editForm.value.isMember,
-      memberLevel: editForm.value.memberLevel
+      isMember: isMember,
+      memberLevel: editForm.value.memberLevel,
+      memberSince: editForm.value.memberSince || undefined,
+      memberUntil: editForm.value.memberUntil || undefined
     })
-    
+
     // 更新本地数据
     const index = users.value.findIndex(u => u.id === editingUser.value?.id)
     if (index !== -1 && editingUser.value) {
       users.value[index] = {
         ...editingUser.value,
         points: editForm.value.points,
-        isMember: editForm.value.isMember,
+        isMember: isMember,
         memberLevel: editForm.value.memberLevel
       }
     }
-    
+
     closeEditModal()
-    alert('更新成功')
-  } catch (error) {
+    addToast({
+      title: '成功',
+      description: '用户信息已更新',
+      variant: 'success',
+      duration: 3000
+    })
+  } catch (error: any) {
     console.error('更新失败:', error)
-    alert('更新失败，请重试')
+    const errorMsg = error.response?.data?.message || error.message || '更新失败，请重试'
+    addToast({
+      title: '错误',
+      description: errorMsg,
+      variant: 'destructive',
+      duration: 3000
+    })
   } finally {
     saving.value = false
   }
@@ -273,7 +350,7 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-/* 表格容器 */
+/* 表格容器 - 添加横向滚动 */
 .table-container {
   background: var(--card-bg);
   border-radius: 16px;
@@ -282,9 +359,32 @@ onMounted(() => {
   overflow: hidden;
 }
 
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 /* 数据表格 */
 .data-table {
   width: 100%;
+  min-width: 1000px; /* 增加最小宽度以容纳更多列 */
   border-collapse: collapse;
 }
 
@@ -301,6 +401,12 @@ onMounted(() => {
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* 会员等级列加宽 */
+.member-level-col {
+  min-width: 140px;
 }
 
 .data-table tbody tr {
@@ -315,6 +421,24 @@ onMounted(() => {
 .data-table td {
   padding: 16px 20px;
   font-size: 14px;
+}
+
+/* 操作列固定，背景白色 */
+.action-column,
+.action-cell {
+  position: sticky;
+  right: 0;
+  background: white;
+  z-index: 1;
+}
+
+.data-table thead th.action-column {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  z-index: 2;
+}
+
+.data-table tbody tr:hover .action-cell {
+  background: white;
 }
 
 /* 用户信息 */
@@ -398,17 +522,25 @@ onMounted(() => {
   color: var(--primary-color);
 }
 
+/* 会员到期时间 */
+.member-until-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 /* 编辑按钮 */
 .edit-btn {
-  padding: 6px 16px;
+  padding: 8px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .edit-btn:hover {
@@ -501,13 +633,16 @@ onMounted(() => {
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.2s;
+  padding: 20px;
 }
 
 .modal-container {
   background: white;
   border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: var(--shadow-xl);
   animation: slideIn 0.3s;
 }
@@ -550,6 +685,12 @@ onMounted(() => {
   padding: 24px;
 }
 
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -582,6 +723,17 @@ onMounted(() => {
 .form-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 短输入框（用于时间选择器） */
+.form-input-short {
+  max-width: 180px;
+}
+
+.form-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .modal-footer {
@@ -633,6 +785,10 @@ onMounted(() => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .page-title {
+    font-size: 24px;
+  }
+
   .data-table {
     font-size: 13px;
   }
@@ -656,6 +812,22 @@ onMounted(() => {
   .pagination {
     width: 100%;
     justify-content: center;
+  }
+
+  .modal-container {
+    max-height: 95vh;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-input-short {
+    max-width: 100%;
   }
 }
 </style>

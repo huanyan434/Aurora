@@ -1085,13 +1085,13 @@ func GetDashboardOverview(userID int64) (map[string]interface{}, error) {
 	var todayConversations int64
 	db.Model(&Conversation{}).Where("created_at >= ?", today).Count(&todayConversations)
 
-	// 总积分发放
+	// 总积分发放 - 使用 COALESCE 处理 NULL 值
 	var totalPointsIssued int64
-	db.Model(&PointsRecord{}).Where("amount > 0").Select("SUM(amount)").Scan(&totalPointsIssued)
+	db.Model(&PointsRecord{}).Where("amount > 0").Select("COALESCE(SUM(amount), 0)").Scan(&totalPointsIssued)
 
-	// 今日积分发放
+	// 今日积分发放 - 使用 COALESCE 处理 NULL 值
 	var todayPointsIssued int64
-	db.Model(&PointsRecord{}).Where("amount > 0 AND created_at >= ?", today).Select("SUM(amount)").Scan(&todayPointsIssued)
+	db.Model(&PointsRecord{}).Where("amount > 0 AND created_at >= ?", today).Select("COALESCE(SUM(amount), 0)").Scan(&todayPointsIssued)
 
 	// VIP 用户数
 	var vipUsers int64
@@ -1190,7 +1190,7 @@ func HashPasswordBcrypt(password string) (string, error) {
 }
 
 // UpdateUserByID 根据 ID 更新用户信息
-func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string) error {
+func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string, memberSince string, memberUntil string) error {
 	db := GetDB()
 
 	// 使用事务
@@ -1238,9 +1238,36 @@ func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string)
 	user.IsMember = isMember
 	user.MemberLevel = memberLevel
 	
-	// 如果是会员但没有设置会员到期时间，设置为一年后
-	if isMember && user.MemberUntil.IsZero() {
-		user.MemberUntil = time.Now().AddDate(1, 0, 0)
+	// 处理会员时间
+	if isMember {
+		// 处理开始时间
+		if memberSince != "" {
+			memberSinceTime, err := time.Parse("2006-01-02T15:04", memberSince)
+			if err != nil {
+				memberSinceTime, err = time.Parse("2006-01-02", memberSince)
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("会员开始时间格式错误")
+				}
+			}
+			user.MemberSince = memberSinceTime
+		} else if user.MemberSince.IsZero() {
+			// 如果没有提供开始时间且当前为空，设置为现在
+			user.MemberSince = time.Now()
+		}
+		
+		// 处理到期时间
+		if memberUntil != "" {
+			memberUntilTime, err := time.Parse("2006-01-02T15:04", memberUntil)
+			if err != nil {
+				memberUntilTime, err = time.Parse("2006-01-02", memberUntil)
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("会员到期时间格式错误")
+				}
+			}
+			user.MemberUntil = memberUntilTime
+		}
 	}
 	
 	// 如果不是会员，清空会员相关信息

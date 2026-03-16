@@ -29,6 +29,8 @@ export interface UpdateUserRequest {
   points?: number
   isMember?: boolean
   memberLevel?: string
+  memberSince?: string
+  memberUntil?: string
 }
 
 export interface UpdateUserResponse {

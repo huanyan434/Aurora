@@ -5,6 +5,8 @@ export interface User {
   isMember: boolean
   memberLevel: string
   points: number
+  memberSince?: string
+  memberUntil?: string
   createdAt?: string
 }
 
