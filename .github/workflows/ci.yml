@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ================= 后端构建 (Go) =================
+  build-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.26.1'
+        cache-dependency-path: backend/go.sum
+
+    - name: Build Backend
+      run: |
+        echo "Building Go backend..."
+        go build -v -o aurora-backend main.go
+
+    - name: Upload Backend Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: aurora-backend
+        path: backend/aurora-backend
+        if-no-files-found: error
+
+  # ================= 前端构建 (Vue3 + Vite + pnpm) =================
+  build-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '23'
+
+    - name: Install pnpm via npm
+      run: |
+        echo "Installing pnpm..."
+        npm install -g pnpm
+        pnpm --version
+
+    - name: Install Dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build Frontend
+      run: pnpm build
+
+    - name: Upload Frontend Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: frontend/dist
+        if-no-files-found: error
+
+  # ================= Dashboard 构建 (Vue3 + Vite + pnpm) =================
+  build-dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./dashboard
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '23'
+
+    - name: Install pnpm via npm
+      run: |
+        echo "Installing pnpm..."
+        npm install -g pnpm
+        pnpm --version
+
+    - name: Install Dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build Dashboard
+      run: pnpm build
+
+    - name: Upload Dashboard Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: dashboard
+        path: dashboard/dist
+        if-no-files-found: error
