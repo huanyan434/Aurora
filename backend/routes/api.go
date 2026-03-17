@@ -779,18 +779,8 @@ func dashboardUpdateUserHandler(c *gin.Context) {
 // @Failure 400 {object} dashboardOverviewResponseFailed "获取概览数据失败"
 // @Router /api/dashboard/overview [get]
 func dashboardOverviewHandler(c *gin.Context) {
-	// 获取管理员用户
-	user, err := getCurrentUser(c)
-	if err != nil {
-		c.JSON(400, gin.H{
-			"success": false,
-			"message": "获取用户信息失败：" + err.Error(),
-		})
-		return
-	}
-
-	// 获取概览数据
-	overview, err := utils.GetDashboardOverview(user.ID)
+	// 获取概览数据（不需要用户 ID）
+	overview, err := utils.GetDashboardOverview(0)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
@@ -815,15 +805,6 @@ func dashboardOverviewHandler(c *gin.Context) {
 // @Failure 400 {object} dashboardUsersResponseFailed "获取用户列表失败"
 // @Router /api/dashboard/users [get]
 func dashboardUsersHandler(c *gin.Context) {
-	_, err := getCurrentUser(c)
-	if err != nil {
-		c.JSON(400, gin.H{
-			"success": false,
-			"message": "获取用户信息失败：" + err.Error(),
-		})
-		return
-	}
-
 	pageStr := c.DefaultQuery("page", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", "20")
 
@@ -957,15 +938,6 @@ func dashboardConversationsHandler(c *gin.Context) {
 // @Failure 400 {object} dashboardPointsRecordsResponseFailed "获取积分记录失败"
 // @Router /api/dashboard/points_records [get]
 func dashboardPointsRecordsHandler(c *gin.Context) {
-	_, err := getCurrentUser(c)
-	if err != nil {
-		c.JSON(400, gin.H{
-			"success": false,
-			"message": "获取用户信息失败：" + err.Error(),
-		})
-		return
-	}
-
 	pageStr := c.DefaultQuery("page", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", "20")
 
