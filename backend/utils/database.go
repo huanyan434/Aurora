@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 
@@ -1211,6 +1212,16 @@ func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string,
 
 	// 更新积分（如果提供了新值）
 	if points != user.Points {
+		// 积分溢出检查 - 严格检查
+		if points < 0 {
+			tx.Rollback()
+			return fmt.Errorf("积分不能为负数")
+		}
+		if points > math.MaxInt {
+			tx.Rollback()
+			return fmt.Errorf("积分超出最大限制 (最大值：%d)", math.MaxInt)
+		}
+
 		// 记录积分变动
 		pointsDiff := points - user.Points
 		reason := "管理员手动调整"
@@ -1219,7 +1230,7 @@ func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string,
 		} else if pointsDiff < 0 {
 			reason = "管理员扣除积分"
 		}
-		
+
 		// 更新用户积分
 		user.Points = points
 		if err := tx.Save(&user).Error; err != nil {

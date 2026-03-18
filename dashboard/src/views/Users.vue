@@ -253,6 +253,30 @@ const onMemberLevelChange = () => {
 const saveUser = async () => {
   if (!editingUser.value) return
 
+  // 积分溢出检查 - 严格检查
+  if (editForm.value.points < 0) {
+    addToast({
+      title: '错误',
+      description: '积分不能为负数',
+      variant: 'destructive',
+      duration: 3000
+    })
+    return
+  }
+
+  // JavaScript 中 Number.MAX_SAFE_INTEGER 是 2^53 - 1
+  // 但后端 Go 的 int 类型通常是 32 位，最大值是 2^31 - 1 = 2147483647
+  const MAX_INT32 = 2147483647
+  if (editForm.value.points > MAX_INT32) {
+    addToast({
+      title: '错误',
+      description: `积分超出最大限制 (最大值：${MAX_INT32.toLocaleString()})`,
+      variant: 'destructive',
+      duration: 3000
+    })
+    return
+  }
+
   saving.value = true
   try {
     // 将字符串 ID 转换为数字
