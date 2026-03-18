@@ -311,7 +311,9 @@ const saveUser = async () => {
         ...editingUser.value,
         points: editForm.value.points,
         isMember: isMember,
-        memberLevel: editForm.value.memberLevel
+        memberLevel: editForm.value.memberLevel,
+        memberSince: editForm.value.memberSince || undefined,
+        memberUntil: editForm.value.memberUntil || undefined
       }
     }
 
