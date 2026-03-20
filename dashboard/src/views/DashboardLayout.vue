@@ -9,7 +9,7 @@
           <span></span>
         </button>
         <div class="logo">
-          <span class="logo-icon">🌅</span>
+          <img src="/favicon.png" alt="Aurora" class="logo-icon" />
           <div class="logo-text">
             <span class="logo-title">Aurora</span>
             <span class="logo-subtitle">管理控制台</span>
@@ -42,6 +42,9 @@
         </router-link>
       </nav>
       <div class="sidebar-footer">
+        <div class="sidebar-quote">
+          一切伟大的行动和思想，<br>都有一个微不足道的开始。
+        </div>
         <div class="version-info">
           <span>Aurora Dashboard</span>
           <span class="version">v1.0.0</span>
@@ -153,15 +156,11 @@ const handleLogout = () => {
 }
 
 .logo-icon {
-  font-size: 32px;
   width: 48px;
   height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  object-fit: cover;
 }
 
 .logo-text {
@@ -172,10 +171,7 @@ const handleLogout = () => {
 .logo-title {
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #18181b;
 }
 
 .logo-subtitle {
@@ -191,7 +187,7 @@ const handleLogout = () => {
 
 .logout-btn {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: #18181b;
   color: white;
   border: none;
   border-radius: 10px;
@@ -202,8 +198,9 @@ const handleLogout = () => {
 }
 
 .logout-btn:hover {
+  background: #27272a;
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 /* 侧边栏 */
@@ -242,14 +239,18 @@ const handleLogout = () => {
 }
 
 .nav-item:hover {
-  background: #f8fafc;
-  color: var(--primary-color);
+  background: #f4f4f5;
+  color: var(--text-primary);
 }
 
 .nav-item-active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #18181b;
   color: white;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.nav-item-active:hover {
+  background: #27272a;
+  color: white;
 }
 
 .nav-icon {
@@ -261,6 +262,18 @@ const handleLogout = () => {
 .sidebar-footer {
   padding: 16px;
   border-top: 1px solid var(--border-color);
+}
+
+.sidebar-quote {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .version-info {

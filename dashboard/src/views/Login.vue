@@ -88,30 +88,31 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #fafafa;
   padding: 20px;
 }
 
 .login-card {
   background: white;
   border-radius: 16px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
   padding: 48px 40px;
   width: 100%;
   max-width: 420px;
+  border: 1px solid #e4e4e7;
 }
 
 .login-logo {
   width: 80px;
   height: 80px;
   margin: 0 auto 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #18181b;
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 40px;
-  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .login-title {
@@ -148,14 +149,14 @@ const handleLogin = async () => {
   border-radius: 12px;
   font-size: 15px;
   transition: all 0.2s;
-  background: #f8fafc;
+  background: #fafafa;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: #18181b;
   background: white;
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.05);
 }
 
 .form-input::placeholder {
@@ -178,7 +179,7 @@ const handleLogin = async () => {
 .submit-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #18181b;
   color: white;
   border: none;
   border-radius: 12px;
@@ -193,8 +194,9 @@ const handleLogin = async () => {
 }
 
 .submit-btn:hover {
+  background: #27272a;
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .submit-btn:active {

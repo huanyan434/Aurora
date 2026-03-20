@@ -31,16 +31,13 @@
         </div>
       </div>
 
-      <!-- 积分发放 -->
+      <!-- 今日发放积分 -->
       <div class="stat-card stat-card-success">
         <div class="stat-header">
           <div class="stat-icon stat-icon-success">💰</div>
-          <div class="stat-value">{{ overview.totalPointsIssued.toLocaleString() }}</div>
+          <div class="stat-value">{{ overview.todayPointsIssued.toLocaleString() }}</div>
         </div>
-        <div class="stat-label">积分发放</div>
-        <div class="stat-trend stat-trend-success">
-          <span>+{{ overview.todayPointsIssued.toLocaleString() }} 今日发放</span>
-        </div>
+        <div class="stat-label">今日发放积分</div>
       </div>
 
       <!-- VIP 用户 -->
@@ -171,23 +168,23 @@ onMounted(() => {
 }
 
 .stat-icon-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  background: #18181b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .stat-icon-info {
-  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  background: #27272a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .stat-icon-success {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  background: #27272a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .stat-icon-warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  background: #27272a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .stat-value {
@@ -216,7 +213,7 @@ onMounted(() => {
 }
 
 .stat-percent {
-  color: var(--primary-color);
+  color: var(--text-primary);
   font-weight: 600;
 }
 

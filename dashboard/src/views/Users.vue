@@ -478,14 +478,14 @@ onMounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #18181b;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 16px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .user-id {
@@ -514,17 +514,17 @@ onMounted(() => {
 }
 
 .badge-default {
-  background: #f1f5f9;
-  color: #64748b;
+  background: #f4f4f5;
+  color: #71717a;
 }
 
 .badge-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #18181b;
   color: white;
 }
 
 .badge-warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  background: #eab308;
   color: white;
 }
 
@@ -558,7 +558,7 @@ onMounted(() => {
 /* 编辑按钮 */
 .edit-btn {
   padding: 8px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #18181b;
   color: white;
   border: none;
   border-radius: 8px;
@@ -570,8 +570,9 @@ onMounted(() => {
 }
 
 .edit-btn:hover {
+  background: #27272a;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* 表格底部 */
@@ -788,7 +789,7 @@ onMounted(() => {
 
 .btn-submit {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #18181b;
   border: none;
   border-radius: 10px;
   font-size: 14px;
@@ -799,8 +800,9 @@ onMounted(() => {
 }
 
 .btn-submit:hover:not(:disabled) {
+  background: #27272a;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .btn-submit:disabled {
