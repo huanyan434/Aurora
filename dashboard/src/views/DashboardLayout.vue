@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
@@ -69,10 +69,18 @@ const route = useRoute()
 const userStore = useUserStore()
 
 const sidebarOpen = ref(false)
+const isMobile = ref(false)
 
 const showMobileMenu = computed(() => {
-  return window.innerWidth <= 1024
+  return isMobile.value
 })
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 1024
+  if (!isMobile.value) {
+    sidebarOpen.value = false
+  }
+}
 
 const navItems = [
   { path: '/dashboard/overview', name: '数据概览', icon: '📊' },
@@ -91,7 +99,7 @@ const closeSidebar = () => {
 }
 
 const onNavClick = () => {
-  if (window.innerWidth <= 1024) {
+  if (isMobile.value) {
     closeSidebar()
   }
 }
@@ -100,6 +108,16 @@ const handleLogout = () => {
   userStore.clearUser()
   router.push('/login')
 }
+
+// 监听窗口大小变化
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 </script>
 
 <style scoped>
