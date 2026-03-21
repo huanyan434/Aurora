@@ -496,10 +496,10 @@ export class WebSocketManager {
     }
 
     console.log('开始创建新的 WebSocket 连接...')
-    
+
     // 创建连接超时计时器
     let connectTimeout: ReturnType<typeof setTimeout> | null = null
-    
+
     this.connectPromise = new Promise((resolve, reject) => {
       // 如果已有连接，先关闭
       if (this.ws) {
@@ -507,8 +507,8 @@ export class WebSocketManager {
         this.ws.close()
       }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol === 'wss:' ? 'wss' : 'ws'}://${window.location.host}/chat/ws`
+      // 统一使用 ws 协议，不使用 wss（后端未配置 wss）
+      const wsUrl = `ws://${window.location.host}/chat/ws`
       console.log('WebSocket URL:', wsUrl, '(通过 Vite 代理到后端 5000 端口)')
 
       this.ws = new WebSocket(wsUrl)
