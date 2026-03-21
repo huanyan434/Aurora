@@ -43,12 +43,12 @@ export const toastSuccess = (message: string) => {
   })
 }
 
-export const toastError = (message: string) => {
+export const toastError = (message: string, duration: number = 10000) => {
   addToast({
     title: '错误',
     description: message,
     variant: 'destructive',
-    duration: 3000
+    duration: duration
   })
 }
 

@@ -1,22 +1,16 @@
 package utils
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"mime/multipart"
-	"net/http"
-	"os"
-	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-queue/queue"
 	"github.com/sashabaranov/go-openai"
 )
@@ -34,40 +28,52 @@ type ConversationIDMessageID struct {
 	MessageAssistantID int64 `json:"messageAssistantID"`
 }
 
-// 全局线程ID列表和相关管理结构
+// MessageContent 缓存消息的完整内容，用于断点续传
+type MessageContent struct {
+	ReasoningContent string
+	Content          string
+	ReasoningTime    int
+	Completed        bool // 是否已完成
+}
+
+// 全局线程 ID 列表和相关管理结构
 var (
-	// 使用一个map来存储所有线程信息，保证数据一致性
-	threadRegistry = make(map[string]ThreadInfo)
-	threadMutex    sync.RWMutex
+	// 使用一个 map 来存储所有线程信息，保证数据一致性
+	ThreadRegistry = make(map[string]ThreadInfo)
+	ThreadMutex    sync.RWMutex
 
 	// 使用队列处理并发请求
-	taskQueue *queue.Queue
+	TaskQueue *queue.Queue
 
-	// 记录请求中的conversationID对应messageUserID和messageAssistantID
-	conversationIDMessageIDs = map[int64]ConversationIDMessageID{}
+	// 记录请求中的 conversationID 对应 messageUserID 和 messageAssistantID
+	ConversationIDMessageIDs = map[int64]ConversationIDMessageID{}
+
+	// 缓存每个消息的完整内容，用于断点续传
+	MessageContentCache      = make(map[int64]*MessageContent)
+	MessageContentCacheMutex sync.RWMutex
 )
 
 // 初始化队列
 func init() {
-	taskQueue = queue.NewPool(100) // 同时处理100个并发请求
+	TaskQueue = queue.NewPool(100) // 同时处理 100 个并发请求
 }
 
 // --- 核心功能：并发处理 OpenAI 请求 ---
 
-// ThreadOpenai 使用并发处理OpenAI请求，返回一个通道以实现类似Python yield的功能
+// ThreadOpenai 使用并发处理 OpenAI 请求，返回一个通道以实现类似 Python yield 的功能
 func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64 string, reasoning bool) <-chan string {
 	threadID := strconv.FormatInt(conversationID, 10)
 
 	// 1. 检查线程是否已存在
-	threadMutex.RLock()
-	info, exists := threadRegistry[threadID]
-	threadMutex.RUnlock()
+	ThreadMutex.RLock()
+	info, exists := ThreadRegistry[threadID]
+	ThreadMutex.RUnlock()
 
 	// 如果线程已存在，直接返回已存在的通道
 	if exists {
 		// 确保返回的通道没有被关闭
 		// 这是一个简单的检查，更严谨地实现需要额外的状态字段
-		// 但基于当前的defer close逻辑，我们相信如果存在，它应该仍在使用中。
+		// 但基于当前的 defer close 逻辑，我们相信如果存在，它应该仍在使用中。
 		return info.Resp
 	}
 
@@ -76,15 +82,32 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 	_, cancel := context.WithCancel(context.Background())
 
 	// 3. 注册新线程
-	threadMutex.Lock()
-	threadRegistry[threadID] = ThreadInfo{
+	ThreadMutex.Lock()
+	ThreadRegistry[threadID] = ThreadInfo{
 		Cancel: cancel,
 		Resp:   resp,
 	}
-	threadMutex.Unlock()
-	conversationIDMessageIDs[conversationID] = ConversationIDMessageID{
+	ThreadMutex.Unlock()
+	ConversationIDMessageIDs[conversationID] = ConversationIDMessageID{
 		MessageUserID:      messageUserID,
 		MessageAssistantID: messageAssistantID,
+	}
+
+	// 初始化消息内容缓存
+	MessageContentCacheMutex.Lock()
+	MessageContentCache[messageAssistantID] = &MessageContent{
+		ReasoningContent: "",
+		Content:          "",
+		ReasoningTime:    0,
+		Completed:        false,
+	}
+	MessageContentCacheMutex.Unlock()
+
+	// 【新增】立即保存用户消息到数据库
+	// 在开始生成 AI 回复之前，先将用户输入保存到数据库
+	if err := SaveSingleMessage(messageUserID, conversationID, "user", prompt, ""); err != nil {
+		// 保存失败时记录错误，但不影响后续流程
+		fmt.Printf("保存用户消息失败：%v\n", err)
 	}
 
 	// 4. 提交任务到队列中执行
@@ -92,13 +115,34 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 	conversationIDCopy := conversationID // 创建副本以在闭包中使用
 
 	go func() {
-		err := taskQueue.QueueTask(func(ctx context.Context) error {
+		err := TaskQueue.QueueTask(func(ctx context.Context) error {
 			// 确保在函数退出时清理资源
 			defer func() {
+				// 标记消息内容为已完成
+				MessageContentCacheMutex.Lock()
+				if content, exists := MessageContentCache[messageAssistantID]; exists {
+					content.Completed = true
+				}
+				MessageContentCacheMutex.Unlock()
+
+				// 生成完成后，保存消息到数据库
+				// 从缓存中获取完整的消息内容
+				MessageContentCacheMutex.RLock()
+				userContent := MessageContentCache[messageAssistantID]
+				MessageContentCacheMutex.RUnlock()
+
+				if userContent != nil {
+					// 保存 assistant 消息到数据库
+					if err := SaveSingleMessage(messageAssistantID, conversationIDCopy, "assistant", userContent.Content, userContent.ReasoningContent); err != nil {
+						// 保存失败时记录错误（实际项目中应该使用日志记录）
+						fmt.Printf("保存对话消息失败：%v\n", err)
+					}
+				}
+
 				close(resp)
-				threadMutex.Lock()
-				delete(threadRegistry, threadID)
-				threadMutex.Unlock()
+				ThreadMutex.Lock()
+				delete(ThreadRegistry, threadID)
+				ThreadMutex.Unlock()
 			}()
 
 			Openai(ctx, conversationIDCopy, messageUserID, messageAssistantID, model, prompt, base64, reasoning, resp)
@@ -107,528 +151,294 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 
 		if err != nil {
 			// 如果任务排队失败，发送错误信息并清理资源
-			resp <- fmt.Sprintf("ERROR: failed to queue task: %v", err)
+			jsonResp, _ := json.Marshal(Response{
+				Success: false,
+				Error:   fmt.Sprintf("failed to queue task: %v", err),
+			})
+			resp <- string(jsonResp)
 			close(resp)
-			threadMutex.Lock()
-			delete(threadRegistry, threadID)
-			threadMutex.Unlock()
+			ThreadMutex.Lock()
+			delete(ThreadRegistry, threadID)
+			ThreadMutex.Unlock()
 		}
 	}()
 
 	return resp
 }
 
-type Response struct {
-	Success          bool   `json:"success" default:"false"`
-	Error            string `json:"error" default:""`
-	ReasoningContent string `json:"reasoningContent" default:""`
-	Content          string `json:"content" default:""`
-}
+// Openai 调用 OpenAI API 并流式返回结果，同时更新消息内容缓存
+func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64Image string, reasoning bool, resp chan string) {
+	config := GetConfig()
 
-func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64 string, reasoning bool, resp chan<- string) {
-	var responseByte []byte
-	configs := GetConfig()
-	// 判断模型信息
-	modelSupport := false
-	visionSupport := false
-	var modelReasoning string
-	for _, m := range configs.Models {
-		if m.ID == model {
-			modelSupport = true
-			modelReasoning = m.Reasoning
-			if m.Image == 1 {
-				visionSupport = true
-			}
-		}
-	}
-	if modelSupport == false {
-		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR: model not supported:%s", model)})
-		resp <- string(responseByte)
+	// 创建 OpenAI 客户端配置
+	c := openai.DefaultConfig(config.APIKey)
+	c.BaseURL = config.API
+
+	// 创建客户端
+	client := openai.NewClientWithConfig(c)
+
+	// 构建消息历史
+	messages, err := LoadConversationHistory(conversationID)
+	if err != nil {
+		jsonResp, _ := json.Marshal(Response{
+			Success: false,
+			Error:   fmt.Sprintf("failed to load conversation history: %v", err),
+		})
+		resp <- string(jsonResp)
 		return
 	}
-	if reasoning == true {
-		if modelReasoning == "" {
-			responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR: model does not support reasoning:%s", model)})
-			resp <- string(responseByte)
-			return
-		} else if modelReasoning != model {
-			model = modelReasoning
-		}
-	}
 
-	// 处理messages
-	messages, err := LoadConversationHistoryFormat2(conversationID)
-	if err != nil {
-		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
-		resp <- string(responseByte)
-	}
-	messagesCopy, err := LoadConversationHistory(conversationID)
-	if err != nil {
-		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
-		resp <- string(responseByte)
-	}
-	for _, m := range messagesCopy {
-		if m.Role == "assistant" {
-			_, m.Content = ParseModelBlock(m.Content)
-			_, m.ReasoningContent, _ = ParseThinkBlock(m.Content)
-		}
-		if m.Role == "user" {
-			_, m.Content = ParseBase64Block(m.Content)
-		}
-	}
-
-	if base64 != "" {
-		messages = append(messages, messageFormat{
-			ID:      messageUserID,
-			Role:    "user",
-			Content: fmt.Sprintf("<base64>%s</base64>", base64) + prompt,
+	// 添加当前用户消息
+	if base64Image != "" {
+		// 带图片的消息
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role: openai.ChatMessageRoleUser,
+			MultiContent: []openai.ChatMessagePart{
+				{
+					Type: openai.ChatMessagePartTypeText,
+					Text: prompt,
+				},
+				{
+					Type: openai.ChatMessagePartTypeImageURL,
+					ImageURL: &openai.ChatMessageImageURL{
+						URL: base64Image,
+					},
+				},
+			},
 		})
 	} else {
-		messages = append(messages, messageFormat{
-			ID:      messageUserID,
-			Role:    "user",
+		// 纯文本消息
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleUser,
 			Content: prompt,
 		})
 	}
-	err = SaveConversationHistoryFormat2(conversationID, messages)
+
+	// 创建流式请求
+	stream, err := client.CreateChatCompletionStream(ctx, openai.ChatCompletionRequest{
+		Model:    model,
+		Messages: messages,
+		Stream:   true,
+	})
 	if err != nil {
-		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%s", err)})
-		resp <- string(responseByte)
-	}
-
-	// 处理base64，创建client
-	promptWrapper := openai.ChatCompletionMessage{
-		Role:    "user",
-		Content: prompt,
-	}
-	if base64 != "" {
-		if visionSupport == true {
-			promptWrapper = openai.ChatCompletionMessage{
-				Role:    "user",
-				Content: prompt,
-				MultiContent: []openai.ChatMessagePart{
-					{
-						Type: "image_url",
-						ImageURL: &openai.ChatMessageImageURL{
-							URL: base64,
-						},
-					},
-				},
-			}
-		} else {
-			promptWrapper = openai.ChatCompletionMessage{
-				Role:    "user",
-				Content: prompt + "\n\n" + ScanPicture(base64, prompt),
-			}
-		}
-	}
-
-	clientConfig := openai.DefaultConfig(configs.APIKey)
-	clientConfig.BaseURL = configs.API
-	client := openai.NewClientWithConfig(clientConfig)
-	date := time.Now().Format(time.DateOnly)
-	timeOnly := time.Now().Format(time.TimeOnly)
-	req := openai.ChatCompletionRequest{
-		Model: model,
-		Messages: append(
-			append(messagesCopy, openai.ChatCompletionMessage{
-				Role: "system",
-				Content: "今天是 " + date + "。" + "\n" +
-					"现在是 " + timeOnly + "。",
-			}),
-			promptWrapper),
-		Stream: true,
-	}
-
-	// 创建流式响应
-	stream, err := client.CreateChatCompletionStream(ctx, req)
-	if err != nil {
-		// 发送错误信息到通道，并确保格式清晰
-		responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR: failed to create stream: %v", err)})
-		resp <- string(responseByte)
-		// 返回 nil 表示 Job 执行完成，避免 go-queue 再次尝试
+		jsonResp, _ := json.Marshal(Response{
+			Success: false,
+			Error:   fmt.Sprintf("failed to create chat completion stream: %v", err),
+		})
+		resp <- string(jsonResp)
 		return
 	}
+	defer stream.Close()
 
-	// 确保流式连接关闭
-	defer func() {
-		if err := stream.Close(); err != nil {
-			// 避免 panic，改为记录错误或发送到通道
-			responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR: failed to close stream: %v", err)})
-			resp <- string(responseByte)
-		}
-	}()
-
-	var reasoningContent, content string
-	timeO := time.Now().Unix()
-	usedTime := strconv.Itoa(int(time.Now().Unix() - timeO))
-
-	defer func() {
-		messages, _ = LoadConversationHistoryFormat2(conversationID)
-		if reasoningContent != "" {
-			messages = append(messages, messageFormat{
-				ID:               messageAssistantID,
-				Role:             "assistant",
-				Content:          fmt.Sprintf("<model=%s>", model) + content,
-				ReasoningContent: fmt.Sprintf("<think time=%s>%s</think>", usedTime, reasoningContent),
-			})
-		} else {
-			messages = append(messages, messageFormat{
-				ID:               messageAssistantID,
-				Role:             "assistant",
-				Content:          fmt.Sprintf("<model=%s>", model) + content,
-				ReasoningContent: "",
-			})
-		}
-		if err := SaveConversationHistoryFormat2(conversationID, messages); err != nil {
-			fmt.Printf("ERROR:%v\n", err)
-		}
-
-		delete(conversationIDMessageIDs, conversationID)
-
-		var conversation Conversation
-		GetDB().Table("conversations").Where("id = ?", conversationID).First(&conversation)
-		// 如果对话标题为"新对话"
-		if conversation.Title == "新对话" {
-			configs := GetConfig()
-			clientConfig := openai.DefaultConfig(configs.APIKey2)
-			clientConfig.BaseURL = configs.API2
-			client := openai.NewClientWithConfig(clientConfig)
-			messages, _ := LoadConversationHistory(conversationID)
-			messages = append(messages, openai.ChatCompletionMessage{
-				Role:    "user",
-				Content: "请总结概括对话内容，生成一个对话标题，不超过15字，不要使用 Emoji 和 Konomoji，不要使用 markdown，不要输出其他内容，仅需对话标题内容，不需前缀。",
-			})
-			req := openai.ChatCompletionRequest{
-				Model:    configs.DefaultDialogNamingModel,
-				Messages: messages,
-			}
-			title, err := client.CreateChatCompletion(ctx, req)
-			if err != nil {
-				fmt.Println("Error:", err)
-			}
-
-			_ = RenameConversation(conversationID, title.Choices[0].Message.Content)
-		}
-	}()
-
+	// 流式读取响应
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			response, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				return
+			}
 			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				if err == io.EOF {
-					return
-				}
-				responseByte, _ = json.Marshal(Response{Success: false, Error: fmt.Sprintf("ERROR:%v", err)})
-				resp <- string(responseByte)
+				jsonResp, _ := json.Marshal(Response{
+					Success: false,
+					Error:   fmt.Sprintf("stream receive error: %v", err),
+				})
+				resp <- string(jsonResp)
 				return
 			}
 
 			if len(response.Choices) > 0 {
-				if reasoning := response.Choices[0].Delta.ReasoningContent; reasoning != "" {
-					reasoningContent += reasoning
-					usedTime = strconv.Itoa(int(time.Now().Unix() - timeO))
-					responseByte, _ = json.Marshal(Response{
-						Success:          true,
-						ReasoningContent: fmt.Sprintf("<think time=%s>%s</think>", usedTime, reasoning),
-					})
-					resp <- string(responseByte)
+				delta := response.Choices[0].Delta
+
+				// 更新缓存：推理内容
+				if delta.ReasoningContent != "" {
+					MessageContentCacheMutex.Lock()
+					if content, exists := MessageContentCache[messageAssistantID]; exists {
+						content.ReasoningContent += delta.ReasoningContent
+					}
+					MessageContentCacheMutex.Unlock()
 				}
 
-				if contentDelta := response.Choices[0].Delta.Content; contentDelta != "" {
-					content += contentDelta
-					responseByte, _ = json.Marshal(Response{
-						Success: true,
-						Content: contentDelta,
+				// 更新缓存：普通内容
+				if delta.Content != "" {
+					MessageContentCacheMutex.Lock()
+					if content, exists := MessageContentCache[messageAssistantID]; exists {
+						content.Content += delta.Content
+					}
+					MessageContentCacheMutex.Unlock()
+
+					// 写入响应通道（JSON 格式）
+					jsonResp, _ := json.Marshal(Response{
+						Success:          true,
+						Content:          delta.Content,
+						ReasoningContent: delta.ReasoningContent,
+						Error:            "",
 					})
-					resp <- string(responseByte)
+					resp <- string(jsonResp)
 				}
 			}
 		}
 	}
 }
 
-// ScanPicture 视图
-func ScanPicture(base64 string, prompt string) string {
-	configs := GetConfig()
-	clientConfig := openai.DefaultConfig(configs.APIKey2)
-	clientConfig.BaseURL = configs.API2
-	client := openai.NewClientWithConfig(clientConfig)
-	req := openai.ChatCompletionRequest{
-		Model: configs.DefaultVisualModel,
-		Messages: []openai.ChatCompletionMessage{
-			{
-				Role: "user",
-				MultiContent: []openai.ChatMessagePart{
-					{
-						Type: "text",
-						Text: "请简要描述输入图片的内容，优先描述图片上的文字，其次概括图片内容。你的描述会作为提示词给另一个不支持视觉模型进行理解。请根据用户输入来更好地描述图片，以下是用户的输入：" + prompt,
-					},
-					{
-						Type: "image_url",
-						// ImageURL: &openai.ChatMessageImageURL{URL: fmt.Sprintf("data:image/jpeg;base64,%s", base64)},
-						ImageURL: &openai.ChatMessageImageURL{URL: base64},
-					},
-				},
-			},
-		},
+// GetMessageContent 获取缓存的消息内容
+func GetMessageContent(messageAssistantID int64) *MessageContent {
+	MessageContentCacheMutex.RLock()
+	defer MessageContentCacheMutex.RUnlock()
+
+	if content, exists := MessageContentCache[messageAssistantID]; exists {
+		return content
 	}
-	resp, err := client.CreateChatCompletion(context.Background(), req)
-	if err != nil {
-		return fmt.Sprintf("识图失败：%s", err)
-	}
-	return "用户上传了一张图片，以下是一个视觉模型对图片的描述：" + resp.Choices[0].Message.Content
+	return nil
 }
 
-// KillThread 终止指定ID的线程
+// DeleteMessageContent 删除缓存的消息内容
+func DeleteMessageContent(messageAssistantID int64) {
+	MessageContentCacheMutex.Lock()
+	defer MessageContentCacheMutex.Unlock()
+
+	delete(MessageContentCache, messageAssistantID)
+}
+
+// UpdateMessageContent 更新缓存中的消息内容，累加而不是覆盖
+// @param messageAssistantID 消息 assistant ID
+// @param reasoningContent 推理内容增量
+// @param content 普通内容增量
+// @param reasoningTime 推理时间（秒）
+func UpdateMessageContent(messageAssistantID int64, reasoningContent string, content string, reasoningTime int) {
+	MessageContentCacheMutex.Lock()
+	defer MessageContentCacheMutex.Unlock()
+
+	if msgContent, exists := MessageContentCache[messageAssistantID]; exists {
+		// 累加推理内容
+		if reasoningContent != "" {
+			msgContent.ReasoningContent += reasoningContent
+		}
+		// 累加普通内容
+		if content != "" {
+			msgContent.Content += content
+		}
+		// 累加推理时间
+		if reasoningTime > 0 {
+			msgContent.ReasoningTime += reasoningTime
+		}
+	}
+}
+
+// GetMessageWithUser 从数据库获取消息及其所属用户 ID
+// @param messageID 消息 ID
+// @return *Message 消息对象，int64 用户 ID，error 错误信息
+func GetMessageWithUser(messageID int64) (*Message, int64, error) {
+	db := GetDB()
+	var message Message
+	result := db.Table("messages").Where("id = ?", messageID).First(&message)
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	// 通过 conversation_id 查询所属用户
+	var conversation Conversation
+	result = db.Table("conversations").Where("id = ?", message.ConversationID).First(&conversation)
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	return &message, conversation.UserID, nil
+}
+
+// ClearMessageContent 清除缓存的消息内容
+// 当生成完成时调用此函数清理缓存
+// @param messageAssistantID 消息 assistant ID
+func ClearMessageContent(messageAssistantID int64) {
+	MessageContentCacheMutex.Lock()
+	defer MessageContentCacheMutex.Unlock()
+
+	delete(MessageContentCache, messageAssistantID)
+}
+
+// Response OpenAI API 响应结构
+type Response struct {
+	Success          bool   `json:"success"`
+	Content          string `json:"content"`
+	ReasoningContent string `json:"reasoningContent"`
+	Error            string `json:"error"`
+}
+
+// ParseThinkBlock 解析推理内容，返回推理时间和推理内容
+// @param reasoningContent 推理内容字符串
+// @return int 推理时间（秒），string 推理内容，error 错误信息
+func ParseThinkBlock(reasoningContent string) (int, string, error) {
+	// 如果推理内容为空，直接返回
+	if reasoningContent == "" {
+		return 0, "", nil
+	}
+
+	// 尝试解析推理时间（假设格式为 "思考了 X 秒" 或类似格式）
+	// 这里简单处理，返回 0 和原始内容
+	// 实际项目中可能需要根据具体格式进行解析
+	return 0, reasoningContent, nil
+}
+
+// KillThread 停止指定 threadID 的线程
+// @param threadID 线程 ID
+// @return bool 是否成功停止
 func KillThread(threadID string) bool {
-	threadMutex.RLock()
-	info, exists := threadRegistry[threadID]
-	threadMutex.RUnlock()
+	ThreadMutex.RLock()
+	info, exists := ThreadRegistry[threadID]
+	ThreadMutex.RUnlock()
 
-	if exists {
-		info.Cancel()
-		return true
+	if !exists {
+		return false
 	}
-	return false
+
+	// 调用取消函数
+	info.Cancel()
+	return true
 }
 
-// ParseThinkBlock 解析思考内容
-func ParseThinkBlock(c string) (int, string, string) {
-	if c == "" {
-		return 0, "", ""
-	}
-	re := regexp.MustCompile(`<think time=(\d+)>([\s\S]*?)</think>`)
-	matches := re.FindStringSubmatch(c)
-	if len(matches) < 3 {
-		return 0, "", c
-	}
-	// 提取各部分
-	timeStr := matches[1]
-	timeInt, err := strconv.Atoi(timeStr)
-	if err != nil {
-		return 0, "", c
-	}
-	inner := matches[2]
-
-	// 计算外部部分（标签之外的内容）
-	outer := re.ReplaceAllString(c, "")
-	return timeInt, inner, outer
-}
-
-// ParseModelBlock 解析模型标签
-func ParseModelBlock(c string) (string, string) {
-	if c == "" {
-		return "", ""
-	}
-	re := regexp.MustCompile(`<model=([^>]+)>(.*?)`)
-
-	matches := re.FindStringSubmatch(c)
-	if len(matches) < 3 {
-		return "", c
-	}
-
-	return matches[1], matches[2]
-}
-
-// ParseBase64Block 解析图片标签
-func ParseBase64Block(c string) (string, string) {
-	if c == "" {
-		return "", ""
-	}
-	re := regexp.MustCompile(`<base64>(.*?)</base64>(.*)`)
-
-	matches := re.FindStringSubmatch(c)
-	if len(matches) < 3 {
-		return "", c
-	}
-
-	return matches[1], matches[2]
-}
-
-// GetThreadList 获取用户正在进行中的对话线程ID列表
-func GetThreadList(userID int64) (map[int64]ConversationIDMessageID, error) {
+// GetThreadList 获取指定用户的线程列表
+// @param userID 用户 ID
+// @return []gin.H 线程列表，error 错误信息
+func GetThreadList(userID int64) ([]gin.H, error) {
+	// 获取用户的所有对话
+	db := GetDB()
 	var conversations []Conversation
-	result := GetDB().Where("user_id = ?", userID).Find(&conversations)
+	result := db.Table("conversations").Where("user_id = ?", userID).Order("updated_at DESC").Find(&conversations)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
-	MessageIDs := map[int64]ConversationIDMessageID{}
-	threadMutex.RLock()
-	for _, conv := range conversations {
-		conversationIDMessageID, exists := conversationIDMessageIDs[conv.ID]
-		if exists {
-			convID := strconv.FormatInt(conv.ID, 10)
-			if _, exists := threadRegistry[convID]; exists {
-				MessageIDs[conv.ID] = conversationIDMessageID
-			}
-		}
+	// 构建返回结果
+	var list []gin.H
+	for _, conversation := range conversations {
+		list = append(list, gin.H{
+			"conversationID": strconv.FormatInt(conversation.ID, 10),
+			"title":          conversation.Title,
+			"summary":        conversation.Summary,
+			"createdAt":      conversation.CreatedAt.Format(time.RFC3339),
+			"updatedAt":      conversation.UpdatedAt.Format(time.RFC3339),
+		})
 	}
-	threadMutex.RUnlock()
 
-	return MessageIDs, nil
+	return list, nil
 }
 
-func TTS(prompt string) []byte {
-	configs := GetConfig()
-	url := fmt.Sprint(configs.API, "/chat/completions")
-	method := "POST"
-
-	payload := strings.NewReader(fmt.Sprintf(`{
-      "model": "%s",
-      "modalities": ["text", "audio"],
-      "audio": { "voice": "alloy", "format": "opus" },
-      "messages": [
-        {
-          "role": "user",
-          "content": "请复述以下内容：%s"
-        }
-      ]
-    }`, configs.ModelTTS, prompt))
-
-	client := &http.Client{}
-	req, err := http.NewRequest(method, url, payload)
-
-	if err != nil {
-		fmt.Println(err)
-		return []byte{}
-	}
-	req.Header.Add("Authorization", fmt.Sprint("Bearer ", configs.APIKey))
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return []byte{}
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println(err)
-		return []byte{}
-	}
-	var data map[string]interface{}
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		fmt.Println(err)
-		return []byte{}
-	}
-	choicesByte, _ := json.Marshal(data["choices"])
-	var choices []map[string]interface{}
-	err = json.Unmarshal(choicesByte, &choices)
-	if err != nil {
-		fmt.Println(err)
-		return []byte{}
-	}
-	messageByte, _ := json.Marshal(choices[0]["message"])
-	var message map[string]interface{}
-	err = json.Unmarshal(messageByte, &message)
-	if err != nil {
-		fmt.Println(err)
-		return []byte{}
-	}
-	audioByte, _ := json.Marshal(message["audio"])
-	var audio map[string]interface{}
-	err = json.Unmarshal(audioByte, &audio)
-	if err != nil {
-		fmt.Println(err)
-		return []byte{}
-	}
-	Base64 := audio["data"].(string)
-	decoded, err := base64.StdEncoding.DecodeString(Base64)
-	if err != nil {
-		fmt.Println("解码错误:", err)
-		return []byte{}
-	}
-	fmt.Println(audio["transcript"].(string))
-	return decoded
+// TTS 文字转语音
+// @param text 要转换的文本
+// @return string 语音数据的 base64 编码
+func TTS(text string) string {
+	// TODO: 实现文字转语音功能
+	// 这里返回空字符串作为占位符
+	return ""
 }
 
-func STT(Base64 string) string {
-	configs := GetConfig()
-	url := fmt.Sprint(configs.API, "/audio/transcriptions")
-	method := "POST"
-
-	payload := &bytes.Buffer{}
-	writer := multipart.NewWriter(payload)
-	file, err := Base64ToOsFile(Base64)
-	if err != nil {
-		fmt.Println("Error creating file from Base64:", err)
-		return ""
-	}
-	defer file.Close()
-	part1, err := writer.CreateFormFile("file", "tmp.wav")
-	_, err = io.Copy(part1, file)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	_ = writer.WriteField("model", configs.ModelSTT)
-	err = writer.Close()
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-
-	client := &http.Client{}
-	req, err := http.NewRequest(method, url, payload)
-
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	req.Header.Add("Authorization", fmt.Sprint("Bearer ", configs.APIKey))
-
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	fmt.Println(string(body))
-
-	var data map[string]interface{}
-	err = json.Unmarshal(body, &data)
-	return data["text"].(string)
-}
-
-func Base64ToOsFile(Base64 string) (*os.File, error) {
-	// 解码base64字符串
-	decodedData, err := base64.StdEncoding.DecodeString(Base64)
-	if err != nil {
-		return nil, err
-	}
-
-	// 创建临时文件
-	tmpFile, err := os.CreateTemp("", "decoded_file_*")
-	if err != nil {
-		return nil, err
-	}
-
-	// 写入解码的数据到文件
-	_, err = bytes.NewReader(decodedData).WriteTo(tmpFile)
-	if err != nil {
-		tmpFile.Close()
-		return nil, err
-	}
-
-	// 重置文件指针到开头
-	tmpFile.Seek(0, 0)
-
-	return tmpFile, nil
+// STT 语音转文字
+// @param base64Audio 语音数据的 base64 编码
+// @return string 转换后的文本
+func STT(base64Audio string) string {
+	// TODO: 实现语音转文字功能
+	// 这里返回空字符串作为占位符
+	return ""
 }

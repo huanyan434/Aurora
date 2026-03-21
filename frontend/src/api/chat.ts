@@ -469,6 +469,8 @@ export class WebSocketManager {
   // 使用 Map 存储不同类型的消息处理器，key 为响应 type
   private messageHandlers: Map<string, Set<(data: any) => void>> = new Map()
   private connectPromise: Promise<void> | null = null
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private isReconnecting = false
 
   private constructor() {}
 
@@ -523,6 +525,10 @@ export class WebSocketManager {
       this.ws.onopen = () => {
         console.log('✅ WebSocket 连接成功 (onopen)')
         if (connectTimeout) clearTimeout(connectTimeout)
+        
+        // 停止重连机制
+        this.stopReconnect()
+        
         resolve()
       }
 
@@ -538,6 +544,9 @@ export class WebSocketManager {
         console.log('🔌 WebSocket 连接关闭 (onclose)')
         if (connectTimeout) clearTimeout(connectTimeout)
         this.connectPromise = null
+        
+        // 触发重连机制
+        this.scheduleReconnect()
       }
 
       this.ws.onmessage = (event) => {
@@ -557,6 +566,50 @@ export class WebSocketManager {
     })
 
     return this.connectPromise
+  }
+
+  // 定时重连机制
+  private scheduleReconnect(): void {
+    if (this.isReconnecting) {
+      return
+    }
+    
+    this.isReconnecting = true
+    console.log('⏱️ 开始定时重连机制：每 10 秒尝试连接一次')
+    
+    const tryConnect = () => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        console.log('✅ WebSocket 已重连成功，停止定时重连')
+        this.isReconnecting = false
+        if (this.reconnectTimer) {
+          clearInterval(this.reconnectTimer)
+          this.reconnectTimer = null
+        }
+        return
+      }
+      
+      console.log('🔄 尝试重新连接 WebSocket...')
+      this.connect().then(() => {
+        // 连接成功
+      }).catch((err) => {
+        console.log('重连失败:', err)
+      })
+    }
+    
+    // 立即尝试一次
+    tryConnect()
+    
+    // 每 10 秒尝试一次
+    this.reconnectTimer = setInterval(tryConnect, 10000)
+  }
+  
+  // 停止定时重连
+  private stopReconnect(): void {
+    if (this.reconnectTimer) {
+      clearInterval(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+    this.isReconnecting = false
   }
 
   // 注册消息处理器（按响应 type 注册）
@@ -584,17 +637,18 @@ export class WebSocketManager {
   }
 
   // 发送消息（简化，直接发送数据对象）
-  send(data: any): void {
+  async send(data: any): Promise<void> {
+    // 如果 WebSocket 未连接，先连接
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.log('WebSocket 未连接，等待连接建立...')
+      await this.connect()
+    }
+    
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
       console.log('WebSocket 消息已发送:', data)
     } else {
-      console.warn('WebSocket 未就绪，readyState:', this.ws?.readyState)
-      // 如果 WebSocket 未就绪，尝试重新连接
-      if (!this.ws || this.ws.readyState !== WebSocket.CONNECTING) {
-        console.log('尝试重新连接 WebSocket...')
-        this.connect()
-      }
+      console.error('WebSocket 仍未就绪，无法发送消息')
     }
   }
 
@@ -606,6 +660,7 @@ export class WebSocketManager {
     }
     this.connectPromise = null
     this.messageHandlers.clear()
+    this.stopReconnect()
   }
 }
 

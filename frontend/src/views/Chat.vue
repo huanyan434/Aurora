@@ -102,9 +102,7 @@ onMounted(async () => {
   // 建立 WebSocket 连接（所有页面都需要）
   try {
     await wsManager.connect();
-    console.log("✅ WebSocket 连接已建立");
   } catch (error) {
-    console.log("❌ WebSocket 连接失败");
     toastError("WebSocket 连接失败，请检查后端服务是否正常运行");
   }
 

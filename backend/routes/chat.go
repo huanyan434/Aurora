@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 	"utils"
 
 	"github.com/gin-contrib/sessions"
@@ -43,6 +44,7 @@ type MSG struct {
 	ReasoningContent string `json:"reasoningContent" default:""`
 	ReasoningTime    int    `json:"reasoningTime" default:""`
 	Content          string `json:"content" default:""`
+	IsCached         bool   `json:"isCached" default:"false"` // 是否是缓存内容
 }
 
 // WebSocket 响应消息
@@ -101,6 +103,54 @@ func wsHandler(c *gin.Context) {
 		wsMutex.Unlock()
 		conn.Close()
 	}()
+
+	// WebSocket 连接建立后，检查是否有未完成的消息需要续传
+	// 获取当前用户的所有未完成消息
+	utils.MessageContentCacheMutex.RLock()
+	var pendingMessages []gin.H
+	for messageAssistantID, content := range utils.MessageContentCache {
+		if !content.Completed {
+			// 检查这个消息是否属于当前用户（通过数据库查询）
+			_, userID, err := utils.GetMessageWithUser(messageAssistantID)
+			if err == nil && userID == userInfo.ID {
+				pendingMessages = append(pendingMessages, gin.H{
+					"messageAssistantID": messageAssistantID,
+					"reasoningContent":   content.ReasoningContent,
+					"content":            content.Content,
+					"reasoningTime":      content.ReasoningTime,
+				})
+			}
+		}
+	}
+	utils.MessageContentCacheMutex.RUnlock()
+
+	// 发送未完成消息的缓存内容
+	for _, msg := range pendingMessages {
+		// 先发送推理内容（如果有）
+		if msg["reasoningContent"] != "" {
+			sendWSResponse(conn, "generate_response", MSG{
+				Success:          true,
+				ReasoningContent: msg["reasoningContent"].(string),
+				Content:          "",
+				ReasoningTime:    msg["reasoningTime"].(int),
+				IsCached:         true,
+			})
+			// 推迟一点点时间，确保客户端处理完
+			time.Sleep(50 * time.Millisecond)
+		}
+		// 发送正文内容
+		if msg["content"] != "" {
+			sendWSResponse(conn, "generate_response", MSG{
+				Success:          true,
+				ReasoningContent: "",
+				Content:          msg["content"].(string),
+				ReasoningTime:    0,
+				IsCached:         true,
+			})
+			// 推迟一点点时间，确保客户端处理完
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
 
 	// 处理 WebSocket 消息
 	for {
@@ -233,11 +283,14 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			Content:          parsedResponse.Content,
 		}
 		sendWSResponse(conn, "generate_response", msg)
+
+		// 更新缓存内容
+		utils.UpdateMessageContent(req.MessageAssistantID, reasoningContent, parsedResponse.Content, reasoningTime)
 	}
 
 	// 生成结束，发送结束信号
 	sendWSResponse(conn, "generate_end", gin.H{
-		"conversationID": req.ConversationID,
+		"conversationID":     req.ConversationID,
 		"messageAssistantID": req.MessageAssistantID,
 	})
 }
@@ -304,9 +357,10 @@ func handleWSDeleteMessage(conn *websocket.Conn, messageID int64) {
 // WebSocket: TTS
 func handleWSTTS(conn *websocket.Conn, user utils.User, prompt string) {
 	if utils.IsActiveMember(&user) {
-		if user.MemberLevel == "SVIP" {
+		switch user.MemberLevel {
+		case "SVIP":
 			// SVIP 免费
-		} else if user.MemberLevel == "VIP" {
+		case "VIP":
 			if user.Points < 1 {
 				sendWSResponse(conn, "tts_error", gin.H{"error": "积分不足"})
 				return

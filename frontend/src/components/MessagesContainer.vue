@@ -785,7 +785,7 @@ const setupGlobalGenerateHandler = () => {
             });
         } else {
             console.error("服务器返回错误:", data.error);
-            toastError(data.error || "生成失败");
+            toastError(data.error || "生成失败", 15000); // 15 秒
             // 生成失败时，移除占位消息
             if (state.messageAssistantId) {
                 chatStore.removeMessage(state.messageAssistantId);
