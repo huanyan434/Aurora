@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card animate-fade-in">
-      <div class="login-logo">🌅</div>
+      <img src="/favicon.png" alt="Aurora" class="login-logo" />
       <h1 class="login-title">Aurora</h1>
       <p class="login-subtitle">管理后台</p>
 
@@ -106,13 +106,9 @@ const handleLogin = async () => {
   width: 80px;
   height: 80px;
   margin: 0 auto 24px;
-  background: #18181b;
   border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  display: block;
 }
 
 .login-title {
