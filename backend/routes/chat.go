@@ -189,6 +189,8 @@ func wsHandler(c *gin.Context) {
 			handleWSTTS(conn, userInfo, req.Prompt)
 		case "stt":
 			handleWSSTT(conn, userInfo, req.Base64)
+		case "resume_check":
+			handleWSResumeCheck(conn, userInfo.ID, req.ConversationID)
 		default:
 			sendWSResponse(conn, "error", gin.H{"error": "未知的请求类型：" + req.Type})
 		}
@@ -284,8 +286,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		}
 		sendWSResponse(conn, "generate_response", msg)
 
-		// 更新缓存内容
-		utils.UpdateMessageContent(req.MessageAssistantID, reasoningContent, parsedResponse.Content, reasoningTime)
+		// 更新缓存内容已在 gpt.go 的 Openai 函数中完成，此处不再重复更新
 	}
 
 	// 生成结束，发送结束信号
@@ -389,6 +390,66 @@ func handleWSSTT(conn *websocket.Conn, user utils.User, base64 string) {
 	}
 	data := utils.STT(base64)
 	sendWSResponse(conn, "stt_response", gin.H{"data": data})
+}
+
+// WebSocket: 检查是否有进行中的对话，用于续流
+func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int64) {
+	// 检查 ThreadRegistry 中是否有这个对话
+	threadID := strconv.FormatInt(conversationID, 10)
+	utils.ThreadMutex.RLock()
+	_, exists := utils.ThreadRegistry[threadID]
+	utils.ThreadMutex.RUnlock()
+
+	if exists {
+		// 有进行中的对话，发送续流通知
+		sendWSResponse(conn, "resume_status", gin.H{
+			"status":  "resuming",
+			"message": "检测到进行中的对话，正在续流...",
+		})
+
+		// 从 ConversationIDMessageIDs 中获取消息 ID
+		utils.ConversationIDMessageIDsMutex.RLock()
+		convMsgID, ok := utils.ConversationIDMessageIDs[conversationID]
+		utils.ConversationIDMessageIDsMutex.RUnlock()
+
+		if ok {
+			// 从缓存中获取内容
+			utils.MessageContentCacheMutex.RLock()
+			content, contentExists := utils.MessageContentCache[convMsgID.MessageAssistantID]
+			utils.MessageContentCacheMutex.RUnlock()
+
+			if contentExists && !content.Completed {
+				// 发送缓存的推理内容（如果有）
+				if content.ReasoningContent != "" {
+					sendWSResponse(conn, "generate_response", MSG{
+						Success:          true,
+						ReasoningContent: content.ReasoningContent,
+						Content:          "",
+						ReasoningTime:    content.ReasoningTime,
+						IsCached:         true,
+					})
+					time.Sleep(50 * time.Millisecond)
+				}
+				// 发送缓存的正文内容
+				if content.Content != "" {
+					sendWSResponse(conn, "generate_response", MSG{
+						Success:          true,
+						ReasoningContent: "",
+						Content:          content.Content,
+						ReasoningTime:    0,
+						IsCached:         true,
+					})
+					time.Sleep(50 * time.Millisecond)
+				}
+			}
+		}
+	} else {
+		// 没有进行中的对话
+		sendWSResponse(conn, "resume_status", gin.H{
+			"status":  "completed",
+			"message": "没有进行中的对话",
+		})
+	}
 }
 
 // @Summary 生成 AI 回复

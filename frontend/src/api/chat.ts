@@ -468,6 +468,8 @@ export class WebSocketManager {
   private ws: WebSocket | null = null
   // 使用 Map 存储不同类型的消息处理器，key 为响应 type
   private messageHandlers: Map<string, Set<(data: any) => void>> = new Map()
+  // 存储连接成功回调处理器
+  private connectedHandlers: Set<() => void> = new Set()
   private connectPromise: Promise<void> | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private isReconnecting = false
@@ -525,10 +527,13 @@ export class WebSocketManager {
       this.ws.onopen = () => {
         console.log('✅ WebSocket 连接成功 (onopen)')
         if (connectTimeout) clearTimeout(connectTimeout)
-        
+
         // 停止重连机制
         this.stopReconnect()
-        
+
+        // 触发连接成功回调
+        this.connectedHandlers.forEach(handler => handler())
+
         resolve()
       }
 
@@ -634,6 +639,16 @@ export class WebSocketManager {
   // 移除所有指定类型的处理器
   clearMessageHandlers(type: string): void {
     this.messageHandlers.delete(type)
+  }
+
+  // 注册连接成功回调处理器
+  onConnected(handler: () => void): void {
+    this.connectedHandlers.add(handler)
+  }
+
+  // 移除连接成功回调处理器
+  offConnected(handler: () => void): void {
+    this.connectedHandlers.delete(handler)
   }
 
   // 发送消息（简化，直接发送数据对象）

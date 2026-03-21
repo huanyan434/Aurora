@@ -46,7 +46,8 @@ var (
 	TaskQueue *queue.Queue
 
 	// 记录请求中的 conversationID 对应 messageUserID 和 messageAssistantID
-	ConversationIDMessageIDs = map[int64]ConversationIDMessageID{}
+	ConversationIDMessageIDs      = map[int64]ConversationIDMessageID{}
+	ConversationIDMessageIDsMutex sync.RWMutex
 
 	// 缓存每个消息的完整内容，用于断点续传
 	MessageContentCache      = make(map[int64]*MessageContent)
@@ -88,10 +89,12 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 		Resp:   resp,
 	}
 	ThreadMutex.Unlock()
+	ConversationIDMessageIDsMutex.Lock()
 	ConversationIDMessageIDs[conversationID] = ConversationIDMessageID{
 		MessageUserID:      messageUserID,
 		MessageAssistantID: messageAssistantID,
 	}
+	ConversationIDMessageIDsMutex.Unlock()
 
 	// 初始化消息内容缓存
 	MessageContentCacheMutex.Lock()
@@ -103,16 +106,11 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 	}
 	MessageContentCacheMutex.Unlock()
 
-	// 【新增】立即保存用户消息到数据库
-	// 在开始生成 AI 回复之前，先将用户输入保存到数据库
-	if err := SaveSingleMessage(messageUserID, conversationID, "user", prompt, ""); err != nil {
-		// 保存失败时记录错误，但不影响后续流程
-		fmt.Printf("保存用户消息失败：%v\n", err)
-	}
-
 	// 4. 提交任务到队列中执行
 	// 使用 QueueTask 方法来安排任务
 	conversationIDCopy := conversationID // 创建副本以在闭包中使用
+	promptCopy := prompt                 // 创建副本以在闭包中使用
+	base64Copy := base64                 // 创建副本以在闭包中使用
 
 	go func() {
 		err := TaskQueue.QueueTask(func(ctx context.Context) error {
@@ -125,17 +123,47 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 				}
 				MessageContentCacheMutex.Unlock()
 
-				// 生成完成后，保存消息到数据库
-				// 从缓存中获取完整的消息内容
+				// 生成完成后，保存整个对话历史到数据库
+				// 从缓存中获取完整的 AI 回复内容
 				MessageContentCacheMutex.RLock()
-				userContent := MessageContentCache[messageAssistantID]
+				aiContent := MessageContentCache[messageAssistantID]
 				MessageContentCacheMutex.RUnlock()
 
-				if userContent != nil {
-					// 保存 assistant 消息到数据库
-					if err := SaveSingleMessage(messageAssistantID, conversationIDCopy, "assistant", userContent.Content, userContent.ReasoningContent); err != nil {
-						// 保存失败时记录错误（实际项目中应该使用日志记录）
-						fmt.Printf("保存对话消息失败：%v\n", err)
+				if aiContent != nil {
+					// 从数据库加载历史消息
+					historyMessages, err := LoadConversationHistoryFormat2(conversationIDCopy)
+					if err != nil {
+						fmt.Printf("加载历史消息失败：%v\n", err)
+					} else {
+						// 构建完整的消息列表：历史消息 + 当前用户消息 + AI 回复
+						completeMessages := historyMessages
+
+						// 添加当前用户消息（使用前端传来的 messageUserID）
+						userMessage := messageFormat{
+							ID:             messageUserID,
+							ConversationID: conversationIDCopy,
+							Role:           "user",
+							Content:        promptCopy,
+							Base64:         base64Copy,
+							CreatedAt:      time.Now().Format("2006-01-02T15:04:05Z07:00"),
+						}
+						completeMessages = append(completeMessages, userMessage)
+
+						// 添加 AI 回复到消息列表（使用前端传来的 messageAssistantID）
+						aiMessage := messageFormat{
+							ID:               messageAssistantID,
+							ConversationID:   conversationIDCopy,
+							Role:             "assistant",
+							Content:          aiContent.Content,
+							ReasoningContent: aiContent.ReasoningContent,
+							CreatedAt:        time.Now().Format("2006-01-02T15:04:05Z07:00"),
+						}
+						completeMessages = append(completeMessages, aiMessage)
+
+						// 保存整个对话历史到数据库
+						if err := SaveConversationHistoryFormat2(conversationIDCopy, completeMessages); err != nil {
+							fmt.Printf("保存对话历史失败：%v\n", err)
+						}
 					}
 				}
 
@@ -143,6 +171,9 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 				ThreadMutex.Lock()
 				delete(ThreadRegistry, threadID)
 				ThreadMutex.Unlock()
+				ConversationIDMessageIDsMutex.Lock()
+				delete(ConversationIDMessageIDs, conversationIDCopy)
+				ConversationIDMessageIDsMutex.Unlock()
 			}()
 
 			Openai(ctx, conversationIDCopy, messageUserID, messageAssistantID, model, prompt, base64, reasoning, resp)
@@ -160,6 +191,9 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 			ThreadMutex.Lock()
 			delete(ThreadRegistry, threadID)
 			ThreadMutex.Unlock()
+			ConversationIDMessageIDsMutex.Lock()
+			delete(ConversationIDMessageIDs, conversationID)
+			ConversationIDMessageIDsMutex.Unlock()
 		}
 	}()
 

@@ -1001,41 +1001,6 @@ func DeleteMessage(messageID int64) {
 	db.Table("messages").Where("id = ?", messageID).First(&message).Delete(&message)
 }
 
-// SaveSingleMessage 保存单条消息到数据库
-// @param messageID 消息 ID
-// @param conversationID 对话 ID
-// @param role 消息角色（user/assistant）
-// @param content 消息内容
-// @param reasoningContent 推理内容
-// @return error 错误信息
-func SaveSingleMessage(messageID int64, conversationID int64, role string, content string, reasoningContent string) error {
-	db := GetDB()
-
-	// 创建消息记录
-	message := Message{
-		ID:               messageID,
-		Content:          content,
-		Role:             role,
-		ConversationID:   conversationID,
-		ReasoningContent: reasoningContent,
-	}
-
-	if err := db.Create(&message).Error; err != nil {
-		return err
-	}
-
-	// 更新对话摘要（使用最新消息内容）
-	if content != "" {
-		summary := extractSummary(content)
-		if err := db.Model(&Conversation{}).Where("id = ?", conversationID).Update("summary", summary).Error; err != nil {
-			// 更新摘要失败不影响消息保存，只记录错误
-			fmt.Printf("更新对话摘要失败：%v\n", err)
-		}
-	}
-
-	return nil
-}
-
 // RecordPointsChange 记录积分变动
 func RecordPointsChange(userID int64, amount int, reason string) error {
 	db := GetDB()
