@@ -511,8 +511,9 @@ export class WebSocketManager {
         this.ws.close()
       }
 
-      // 统一使用 ws 协议，不使用 wss（后端未配置 wss）
-      const wsUrl = `ws://${window.location.host}/chat/ws`
+      // 根据页面协议选择 WebSocket 协议
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = `${protocol}//${window.location.host}/chat/ws`
       console.log('WebSocket URL:', wsUrl, '(通过 Vite 代理到后端 5000 端口)')
 
       this.ws = new WebSocket(wsUrl)
