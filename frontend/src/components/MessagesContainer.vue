@@ -1002,18 +1002,8 @@ const loadCurrentConversation = async () => {
             state.accumulatedReasoningContent = "";
             state.lastReasoningTime = 0;
 
-            // 检查是否存在 type 参数且为数字
-            const typeParam = route.query.type;
-            let typeValue: number | undefined;
-
-            if (typeParam !== undefined) {
-                const parsedType = Number(typeParam);
-                if (!isNaN(parsedType)) {
-                    typeValue = parsedType;
-                }
-            }
-
             // 修改 URL 去掉 type 参数 (使用 history API 避免页面刷新)
+            const typeParam = route.query.type;
             if (typeParam !== undefined) {
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.delete("type");
