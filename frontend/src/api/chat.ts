@@ -645,6 +645,10 @@ export class WebSocketManager {
   // 注册连接成功回调处理器
   onConnected(handler: () => void): void {
     this.connectedHandlers.add(handler)
+    // 如果 WebSocket 已经连接成功，立即执行回调
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      handler()
+    }
   }
 
   // 移除连接成功回调处理器

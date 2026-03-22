@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -44,7 +45,8 @@ type MSG struct {
 	ReasoningContent string `json:"reasoningContent" default:""`
 	ReasoningTime    int    `json:"reasoningTime" default:""`
 	Content          string `json:"content" default:""`
-	IsCached         bool   `json:"isCached" default:"false"` // 是否是缓存内容
+	IsCached         bool   `json:"isCached" default:"false"`      // 是否是缓存内容
+	IsUserMessage    bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
 }
 
 // WebSocket 响应消息
@@ -149,6 +151,62 @@ func wsHandler(c *gin.Context) {
 			})
 			// 推迟一点点时间，确保客户端处理完
 			time.Sleep(50 * time.Millisecond)
+		}
+
+		// 问题 3 修复：检查是否有正在运行的线程，如果有，重新启动一个 goroutine 来读取响应
+		messageAssistantID := msg["messageAssistantID"].(int64)
+		utils.ConversationIDMessageIDsMutex.RLock()
+		var conversationID int64
+		for convID, convMsgID := range utils.ConversationIDMessageIDs {
+			if convMsgID.MessageAssistantID == messageAssistantID {
+				conversationID = convID
+				break
+			}
+		}
+		utils.ConversationIDMessageIDsMutex.RUnlock()
+
+		if conversationID != 0 {
+			threadID := strconv.FormatInt(conversationID, 10)
+			utils.ThreadMutex.RLock()
+			info, threadExists := utils.ThreadRegistry[threadID]
+			utils.ThreadMutex.RUnlock()
+
+			if threadExists {
+				// 线程还在运行，启动 goroutine 读取响应并发送到新的 WebSocket 连接
+				go func(conn *websocket.Conn, convID int64, respChan <-chan string) {
+					for response := range respChan {
+						var msg MSG
+						var parsedResponse utils.Response
+						err := json.Unmarshal([]byte(response), &parsedResponse)
+						if err != nil {
+							msg = MSG{Success: false, Error: err.Error()}
+							sendWSResponse(conn, "generate_response", msg)
+							continue
+						}
+
+						if parsedResponse.Error != "" {
+							msg = MSG{Success: false, Error: parsedResponse.Error}
+							sendWSResponse(conn, "generate_response", msg)
+							continue
+						}
+
+						reasoningTime, reasoningContent, _ := utils.ParseThinkBlock(parsedResponse.ReasoningContent)
+						msg = MSG{
+							Success:          true,
+							ReasoningContent: reasoningContent,
+							ReasoningTime:    reasoningTime,
+							Content:          parsedResponse.Content,
+						}
+						sendWSResponse(conn, "generate_response", msg)
+					}
+
+					// 通道关闭，生成结束
+					sendWSResponse(conn, "generate_end", gin.H{
+						"conversationID":     convID,
+						"messageAssistantID": messageAssistantID,
+					})
+				}(conn, conversationID, info.Resp)
+			}
 		}
 	}
 
@@ -394,57 +452,137 @@ func handleWSSTT(conn *websocket.Conn, user utils.User, base64 string) {
 
 // WebSocket: 检查是否有进行中的对话，用于续流
 func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int64) {
-	// 检查 ThreadRegistry 中是否有这个对话
-	threadID := strconv.FormatInt(conversationID, 10)
-	utils.ThreadMutex.RLock()
-	_, exists := utils.ThreadRegistry[threadID]
-	utils.ThreadMutex.RUnlock()
+	fmt.Printf("[续流检查] 用户 ID=%d, 对话 ID=%d\n", userID, conversationID)
 
-	if exists {
-		// 有进行中的对话，发送续流通知
+	// 检查 MessageContentCache 中所有属于当前用户的消息（不管 Completed 状态）
+	utils.MessageContentCacheMutex.RLock()
+	var pendingMessages []gin.H
+	cacheCount := 0
+	for messageAssistantID, content := range utils.MessageContentCache {
+		cacheCount++
+		fmt.Printf("[续流检查] 缓存消息 ID=%d, Completed=%v, 内容长度=%d\n",
+			messageAssistantID, content.Completed, len(content.Content))
+
+		// 检查这个消息是否属于当前用户
+		// 方法 1：查询数据库
+		_, msgUserID, err := utils.GetMessageWithUser(messageAssistantID)
+		if err != nil {
+			// 方法 2：检查 ConversationIDMessageIDs 映射（运行时动态创建）
+			utils.ConversationIDMessageIDsMutex.RLock()
+			found := false
+			for convID, convMsgID := range utils.ConversationIDMessageIDs {
+				if convMsgID.MessageAssistantID == messageAssistantID {
+					// 通过这个对话 ID 查询用户 ID
+					var conv utils.Conversation
+					if err2 := utils.GetDB().Table("conversations").Where("id = ?", convID).First(&conv).Error; err2 == nil {
+						msgUserID = conv.UserID
+						found = true
+						fmt.Printf("[续流检查] 从 ConversationIDMessageIDs 找到消息，用户 ID=%d\n", msgUserID)
+						break
+					}
+				}
+			}
+			utils.ConversationIDMessageIDsMutex.RUnlock()
+
+			if !found {
+				fmt.Printf("[续流检查] 无法确定消息归属：%v\n", err)
+				continue
+			}
+		}
+
+		fmt.Printf("[续流检查] 消息用户 ID=%d, 当前用户 ID=%d, 匹配=%v\n",
+			msgUserID, userID, msgUserID == userID)
+
+		if msgUserID == userID {
+			pendingMessages = append(pendingMessages, gin.H{
+				"messageAssistantID": messageAssistantID,
+				"content":            content,
+			})
+		}
+	}
+	utils.MessageContentCacheMutex.RUnlock()
+
+	fmt.Printf("[续流检查] 缓存总数=%d, 匹配的消息数=%d\n", cacheCount, len(pendingMessages))
+
+	if len(pendingMessages) > 0 {
+		// 有缓存消息，发送续流通知
+		fmt.Printf("[续流检查] 发现缓存消息，发送续流\n")
 		sendWSResponse(conn, "resume_status", gin.H{
 			"status":  "resuming",
-			"message": "检测到进行中的对话，正在续流...",
+			"message": "检测到缓存的对话内容，正在续流...",
 		})
 
-		// 从 ConversationIDMessageIDs 中获取消息 ID
-		utils.ConversationIDMessageIDsMutex.RLock()
-		convMsgID, ok := utils.ConversationIDMessageIDs[conversationID]
-		utils.ConversationIDMessageIDsMutex.RUnlock()
+		// 发送缓存内容
+		for _, msg := range pendingMessages {
+			content := msg["content"].(*utils.MessageContent)
+			_ = msg["messageAssistantID"].(int64) // 保留变量，后续可能使用
 
-		if ok {
-			// 从缓存中获取内容
-			utils.MessageContentCacheMutex.RLock()
-			content, contentExists := utils.MessageContentCache[convMsgID.MessageAssistantID]
-			utils.MessageContentCacheMutex.RUnlock()
+			// 问题 2 修复：在发送缓存内容之前，先发送用户消息
+			// 从 ConversationIDMessageIDs 中获取用户消息 ID
+			utils.ConversationIDMessageIDsMutex.RLock()
+			convMsgID, ok := utils.ConversationIDMessageIDs[conversationID]
+			utils.ConversationIDMessageIDsMutex.RUnlock()
 
-			if contentExists && !content.Completed {
-				// 发送缓存的推理内容（如果有）
-				if content.ReasoningContent != "" {
+			if ok {
+				// 查询用户消息
+				userMsg, err := utils.LoadMessage(convMsgID.MessageUserID)
+				if err == nil && userMsg.Content != "" {
 					sendWSResponse(conn, "generate_response", MSG{
-						Success:          true,
-						ReasoningContent: content.ReasoningContent,
-						Content:          "",
-						ReasoningTime:    content.ReasoningTime,
-						IsCached:         true,
-					})
-					time.Sleep(50 * time.Millisecond)
-				}
-				// 发送缓存的正文内容
-				if content.Content != "" {
-					sendWSResponse(conn, "generate_response", MSG{
-						Success:          true,
-						ReasoningContent: "",
-						Content:          content.Content,
-						ReasoningTime:    0,
-						IsCached:         true,
+						Success:       true,
+						Content:       userMsg.Content,
+						IsCached:      true,
+						IsUserMessage: true, // 标记为用户消息
 					})
 					time.Sleep(50 * time.Millisecond)
 				}
 			}
+
+			// 发送缓存的推理内容（如果有）
+			if content.ReasoningContent != "" {
+				sendWSResponse(conn, "generate_response", MSG{
+					Success:          true,
+					ReasoningContent: content.ReasoningContent,
+					Content:          "",
+					ReasoningTime:    content.ReasoningTime,
+					IsCached:         true,
+				})
+				time.Sleep(50 * time.Millisecond)
+			}
+			// 发送缓存的正文内容
+			if content.Content != "" {
+				sendWSResponse(conn, "generate_response", MSG{
+					Success:          true,
+					ReasoningContent: "",
+					Content:          content.Content,
+					ReasoningTime:    0,
+					IsCached:         true,
+				})
+				time.Sleep(50 * time.Millisecond)
+			}
+
+			// 检查生成是否还在进行
+			threadID := strconv.FormatInt(conversationID, 10)
+			utils.ThreadMutex.RLock()
+			_, threadExists := utils.ThreadRegistry[threadID]
+			utils.ThreadMutex.RUnlock()
+
+			if threadExists && !content.Completed {
+				// 生成还在进行中
+				sendWSResponse(conn, "resume_status", gin.H{
+					"status":  "streaming",
+					"message": "生成正在进行中，将继续接收后续内容",
+				})
+			} else {
+				// 生成已完成
+				sendWSResponse(conn, "resume_status", gin.H{
+					"status":  "completed",
+					"message": "生成已完成",
+				})
+			}
 		}
 	} else {
-		// 没有进行中的对话
+		// 没有缓存消息
+		fmt.Printf("[续流检查] 没有缓存消息\n")
 		sendWSResponse(conn, "resume_status", gin.H{
 			"status":  "completed",
 			"message": "没有进行中的对话",

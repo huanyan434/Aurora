@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/sashabaranov/go-openai"
@@ -558,7 +559,47 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 		}
 	}
 
+	// 检查是否需要生成标题
+	var conversation Conversation
+	if err := db.Table("conversations").Where("id = ?", conversationID).First(&conversation).Error; err == nil {
+		if conversation.Title == "新对话" {
+			// 生成新标题
+			newTitle := GenerateConversationTitle(messages)
+			if newTitle != "新对话" {
+				if err := db.Model(&Conversation{}).Where("id = ?", conversationID).Update("title", newTitle).Error; err != nil {
+					fmt.Printf("更新对话标题失败：%v\n", err)
+				}
+			}
+		}
+	}
+
 	return nil
+}
+
+// GenerateConversationTitle 根据对话内容生成标题
+// @param messages 对话消息列表
+// @return string 生成的标题
+func GenerateConversationTitle(messages []messageFormat) string {
+	// 获取第一条用户消息作为标题基础
+	for _, msg := range messages {
+		if msg.Role == "user" && msg.Content != "" {
+			content := msg.Content
+			// 去除内容中的换行符和多余空格
+			content = strings.ReplaceAll(content, "\n", " ")
+			if len(content) > 30 {
+				content = content[:30]
+			}
+			// 清理可能的模型标签
+			if strings.HasPrefix(content, "[") {
+				if end := strings.Index(content, "]"); end != -1 {
+					content = content[end+1:]
+					content = strings.TrimSpace(content)
+				}
+			}
+			return strings.TrimSpace(content)
+		}
+	}
+	return "新对话"
 }
 
 // HasSignedToday 检查用户今日是否已签到

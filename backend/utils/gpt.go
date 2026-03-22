@@ -167,6 +167,12 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 					}
 				}
 
+				// 清理缓存（问题 1 修复）
+				MessageContentCacheMutex.Lock()
+				delete(MessageContentCache, messageAssistantID)
+				MessageContentCacheMutex.Unlock()
+				fmt.Printf("[清理缓存] messageAssistantID=%d\n", messageAssistantID)
+
 				close(resp)
 				ThreadMutex.Lock()
 				delete(ThreadRegistry, threadID)

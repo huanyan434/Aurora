@@ -748,9 +748,48 @@ const getWsGenerateState = (conversationId: number) => {
 let currentGenerateHandler: ((data: any) => void) | null = null;
 let currentGenerateEndHandler: ((data: any) => void) | null = null;
 let currentConnectedHandler: (() => void) | null = null;
+let currentResumeStatusHandler: ((data: any) => void) | null = null;
 
 // 全局生成响应处理器 - 处理 InputArea 发送的生成请求的响应
 const setupGlobalGenerateHandler = () => {
+    // 处理续流状态消息
+    const handleResumeStatus = (data: any) => {
+        console.log('收到续流状态:', data);
+        
+        const convId = currentConversationId.value;
+        if (isNaN(convId)) return;
+        
+        if (data.status === 'resuming' || data.status === 'streaming') {
+            // 检查是否已经有流式消息
+            const messages = chatStore.getMessagesByConversationId(convId);
+            const hasStreamingMessage = messages.some(msg => msg.role === 'assistant' && msg.isStreaming);
+            
+            if (!hasStreamingMessage) {
+                // 创建占位消息，messageAssistantId 会在收到第一条缓存消息时设置
+                console.log('续流：创建占位消息');
+                // 创建一个临时的 assistant 消息作为占位符
+                const tempMessage = {
+                    id: Date.now(), // 临时 ID
+                    role: 'assistant' as const,
+                    content: '',
+                    reasoningContent: '',
+                    reasoningTime: 0,
+                    conversationID: convId,
+                    createdAt: new Date().toISOString(),
+                    isStreaming: true,
+                };
+                chatStore.addMessage(convId, tempMessage);
+                // 更新状态中的 messageAssistantId
+                const state = getWsGenerateState(convId);
+                state.messageAssistantId = tempMessage.id;
+            }
+        }
+    };
+    
+    // 保存处理器引用并注册
+    currentResumeStatusHandler = handleResumeStatus;
+    wsManager.onMessage('resume_status', handleResumeStatus);
+
     currentGenerateHandler = (data: any) => {
         // 获取当前对话 ID
         const convId = currentConversationId.value;
@@ -769,8 +808,19 @@ const setupGlobalGenerateHandler = () => {
             if (lastAssistantMessage && lastAssistantMessage.id) {
                 state.messageAssistantId = lastAssistantMessage.id;
             } else {
-                console.warn('缓存消息未找到对应的 assistant 消息，忽略响应');
-                return;
+                // 如果找不到对应的 assistant 消息，直接添加新消息
+                console.warn('缓存消息未找到对应的 assistant 消息，直接添加新消息');
+                chatStore.addMessage(convId, {
+                    id: Date.now(), // 临时 ID
+                    role: 'assistant' as const,
+                    content: data.content || '',
+                    reasoningContent: data.reasoningContent || '',
+                    reasoningTime: data.reasoningTime || 0,
+                    conversationID: convId,
+                    createdAt: new Date().toISOString(),
+                    isStreaming: false, // 缓存消息不是流式
+                });
+                return; // 直接返回，不执行后续的 updateMessage
             }
         }
 
@@ -782,9 +832,9 @@ const setupGlobalGenerateHandler = () => {
         if (data.success) {
             // 区分缓存消息和正常流式消息的处理方式
             if (data.isCached) {
-                // 缓存消息：覆盖内容而不是累加，避免重复
-                state.accumulatedContent = data.content || "";
-                state.accumulatedReasoningContent = data.reasoningContent || "";
+                // 缓存消息：累加内容（因为缓存可能分多条发送）
+                state.accumulatedContent += data.content || "";
+                state.accumulatedReasoningContent += data.reasoningContent || "";
                 if (data.reasoningTime !== undefined) {
                     state.lastReasoningTime = data.reasoningTime;
                 }
@@ -854,12 +904,16 @@ const setupGlobalGenerateHandler = () => {
     currentConnectedHandler = () => {
         // 获取当前对话 ID
         const convId = currentConversationId.value;
+        console.log('WebSocket 连接成功，当前对话 ID:', convId, '路由:', route.path);
         if (!isNaN(convId) && convId > 0) {
             // 发送对话 ID 给后端，让后端检查是否有进行中的对话
+            console.log('发送 resume_check 请求');
             wsManager.send({
                 type: 'resume_check',
                 conversationID: convId,
             });
+        } else {
+            console.log('跳过 resume_check：对话 ID 无效');
         }
     };
 
@@ -1067,6 +1121,11 @@ onUnmounted(() => {
     if (currentConnectedHandler) {
         wsManager.offConnected(currentConnectedHandler);
         currentConnectedHandler = null;
+    }
+    // 清理续流状态处理器
+    if (currentResumeStatusHandler) {
+        wsManager.offMessage('resume_status', currentResumeStatusHandler);
+        currentResumeStatusHandler = null;
     }
 });
 </script>
