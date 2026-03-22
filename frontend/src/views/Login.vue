@@ -219,7 +219,7 @@ const goToRegister = () => {
   padding-top: var(--spacing-sm); /* py-2 */
   padding-bottom: var(--spacing-sm); /* py-2 */
   border: 1px solid #d1d5db; /* border border-gray-300 */
-  border-radius: var(--border-radius-md); /* rounded-md */
+  border-radius: 0.7rem;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
   color: var(--color-gray-500); /* placeholder-gray-400 */
 }
@@ -281,7 +281,7 @@ const goToRegister = () => {
   padding-left: var(--spacing-md); /* px-4 */
   padding-right: var(--spacing-md); /* px-4 */
   border: 1px solid transparent; /* border border-transparent */
-  border-radius: var(--border-radius-md); /* rounded-md */
+  border-radius: 0.7rem;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
   font-size: var(--font-size-sm); /* text-sm */
   font-weight: 500; /* font-medium */
