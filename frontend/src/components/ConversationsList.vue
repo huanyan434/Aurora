@@ -184,21 +184,32 @@ const groupedConversations = computed(() => {
   const conversations = filteredConversations.value;
   const now = new Date();
   const groups: Record<string, any[]> = {
+    '今天': [],
     '过去 7 天': [],
     '过去 30 天': [],
     '更早': []
   };
 
+  // 获取今天的开始时间（凌晨 0 点）
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
   conversations.forEach(conv => {
     const convDate = new Date(conv.createdAt);
-    const diffTime = now.getTime() - convDate.getTime();
+    const convTime = convDate.getTime();
+    const diffTime = now.getTime() - convTime;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 7) {
+    if (convTime >= todayStart) {
+      // 今天的对话
+      groups['今天']!.push(conv);
+    } else if (diffDays < 7) {
+      // 过去 7 天（不包括今天）
       groups['过去 7 天']!.push(conv);
     } else if (diffDays < 30) {
+      // 过去 30 天
       groups['过去 30 天']!.push(conv);
     } else {
+      // 更早
       groups['更早']!.push(conv);
     }
   });
