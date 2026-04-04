@@ -312,10 +312,6 @@ onUnmounted(() => {
   gap: var(--spacing-md); /* space-y-4 */
 }
 
-.form-field {
-  /* 空样式块，保留结构 */
-}
-
 .field-label {
   display: block;
   font-size: var(--font-size-sm); /* text-sm */
