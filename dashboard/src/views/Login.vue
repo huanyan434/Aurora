@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card animate-fade-in">
-      <img src="/favicon.png" alt="Aurora" class="login-logo" />
+      <img src="/icon.png" alt="Aurora" class="login-logo" />
       <h1 class="login-title">Aurora</h1>
       <p class="login-subtitle">管理后台</p>
 
@@ -63,7 +63,7 @@ const handleLogin = async () => {
       userStore.setUser({
         id: '1',
         username: 'Admin',
-        email: 'admin@aurora.com',
+        email: 'admin@wanyim.cn',
         isMember: true,
         memberLevel: 'SVIP',
         points: 999999

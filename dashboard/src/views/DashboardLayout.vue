@@ -9,7 +9,7 @@
           <span></span>
         </button>
         <div class="logo">
-          <img src="/favicon.png" alt="Aurora" class="logo-icon" />
+          <img src="/icon.png" alt="Aurora" class="logo-icon" />
           <div class="logo-text">
             <span class="logo-title">Aurora</span>
             <span class="logo-subtitle">管理控制台</span>
