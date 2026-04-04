@@ -26,7 +26,7 @@
 
         <!-- 推理按钮 -->
         <Button variant="ghost" size="icon"
-          :class="['input-addon-button', 'reasoning-button', { 'reasoning-active': isReasoning }]"
+          :class="['input-addon-button', 'reasoning-button', { 'reasoning-button-active': isReasoning }]"
           :disabled="isReasoningDisabled" @click="toggleReasoning">
           <Lightbulb class="icon-small" />
           <span class="reasoning-text">推理</span>
@@ -277,7 +277,7 @@ const toggleReasoning = () => {
   max-width: var(--input-area-max-width);
   margin-left: auto;
   margin-right: auto;
-  border-radius: 1.5rem;
+  border-radius: 1.5rem; /* 苹果风格大圆角 */
   border: 1px solid var(--input-wrapper-border-color);
   box-shadow: var(--input-wrapper-shadow);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
@@ -340,16 +340,85 @@ const toggleReasoning = () => {
   height: var(--button-size);
   width: var(--button-size);
   background-color: transparent;
-  border-radius: var(--border-radius-full);
+  border: 1px solid #d1d5db; /* 默认显示边框 */
+  border-radius: 0.75rem; /* 苹果风格小圆角 */
+  color: #6b7280; /* 默认图标颜色 */
 }
 
 .input-addon-button:hover {
-  background-color: var(--color-gray-200);
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.dark .input-addon-button {
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+
+.dark .input-addon-button:hover {
+  background-color: #374151;
+  border-color: #6b7280;
+  color: #e5e7eb;
 }
 
 /* 推理按钮样式 */
 .reasoning-button {
-  width: calc(2.2 * var(--button-size));
+  height: var(--button-size);
+  width: auto;
+  padding: 0 0.75rem;
+  background-color: transparent;
+  border: 1px solid #d1d5db; /* 默认显示边框 */
+  border-radius: 0.75rem; /* 苹果风格小圆角 */
+  color: #6b7280; /* 默认图标颜色 */
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.reasoning-button:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+/* 推理按钮选中状态 - 简约黑白风 */
+.reasoning-button-active {
+  background-color: #111827; /* 深色背景 */
+  border-color: #111827;
+  border-radius: 0.75rem; /* 苹果风格小圆角 */
+  color: #ffffff;
+}
+
+.reasoning-button-active:hover {
+  background-color: #1f2937;
+  border-color: #1f2937;
+  color: #ffffff;
+}
+
+.dark .reasoning-button {
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+
+.dark .reasoning-button:hover {
+  background-color: #374151;
+  border-color: #6b7280;
+  color: #e5e7eb;
+}
+
+.dark .reasoning-button-active {
+  background-color: #f9fafb; /* 浅色背景 */
+  border-color: #f9fafb;
+  color: #111827;
+}
+
+.dark .reasoning-button-active:hover {
+  background-color: #f3f4f6;
+  border-color: #f3f4f6;
+  color: #111827;
 }
 
 .reasoning-text {
@@ -361,34 +430,66 @@ const toggleReasoning = () => {
   cursor: not-allowed;
 }
 
-.reasoning-active {
-  background-color: var(--reasoning-button-active-bg);
-  color: var(--reasoning-button-active-text);
-}
-
-.reasoning-active:hover {
-  background-color: var(--reasoning-button-active-hover-bg);
-}
-
 .input-send-button {
   height: var(--button-size);
   width: var(--button-size);
-  background-color: transparent;
-  border-radius: var(--border-radius-full);
+  background-color: #111827; /* 深色背景 */
+  border: 1px solid #111827;
+  border-radius: 0.75rem; /* 苹果风格小圆角 */
+  color: #ffffff; /* 白色图标 */
 }
 
-.input-send-button:hover {
-  background-color: var(--color-gray-200);
+.input-send-button:hover:not(:disabled) {
+  background-color: #1f2937;
+  border-color: #1f2937;
+}
+
+.input-send-button:disabled {
+  background-color: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.dark .input-send-button {
+  background-color: #f9fafb;
+  border-color: #f9fafb;
+  color: #111827;
+}
+
+.dark .input-send-button:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  border-color: #f3f4f6;
+}
+
+.dark .input-send-button:disabled {
+  background-color: #374151;
+  border-color: #374151;
+  color: #6b7280;
 }
 
 /* 由于我们无法直接通过CSS检测按钮是否在isGenerating状态下，需要使用一个新类名 */
 .input-send-button-stop {
-  background-color: #ef4444 !important;
-  color: white !important;
+  background-color: transparent !important;
+  border: 1px solid #ef4444 !important; /* 红色边框 */
+  color: #ef4444 !important; /* 红色图标 */
 }
 
 .input-send-button-stop:hover {
-  background-color: #dc2626 !important;
+  background-color: #fef2f2 !important; /* 浅红色背景 */
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+}
+
+.dark .input-send-button-stop {
+  border-color: #f87171 !important;
+  color: #f87171 !important;
+}
+
+.dark .input-send-button-stop:hover {
+  background-color: #451a1a !important;
+  border-color: #fca5a5 !important;
+  color: #fca5a5 !important;
 }
 
 .icon-small {
