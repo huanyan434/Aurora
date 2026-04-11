@@ -29,75 +29,93 @@ onMounted(async () => {
 
 <style>
 :root {
-  /* 间距变量 */
-  --input-container-padding: 1.25rem;
-  --input-padding-right: 3rem;
-  --input-padding-left: 1rem;
-  --input-margin-top: 0.8rem;
-  --input-margin-bottom: 0.5rem;
-  --input-area-horizontal-padding: 1rem;
-  --input-area-bottom-padding: 1rem;
-  --input-area-max-width: 48rem;
-  --input-area-min-width: 20rem;
-  --spacing-between-buttons: 0.5rem;
-
-  /* 尺寸变量 */
-  --button-size: 2rem;
-  --button-icon-size: 1rem;
-  --input-max-height: 20rem;
-  --input-min-height: 2rem;
-  --input-container-border-radius: 0.75rem;
-  --input-border-radius: 0.5rem;
-  --input-field-border-radius: 0.375rem; /* rounded-md */
-  --input-field-padding-x: 0.75rem; /* px-3 */
-  --input-field-padding-y: 0.5rem; /* py-2 */
-
-  /* 文字变量 */
-  --input-text-size: 0.875rem;
-  --input-line-height: 1.25rem;
-
-  /* 颜色变量 */
-  --input-container-border-color: #e5e7eb;
-  --reasoning-button-bg: #3b82f6;
-  --reasoning-button-hover-bg: #2563eb;
-  --reasoning-button-text: #ffffff;
-  --input-placeholder-color: #6b7280; /* text-muted-foreground */
-  --color-gray-800: #1f2937;
-  --color-gray-200: #e5e7eb;
-
-  /* InputArea 特定变量 */
-  --input-button-group-left: 0.5rem;
-  --input-button-group-bottom: 0.5rem;
-
-  /* 通用间距变量 */
-  --spacing-xs: 0.25rem;          /* 4px */
-  --spacing-sm: 0.5rem;           /* 8px */
-  --spacing-md: 1rem;             /* 16px */
-  --spacing-lg: 1.5rem;           /* 24px */
-  --spacing-xl: 2rem;             /* 32px */
+  /* ========== 间距变量 ========== */
+  --spacing-xs: 0.25rem;          /* 4px - 极小间距 */
+  --spacing-sm: 0.5rem;           /* 8px - 小间距（输入框 margin、按钮间距等） */
+  --spacing-md: 1rem;             /* 16px - 中等间距（输入框 padding、主内容区 padding 等） */
+  --spacing-lg: 1.5rem;           /* 24px - 大间距 */
+  --spacing-xl: 2rem;             /* 32px - 超大间距 */
   --spacing-2xl: 3rem;            /* 48px */
   --spacing-3xl: 4rem;            /* 64px */
   --spacing-2-5xl: 6rem;          /* 96px */
   --spacing-3-5xl: 8rem;          /* 128px */
 
-  /* 边框半径变量 */
+  /* 输入框专用间距（基于通用间距变量） */
+  --input-container-padding: 1.25rem;
+  --input-padding-right: 3rem;
+  --input-margin-top: 0.8rem;
+  --input-area-max-width: 48rem;
+  --input-area-min-width: 20rem;
+
+  /* ========== 尺寸变量 ========== */
+  --button-size: 2rem;
+  --button-icon-size: 1rem;
+  --input-max-height: 20rem;
+  --input-min-height: 2rem;
+  --input-container-border-radius: 0.75rem;
+
+  /* ========== 边框半径变量 ========== */
   --border-radius-none: 0;
   --border-radius-sm: 0.125rem;   /* 2px */
   --border-radius-md: 0.25rem;    /* 4px */
-  --border-radius-lg: 0.5rem;     /* 8px */
+  --border-radius-lg: 0.5rem;     /* 8px - 通用圆角（输入框圆角等） */
   --border-radius-xl: 0.75rem;    /* 12px */
   --border-radius-2xl: 1rem;      /* 16px */
   --border-radius-3xl: 1.5rem;    /* 24px */
   --border-radius-full: 9999px;
 
-  /* 文字尺寸变量 */
+  /* 输入框专用圆角（基于通用圆角变量） */
+  --input-field-border-radius: 0.375rem; /* rounded-md */
+
+  /* ========== 文字变量 ========== */
+  --input-text-size: 0.875rem;
+  --input-line-height: 1.25rem;
+  --input-placeholder-color: #6b7280; /* text-muted-foreground */
+
+  /* ========== 颜色变量 ========== */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;        /* 通用灰色边框（输入框容器边框等） */
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* 红色系 - 用于错误、删除、警告 */
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+
+  /* 蓝色系 - 用于链接、主要操作 */
+  --color-blue-600: #2563eb;
+
+  /* Slate 色系 - 用于侧边栏、背景等 */
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+
+  /* 滚动条颜色 */
+  --scrollbar-track-bg: #f1f1f1;
+  --scrollbar-thumb-bg: #c1c1c1;
+  --scrollbar-thumb-hover-bg: #a8a8a8;
+
+  /* 功能色变量 */
+  --reasoning-button-bg: #3b82f6;
+  --reasoning-button-hover-bg: #2563eb;
+  --reasoning-button-text: #ffffff;
+
+  /* ========== 文字尺寸变量 ========== */
   --font-size-xs: 0.75rem;        /* 12px */
   --font-size-sm: 0.875rem;       /* 14px */
   --font-size-base: 1rem;         /* 16px */
   --font-size-lg: 1.125rem;       /* 18px */
-  --font-size-xl: 1.25rem;       /* 20px */
+  --font-size-xl: 1.25rem;        /* 20px */
   --font-size-2xl: 1.5rem;        /* 24px */
-  --font-size-3xl: 1.875rem;      /* 30px */
   --font-size-3xl: 1.875rem;      /* 30px */
   --font-size-4xl: 2.25rem;       /* 36px */
   --font-size-5xl: 3rem;          /* 48px */
@@ -106,7 +124,7 @@ onMounted(async () => {
   --font-size-8xl: 6rem;          /* 96px */
   --font-size-9xl: 8rem;          /* 128px */
 
-  /* 行高变量 */
+  /* ========== 行高变量 ========== */
   --line-height-none: 1;
   --line-height-tight: 1.25;
   --line-height-snug: 1.375;
@@ -114,7 +132,7 @@ onMounted(async () => {
   --line-height-relaxed: 1.625;
   --line-height-loose: 2;
 
-  /* 字母间距变量 */
+  /* ========== 字母间距变量 ========== */
   --letter-spacing-tighter: -0.05em;
   --letter-spacing-tight: -0.025em;
   --letter-spacing-normal: 0em;
@@ -122,17 +140,17 @@ onMounted(async () => {
   --letter-spacing-wider: 0.05em;
   --letter-spacing-widest: 0.1em;
 
-  /* 动画变量 */
+  /* ========== 动画变量 ========== */
   --animation-spin: spin 1s linear infinite;
   --animation-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animation-bounce: bounce 1s infinite;
 
-  /* 过渡持续时间变量 */
+  /* ========== 过渡持续时间变量 ========== */
   --transition-duration-fast: 150ms;
   --transition-duration-normal: 200ms;
   --transition-duration-slow: 300ms;
 
-  /* zIndex 变量 */
+  /* ========== zIndex 变量 ========== */
   --z-index-dropdown: 1000;
   --z-index-sticky: 1010;
   --z-index-fixed: 1020;
@@ -142,7 +160,7 @@ onMounted(async () => {
   --z-index-tooltip: 1060;
   --z-index-dialog: 1070;
 
-  /* 阴影变量 */
+  /* ========== 阴影变量 ========== */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -150,7 +168,7 @@ onMounted(async () => {
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 
-  /* 高度和宽度变量 */
+  /* ========== 高度和宽度变量 ========== */
   --height-screen: 100vh;
   --width-screen: 100vw;
   --max-width-xs: 20rem;          /* 320px */
@@ -165,21 +183,9 @@ onMounted(async () => {
   --max-width-6xl: 72rem;         /* 1152px */
   --max-width-7xl: 80rem;         /* 1280px */
 
-  /* 颜色变量 */
-  --color-white: #ffffff;
-  --color-black: #000000;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-
-  /* InputArea 组件的阴影和边框变量 */
+  /* ========== InputArea 组件专用变量 ========== */
+  --input-field-padding-x: 0.75rem; /* px-3 */
+  --input-field-padding-y: 0.5rem;  /* py-2 */
   --input-wrapper-shadow: 0 2px 4px 0px #00000005, 0px 4px 16px 0px #0000000a, 0px 8px 32px 0px #00000014;
   --input-wrapper-active-shadow: 0 2px 4px 0 rgba(116, 158, 243, 0.02), 0 4px 12px 0 rgba(102, 188, 253, 0.04), 0 8px 24px 0 rgba(95, 178, 255, 0.17);
   --input-wrapper-border-color: rgba(0, 0, 0, 0.12);
@@ -188,7 +194,7 @@ onMounted(async () => {
   --input-wrapper-inset-ring-shadow: 0 0 #0000;
   --input-wrapper-ring-offset-shadow: 0 0 #0000;
   --input-wrapper-ring-shadow: 0 0 #0000;
-  
+
   /* 推理按钮相关颜色变量 */
   --reasoning-button-active-bg: #3b82f6;
   --reasoning-button-active-text: #ffffff;
@@ -196,39 +202,42 @@ onMounted(async () => {
 }
 
 .dark {
-  /* 深色模式变量 - 重新设计的灰色黑色配色方案 */
-  --input-container-border-color: #404040;
+  /* ========== 深色模式变量 ========== */
+  
+  /* 输入框配色 */
   --input-placeholder-color: #737373; /* 中灰色 */
-  --input-bg-color: 227, 227, 227; /* 保持rgb(227, 227, 227)作为输入框背景 */
-  --input-bg-opacity: 0.1; /* 轻微透明度 */
+  --input-bg-color: 227, 227, 227;    /* 保持rgb(227, 227, 227)作为输入框背景 */
+  --input-bg-opacity: 0.1;            /* 轻微透明度 */
+
+  /* 推理按钮配色 */
   --reasoning-button-active-bg: #525252;
   --reasoning-button-active-hover-bg: #404040;
 
-  /* 重新设计的输入框阴影和边框变量 - 深色模式下移除阴影 */
-  --input-wrapper-shadow: none; /* 移除阴影 */
-  --input-wrapper-active-shadow: none; /* 移除激活状态阴影 */
-  --input-wrapper-border-color: #525252; /* 灰色边框颜色 */
-  --input-wrapper-focus-border-color: #a3a3a3; /* 灰色焦点边框 */
+  /* 输入框阴影和边框 - 深色模式下移除阴影 */
+  --input-wrapper-shadow: none;
+  --input-wrapper-active-shadow: none;
+  --input-wrapper-border-color: #525252;
+  --input-wrapper-focus-border-color: #a3a3a3;
 
   /* 侧边栏配色 */
-  --sidebar-bg: #0a0a0a; /* 深黑色背景 */
-  --sidebar-item-hover-bg: #262626; /* 侧边栏项目悬停背景 */
-  --sidebar-item-selected-bg: #404040; /* 侧边栏选中项目背景 */
-  --sidebar-text-color: #f5f5f5; /* 侧边栏文字颜色 */
-  --sidebar-text-secondary-color: #a3a3a3; /* 侧边栏次要文字颜色 */
+  --sidebar-bg: #0a0a0a;                      /* 深黑色背景 */
+  --sidebar-item-hover-bg: #262626;           /* 侧边栏项目悬停背景 */
+  --sidebar-item-selected-bg: #404040;        /* 侧边栏选中项目背景 */
+  --sidebar-text-color: #f5f5f5;              /* 侧边栏文字颜色 */
+  --sidebar-text-secondary-color: #a3a3a3;    /* 侧边栏次要文字颜色 */
 
   /* 按钮配色 */
-  --btn-primary-bg: #525252; /* 主要按钮背景 - 灰色 */
-  --btn-primary-hover-bg: #404040; /* 主要按钮悬停背景 - 深灰色 */
-  --btn-secondary-bg: #404040; /* 次要按钮背景 - 深灰色 */
-  --btn-secondary-hover-bg: #262626; /* 次要按钮悬停背景 - 更深灰色 */
+  --btn-primary-bg: #525252;                  /* 主要按钮背景 - 灰色 */
+  --btn-primary-hover-bg: #404040;            /* 主要按钮悬停背景 - 深灰色 */
+  --btn-secondary-bg: #404040;                /* 次要按钮背景 - 深灰色 */
+  --btn-secondary-hover-bg: #262626;          /* 次要按钮悬停背景 - 更深灰色 */
 
   /* 对话界面配色 */
-  --chat-bg: #0f0f0f; /* 聊天界面背景 - 深黑色 */
-  --user-msg-bg: #262626; /* 用户消息背景 - 深灰色 */
+  --chat-bg: #0f0f0f;                         /* 聊天界面背景 - 深黑色 */
+  --user-msg-bg: #262626;                     /* 用户消息背景 - 深灰色 */
 
   /* 分割线配色 */
-  --divider-color: #404040; /* 分割线颜色 - 灰色 */
+  --divider-color: #404040;                   /* 分割线颜色 - 灰色 */
 }
 
 html,

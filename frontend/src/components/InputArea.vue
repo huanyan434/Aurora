@@ -233,7 +233,8 @@ const handleSendMessage = async () => {
       content: '',
       conversationID: conversationId,
       createdAt: new Date().toISOString(),
-      isStreaming: true // 立即设置为流式传输状态
+      isStreaming: true, // 立即设置为流式传输状态
+      disableTyping: false, // 流式消息需要打字效果
     });
 
     // 通过 WebSocket 发送生成请求
@@ -269,7 +270,7 @@ const toggleReasoning = () => {
 
 <style scoped>
 .input-area-container {
-  padding: var(--input-area-horizontal-padding) var(--input-area-horizontal-padding) var(--input-area-bottom-padding);
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md);
 }
 
 .input-area-wrapper {
@@ -306,9 +307,9 @@ const toggleReasoning = () => {
   min-width: var(--input-area-min-width);
   max-height: var(--input-max-height);
   padding-right: var(--input-padding-right);
-  padding-left: var(--input-padding-left);
+  padding-left: var(--spacing-md);
   margin-top: var(--input-margin-top);
-  margin-bottom: var(--input-margin-bottom);
+  margin-bottom: var(--spacing-sm);
   color: inherit; /* 使用继承的颜色 */
 }
 
@@ -323,17 +324,17 @@ const toggleReasoning = () => {
 
 .input-button-group-left {
   position: relative;
-  left: var(--input-button-group-left);
-  bottom: var(--input-button-group-bottom);
+  left: var(--spacing-sm);
+  bottom: var(--spacing-sm);
   display: flex;
   flex-direction: row;
-  gap: var(--spacing-between-buttons);
+  gap: var(--spacing-sm);
 }
 
 .input-button-group-right {
   position: absolute;
-  right: var(--input-button-group-left);
-  bottom: var(--input-button-group-bottom);
+  right: var(--spacing-sm);
+  bottom: var(--spacing-sm);
 }
 
 .input-addon-button {
@@ -471,14 +472,14 @@ const toggleReasoning = () => {
 /* 由于我们无法直接通过CSS检测按钮是否在isGenerating状态下，需要使用一个新类名 */
 .input-send-button-stop {
   background-color: transparent !important;
-  border: 1px solid #ef4444 !important; /* 红色边框 */
-  color: #ef4444 !important; /* 红色图标 */
+  border: 1px solid var(--color-red-500) !important; /* 红色边框 */
+  color: var(--color-red-500) !important; /* 红色图标 */
 }
 
 .input-send-button-stop:hover {
   background-color: #fef2f2 !important; /* 浅红色背景 */
-  border-color: #dc2626 !important;
-  color: #dc2626 !important;
+  border-color: var(--color-red-600) !important;
+  color: var(--color-red-600) !important;
 }
 
 .dark .input-send-button-stop {
@@ -598,7 +599,7 @@ const toggleReasoning = () => {
   position: absolute;
   top: -4px;
   right: -4px;
-  background: #ef4444;
+  background: var(--color-red-500);
   border: 2px solid white;
   /* 添加白色边框，确保按钮可见 */
   border-radius: 50%;

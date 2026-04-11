@@ -11,6 +11,7 @@ export interface Message {
   reasoningContent?: string; // 推理内容
   reasoningTime?: number; // 推理时间
   isStreaming?: boolean; // 是否正在流式传输
+  disableTyping?: boolean; // 是否禁用打字效果（在添加消息时确定）
   createdAt: string;
 }
 

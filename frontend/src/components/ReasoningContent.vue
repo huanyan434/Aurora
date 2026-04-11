@@ -57,10 +57,12 @@ interface Props {
   content: string;
   reasoningTime: number;
   isStreaming?: boolean;
+  disableTyping?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isStreaming: false
+  isStreaming: false,
+  disableTyping: false
 });
 
 // 响应式状态
@@ -197,7 +199,7 @@ watch([() => props.content, () => props.isStreaming], ([newContent, newIsStreami
 .show-more-button:hover {
   background: white;
   border-color: #94a3b8;
-  color: #334155;
+  color: var(--color-slate-700);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transform: translateY(-1px);
 }
@@ -244,16 +246,16 @@ watch([() => props.content, () => props.isStreaming], ([newContent, newIsStreami
 }
 
 .message-reasoning::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--scrollbar-track-bg);
 }
 
 .message-reasoning::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--scrollbar-thumb-bg);
   border-radius: 3px;
 }
 
 .message-reasoning::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--scrollbar-thumb-hover-bg);
 }
 
 .dark .message-reasoning::-webkit-scrollbar {

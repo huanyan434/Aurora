@@ -23,7 +23,7 @@
             >
                 <div
                     :class="[
-                        'rounded-lg px-4 py-3 markdown-body',
+                        'rounded-lg px-4 py-3',
                         message.role === 'user'
                             ? 'bg-gray-100 dark:bg-user-msg-bg user-message'
                             : 'assistant-message',
@@ -65,14 +65,18 @@
                             :content="message.reasoningContent"
                             :reasoning-time="message.reasoningTime || 0"
                             :is-streaming="message.isStreaming || false"
+                            :disable-typing="message.disableTyping || false"
                         />
 
-                        <!-- 回复内容 -->
-                        <div
+                        <!-- 回复内容 - 使用 DsMarkdown 组件 -->
+                        <DsMarkdown
                             v-if="message.content || !message.isStreaming"
-                            class="text-gray-800 dark:text-gray-200"
-                            v-html="renderContent(message.content)"
-                        ></div>
+                            :content="message.content"
+                            :interval="message.disableTyping ? 0 : 20"
+                            :show-cursor="!message.disableTyping && message.isStreaming"
+                            :disable-typing="message.disableTyping || false"
+                            cursor="circle"
+                        />
 
                         <!-- 加载占位符 -->
                         <div
@@ -208,11 +212,9 @@ import {
     wsManager,
 } from "@/api/chat";
 import { useRoute } from "vue-router";
-import { marked } from "marked";
-import katex from "katex";
-import "@/github-markdown.css";
 import { useChatStore } from "@/stores/chat";
 import ReasoningContent from "./ReasoningContent.vue";
+import DsMarkdown from "./DsMarkdown.vue";
 import { toastSuccess, toastError } from "@/components/ui/toast/use-toast";
 import {
     Dialog,
@@ -344,254 +346,6 @@ const renderUserContent = (content: string) => {
     });
 
     return escapedParts.join("");
-};
-
-/**
- * 渲染内容（包括 Markdown 和 LaTeX 数学公式）
- * @param content 原始内容
- * @returns 渲染后的 HTML
- */
-const renderContent = (content: string) => {
-    if (!content) return "";
-
-    // 处理 <base64>xxx</base64> 标签，将其替换为图片
-    let processedContent = content.replace(
-        /<base64>([^<]+)<\/base64>/g,
-        (_match, base64Content) => {
-            const trimmedContent = base64Content.trim();
-
-            // 检查是否已经是完整的 data:image URL
-            if (trimmedContent.startsWith("data:image/")) {
-                // 如果是完整的 data URL，直接使用
-                return `<img src="${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
-            }
-            // 否则检查是否为纯 base64 字符串
-            else {
-                // 验证 base64 格式
-                const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-                if (base64Regex.test(trimmedContent)) {
-                    // 如果是有效的 base64，创建图片标签
-                    // 尝试检测图片类型，如果没有检测到则默认使用 jpeg
-                    let imageType = "jpeg"; // 默认类型
-
-                    // 检查 base64 字符串是否包含图片类型信息
-                    if (trimmedContent.startsWith("/9j/")) {
-                        // JPEG 文件头
-                        imageType = "jpeg";
-                    } else if (trimmedContent.startsWith("iVBORw0KGgo=")) {
-                        // PNG 文件头
-                        imageType = "png";
-                    } else if (
-                        trimmedContent.startsWith("R0lGODlh") ||
-                        trimmedContent.startsWith("R0lGODdh")
-                    ) {
-                        // GIF 文件头
-                        imageType = "gif";
-                    } else if (trimmedContent.startsWith("TU0AK")) {
-                        // TIFF 文件头
-                        imageType = "tiff";
-                    }
-
-                    return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
-                } else {
-                    // 如果不是有效的 base64，返回空字符串（移除标签）
-                    console.warn(
-                        "Invalid base64 format detected and removed:",
-                        trimmedContent,
-                    );
-                    return ""; // 返回空字符串，移除无效标签
-                }
-            }
-        },
-    );
-
-    // 移除模型标识符和推理内容
-    processedContent = processedContent.replace(/<model=[^>]+>/g, "").trim();
-    processedContent = processedContent
-        .replace(/<think time=(\d+)>([\s\S]*?)<\/think>/g, "")
-        .trim();
-
-    // 使用 marked 库解析 markdown
-    const renderer = new marked.Renderer();
-
-    // 自定义链接渲染以确保安全性
-    renderer.link = ({ href, title, text }) => {
-        // 确保链接是安全的协议
-        const sanitizedHref =
-            href && (href.startsWith("http://") || href.startsWith("https://"))
-                ? href
-                : `https://${href || ""}`;
-        const titleAttr = title ? ` title="${title}"` : "";
-        return `<a href="${sanitizedHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text || ""}</a>`;
-    };
-
-    // 自定义图片渲染以确保安全性
-    renderer.image = ({ href, title, text }) => {
-        // 只允许安全的图片链接
-        const sanitizedHref =
-            href && (href.startsWith("http://") || href.startsWith("https://"))
-                ? href
-                : "";
-        const sanitizedText = text || "";
-        const titleAttr = title ? ` title="${title}"` : "";
-        return sanitizedHref
-            ? `<img src="${sanitizedHref}" alt="${sanitizedText}"${titleAttr} class="max-w-full h-auto">`
-            : "";
-    };
-
-    // 自定义代码块渲染
-    renderer.code = ({ text, lang, escaped }) => {
-        // 如果内容已经被转义，则直接使用；否则可能需要转义特殊字符
-        const codeContent = escaped ? text : text; // 在实际应用中可能需要使用转义函数
-        return `<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded my-2 overflow-x-auto"><code class="language-${lang || "text"}">${codeContent}</code></pre>`;
-    };
-
-    // 自定义行内代码渲染
-    renderer.codespan = ({ text }) => {
-        return `<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono text-sm">${text}</code>`;
-    };
-
-    // 自定义列表项渲染
-    renderer.listitem = (item) => {
-        const text = item.text || "";
-        const task = item.task || false;
-        const checked = item.checked || false;
-
-        if (task) {
-            // 如果是任务列表项，添加复选框
-            const checkedAttr = checked ? " checked" : "";
-            return `<li class="ml-4"><input type="checkbox" disabled${checkedAttr}> ${text}</li>`;
-        }
-        return `<li class="ml-4">${text}</li>`;
-    };
-
-    // 自定义表格单元格渲染
-    renderer.tablecell = (token) => {
-        // 安全地访问内容，避免未定义错误
-        let content = "";
-        if (
-            token.tokens &&
-            Array.isArray(token.tokens) &&
-            token.tokens.length > 0
-        ) {
-            const firstToken = token.tokens[0];
-            if (firstToken && typeof firstToken === "object") {
-                content =
-                    "text" in firstToken
-                        ? firstToken.text || ""
-                        : "content" in firstToken
-                          ? firstToken.content || ""
-                          : "";
-            }
-        } else {
-            content = token.text || "";
-        }
-
-        const header = "header" in token ? token.header : undefined;
-        const align = "align" in token ? token.align : undefined;
-        const tag = header ? "th" : "td";
-        const alignStyle = align ? ` text-align:${align};` : "";
-        return `<${tag} style="border:1px solid #ccc; padding:4px;${alignStyle}">${content}</${tag}>`;
-    };
-
-    // 配置 marked 选项
-    marked.setOptions({
-        renderer: renderer,
-        gfm: true, // 启用 GitHub 风格的 Markdown
-        breaks: true, // 启用换行符转换为 <br> 标签
-    });
-
-    processedContent = marked.parse(processedContent) as string;
-
-    // 处理 LaTeX 数学公式
-    // 行内公式：$...$
-    processedContent = processedContent.replace(
-        /\$(.*?)\$/g,
-        (match, formula) => {
-            try {
-                // 清理公式内容，去除首尾空白
-                const cleanedFormula = formula.trim();
-                if (!cleanedFormula) return match; // 如果公式为空，返回原始内容
-
-                const rendered = katex.renderToString(cleanedFormula, {
-                    throwOnError: false,
-                    displayMode: true,
-                    output: "html",
-                });
-                // 添加 KaTeX 相关的 CSS 类以确保正确显示
-                return `${rendered}`;
-            } catch (error) {
-                console.warn("LaTeX parsing error (inline):", error);
-                // 如果解析失败，返回原始内容
-                return match;
-            }
-        },
-    );
-
-    // 块级公式：$$...$$
-    processedContent = processedContent.replace(
-        /\$\$(.*?)\$\$/gs,
-        (match, formula) => {
-            try {
-                // 清理公式内容，去除首尾空白
-                const cleanedFormula = formula.trim();
-                if (!cleanedFormula) return match; // 如果公式为空，返回原始内容
-
-                const rendered = katex.renderToString(cleanedFormula, {
-                    throwOnError: false,
-                    displayMode: false,
-                    output: "html",
-                });
-                return rendered;
-            } catch (error) {
-                console.warn("LaTeX parsing error (block):", error);
-                // 如果解析失败，返回原始内容
-                return match;
-            }
-        },
-    );
-
-    // 处理 [... ] 格式的块级公式（常见于 AI 输出）
-    processedContent = processedContent.replace(
-        /\[([^\[\]]*)\]/g,
-        (match, formula) => {
-            try {
-                // 清理公式内容，去除首尾空白
-                const cleanedFormula = formula.trim();
-                if (!cleanedFormula) return match; // 如果公式为空，返回原始内容
-
-                // 检查是否包含常见的 LaTeX 命令
-                if (!formula.includes("\\")) {
-                    return match; // 如果不包含 LaTeX 命令，不处理
-                }
-
-                // 预处理一些常见的非标准 LaTeX 语法和清理意外字符
-                let processedFormula = cleanedFormula
-                    .replace(/\\+$/, "") // 移除末尾多余的反斜杠
-                    .replace(/^\s*\\/, "") // 移除开头的意外反斜杠
-                    .trim(); // 再次清理空白
-
-                // 检查处理后的公式是否仍然包含 LaTeX 命令
-                if (!processedFormula.includes("\\")) {
-                    return match; // 如果处理后不再包含 LaTeX 命令，不处理
-                }
-
-                const rendered = katex.renderToString(processedFormula, {
-                    throwOnError: false,
-                    displayMode: true, // 使用 display 模式渲染方括号公式
-                    output: "html",
-                });
-                return rendered;
-            } catch (error) {
-                console.error("LaTeX parsing error ([...]):", error);
-                console.log("Problematic formula:", formula);
-                // 如果解析失败，返回原始内容
-                return match;
-            }
-        },
-    );
-
-    return processedContent;
 };
 
 // 复制消息内容到剪贴板
@@ -777,6 +531,7 @@ const setupGlobalGenerateHandler = () => {
                     conversationID: convId,
                     createdAt: new Date().toISOString(),
                     isStreaming: true,
+                    disableTyping: false, // 续流需要打字效果
                 };
                 chatStore.addMessage(convId, tempMessage);
                 // 更新状态中的 messageAssistantId
@@ -819,6 +574,7 @@ const setupGlobalGenerateHandler = () => {
                     conversationID: convId,
                     createdAt: new Date().toISOString(),
                     isStreaming: false, // 缓存消息不是流式
+                    disableTyping: true, // 缓存消息不需要打字效果
                 });
                 return; // 直接返回，不执行后续的 updateMessage
             }
@@ -1026,13 +782,21 @@ const loadConversationHistory = async (conversationId: number) => {
                     reasoningTime,
                     createdAt: msg.created_at,
                     isStreaming: false,
+                    disableTyping: true, // 历史消息不需要打字效果
                 };
             });
 
             chatStore.setMessages(conversationId, formattedMessages);
             isLoading.value = false;
             await nextTick();
+            // 3次延迟等待 DsMarkdown 组件渲染完成后再滚动到底部
             scrollToBottom();
+            setTimeout(() => {
+                scrollToBottom();
+            }, 150);
+            setTimeout(() => {
+                scrollToBottom();
+            }, 300)
         }
     } catch (error) {
         console.error("获取历史消息失败:", error);
@@ -1131,10 +895,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.markdown-body hr {
-    height: 0 !important;
-}
-
 .copy-btn {
     display: flex;
     align-items: center;
@@ -1188,7 +948,7 @@ onUnmounted(() => {
 }
 
 .delete-btn:hover {
-    color: #ef4444;
+    color: var(--color-red-500);
     /* red-500 */
     background-color: #fee2e2;
     /* red-100 */
@@ -1201,27 +961,22 @@ onUnmounted(() => {
     /* dark:red-900 */
 }
 
-/* 使用新的深色模式变量覆盖默认背景 */
-.dark .markdown-body.user-message {
-  background-color: var(--user-msg-bg) !important;
-}
-
 /* 滚动条样式 */
 .messages-scroll-container::-webkit-scrollbar {
   width: 8px;
 }
 
 .messages-scroll-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--scrollbar-track-bg);
 }
 
 .messages-scroll-container::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--scrollbar-thumb-bg);
   border-radius: 4px;
 }
 
 .messages-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--scrollbar-thumb-hover-bg);
 }
 
 /* 深色模式滚动条样式 */

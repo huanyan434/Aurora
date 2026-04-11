@@ -221,7 +221,7 @@ const handleLogout = async () => {
 
 .logout-menu-item {
   cursor: pointer;
-  color: #dc2626;
+  color: var(--color-red-600);
   /* text-red-600 */
 }
 
@@ -231,12 +231,12 @@ const handleLogout = async () => {
 }
 
 .logout-text {
-  color: #dc2626;
+  color: var(--color-red-600);
   /* group:text-red-600 */
 }
 
 [data-highlighted] .logout-text {
-  color: #dc2626;
+  color: var(--color-red-600);
   /* group-data-[highlighted]:text-red-600 */
 }
 

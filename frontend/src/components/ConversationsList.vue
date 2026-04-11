@@ -454,16 +454,16 @@ defineExpose({
 }
 
 .conversations-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--scrollbar-track-bg);
 }
 
 .conversations-container::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--scrollbar-thumb-bg);
   border-radius: 4px;
 }
 
 .conversations-container::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--scrollbar-thumb-hover-bg);
 }
 
 /* 深色模式滚动条样式 */
@@ -501,7 +501,7 @@ defineExpose({
 }
 
 .conversation-selected {
-  background-color: #e2e8f0; /* bg-slate-200 - 与豆包风格一致 */
+  background-color: var(--color-slate-200); /* bg-slate-200 - 与豆包风格一致 */
 }
 
 .dark .conversation-selected {
@@ -509,7 +509,7 @@ defineExpose({
 }
 
 .conversation-unselected:hover {
-  background-color: #f1f5f9; /* hover:bg-slate-100 - 与豆包风格一致 */
+  background-color: var(--color-slate-100); /* hover:bg-slate-100 - 与豆包风格一致 */
 }
 
 .dark .conversation-unselected:hover {
@@ -563,7 +563,7 @@ defineExpose({
 
 .delete-menu-item {
   cursor: pointer;
-  color: #dc2626; /* text-red-600 */
+  color: var(--color-red-600); /* text-red-600 */
 }
 
 .dark .delete-menu-item {
@@ -571,11 +571,11 @@ defineExpose({
 }
 
 .delete-text {
-  color: #dc2626; /* group:text-red-600 */
+  color: var(--color-red-600); /* group:text-red-600 */
 }
 
 [data-highlighted] .delete-text {
-  color: #dc2626; /* group-data-[highlighted]:text-red-600 */
+  color: var(--color-red-600); /* group-data-[highlighted]:text-red-600 */
 }
 
 .dark [data-highlighted] .delete-text {
@@ -602,7 +602,7 @@ defineExpose({
   padding-top: var(--spacing-sm); /* py-2 */
   padding-bottom: var(--spacing-sm); /* py-2 */
   font-size: var(--font-size-sm); /* text-sm */
-  color: #ef4444; /* text-red-500 */
+  color: var(--color-red-500); /* text-red-500 */
   text-align: center; /* text-center */
 }
 
@@ -642,7 +642,7 @@ defineExpose({
 }
 
 .delete-dialog-btn {
-  background-color: #dc2626; /* bg-red-600 */
+  background-color: var(--color-red-600); /* bg-red-600 */
   color: white;
 }
 

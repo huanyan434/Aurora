@@ -186,7 +186,7 @@ import { onUnmounted } from 'vue';
   overflow-y: auto;
   min-width: 15rem; /* min-w-[240px] */
   scrollbar-width: thin; /* Firefox滚动条宽度 */
-  scrollbar-color: #c1c1c1 #f1f1f1; /* 浅色模式滚动条颜色 */
+  scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-track-bg); /* 浅色模式滚动条颜色 */
 }
 
 .dark .model-selector-dropdown {
