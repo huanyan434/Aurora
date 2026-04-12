@@ -182,42 +182,42 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 }
 
 /* ==================== 深色模式 ==================== */
-:global(.dark) .toast-card {
+.dark .toast-card {
   background: rgba(255, 255, 255, 0.24);
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-:global(.dark) .toast-card.toast--success {
+.dark .toast-card.toast--success {
   background: rgba(34, 197, 94, 0.24);
   border-color: rgba(34, 197, 94, 0.3);
 }
 
-:global(.dark) .toast-card.toast--success .toast-icon {
+.dark .toast-card.toast--success .toast-icon {
   color: #4ade80;
 }
 
-:global(.dark) .toast-card.toast--success .toast-text {
+.dark .toast-card.toast--success .toast-text {
   color: #4ade80;
 }
 
-:global(.dark) .toast-card.toast--error {
+.dark .toast-card.toast--error {
   background: rgba(239, 68, 68, 0.24);
   border-color: rgba(239, 68, 68, 0.3);
 }
 
-:global(.dark) .toast-card.toast--error .toast-icon {
+.dark .toast-card.toast--error .toast-icon {
   color: #f87171;
 }
 
-:global(.dark) .toast-card.toast--error .toast-text {
+.dark .toast-card.toast--error .toast-text {
   color: #f87171;
 }
 
-:global(.dark) .toast-card .toast-icon {
+.dark .toast-card .toast-icon {
   color: #9ca3af;
 }
 
-:global(.dark) .toast-card .toast-text {
+.dark .toast-card .toast-text {
   color: rgba(255, 255, 255, 0.85);
 }
 </style>
