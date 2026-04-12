@@ -23,6 +23,12 @@ const props = withDefaults(defineProps<{
 const containerRef = ref<HTMLElement | null>(null)
 let root: Root | null = null
 
+// 检测系统主题
+const getSystemTheme = (): 'light' | 'dark' => {
+  if (typeof window === 'undefined') return 'light'
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+}
+
 function renderReact() {
   if (!containerRef.value) return
 
@@ -37,6 +43,7 @@ function renderReact() {
       answerType: props.answerType,
       showCursor: props.showCursor && !props.disableTyping,
       cursor: props.cursor,
+      theme: getSystemTheme(),
     })
   )
 }
@@ -57,6 +64,23 @@ watch(
     renderReact()
   }
 )
+
+// 监听系统主题变化
+const themeChangeListener = () => {
+  renderReact()
+}
+
+onMounted(() => {
+  // 监听 class 变化
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === 'class') {
+        themeChangeListener()
+      }
+    })
+  })
+  observer.observe(document.documentElement, { attributes: true })
+})
 
 onBeforeUnmount(() => {
   root?.unmount()

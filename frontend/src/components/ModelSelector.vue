@@ -19,26 +19,30 @@
       </svg>
     </button>
 
-    <div
-      v-if="isOpen && chatStore.modelsLoaded"
-      class="model-selector-dropdown"
-    >
+    <transition name="model-dropdown">
       <div
-        v-for="model in chatStore.sortedModels"
-        :key="model.id"
-        @click="selectModel(model.id)"
-        class="model-selector-item"
+        v-if="isOpen && chatStore.modelsLoaded"
+        class="model-selector-dropdown"
       >
-        <div class="model-selector-item-content">
-          <div class="model-name">{{ model.name || '未知模型' }}</div>
-          <div class="model-features">
-            <span v-if="model.reasoning" class="feature-tag reasoning-tag">推理</span>
-            <span v-if="model.image === 1 || model.image === 3" class="feature-tag image-tag">识图</span>
-            <span class="feature-tag points-tag">{{ model.points }}积分/次</span>
+        <div class="model-dropdown-scrollable">
+          <div
+            v-for="model in chatStore.sortedModels"
+            :key="model.id"
+            @click="selectModel(model.id)"
+            class="model-selector-item"
+          >
+            <div class="model-selector-item-content">
+              <div class="model-name">{{ model.name || '未知模型' }}</div>
+              <div class="model-features">
+                <span v-if="model.reasoning" class="feature-tag reasoning-tag">推理</span>
+                <span v-if="model.image === 1 || model.image === 3" class="feature-tag image-tag">识图</span>
+                <span class="feature-tag points-tag">{{ model.points }}积分/次</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </transition>
   </div>
 </template>
 
@@ -120,13 +124,14 @@ import { onUnmounted } from 'vue';
   padding-right: 0.75rem; /* px-3 */
   padding-top: 0.5rem; /* py-2 */
   padding-bottom: 0.5rem; /* py-2 */
-  border: 1px solid #d1d5db; /* border border-gray-300 */
+  /* border: 1px solid #d1d5db; */
   border-radius: 0.7rem;
-  background-color: #ffffff; /* bg-white */
+  background-color: #f4f4f4;
   font-size: 1rem; /* text-base */
   outline: none; /* focus:outline-none */
   box-shadow: none; /* focus:ring-0 */
   color: #1f2937; /* text-gray-800 */
+  cursor: pointer;
 }
 
 .model-selector-btn:hover {
@@ -164,7 +169,6 @@ import { onUnmounted } from 'vue';
   width: 1rem; /* w-4 */
   height: 1rem; /* h-4 */
   margin-left: 0.5rem; /* ml-2 */
-  transition-transform: 200ms; /* transition-transform */
   transition-duration: 200ms; /* duration-200 */
   flex-shrink: 0; /* flex-shrink-0 */
 }
@@ -183,10 +187,46 @@ import { onUnmounted } from 'vue';
   border-radius: 0.7rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
   max-height: 20rem; /* max-h-80 */
-  overflow-y: auto;
+  overflow: hidden;
   min-width: 15rem; /* min-w-[240px] */
-  scrollbar-width: thin; /* Firefox滚动条宽度 */
-  scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-track-bg); /* 浅色模式滚动条颜色 */
+}
+
+/* 内部滚动容器 */
+.model-dropdown-scrollable {
+  max-height: 20rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.model-dropdown-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.model-dropdown-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.model-dropdown-scrollable::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.model-dropdown-scrollable::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+.dark .model-dropdown-scrollable {
+  scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+}
+
+.dark .model-dropdown-scrollable::-webkit-scrollbar-thumb {
+  background-color: rgba(75, 85, 99, 0.5);
+}
+
+.dark .model-dropdown-scrollable::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(75, 85, 99, 0.7);
 }
 
 .dark .model-selector-dropdown {
@@ -275,12 +315,28 @@ import { onUnmounted } from 'vue';
 }
 
 .points-tag {
-  background-color: #f3f4f6; /* bg-gray-100 */
-  color: #1f2937; /* text-gray-800 */
+  background-color: #ffface;
+  color: #636363;
 }
 
 .dark .points-tag {
-  background-color: #374151; /* dark:bg-gray-700 */
-  color: #e5e7eb; /* dark:text-gray-200 */
+  background-color: #636363;
+  color: #ffface;
+}
+
+/* 下拉菜单过渡动画 */
+.model-dropdown-enter-active,
+.model-dropdown-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.model-dropdown-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.model-dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>

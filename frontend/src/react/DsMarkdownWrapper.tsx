@@ -7,6 +7,7 @@ export interface DsMarkdownWrapperProps {
   answerType?: 'answer' | 'thinking'
   showCursor?: boolean
   cursor?: 'line' | 'block' | 'underscore' | 'circle'
+  theme?: 'light' | 'dark'
 }
 
 export default function DsMarkdownWrapper(props: DsMarkdownWrapperProps) {
@@ -16,16 +17,22 @@ export default function DsMarkdownWrapper(props: DsMarkdownWrapperProps) {
     answerType = 'answer',
     showCursor = false,
     cursor = 'line',
+    theme,
   } = props
 
   return React.createElement(
-    DsMarkdown,
-    {
-      interval,
-      answerType,
-      showCursor,
-      cursor,
-      children: content,
-    }
+    'div',
+    { className: 'ds-markdown-transparent-bg' },
+    React.createElement(
+      DsMarkdown,
+      {
+        interval,
+        answerType,
+        showCursor,
+        cursor,
+        theme,
+        children: content,
+      }
+    )
   )
 }

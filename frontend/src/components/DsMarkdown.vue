@@ -69,11 +69,19 @@ withDefaults(defineProps<{
 }
 
 .dark .ds-markdown :deep(pre) {
-  background: #1e293b;
+  background: #0f0f0f;
 }
 
 .dark .ds-markdown :deep(blockquote) {
   border-left-color: #4b5563;
   color: #9ca3af;
+}
+</style>
+
+<style>
+/* 透明背景（全局样式，因为需要应用到 React 组件） */
+.ds-markdown-transparent-bg,
+.dark .ds-markdown-transparent-bg {
+  background: transparent !important;
 }
 </style>

@@ -13,6 +13,15 @@ import { initToast } from '@/components/ui/toast/use-toast'
 // 导入设置 store
 import { useSettingsStore } from '@/stores/settings'
 
+// 覆盖 ds-markdown 深色模式背景
+const dsMarkdownDarkStyle = document.createElement('style')
+dsMarkdownDarkStyle.textContent = `
+.ds-markdown.ds-markdown-dark {
+  --dsr-bg: #0f0f0f !important;
+}
+`
+document.head.appendChild(dsMarkdownDarkStyle)
+
 const app = createApp(App)
 
 const pinia = createPinia().use(piniaPluginPersistedstate)
