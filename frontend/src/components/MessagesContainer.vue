@@ -72,10 +72,11 @@
                         <DsMarkdown
                             v-if="message.content || !message.isStreaming"
                             :content="message.content"
-                            :interval="message.disableTyping ? 0 : 20"
+                            :interval="message.disableTyping ? 0 : 15"
                             :show-cursor="!message.disableTyping && message.isStreaming"
                             :disable-typing="message.disableTyping || false"
                             cursor="circle"
+                            :on-end="() => handleMarkdownEnd(message.id)"
                         />
 
                         <!-- 加载占位符 -->
@@ -110,7 +111,7 @@
                             : 'opacity-0',
                     ]"
                     v-show="
-                        !(message.role === 'assistant' && message.isStreaming)
+                        !(message.role === 'assistant' && (message.isStreaming || !message.markdownEnded))
                     "
                 >
                     <button
@@ -228,6 +229,8 @@ const hoveredMessageId = ref<number | null>(null);
 const isDeleteDialogOpen = ref(false);
 const messageToDelete = ref<number | null>(null);
 const models = ref<any[]>([]);
+// 跟踪哪些消息的 markdown 渲染已完成
+const markdownEndedIds = ref<Set<number>>(new Set());
 
 // 获取容器元素的引用
 const containerRef = ref<HTMLElement | null>(null);
@@ -245,7 +248,12 @@ const currentConversationId = computed(() => {
 const displayedMessages = computed(() => {
     const convId = currentConversationId.value;
     if (isNaN(convId)) return [];
-    return chatStore.getMessagesByConversationId(convId) || [];
+    const messages = chatStore.getMessagesByConversationId(convId) || [];
+    // 为每条消息添加 markdownEnded 状态
+    return messages.map(msg => ({
+        ...msg,
+        markdownEnded: markdownEndedIds.value.has(msg.id || -1),
+    }));
 });
 
 /**
@@ -255,6 +263,40 @@ const scrollToBottom = () => {
     if (containerRef.value) {
         containerRef.value.scrollTop = containerRef.value.scrollHeight;
     }
+};
+
+/**
+ * 处理 Markdown 渲染完成回调
+ * 在流式输出的 markdown 渲染完成后调用
+ * @param messageId 消息 ID
+ */
+const handleMarkdownEnd = (messageId: number | undefined) => {
+    if (messageId === undefined) return;
+
+    console.log('[handleMarkdownEnd] 消息 ID:', messageId, '当前 isGenerating:', chatStore.getIsGenerating);
+
+    // 标记该消息的 markdown 渲染已完成
+    markdownEndedIds.value.add(messageId);
+
+    // 在 markdown 渲染完成后，延迟 150 毫秒再滚动到底部
+    // 确保 DOM 完全渲染后再滚动
+    setTimeout(() => {
+        scrollToBottom();
+        
+        // 在滚动完成后，检查是否需要设置 isGenerating = false
+        // 检查 displayedMessages 中是否还有活跃的流式消息
+        const hasActiveStreaming = displayedMessages.value.some(
+            msg => msg.role === 'assistant' && (msg.isStreaming || !msg.markdownEnded)
+        );
+        
+        console.log('[handleMarkdownEnd] hasActiveStreaming:', hasActiveStreaming);
+        
+        // 只有在没有任何活跃流式消息时，才设置 isGenerating = false
+        if (!hasActiveStreaming && chatStore.getIsGenerating) {
+            console.log('[handleMarkdownEnd] 设置 isGenerating = false');
+            chatStore.setIsGenerating(false);
+        }
+    }, 40);
 };
 
 /**
@@ -628,7 +670,8 @@ const setupGlobalGenerateHandler = () => {
 
         const state = getWsGenerateState(conversationId);
 
-        // 设置消息为非流式状态
+        // 设置消息为非流式状态（但 markdown 还未结束）
+        // 注意：不在这里设置 isGenerating = false，而是等待 markdown 的 onEnd 回调后再设置
         if (state.messageAssistantId) {
             chatStore.updateMessage(state.messageAssistantId, {
                 isStreaming: false,
@@ -643,8 +686,8 @@ const setupGlobalGenerateHandler = () => {
             lastReasoningTime: 0,
         });
 
-        // 设置全局生成状态为 false
-        chatStore.setIsGenerating(false);
+        // 注意：不再在这里设置 isGenerating = false
+        // 而是在 markdown 的 onEnd 回调中设置
     };
 
     wsManager.onMessage("generate_end", currentGenerateEndHandler);
@@ -670,12 +713,46 @@ const setupGlobalGenerateHandler = () => {
 };
 
 // 监听消息变化，自动滚动到底部
+// 在流式消息存在且 markdown 未结束之前持续滚动
 watch(
     displayedMessages,
-    () => {
+    (newMessages) => {
         nextTick(() => {
-            scrollToBottom();
+            // 检查是否有正在进行流式传输或 markdown 未结束的消息
+            const hasActiveStreaming = newMessages.some(
+                msg => msg.role === 'assistant' && (msg.isStreaming || !msg.markdownEnded)
+            );
+            
+            // 如果有活跃的消息（流式中或 markdown 未结束），继续滚动
+            if (hasActiveStreaming) {
+                scrollToBottom();
+            }
         });
+    },
+    { deep: true },
+);
+
+// 监听 chatStore 中的消息更新，检查是否有流式消息但 markdownEndedIds 中不存在的情况
+// 这种情况发生在切换对话或页面刷新时
+watch(
+    () => chatStore.messages,
+    (newMessages) => {
+        const convId = currentConversationId.value;
+        if (isNaN(convId)) return;
+        
+        const messages = newMessages[convId];
+        if (!messages || messages.length === 0) return;
+        
+        // 检查是否有流式消息但不在 markdownEndedIds 中
+        const streamingMessage = messages.find(
+            msg => msg.role === 'assistant' && msg.isStreaming && !markdownEndedIds.value.has(msg.id || -1)
+        );
+        
+        if (streamingMessage) {
+            // 这是一个新的流式消息，确保它不在 markdownEndedIds 中
+            // （正常情况下不应该在，但为了安全起见）
+            markdownEndedIds.value.delete(streamingMessage.id || -1);
+        }
     },
     { deep: true },
 );
@@ -782,14 +859,9 @@ const loadConversationHistory = async (conversationId: number) => {
             chatStore.setMessages(conversationId, formattedMessages);
             isLoading.value = false;
             await nextTick();
-            // 3次延迟等待 DsMarkdown 组件渲染完成后再滚动到底部
+            // 等待 DsMarkdown 组件渲染，滚动由 onEnd 回调处理
+            // 历史消息的 disableTyping=true，所以会立即触发 onEnd
             scrollToBottom();
-            setTimeout(() => {
-                scrollToBottom();
-            }, 150);
-            setTimeout(() => {
-                scrollToBottom();
-            }, 300)
         }
     } catch (error) {
         console.error("获取历史消息失败:", error);

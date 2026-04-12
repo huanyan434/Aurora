@@ -8,8 +8,9 @@ withDefaults(defineProps<{
   cursor?: 'line' | 'block' | 'underscore' | 'circle'
   answerType?: 'answer' | 'thinking'
   disableTyping?: boolean
+  onEnd?: () => void
 }>(), {
-  interval: 18,
+  interval: 15,
   showCursor: true,
   cursor: 'circle',
   answerType: 'answer',
@@ -25,6 +26,7 @@ withDefaults(defineProps<{
       :show-cursor="showCursor && !disableTyping"
       :cursor="cursor"
       :answer-type="answerType"
+      :on-end="onEnd"
     />
   </div>
 </template>

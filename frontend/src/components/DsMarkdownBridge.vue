@@ -12,6 +12,7 @@ const props = withDefaults(defineProps<{
   showCursor?: boolean
   cursor?: 'line' | 'block' | 'underscore' | 'circle'
   disableTyping?: boolean
+  onEnd?: () => void
 }>(), {
   interval: 20,
   answerType: 'answer',
@@ -44,6 +45,7 @@ function renderReact() {
       showCursor: props.showCursor && !props.disableTyping,
       cursor: props.cursor,
       theme: getSystemTheme(),
+      onEnd: props.onEnd,
     })
   )
 }

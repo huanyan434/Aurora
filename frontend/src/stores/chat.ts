@@ -101,6 +101,8 @@ export const useChatStore = defineStore('chat', {
 
   actions: {
     setIsGenerating(isGenerating: boolean) {
+      console.log('[chatStore] setIsGenerating 调用:', isGenerating);
+      console.trace('[chatStore] setIsGenerating 调用堆栈');
       this.isGenerating = isGenerating;
     },
     async fetchModels() {
