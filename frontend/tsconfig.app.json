@@ -10,8 +10,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    
-    "baseUrl": ".",
+
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": [
         "./src/*"

@@ -36,8 +36,7 @@ export const removeToast = (id: string) => {
 // 便捷函数
 export const toastSuccess = (message: string) => {
   addToast({
-    title: '成功',
-    description: message,
+    title: message,
     variant: 'success',
     duration: 3000
   })
@@ -45,8 +44,7 @@ export const toastSuccess = (message: string) => {
 
 export const toastError = (message: string, duration: number = 10000) => {
   addToast({
-    title: '错误',
-    description: message,
+    title: message,
     variant: 'destructive',
     duration: duration
   })

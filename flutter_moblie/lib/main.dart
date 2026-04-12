@@ -22,7 +22,7 @@ void main() async {
       defaultTargetPlatform == TargetPlatform.linux ||
       defaultTargetPlatform == TargetPlatform.macOS)) {
     try {
-      setWindowTitle('Aurora AI');
+      setWindowTitle('Aurora Studio');
       setWindowMinSize(const Size(300, 400));
       setWindowMaxSize(Size.infinite);
       // 设置窗口大小
@@ -168,7 +168,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Aurora AI',
+      title: 'Aurora Studio',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color.fromARGB(255, 154, 218, 185),

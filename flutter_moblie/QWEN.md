@@ -1,4 +1,4 @@
-# Aurora AI 项目文档
+# Aurora Studio 项目文档
 
 ## 规则区域
 
@@ -30,13 +30,13 @@
 
 ## 项目概述
 
-Aurora AI 是一个现代化的Flutter移动应用，基于Material 3 (Material You)设计规范构建，提供了沉浸式UI体验、状态栏和导航栏适配等丰富的功能。应用采用底部导航设计，包含聊天和用户配置等核心功能。
+Aurora Studio 是一个现代化的Flutter移动应用，基于Material 3 (Material You)设计规范构建，提供了沉浸式UI体验、状态栏和导航栏适配等丰富的功能。应用采用底部导航设计，包含聊天和用户配置等核心功能。
 
 ## UI设计与实现
 
 ### 沉浸式UI实现
 
-Aurora AI实现了Android全面屏手势导航栏的沉浸式效果：
+Aurora Studio实现了Android全面屏手势导航栏的沉浸式效果：
 
 1. 使用`FlutterStatusbarcolor`库设置状态栏和导航栏颜色
 2. 状态栏设置为白色背景，深色图标
