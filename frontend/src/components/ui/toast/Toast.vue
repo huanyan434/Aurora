@@ -145,7 +145,7 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 }
 
 .toast-only.toast-leave-active {
-  transition: opacity 0.1s ease, max-height 0.15s ease, margin 0.15s ease, padding 0.15s ease;
+  transition: opacity 0.1s ease;
   max-height: 0;
   overflow: hidden;
   margin-top: 0 !important;
