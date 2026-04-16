@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@theme {
+  /* 主背景 - 浅色系 */
+  --color-bg-primary: #FFFFFF;
+  --color-bg-secondary: #F8FAFC;
+  --color-bg-card: #FFFFFF;
+  --color-bg-card-hover: #F1F5F9;
+  
+  /* 主文字 */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-text-muted: #94A3B8;
+  
+  /* 品牌渐变 */
+  --color-brand-blue: #6366F1;
+  --color-brand-cyan: #06B6D4;
+  --color-brand-purple: #8B5CF6;
+  
+  /* 边框 */
+  --color-border-subtle: #E2E8F0;
+  --color-border-medium: #CBD5E1;
+  
+  /* 发光效果 */
+  --color-glow-blue: rgba(99, 102, 241, 0.1);
+  --color-glow-cyan: rgba(6, 182, 212, 0.1);
+  --color-glow-purple: rgba(139, 92, 246, 0.1);
+  
+  /* 圆角 */
+  --radius-button: 999px;
+  --radius-input: 24px;
+  --radius-card: 20px;
+  
+  /* 间距 */
+  --spacing-section: 120px;
+  
+  /* 阴影 */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.08);
+}
+
+/* 全局样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: 'Inter', 'MiSans', 'HarmonyOS Sans', 'Source Han Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* 自定义间距类 */
+.section-padding {
+  padding-top: var(--spacing-section);
+  padding-bottom: var(--spacing-section);
+}
+
+.container-wide {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+@media (min-width: 1024px) {
+  .container-wide {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+.card-padding {
+  padding: 32px;
+}
+
+.hero-content {
+  padding-top: 128px;
+  padding-bottom: 128px;
+}
+
+/* 标题和内容之间的间距 */
+.section-header {
+  margin-bottom: 64px;
+}
+
+.section-title {
+  margin-bottom: 16px;
+}
+
+/* 按钮样式 */
+.btn-primary {
+  display: inline-block;
+  padding: 14px 32px;
+  border-radius: var(--radius-button);
+  background: linear-gradient(135deg, var(--color-brand-blue), var(--color-brand-cyan));
+  color: white;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.btn-secondary {
+  display: inline-block;
+  padding: 14px 32px;
+  border-radius: var(--radius-button);
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: rgba(99, 102, 241, 0.1);
+}

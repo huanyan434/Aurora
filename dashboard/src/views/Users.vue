@@ -103,6 +103,28 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">用户名</label>
+              <input
+                v-model="editForm.username"
+                type="text"
+                class="form-input"
+                placeholder="输入新用户名（留空则不修改）"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">密码</label>
+              <input
+                :value="editForm.password"
+                @input="editForm.password = ($event.target as HTMLInputElement).value"
+                type="password"
+                class="form-input"
+                placeholder="输入新密码（留空则不修改）"
+                autocomplete="new-password"
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">当前用户名</label>
               <input type="text" :value="editingUser?.username" class="form-input" disabled />
             </div>
             <div class="form-group">
@@ -112,10 +134,10 @@
           </div>
           <div class="form-group">
             <label class="form-label">积分</label>
-            <input 
-              v-model.number="editForm.points" 
-              type="number" 
-              class="form-input" 
+            <input
+              v-model.number="editForm.points"
+              type="number"
+              class="form-input"
               min="0"
               placeholder="输入积分"
             />
@@ -174,6 +196,8 @@ const editingUser = ref<User | null>(null)
 const saving = ref(false)
 
 const editForm = ref({
+  username: '',
+  password: '',
   points: 0,
   memberLevel: 'free' as 'free' | 'VIP' | 'SVIP',
   memberSince: '',
@@ -220,6 +244,8 @@ const formatMemberUntil = (dateString: string | undefined) => {
 const openEditModal = (user: User) => {
   editingUser.value = user
   editForm.value = {
+    username: '',
+    password: '',
     points: user.points,
     memberLevel: user.memberLevel as 'free' | 'VIP' | 'SVIP',
     memberSince: user.memberSince ? new Date(user.memberSince).toISOString().slice(0, 16) : '',
@@ -231,6 +257,9 @@ const openEditModal = (user: User) => {
 const closeEditModal = () => {
   showEditModal.value = false
   editingUser.value = null
+  // 清空敏感字段
+  editForm.value.username = ''
+  editForm.value.password = ''
 }
 
 const onMemberLevelChange = () => {
@@ -295,6 +324,7 @@ const saveUser = async () => {
     // 根据会员等级自动判断是否为会员
     const isMember = editForm.value.memberLevel !== 'free'
 
+    // 先更新积分和会员信息
     await dashboardApi.updateUser({
       userId: userIdNum,
       points: editForm.value.points,
@@ -304,11 +334,21 @@ const saveUser = async () => {
       memberUntil: editForm.value.memberUntil || undefined
     })
 
+    // 如果有用户名或密码的修改，再调用另一个API
+    if (editForm.value.username || editForm.value.password) {
+      await dashboardApi.updateUserInfo({
+        userId: userIdNum,
+        username: editForm.value.username || undefined,
+        password: editForm.value.password || undefined
+      })
+    }
+
     // 更新本地数据
     const index = users.value.findIndex(u => u.id === editingUser.value?.id)
     if (index !== -1 && editingUser.value) {
       users.value[index] = {
         ...editingUser.value,
+        username: editForm.value.username || editingUser.value.username,
         points: editForm.value.points,
         isMember: isMember,
         memberLevel: editForm.value.memberLevel,

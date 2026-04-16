@@ -8,6 +8,7 @@ export interface User {
   memberSince?: string
   memberUntil?: string
   createdAt?: string
+  adminLevel?: number
 }
 
 export interface Conversation {

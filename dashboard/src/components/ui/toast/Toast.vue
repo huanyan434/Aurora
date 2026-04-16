@@ -1,175 +1,223 @@
 <template>
-  <Teleport to="body">
-    <div class="toast-container">
-      <transition-group
-        name="toast"
-        tag="div"
-        class="toast-wrapper"
+  <div class="toast-viewport">
+    <transition-group name="toast" tag="div" class="toast-stack">
+      <div
+        v-for="toast in toasts"
+        :key="toast.id"
+        :class="['toast-wrapper', { 'toast-only': toasts.length === 1 }]"
       >
-        <div
-          v-for="toast in toasts"
-          :key="toast.id"
-          :class="[
-            'toast-item',
-            'toast-item-' + (toast.variant || 'default')
-          ]"
-        >
-          <div class="toast-content">
-            <div class="toast-body">
-              <div v-if="toast.title" class="toast-title">{{ toast.title }}</div>
-              <div v-if="toast.description" class="toast-description">{{ toast.description }}</div>
-            </div>
-            <button @click="removeToast(toast.id)" class="toast-close">
-              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+        <div :class="['toast-card', getToastVariantClass(toast.variant)]">
+          <!-- 图标 -->
+          <svg v-if="toast.variant === 'success'" class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+          <svg v-else-if="toast.variant === 'destructive'" class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M15 9l-6 6M9 9l6 6" />
+          </svg>
+          <svg v-else class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
+
+          <!-- 文字内容 -->
+          <div class="toast-text">{{ toast.title || toast.description }}</div>
         </div>
-      </transition-group>
-    </div>
-  </Teleport>
+      </div>
+    </transition-group>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { toasts, removeToast } from './use-toast'
+import { toasts } from './use-toast'
+import type { Toast } from './use-toast'
+
+const getToastVariantClass = (variant?: Toast['variant']): string => {
+  switch (variant) {
+    case 'destructive':
+      return 'toast--error'
+    case 'success':
+      return 'toast--success'
+    default:
+      return 'toast--default'
+  }
+}
 </script>
 
 <style scoped>
-.toast-container {
+/* ==================== CSS 变量定义 ==================== */
+.toast-viewport {
+  --toast-gap: 8px;
+  --toast-radius: 12px;
+  --toast-padding: 10px 14px;
+
+  --toast-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+
   position: fixed;
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
-  pointer-events: none;
-  width: 100%;
-  max-width: 600px;
-  padding: 0 20px;
-}
-
-.toast-wrapper {
+  z-index: 2000;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: 100%;
+  gap: var(--toast-gap);
+  max-width: min(380px, calc(100vw - 32px));
 }
 
-.toast-item {
-  width: 100%;
-  border-radius: 12px;
-  padding: 16px 20px;
-  border: 1px solid;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  pointer-events: auto;
-  transition: all 0.3s ease;
-}
-
-.toast-item-default {
-  background: white;
-  border-color: #e2e8f0;
-  color: #1e293b;
-}
-
-.toast-item-destructive {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
-}
-
-.toast-item-success {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-  color: #166534;
-}
-
-.toast-content {
+.toast-stack {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: var(--toast-gap);
 }
 
-.toast-body {
-  flex: 1;
+/* ==================== Toast Wrapper (动画层) ==================== */
+.toast-wrapper {
+  width: 100%;
 }
 
-.toast-title {
-  font-weight: 600;
-  font-size: 15px;
-  margin-bottom: 4px;
-}
-
-.toast-description {
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.toast-close {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 6px;
+/* ==================== Toast 卡片 ==================== */
+.toast-card {
   display: flex;
   align-items: center;
-  justify-content: center;
-  opacity: 0.6;
-  transition: all 0.2s;
+  gap: 10px;
+  padding: var(--toast-padding);
+  border-radius: var(--toast-radius);
+  box-shadow: var(--toast-shadow);
+  backdrop-filter: blur(12px);
 }
 
-.toast-close:hover {
-  opacity: 1;
-  background: rgba(0, 0, 0, 0.05);
+.toast--success {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.25);
 }
 
-.toast-close svg {
-  width: 16px;
-  height: 16px;
+.toast--error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.25);
 }
 
-/* 动画 */
+/* ==================== 图标 ==================== */
+.toast-card .toast-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+}
+
+.toast-card.toast--success .toast-icon {
+  color: #15803d;
+}
+
+.toast-card.toast--error .toast-icon {
+  color: #b91c1c;
+}
+
+/* ==================== 文字内容 ==================== */
+.toast-card .toast-text {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.toast-card.toast--success .toast-text {
+  color: #15803d;
+}
+
+.toast-card.toast--error .toast-text {
+  color: #b91c1c;
+}
+
+/* ==================== 动画 ==================== */
 .toast-enter-active {
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s cubic-bezier(0.21, 1.02, 0.73, 1);
 }
 
 .toast-leave-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  position: absolute;
-  left: 0;
-  width: 100%;
+  transition: opacity 0.15s ease, max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 0;
+  overflow: hidden;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  opacity: 0;
+}
+
+.toast-only.toast-leave-active {
+  transition: opacity 0.1s ease;
+  max-height: 0;
+  overflow: hidden;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  opacity: 0;
 }
 
 .toast-enter-from {
   opacity: 0;
-  transform: translateY(-30px) scale(0.97);
+  transform: translateY(-10px) scale(0.97);
 }
 
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(-30px) scale(0.97);
 }
 
-/* 响应式 */
-@media (max-width: 640px) {
-  .toast-container {
-    top: 10px;
-    padding: 0 12px;
-    max-width: calc(100% - 24px);
+.toast-move {
+  transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* ==================== 响应式 ==================== */
+@media (max-width: 480px) {
+  .toast-viewport {
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+    max-width: none;
   }
 
-  .toast-item {
-    padding: 12px 16px;
+  .toast-card {
+    --toast-padding: 9px 12px;
   }
+}
 
-  .toast-title {
-    font-size: 14px;
-  }
+/* ==================== 深色模式 ==================== */
+.dark .toast-card {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.3);
+}
 
-  .toast-description {
-    font-size: 13px;
-  }
+.dark .toast-card.toast--success {
+  background: rgba(34, 197, 94, 0.24);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.dark .toast-card.toast--success .toast-icon {
+  color: #4ade80;
+}
+
+.dark .toast-card.toast--success .toast-text {
+  color: #4ade80;
+}
+
+.dark .toast-card.toast--error {
+  background: rgba(239, 68, 68, 0.24);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.dark .toast-card.toast--error .toast-icon {
+  color: #f87171;
+}
+
+.dark .toast-card.toast--error .toast-text {
+  color: #f87171;
+}
+
+.dark .toast-card .toast-icon {
+  color: #9ca3af;
+}
+
+.dark .toast-card .toast-text {
+  color: rgba(255, 255, 255, 0.85);
 }
 </style>

@@ -82,11 +82,18 @@ const checkMobile = () => {
   }
 }
 
-const navItems = [
-  { path: '/dashboard/overview', name: '数据概览', icon: '📊' },
-  { path: '/dashboard/users', name: '用户管理', icon: '👥' },
-  { path: '/dashboard/points', name: '积分统计', icon: '💰' }
-]
+const navItems = computed(() => {
+  const items = [
+    { path: '/dashboard/overview', name: '数据概览', icon: '📊' },
+    { path: '/dashboard/users', name: '用户管理', icon: '👥' },
+    { path: '/dashboard/points', name: '积分统计', icon: '💰' }
+  ]
+  // 仅0级管理员显示管理员管理
+  if (userStore.currentUser?.adminLevel === 0) {
+    items.push({ path: '/dashboard/admins', name: '管理员管理', icon: '🔐' })
+  }
+  return items
+})
 
 const isActive = (path: string) => route.path === path
 

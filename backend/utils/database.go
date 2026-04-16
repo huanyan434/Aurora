@@ -181,6 +181,21 @@ func (Log) TableName() string {
 	return "logs"
 }
 
+// Admin 管理员结构
+type Admin struct {
+	ID           int64     `gorm:"column:id;type:bigint;primaryKey"`
+	Username     string    `gorm:"column:username;type:varchar(64);uniqueIndex;not null"`
+	PasswordHash string    `gorm:"column:password_hash;type:varchar(255);not null"`
+	Level        int       `gorm:"column:level;type:int;not null;default:3"` // 0最高权限，3最低
+	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt    time.Time `gorm:"column:updated_at;autoUpdateTime"`
+}
+
+// TableName 指定Admin结构体对应的表名
+func (Admin) TableName() string {
+	return "admins"
+}
+
 // SetPassword 设置用户密码
 func SetPassword(u *User, password string) {
 	u.PasswordHash = HashPassword(password)
@@ -372,13 +387,14 @@ func InitDB() {
 	}
 	// 自动迁移表结构
 	// 如果表不存在则创建，如果存在但结构不匹配则修改表结构
-	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{}, &PointsRecord{})
+	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{}, &PointsRecord{}, &Admin{})
 	if err != nil {
 		fmt.Println("自动迁移表结构失败：", err)
 		return
 	}
 
 	fmt.Println("数据库表结构初始化完成")
+
 
 	// 配置连接池
 	sqlDB, err := DB.DB()
@@ -1339,5 +1355,163 @@ func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string,
 		return err
 	}
 
+	return nil
+}
+
+// UpdateUserInfo 根据用户ID更新用户名和密码
+func UpdateUserInfo(userID int64, username string, password string) error {
+	db := GetDB()
+
+	// 使用事务
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 查找用户
+	var user User
+	result := tx.Where("id = ?", userID).First(&user)
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("用户不存在")
+	}
+
+	// 更新用户名（如果提供了）
+	if username != "" {
+		// 检查用户名是否已存在
+		var existingUser User
+		if err := tx.Where("username = ? AND id != ?", username, userID).First(&existingUser).Error; err == nil {
+			tx.Rollback()
+			return fmt.Errorf("用户名已被使用")
+		}
+		user.Username = username
+	}
+
+	// 更新密码（如果提供了）
+	if password != "" {
+		// 验证密码长度
+		if len(password) < 6 {
+			tx.Rollback()
+			return fmt.Errorf("密码长度不能少于6位")
+		}
+
+		// 哈希化密码
+		user.PasswordHash = HashPassword(password)
+	}
+
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// VerifyAdminPassword 验证管理员密码
+func VerifyAdminPassword(username, password string) (*Admin, error) {
+	var admin Admin
+	result := DB.Where("username = ?", username).First(&admin)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if !CheckPasswordHash(password, admin.PasswordHash) {
+		return nil, fmt.Errorf("密码错误")
+	}
+	return &admin, nil
+}
+
+// GetAdminList 获取管理员列表
+func GetAdminList() ([]Admin, error) {
+	var admins []Admin
+	result := DB.Order("level ASC, created_at DESC").Find(&admins)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return admins, nil
+}
+
+// CreateAdmin 创建管理员
+func CreateAdmin(username, password string, level int) error {
+	// 检查用户名是否已存在
+	var existingAdmin Admin
+	result := DB.Where("username = ?", username).First(&existingAdmin)
+	if result.Error == nil {
+		return fmt.Errorf("管理员用户名已存在")
+	}
+	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return result.Error
+	}
+
+	// 生成ID
+	id, err := GenerateSnowflakeId()
+	if err != nil {
+		return err
+	}
+
+	// 哈希密码
+	hashedPassword, err := HashPasswordBcrypt(password)
+	if err != nil {
+		return err
+	}
+
+	// 创建管理员
+	admin := Admin{
+		ID:           id,
+		Username:     username,
+		PasswordHash: hashedPassword,
+		Level:        level,
+	}
+	return DB.Create(&admin).Error
+}
+
+// UpdateAdmin 更新管理员信息
+func UpdateAdmin(adminID int64, username string, password string, level int) error {
+	var admin Admin
+	result := DB.Where("id = ?", adminID).First(&admin)
+	if result.Error != nil {
+		return fmt.Errorf("管理员不存在")
+	}
+
+	// 更新用户名
+	if username != "" && username != admin.Username {
+		// 检查用户名是否已被使用
+		var existingAdmin Admin
+		if err := DB.Where("username = ? AND id != ?", username, adminID).First(&existingAdmin).Error; err == nil {
+			return fmt.Errorf("用户名已被使用")
+		}
+		admin.Username = username
+	}
+
+	// 更新密码
+	if password != "" {
+		hashedPassword, err := HashPasswordBcrypt(password)
+		if err != nil {
+			return err
+		}
+		admin.PasswordHash = hashedPassword
+	}
+
+	// 更新等级
+	admin.Level = level
+
+	return DB.Save(&admin).Error
+}
+
+// DeleteAdmin 删除管理员
+func DeleteAdmin(adminID int64) error {
+	result := DB.Where("id = ?", adminID).Delete(&Admin{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("管理员不存在")
+	}
 	return nil
 }

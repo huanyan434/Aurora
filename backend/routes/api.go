@@ -49,7 +49,7 @@ func ApiInit(r *gin.Engine) {
 
 		// Dashboard 管理面板接口
 		api.POST("/dashboard/login", dashboardLoginHandler)
-		
+
 		// 需要验证的 Dashboard 接口
 		dashboard := api.Group("/dashboard")
 		dashboard.Use(dashboardAuthMiddleware())
@@ -57,8 +57,15 @@ func ApiInit(r *gin.Engine) {
 			dashboard.GET("/overview", dashboardOverviewHandler)
 			dashboard.GET("/users", dashboardUsersHandler)
 			dashboard.POST("/users/update", dashboardUpdateUserHandler)
+			dashboard.POST("/users/update-info", dashboardUpdateUserInfoHandler)
 			dashboard.GET("/conversations", dashboardConversationsHandler)
 			dashboard.GET("/points_records", dashboardPointsRecordsHandler)
+
+			// 管理员管理接口（仅0级可访问）
+			dashboard.GET("/admins", requireLevel0Middleware(), dashboardAdminsHandler)
+			dashboard.POST("/admins/create", requireLevel0Middleware(), dashboardCreateAdminHandler)
+			dashboard.POST("/admins/update", requireLevel0Middleware(), dashboardUpdateAdminHandler)
+			dashboard.POST("/admins/delete", requireLevel0Middleware(), dashboardDeleteAdminHandler)
 		}
 	}
 }
@@ -650,7 +657,7 @@ func pointsRecordsHandler(c *gin.Context) {
 
 // 积分记录响应结构体
 type pointsRecordsResponseSuccess struct {
-	Success bool                   `json:"success" example:"true"`
+	Success bool                     `json:"success" example:"true"`
 	Data    []map[string]interface{} `json:"data"`
 }
 
@@ -678,15 +685,12 @@ func dashboardLoginHandler(c *gin.Context) {
 		return
 	}
 
-	// 获取配置中的 dashboard 密码
-	config := utils.GetConfig()
-	hashedPassword := config.DashboardPassword
-
-	// 验证密码
-	if !utils.CheckPasswordHash(req.Password, hashedPassword) {
+	// 验证管理员用户名和密码
+	admin, err := utils.VerifyAdminPassword(req.Username, req.Password)
+	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
-			"message": "密码错误",
+			"message": "用户名或密码错误",
 		})
 		return
 	}
@@ -694,6 +698,8 @@ func dashboardLoginHandler(c *gin.Context) {
 	// 设置 session 标记为 dashboard 管理员
 	session := sessions.Default(c)
 	session.Set("dashboard_admin", true)
+	session.Set("admin_id", admin.ID)
+	session.Set("admin_level", admin.Level)
 	session.Set("dashboard_login_time", time.Now())
 	if err := session.Save(); err != nil {
 		fmt.Println("Session save error:", err)
@@ -707,6 +713,10 @@ func dashboardLoginHandler(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"success": true,
 		"message": "登录成功",
+		"data": gin.H{
+			"username": admin.Username,
+			"level":    admin.Level,
+		},
 	})
 }
 
@@ -751,6 +761,34 @@ func dashboardUpdateUserHandler(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"success": false,
 			"message": "用户 ID 无效",
+		})
+		return
+	}
+
+	// 获取管理员权限等级
+	session := sessions.Default(c)
+	adminLevel := session.Get("admin_level")
+	if adminLevel == nil {
+		c.JSON(401, gin.H{
+			"success": false,
+			"message": "未授权访问",
+		})
+		return
+	}
+	level := adminLevel.(int)
+
+	// 权限检查：2级不能修改会员，3级不能修改积分
+	if level >= 2 && (req.IsMember || req.MemberLevel != "" || req.MemberSince != "" || req.MemberUntil != "") {
+		c.JSON(403, gin.H{
+			"success": false,
+			"message": "权限不足：无法修改会员信息",
+		})
+		return
+	}
+	if level >= 3 {
+		c.JSON(403, gin.H{
+			"success": false,
+			"message": "权限不足：仅可查看",
 		})
 		return
 	}
@@ -831,17 +869,17 @@ func dashboardUsersHandler(c *gin.Context) {
 	var formattedUsers []map[string]interface{}
 	for _, user := range users {
 		formattedUser := map[string]interface{}{
-			"id":           strconv.FormatInt(user.ID, 10),
-			"username":     user.Username,
-			"email":        user.Email,
-			"isMember":     user.IsMember,
-			"memberLevel":  user.MemberLevel,
-			"points":       user.Points,
-			"memberSince":  "",
-			"memberUntil":  "",
-			"createdAt":    user.CreatedAt.Format("2006-01-02 15:04:05"),
+			"id":          strconv.FormatInt(user.ID, 10),
+			"username":    user.Username,
+			"email":       user.Email,
+			"isMember":    user.IsMember,
+			"memberLevel": user.MemberLevel,
+			"points":      user.Points,
+			"memberSince": "",
+			"memberUntil": "",
+			"createdAt":   user.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
-		
+
 		// 格式化会员时间
 		if !(user.MemberSince.IsZero()) {
 			formattedUser["memberSince"] = user.MemberSince.Format("2006-01-02T15:04")
@@ -849,7 +887,7 @@ func dashboardUsersHandler(c *gin.Context) {
 		if !(user.MemberUntil.IsZero()) {
 			formattedUser["memberUntil"] = user.MemberUntil.Format("2006-01-02T15:04")
 		}
-		
+
 		formattedUsers = append(formattedUsers, formattedUser)
 	}
 
@@ -1025,6 +1063,7 @@ type dashboardPointsRecordsResponseFailed struct {
 
 // Dashboard 登录请求
 type dashboardLoginRequest struct {
+	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -1040,12 +1079,12 @@ type dashboardLoginResponseFailed struct {
 
 // 更新用户请求
 type dashboardUpdateUserRequest struct {
-	UserID       int64  `json:"userId" binding:"required"`
-	Points       int    `json:"points"`
-	IsMember     bool   `json:"isMember"`
-	MemberLevel  string `json:"memberLevel"`
-	MemberSince  string `json:"memberSince,omitempty"`
-	MemberUntil  string `json:"memberUntil,omitempty"`
+	UserID      int64  `json:"userId" binding:"required"`
+	Points      int    `json:"points"`
+	IsMember    bool   `json:"isMember"`
+	MemberLevel string `json:"memberLevel"`
+	MemberSince string `json:"memberSince,omitempty"`
+	MemberUntil string `json:"memberUntil,omitempty"`
 }
 
 type dashboardUpdateUserResponseSuccess struct {
@@ -1056,4 +1095,263 @@ type dashboardUpdateUserResponseSuccess struct {
 type dashboardUpdateUserResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
 	Message string `json:"message" example:"更新失败"`
+}
+
+// @Summary 更新用户用户名和密码
+// @Description 更新用户的用户名和/或密码
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param request body dashboardUpdateUserInfoRequest true "更新信息"
+// @Success 200 {object} dashboardUpdateUserInfoResponseSuccess "更新成功"
+// @Failure 400 {object} dashboardUpdateUserInfoResponseFailed "更新失败"
+// @Router /api/dashboard/users/update-info [post]
+func dashboardUpdateUserInfoHandler(c *gin.Context) {
+	var req dashboardUpdateUserInfoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误",
+		})
+		return
+	}
+
+	// 验证用户 ID
+	if req.UserID <= 0 {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "用户 ID 无效",
+		})
+		return
+	}
+
+	// 至少要提供一个字段
+	if req.Username == "" && req.Password == "" {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "请提供要更新的字段",
+		})
+		return
+	}
+
+	// 获取管理员权限等级
+	session := sessions.Default(c)
+	adminLevel := session.Get("admin_level")
+	if adminLevel == nil {
+		c.JSON(401, gin.H{
+			"success": false,
+			"message": "未授权访问",
+		})
+		return
+	}
+	level := adminLevel.(int)
+
+	// 权限检查：1级及以上不能修改用户名和密码
+	if level >= 1 {
+		c.JSON(403, gin.H{
+			"success": false,
+			"message": "权限不足：无法修改用户名和密码",
+		})
+		return
+	}
+
+	// 更新用户信息
+	err := utils.UpdateUserInfo(req.UserID, req.Username, req.Password)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "更新失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "更新成功",
+	})
+}
+
+// 更新用户用户名和密码请求
+type dashboardUpdateUserInfoRequest struct {
+	UserID   int64  `json:"userId" binding:"required"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
+type dashboardUpdateUserInfoResponseSuccess struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"更新成功"`
+}
+
+type dashboardUpdateUserInfoResponseFailed struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message" example:"更新失败"`
+}
+
+// requireLevel0Middleware 0级权限中间件
+func requireLevel0Middleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		adminLevel := session.Get("admin_level")
+		if adminLevel == nil || adminLevel.(int) != 0 {
+			c.JSON(403, gin.H{
+				"success": false,
+				"message": "权限不足：仅0级管理员可访问",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// @Summary 获取管理员列表
+// @Tags Dashboard
+// @Produce json
+// @Success 200 {object} map[string]interface{} "成功"
+// @Router /api/dashboard/admins [get]
+func dashboardAdminsHandler(c *gin.Context) {
+	admins, err := utils.GetAdminList()
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "获取管理员列表失败：" + err.Error(),
+		})
+		return
+	}
+
+	// 隐藏密码哈希
+	var result []gin.H
+	for _, admin := range admins {
+		result = append(result, gin.H{
+			"id":         admin.ID,
+			"username":   admin.Username,
+			"level":      admin.Level,
+			"created_at": admin.CreatedAt,
+			"updated_at": admin.UpdatedAt,
+		})
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data":    result,
+	})
+}
+
+// @Summary 创建管理员
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "创建信息"
+// @Success 200 {object} map[string]interface{} "成功"
+// @Router /api/dashboard/admins/create [post]
+func dashboardCreateAdminHandler(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+		Level    int    `json:"level" binding:"required,min=0,max=3"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误：" + err.Error(),
+		})
+		return
+	}
+
+	err := utils.CreateAdmin(req.Username, req.Password, req.Level)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "创建失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "创建成功",
+	})
+}
+
+// @Summary 更新管理员
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "更新信息"
+// @Success 200 {object} map[string]interface{} "成功"
+// @Router /api/dashboard/admins/update [post]
+func dashboardUpdateAdminHandler(c *gin.Context) {
+	var req struct {
+		AdminID  int64  `json:"adminId" binding:"required"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Level    int    `json:"level" binding:"min=0,max=3"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误：" + err.Error(),
+		})
+		return
+	}
+
+	err := utils.UpdateAdmin(req.AdminID, req.Username, req.Password, req.Level)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "更新失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "更新成功",
+	})
+}
+
+// @Summary 删除管理员
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "删除信息"
+// @Success 200 {object} map[string]interface{} "成功"
+// @Router /api/dashboard/admins/delete [post]
+func dashboardDeleteAdminHandler(c *gin.Context) {
+	var req struct {
+		AdminID int64 `json:"adminId" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误：" + err.Error(),
+		})
+		return
+	}
+
+	// 防止删除自己
+	session := sessions.Default(c)
+	currentAdminID := session.Get("admin_id")
+	if currentAdminID != nil && currentAdminID.(int64) == req.AdminID {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "不能删除自己",
+		})
+		return
+	}
+
+	err := utils.DeleteAdmin(req.AdminID)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "删除失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "删除成功",
+	})
 }
