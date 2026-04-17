@@ -292,7 +292,7 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
     // 强制滚动到底部
     setTimeout(() => {
         scrollToBottom(true);
-    }, 100);
+    }, 200);
 };
 
 /**
