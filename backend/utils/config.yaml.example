@@ -8,8 +8,6 @@ apiKey2: "sk-***"
 defaultDialogNamingModel: "deepseek-ai/DeepSeek-V3.1-Terminus"
 defaultVisualModel: "zai-org/GLM-4.5V"
 
-# Dashboard 管理密码（使用 bcrypt 哈希）
-dashboardPassword: "xxx"
 models:
   [
     {
@@ -43,3 +41,6 @@ database:
 # 爱发电
 userID: "***"
 token: "***"
+
+# Tavily 搜索配置
+tavilyApiKey: "tvly-***"

@@ -43,9 +43,9 @@ type Config struct {
 		DBName   string `yaml:"dbname"`
 		Charset  string `yaml:"charset"`
 	} `yaml:"database"`
-	UserID            string `yaml:"userID"`
-	Token             string `yaml:"token"`
-	DashboardPassword string `yaml:"dashboardPassword"`
+	UserID       string `yaml:"userID"`
+	Token        string `yaml:"token"`
+	TavilyApiKey string `yaml:"tavilyApiKey"`
 }
 
 var AppConfig *Config

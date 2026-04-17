@@ -254,12 +254,50 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		})
 	}
 
+	// 检查模型是否支持工具调用
+	var tools []openai.Tool
+	supportsTools := false
+	for _, m := range config.Models {
+		if m.ID == model && m.Tool == 1 {
+			supportsTools = true
+			break
+		}
+	}
+
+	// 如果支持工具，添加联网搜索工具
+	if supportsTools {
+		tools = []openai.Tool{
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "web_search",
+					Description: "搜索互联网获取实时信息。当用户询问最新资讯、实时数据、当前事件或需要联网查询的问题时使用此工具。",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"query": map[string]interface{}{
+								"type":        "string",
+								"description": "搜索关键词或问题",
+							},
+						},
+						"required": []string{"query"},
+					},
+				},
+			},
+		}
+	}
+
 	// 创建流式请求
-	stream, err := client.CreateChatCompletionStream(ctx, openai.ChatCompletionRequest{
+	reqParams := openai.ChatCompletionRequest{
 		Model:    model,
 		Messages: messages,
 		Stream:   true,
-	})
+	}
+	if supportsTools {
+		reqParams.Tools = tools
+	}
+
+	stream, err := client.CreateChatCompletionStream(ctx, reqParams)
 	if err != nil {
 		jsonResp, _ := json.Marshal(Response{
 			Success: false,
@@ -291,6 +329,55 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 			if len(response.Choices) > 0 {
 				delta := response.Choices[0].Delta
+
+				// 处理工具调用
+				if len(delta.ToolCalls) > 0 {
+					for _, toolCall := range delta.ToolCalls {
+						if toolCall.Function.Name == "web_search" {
+							// 解析搜索参数
+							var params struct {
+								Query string `json:"query"`
+							}
+							if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &params); err != nil {
+								fmt.Printf("解析工具调用参数失败: %v\n", err)
+								continue
+							}
+
+							// 执行搜索
+							searchResult, err := SimpleSearch(params.Query)
+							if err != nil {
+								searchResult = fmt.Sprintf("搜索失败: %v", err)
+							}
+
+							// 将工具调用和结果添加到消息历史
+							messages = append(messages, openai.ChatCompletionMessage{
+								Role:      openai.ChatMessageRoleAssistant,
+								ToolCalls: []openai.ToolCall{toolCall},
+							})
+							messages = append(messages, openai.ChatCompletionMessage{
+								Role:       openai.ChatMessageRoleTool,
+								Content:    searchResult,
+								ToolCallID: toolCall.ID,
+							})
+
+							// 关闭当前流
+							stream.Close()
+
+							// 重新创建请求，包含工具调用结果
+							reqParams.Messages = messages
+							stream, err = client.CreateChatCompletionStream(ctx, reqParams)
+							if err != nil {
+								jsonResp, _ := json.Marshal(Response{
+									Success: false,
+									Error:   fmt.Sprintf("重新创建流失败: %v", err),
+								})
+								resp <- string(jsonResp)
+								return
+							}
+							continue
+						}
+					}
+				}
 
 				// 更新缓存：推理内容
 				if delta.ReasoningContent != "" {
