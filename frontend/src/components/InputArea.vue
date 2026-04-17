@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
 import { Paperclip, Lightbulb, Square, Send, X } from 'lucide-vue-next';
@@ -236,6 +236,12 @@ const handleSendMessage = async () => {
       isStreaming: true, // 立即设置为流式传输状态
       disableTyping: false, // 流式消息需要打字效果
     });
+
+    // 发送新消息后强制滚动到底部
+    // 需要等待 DOM 更新后再滚动
+    await nextTick();
+    // 通过事件通知 MessagesContainer 强制滚动
+    window.dispatchEvent(new CustomEvent('force-scroll-to-bottom'));
 
     // 通过 WebSocket 发送生成请求
     wsManager.send({

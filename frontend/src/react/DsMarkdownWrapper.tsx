@@ -9,6 +9,7 @@ export interface DsMarkdownWrapperProps {
   cursor?: 'line' | 'block' | 'underscore' | 'circle'
   theme?: 'light' | 'dark'
   onEnd?: () => void
+  onTypedChar?: (data: any) => void
 }
 
 export default function DsMarkdownWrapper(props: DsMarkdownWrapperProps) {
@@ -20,6 +21,7 @@ export default function DsMarkdownWrapper(props: DsMarkdownWrapperProps) {
     cursor = 'line',
     theme,
     onEnd,
+    onTypedChar,
   } = props
 
   return React.createElement(
@@ -34,6 +36,7 @@ export default function DsMarkdownWrapper(props: DsMarkdownWrapperProps) {
         cursor,
         theme,
         onEnd,
+        onTypedChar,
         children: content,
       }
     )

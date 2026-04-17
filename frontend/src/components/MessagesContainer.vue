@@ -76,7 +76,8 @@
                             :show-cursor="!message.disableTyping && message.isStreaming"
                             :disable-typing="message.disableTyping || false"
                             cursor="circle"
-                            :on-end="() => handleMarkdownEnd(message.id)"
+                            :on-typed-char="!message.disableTyping ? () => handleTypedChar(message.id, message.content) : undefined"
+                            :on-end="message.disableTyping ? () => handleHistoryMessageEnd(message.id) : undefined"
                         />
 
                         <!-- 加载占位符 -->
@@ -111,7 +112,7 @@
                             : 'opacity-0',
                     ]"
                     v-show="
-                        !(message.role === 'assistant' && (message.isStreaming || !message.markdownEnded))
+                        !(message.role === 'assistant' && message.isStreaming && !message.disableTyping)
                     "
                 >
                     <button
@@ -258,45 +259,88 @@ const displayedMessages = computed(() => {
 
 /**
  * 滚动到容器底部
+ * @param force 是否强制滚动到底部，默认为 false。为 true 时强制滚动，否则仅在用户已在底部时滚动
  */
-const scrollToBottom = () => {
-    if (containerRef.value) {
+const scrollToBottom = (force: boolean = false) => {
+    if (!containerRef.value) return;
+    
+    if (force) {
+        // 强制滚动到底部
         containerRef.value.scrollTop = containerRef.value.scrollHeight;
+    } else {
+        // 检查用户是否在底部（允许 100px 的误差范围）
+        const isAtBottom = containerRef.value.scrollHeight - containerRef.value.scrollTop - containerRef.value.clientHeight < 100;
+        if (isAtBottom) {
+            containerRef.value.scrollTop = containerRef.value.scrollHeight;
+        }
     }
 };
 
+// 存储每个消息的打字进度
+const typingProgress = ref<Map<number, number>>(new Map());
+
 /**
- * 处理 Markdown 渲染完成回调
- * 在流式输出的 markdown 渲染完成后调用
+ * 处理历史消息的 onEnd 回调
+ * 历史消息渲染完成后强制滚动到底部
  * @param messageId 消息 ID
  */
-const handleMarkdownEnd = (messageId: number | undefined) => {
+const handleHistoryMessageEnd = (messageId: number | undefined) => {
+    if (messageId === undefined) return;
+    
+    console.log('[handleHistoryMessageEnd] 历史消息渲染完成，消息 ID:', messageId);
+    
+    // 强制滚动到底部
+    setTimeout(() => {
+        scrollToBottom(true);
+    }, 100);
+};
+
+/**
+ * 处理 DsMarkdown 的 onTypedChar 回调
+ * 每打一个字符就触发，用于检测打字动画是否真正完成
+ * @param messageId 消息 ID
+ * @param targetContent 目标内容（完整的消息内容）
+ */
+const handleTypedChar = (messageId: number | undefined, targetContent: string) => {
     if (messageId === undefined) return;
 
-    console.log('[handleMarkdownEnd] 消息 ID:', messageId, '当前 isGenerating:', chatStore.getIsGenerating);
+    // 获取当前已打字的字符数（从 data 中获取，如果没有则递增）
+    const currentProgress = (typingProgress.value.get(messageId) || 0) + 1;
+    typingProgress.value.set(messageId, currentProgress);
 
-    // 标记该消息的 markdown 渲染已完成
-    markdownEndedIds.value.add(messageId);
+    // 获取目标内容的长度
+    const targetLength = targetContent.length;
 
-    // 在 markdown 渲染完成后，延迟 150 毫秒再滚动到底部
-    // 确保 DOM 完全渲染后再滚动
-    setTimeout(() => {
-        scrollToBottom();
-        
-        // 在滚动完成后，检查是否需要设置 isGenerating = false
-        // 检查 displayedMessages 中是否还有活跃的流式消息
-        const hasActiveStreaming = displayedMessages.value.some(
-            msg => msg.role === 'assistant' && (msg.isStreaming || !msg.markdownEnded)
-        );
-        
-        console.log('[handleMarkdownEnd] hasActiveStreaming:', hasActiveStreaming);
-        
-        // 只有在没有任何活跃流式消息时，才设置 isGenerating = false
-        if (!hasActiveStreaming && chatStore.getIsGenerating) {
-            console.log('[handleMarkdownEnd] 设置 isGenerating = false');
-            chatStore.setIsGenerating(false);
-        }
-    }, 40);
+    console.log('[handleTypedChar] 消息 ID:', messageId, '进度:', currentProgress, '/', targetLength);
+
+    // 当已打字字符数等于目标内容长度时，说明打字真正完成
+    if (currentProgress >= targetLength) {
+        console.log('[handleTypedChar] 打字完成，消息 ID:', messageId);
+
+        // 标记该消息的 markdown 渲染已完成
+        markdownEndedIds.value.add(messageId);
+
+        // 清除该消息的打字进度记录
+        typingProgress.value.delete(messageId);
+
+        // 延迟执行后续操作，确保 DOM 完全渲染
+        setTimeout(() => {
+            scrollToBottom();
+
+            // 检查是否还有活跃的流式消息
+            const hasActiveStreaming = displayedMessages.value.some(
+                msg => msg.role === 'assistant' && (msg.isStreaming || !markdownEndedIds.value.has(msg.id || -1))
+            );
+
+            console.log('[handleTypedChar] hasActiveStreaming:', hasActiveStreaming);
+
+            // 如果没有活跃的流式消息，设置 isGenerating = false
+            if (!hasActiveStreaming) {
+                console.log('[handleTypedChar] 设置 isGenerating = false');
+                chatStore.setIsGenerating(false);
+            }
+        }, 40);
+    }
 };
 
 /**
@@ -858,10 +902,17 @@ const loadConversationHistory = async (conversationId: number) => {
 
             chatStore.setMessages(conversationId, formattedMessages);
             isLoading.value = false;
+            
+            // 等待 DOM 渲染完成后强制滚动到底部
+            // 使用多次 nextTick 确保所有 DsMarkdown 组件都已渲染
             await nextTick();
-            // 等待 DsMarkdown 组件渲染，滚动由 onEnd 回调处理
-            // 历史消息的 disableTyping=true，所以会立即触发 onEnd
-            scrollToBottom();
+            await nextTick();
+            scrollToBottom(true);
+            
+            // 再次延迟滚动，确保长消息完全渲染
+            //setTimeout(() => {
+            //    scrollToBottom(true);
+            //}, 150);
         }
     } catch (error) {
         console.error("获取历史消息失败:", error);
@@ -932,6 +983,11 @@ onMounted(async () => {
 
     // 显式调用 loadCurrentConversation，确保页面初始化时触发续流检查
     loadCurrentConversation();
+
+    // 监听强制滚动事件（来自 InputArea 发送新消息）
+    window.addEventListener('force-scroll-to-bottom', () => {
+        scrollToBottom(true);
+    });
 });
 
 // 在组件卸载时清理资源

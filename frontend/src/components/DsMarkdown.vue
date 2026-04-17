@@ -9,6 +9,7 @@ withDefaults(defineProps<{
   answerType?: 'answer' | 'thinking'
   disableTyping?: boolean
   onEnd?: () => void
+  onTypedChar?: (data: any) => void
 }>(), {
   interval: 15,
   showCursor: true,
@@ -27,6 +28,7 @@ withDefaults(defineProps<{
       :cursor="cursor"
       :answer-type="answerType"
       :on-end="onEnd"
+      :on-typed-char="onTypedChar"
     />
   </div>
 </template>
