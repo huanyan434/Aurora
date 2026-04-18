@@ -15,6 +15,10 @@
             <circle cx="12" cy="12" r="10" />
             <path d="M15 9l-6 6M9 9l6 6" />
           </svg>
+          <svg v-else-if="toast.variant === 'info'" class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
           <svg v-else class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 16v-4M12 8h.01" />
@@ -38,6 +42,8 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
       return 'toast--error'
     case 'success':
       return 'toast--success'
+    case 'info':
+      return 'toast--info'
     default:
       return 'toast--default'
   }
@@ -96,6 +102,11 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
   border-color: rgba(239, 68, 68, 0.25);
 }
 
+.toast--info {
+  background: rgba(245, 240, 230, 0.95);
+  border-color: rgba(210, 200, 185, 0.3);
+}
+
 /* ==================== 图标 ==================== */
 .toast-card .toast-icon {
   flex-shrink: 0;
@@ -110,6 +121,10 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 
 .toast-card.toast--error .toast-icon {
   color: #b91c1c;
+}
+
+.toast-card.toast--info .toast-icon {
+  color: #92764d;
 }
 
 /* ==================== 文字内容 ==================== */
@@ -128,6 +143,10 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 
 .toast-card.toast--error .toast-text {
   color: #b91c1c;
+}
+
+.toast-card.toast--info .toast-text {
+  color: #6b5a3d;
 }
 
 /* ==================== 动画 ==================== */
@@ -211,6 +230,19 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 
 .dark .toast-card.toast--error .toast-text {
   color: #f87171;
+}
+
+.dark .toast-card.toast--info {
+  background: rgba(245, 240, 230, 0.15);
+  border-color: rgba(210, 200, 185, 0.25);
+}
+
+.dark .toast-card.toast--info .toast-icon {
+  color: #d4c5a9;
+}
+
+.dark .toast-card.toast--info .toast-text {
+  color: #e8dcc8;
 }
 
 .dark .toast-card .toast-icon {

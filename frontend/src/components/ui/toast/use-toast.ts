@@ -4,7 +4,7 @@ export interface Toast {
   id: string
   title?: string
   description?: string
-  variant?: 'default' | 'destructive' | 'success'
+  variant?: 'default' | 'destructive' | 'success' | 'info'
   duration?: number
 }
 
@@ -46,6 +46,14 @@ export const toastError = (message: string, duration: number = 10000) => {
   addToast({
     title: message,
     variant: 'destructive',
+    duration: duration
+  })
+}
+
+export const toastInfo = (message: string, duration: number = 5000) => {
+  addToast({
+    title: message,
+    variant: 'info',
     duration: duration
   })
 }
