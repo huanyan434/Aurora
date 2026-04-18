@@ -68,16 +68,25 @@
                             :disable-typing="message.disableTyping || false"
                         />
 
-                        <!-- 回复内容 - 使用 DsMarkdown 组件 -->
+                        <!-- 回复内容 - 根据 isHistory 字段选择组件 -->
+                        <!-- 历史消息使用 DsMarkdown -->
                         <DsMarkdown
-                            v-if="message.content || !message.isStreaming"
+                            v-if="message.isHistory"
                             :content="message.content"
-                            :interval="message.disableTyping ? 0 : 15"
-                            :show-cursor="!message.disableTyping && message.isStreaming"
-                            :disable-typing="message.disableTyping || false"
+                            :interval="0"
+                            :show-cursor="false"
+                            :disable-typing="true"
                             cursor="circle"
-                            :on-typed-char="!message.disableTyping ? () => handleTypedChar(message.id, message.content) : undefined"
-                            :on-end="message.disableTyping ? () => handleHistoryMessageEnd(message.id) : undefined"
+                            :on-end="() => handleHistoryMessageEnd(message.id)"
+                        />
+                        <!-- 流式消息使用 DsMarkdownCMD -->
+                        <DsMarkdownCMD
+                            v-else-if="message.content || !message.isStreaming"
+                            :content="message.content"
+                            :interval="15"
+                            :show-cursor="message.isStreaming"
+                            cursor="circle"
+                            :on-end="() => handleStreamingMessageEnd(message.id)"
                         />
 
                         <!-- 加载占位符 -->
@@ -210,7 +219,8 @@ import { useRoute } from "vue-router";
 import { useChatStore } from "@/stores/chat";
 import ReasoningContent from "./ReasoningContent.vue";
 import DsMarkdown from "./DsMarkdown.vue";
-import { toastSuccess, toastError } from "@/components/ui/toast/use-toast";
+import DsMarkdownCMD from "./DsMarkdownCMD.vue";
+import { toastSuccess, toastError, toastInfo } from "@/components/ui/toast/use-toast";
 import {
     Dialog,
     DialogContent,
@@ -276,9 +286,6 @@ const scrollToBottom = (force: boolean = false) => {
     }
 };
 
-// 存储每个消息的打字进度
-const typingProgress = ref<Map<number, number>>(new Map());
-
 /**
  * 处理历史消息的 onEnd 回调
  * 历史消息渲染完成后强制滚动到底部
@@ -293,54 +300,67 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
     setTimeout(() => {
         scrollToBottom(true);
     }, 200);
+    setTimeout(() => {
+        scrollToBottom(true);
+    }, 400);
+    setTimeout(() => {
+        scrollToBottom(true);
+    }, 600);
 };
 
 /**
- * 处理 DsMarkdown 的 onTypedChar 回调
- * 每打一个字符就触发，用于检测打字动画是否真正完成
+ * 处理流式消息的 onEnd 回调
+ * MarkdownCMD 的 onEnd 会在每次 push() 的内容打完后触发
+ * 只有当 WebSocket 已发送 generate_end（isStreaming=false）后才执行后续逻辑
  * @param messageId 消息 ID
- * @param targetContent 目标内容（完整的消息内容）
  */
-const handleTypedChar = (messageId: number | undefined, targetContent: string) => {
+const handleStreamingMessageEnd = (messageId: number | undefined) => {
     if (messageId === undefined) return;
 
-    // 获取当前已打字的字符数（从 data 中获取，如果没有则递增）
-    const currentProgress = (typingProgress.value.get(messageId) || 0) + 1;
-    typingProgress.value.set(messageId, currentProgress);
+    // 获取消息对象，检查是否还在流式传输中
+    const message = displayedMessages.value.find(msg => msg.id === messageId);
+    if (!message) return;
 
-    // 获取目标内容的长度
-    const targetLength = targetContent.length;
-
-    console.log('[handleTypedChar] 消息 ID:', messageId, '进度:', currentProgress, '/', targetLength);
-
-    // 当已打字字符数等于目标内容长度时，说明打字真正完成
-    if (currentProgress >= targetLength) {
-        console.log('[handleTypedChar] 打字完成，消息 ID:', messageId);
-
-        // 标记该消息的 markdown 渲染已完成
-        markdownEndedIds.value.add(messageId);
-
-        // 清除该消息的打字进度记录
-        typingProgress.value.delete(messageId);
-
-        // 延迟执行后续操作，确保 DOM 完全渲染
-        setTimeout(() => {
-            scrollToBottom();
-
-            // 检查是否还有活跃的流式消息
-            const hasActiveStreaming = displayedMessages.value.some(
-                msg => msg.role === 'assistant' && (msg.isStreaming || !markdownEndedIds.value.has(msg.id || -1))
-            );
-
-            console.log('[handleTypedChar] hasActiveStreaming:', hasActiveStreaming);
-
-            // 如果没有活跃的流式消息，设置 isGenerating = false
-            if (!hasActiveStreaming) {
-                console.log('[handleTypedChar] 设置 isGenerating = false');
-                chatStore.setIsGenerating(false);
-            }
-        }, 40);
+    // 如果消息还在流式传输中（WebSocket 还没发送 generate_end），不做任何处理
+    // 因为 MarkdownCMD 的 onEnd 会在每次 push() 的内容打完后触发
+    if (message.isStreaming) {
+        console.log('[handleStreamingMessageEnd] 消息还在流式传输中，跳过处理，消息 ID:', messageId);
+        return;
     }
+
+    console.log('[handleStreamingMessageEnd] 流式消息打字完成，消息 ID:', messageId);
+
+    // 先标记该消息的 markdown 渲染已完成
+    markdownEndedIds.value.add(messageId);
+
+    // 立即检查是否还有活跃的流式消息（不延迟）
+    // 只检查 isStreaming=true 的消息，因为历史消息（disableTyping=true）不需要等待
+    const hasActiveStreaming = displayedMessages.value.some(
+        msg => msg.role === 'assistant' && msg.id !== messageId && msg.isStreaming
+    );
+
+    console.log('[handleStreamingMessageEnd] 检查结果:', {
+        hasActiveStreaming,
+        currentMessageId: messageId,
+        allMessages: displayedMessages.value.map(m => ({
+            id: m.id,
+            role: m.role,
+            isStreaming: m.isStreaming,
+            disableTyping: m.disableTyping,
+            content: m.content?.substring(0, 20) + '...'
+        }))
+    });
+
+    // 如果没有活跃的流式消息，设置 isGenerating = false
+    if (!hasActiveStreaming) {
+        console.log('[handleStreamingMessageEnd] 设置 isGenerating = false');
+        chatStore.setIsGenerating(false);
+    }
+
+    // 延迟滚动，确保 DOM 完全渲染
+    setTimeout(() => {
+        scrollToBottom();
+    }, 40);
 };
 
 /**
@@ -717,9 +737,18 @@ const setupGlobalGenerateHandler = () => {
         // 设置消息为非流式状态（但 markdown 还未结束）
         // 注意：不在这里设置 isGenerating = false，而是等待 markdown 的 onEnd 回调后再设置
         if (state.messageAssistantId) {
-            chatStore.updateMessage(state.messageAssistantId, {
-                isStreaming: false,
-            });
+            // 延迟一小会儿设置 isStreaming = false，确保最后的 push 已经完成
+            const assistantId = state.messageAssistantId;
+            setTimeout(() => {
+                chatStore.updateMessage(assistantId, {
+                    isStreaming: false,
+                });
+            }, 100);
+        }
+
+        // 显示积分扣除提示
+        if (data.pointsDeducted && data.pointsDeducted > 0) {
+            toastInfo(`使用对话模型扣除 ${data.pointsDeducted} 积分`, 5000);
         }
 
         // 重置该对话的状态
@@ -897,6 +926,7 @@ const loadConversationHistory = async (conversationId: number) => {
                     createdAt: msg.created_at,
                     isStreaming: false,
                     disableTyping: true, // 历史消息不需要打字效果
+                    isHistory: true, // 标记为历史消息，使用 DsMarkdown
                 };
             });
 

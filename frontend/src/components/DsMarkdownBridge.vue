@@ -14,12 +14,14 @@ const props = withDefaults(defineProps<{
   disableTyping?: boolean
   onEnd?: () => void
   onTypedChar?: (data: any) => void
+  isStreaming?: boolean
 }>(), {
   interval: 20,
   answerType: 'answer',
   showCursor: false,
   cursor: 'line',
   disableTyping: false,
+  isStreaming: false,
 })
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -48,6 +50,7 @@ function renderReact() {
       theme: getSystemTheme(),
       onEnd: props.onEnd,
       onTypedChar: props.onTypedChar,
+      isStreaming: props.isStreaming,
     })
   )
 }

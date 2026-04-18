@@ -10,12 +10,14 @@ withDefaults(defineProps<{
   disableTyping?: boolean
   onEnd?: () => void
   onTypedChar?: (data: any) => void
+  isStreaming?: boolean
 }>(), {
   interval: 15,
   showCursor: true,
   cursor: 'circle',
   answerType: 'answer',
   disableTyping: false,
+  isStreaming: false,
 })
 </script>
 
@@ -29,6 +31,7 @@ withDefaults(defineProps<{
       :answer-type="answerType"
       :on-end="onEnd"
       :on-typed-char="onTypedChar"
+      :is-streaming="isStreaming"
     />
   </div>
 </template>

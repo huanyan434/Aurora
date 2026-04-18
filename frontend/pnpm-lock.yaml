@@ -80,6 +80,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.14
         version: 4.1.14
+      veaury:
+        specifier: ^2.6.3
+        version: 2.6.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       vue:
         specifier: ^3.5.22
         version: 3.5.22(typescript@5.9.3)
@@ -1783,6 +1786,12 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  veaury@2.6.3:
+    resolution: {integrity: sha512-hb4R1iAjaN0wlNdPJefF2E7z4JCXKzipaFIuWUarFism6OSnHdk74fMsj7uRe38/iSNGPiHPy0+x6H25uLUR4g==}
+    peerDependencies:
+      react: '>= 16.4.0'
+      react-dom: '>= 16.4.0'
 
   vee-validate@4.15.1:
     resolution: {integrity: sha512-DkFsiTwEKau8VIxyZBGdO6tOudD+QoUBPuHj3e6QFqmbfCRj1ArmYWue9lEp6jLSWBIw4XPlDLjFIZNLdRAMSg==}
@@ -3686,6 +3695,11 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.14
+
+  veaury@2.6.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+    dependencies:
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
 
   vee-validate@4.15.1(vue@3.5.22(typescript@5.9.3)):
     dependencies:

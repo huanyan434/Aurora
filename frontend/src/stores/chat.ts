@@ -12,6 +12,7 @@ export interface Message {
   reasoningTime?: number; // 推理时间
   isStreaming?: boolean; // 是否正在流式传输
   disableTyping?: boolean; // 是否禁用打字效果（在添加消息时确定）
+  isHistory?: boolean; // 是否是历史记录（true=使用DsMarkdown，false=使用DsMarkdownCMD）
   createdAt: string;
 }
 
