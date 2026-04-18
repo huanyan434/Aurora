@@ -737,13 +737,10 @@ const setupGlobalGenerateHandler = () => {
         // 设置消息为非流式状态（但 markdown 还未结束）
         // 注意：不在这里设置 isGenerating = false，而是等待 markdown 的 onEnd 回调后再设置
         if (state.messageAssistantId) {
-            // 延迟一小会儿设置 isStreaming = false，确保最后的 push 已经完成
-            const assistantId = state.messageAssistantId;
-            setTimeout(() => {
-                chatStore.updateMessage(assistantId, {
-                    isStreaming: false,
-                });
-            }, 100);
+            // 立即设置 isStreaming = false，让 markdown 的 onEnd 回调能够正确处理
+            chatStore.updateMessage(state.messageAssistantId, {
+                isStreaming: false,
+            });
         }
 
         // 显示积分扣除提示
