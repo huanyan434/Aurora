@@ -279,39 +279,44 @@ func sendWSResponse(conn *websocket.Conn, respType string, data interface{}) {
 func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	// 积分检查和扣除
 	config := utils.GetConfig()
+	pointsDeducted := 0
 	for _, m := range config.Models {
 		if m.Name == req.Model {
 			if req.Reasoning && m.Reasoning != req.Model {
 				if user.IsMember {
 					if user.MemberLevel == "VIP" {
-						if user.Points < int(math.Ceil(math.Ceil(float64(m.Points/2))*1.5)) {
+						pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points/2)) * 1.5))
+						if user.Points < pointsDeducted {
 							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 							return
 						}
-						utils.AddPoints(user.ID, -int(math.Ceil(math.Ceil(float64(m.Points/2))*1.5)), "使用大语言模型")
+						utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
 					}
 				} else {
-					if user.Points < int(math.Ceil(math.Ceil(float64(m.Points))*1.5)) {
+					pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points)) * 1.5))
+					if user.Points < pointsDeducted {
 						sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 						return
 					}
-					utils.AddPoints(user.ID, -int(math.Ceil(math.Ceil(float64(m.Points))*1.5)), "使用大语言模型")
+					utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
 				}
 			} else {
 				if user.IsMember {
 					if user.MemberLevel == "VIP" {
-						if user.Points < int(math.Ceil(float64(m.Points/2))) {
+						pointsDeducted = int(math.Ceil(float64(m.Points / 2)))
+						if user.Points < pointsDeducted {
 							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 							return
 						}
-						utils.AddPoints(user.ID, -int(math.Ceil(float64(m.Points/2))), "使用大语言模型")
+						utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
 					}
 				} else {
-					if user.Points < m.Points {
+					pointsDeducted = m.Points
+					if user.Points < pointsDeducted {
 						sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 						return
 					}
-					utils.AddPoints(user.ID, -m.Points, "使用大语言模型")
+					utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
 				}
 			}
 		}
@@ -351,6 +356,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	sendWSResponse(conn, "generate_end", gin.H{
 		"conversationID":     req.ConversationID,
 		"messageAssistantID": req.MessageAssistantID,
+		"pointsDeducted":     pointsDeducted,
 	})
 }
 
