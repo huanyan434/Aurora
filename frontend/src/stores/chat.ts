@@ -68,6 +68,7 @@ export const useChatStore = defineStore('chat', {
     // 修复 Map 响应性问题（遵循规范）- 使用普通对象代替 Map
     messages: {} as Record<number, Message[]>,
     isGenerating: false, // 是否正在生成AI回复
+    isTyping: false, // 是否正在打字（用于控制停止/发送按钮）
   }),
   
   getters: {
@@ -97,6 +98,11 @@ export const useChatStore = defineStore('chat', {
     // 获取当前是否正在生成
     getIsGenerating: (state) => {
       return state.isGenerating;
+    },
+    
+    // 获取当前是否正在打字
+    getIsTyping: (state) => {
+      return state.isTyping;
     }
   },
 
@@ -105,6 +111,10 @@ export const useChatStore = defineStore('chat', {
       console.log('[chatStore] setIsGenerating 调用:', isGenerating);
       console.trace('[chatStore] setIsGenerating 调用堆栈');
       this.isGenerating = isGenerating;
+    },
+    setIsTyping(isTyping: boolean) {
+      console.log('[chatStore] setIsTyping 调用:', isTyping);
+      this.isTyping = isTyping;
     },
     async fetchModels() {
       try {

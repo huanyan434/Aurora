@@ -35,7 +35,7 @@
 
       <!-- 右下角发送/停止按钮 -->
       <div class="input-button-group-right">
-        <Button v-if="isGenerating" @click="handleStopGeneration" variant="ghost" size="icon"
+        <Button v-if="isTyping" @click="handleStopGeneration" variant="ghost" size="icon"
           class="input-send-button input-send-button-stop">
           <Square class="icon-small" />
         </Button>
@@ -62,6 +62,8 @@ import type { Model } from '@/stores/chat';
 const inputMessage = ref('');
 // 使用store中的isGenerating状态
 const isGenerating = computed(() => chatStore.getIsGenerating);
+// 使用store中的isTyping状态（用于控制停止/发送按钮）
+const isTyping = computed(() => chatStore.getIsTyping);
 const isReasoning = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const attachment = ref<string>(''); // 存储base64编码的图片

@@ -283,6 +283,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	for _, m := range config.Models {
 		if m.Name == req.Model {
 			if req.Reasoning && m.Reasoning != req.Model {
+				// 推理模式，积分消耗为1.5倍
 				if user.IsMember {
 					if user.MemberLevel == "VIP" {
 						pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points/2)) * 1.5))
@@ -291,6 +292,9 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 							return
 						}
 						utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
+					} else if user.MemberLevel == "SVIP" {
+						// SVIP 免费
+						pointsDeducted = 0
 					}
 				} else {
 					pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points)) * 1.5))
@@ -301,6 +305,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 					utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
 				}
 			} else {
+				// 普通模式
 				if user.IsMember {
 					if user.MemberLevel == "VIP" {
 						pointsDeducted = int(math.Ceil(float64(m.Points / 2)))
@@ -309,6 +314,9 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 							return
 						}
 						utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
+					} else if user.MemberLevel == "SVIP" {
+						// SVIP 免费
+						pointsDeducted = 0
 					}
 				} else {
 					pointsDeducted = m.Points
@@ -319,6 +327,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 					utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
 				}
 			}
+			break
 		}
 	}
 

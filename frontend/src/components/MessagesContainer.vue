@@ -86,7 +86,7 @@
                             :interval="15"
                             :show-cursor="message.isStreaming"
                             cursor="circle"
-                            :on-end="() => handleStreamingMessageEnd(message.id)"
+                            :on-typed-char="(data) => handleTypedChar(message.id, data)"
                         />
 
                         <!-- 加载占位符 -->
@@ -121,7 +121,7 @@
                             : 'opacity-0',
                     ]"
                     v-show="
-                        !(message.role === 'assistant' && message.isStreaming && !message.disableTyping)
+                        !(message.role === 'assistant' && (typingStates.get(message.id || -1)?.isTyping || message.isStreaming))
                     "
                 >
                     <button
@@ -243,6 +243,14 @@ const models = ref<any[]>([]);
 // 跟踪哪些消息的 markdown 渲染已完成
 const markdownEndedIds = ref<Set<number>>(new Set());
 
+// 打字状态管理
+interface TypingState {
+    expectedContent: string;  // 预期要打印的完整内容（从后端流式接收）
+    typedContent: string;     // 已经打印的内容（从 onTypedChar 回调获取）
+    isTyping: boolean;        // 是否正在打字
+}
+const typingStates = ref<Map<number, TypingState>>(new Map());
+
 // 获取容器元素的引用
 const containerRef = ref<HTMLElement | null>(null);
 
@@ -309,58 +317,45 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
 };
 
 /**
- * 处理流式消息的 onEnd 回调
- * MarkdownCMD 的 onEnd 会在每次 push() 的内容打完后触发
- * 只有当 WebSocket 已发送 generate_end（isStreaming=false）后才执行后续逻辑
- * @param messageId 消息 ID
+ * 获取或初始化打字状态
  */
-const handleStreamingMessageEnd = (messageId: number | undefined) => {
+const getTypingState = (messageId: number): TypingState => {
+    if (!typingStates.value.has(messageId)) {
+        typingStates.value.set(messageId, {
+            expectedContent: '',
+            typedContent: '',
+            isTyping: false,
+        });
+    }
+    return typingStates.value.get(messageId)!;
+};
+
+/**
+ * 处理每个字符打字后的回调
+ */
+const handleTypedChar = (messageId: number | undefined, data?: any) => {
     if (messageId === undefined) return;
 
-    // 获取消息对象，检查是否还在流式传输中
+    const state = getTypingState(messageId);
+    
+    // 更新已打字内容
+    if (data && data.content !== undefined) {
+        state.typedContent = data.content;
+    }
+
+    // 滚动到底部
+    scrollToBottom();
+
+    // 检查是否打字完成
     const message = displayedMessages.value.find(msg => msg.id === messageId);
     if (!message) return;
 
-    // 如果消息还在流式传输中（WebSocket 还没发送 generate_end），不做任何处理
-    // 因为 MarkdownCMD 的 onEnd 会在每次 push() 的内容打完后触发
-    if (message.isStreaming) {
-        console.log('[handleStreamingMessageEnd] 消息还在流式传输中，跳过处理，消息 ID:', messageId);
-        return;
+    // 判断打字是否完成：已打内容等于预期内容，且后端已停止生成
+    if (state.typedContent === state.expectedContent && !message.isStreaming) {
+        console.log('[handleTypedChar] 打字完成，消息 ID:', messageId);
+        state.isTyping = false;
+        markdownEndedIds.value.add(messageId);
     }
-
-    console.log('[handleStreamingMessageEnd] 流式消息打字完成，消息 ID:', messageId);
-
-    // 先标记该消息的 markdown 渲染已完成
-    markdownEndedIds.value.add(messageId);
-
-    // 立即检查是否还有活跃的流式消息（不延迟）
-    // 只检查 isStreaming=true 的消息，因为历史消息（disableTyping=true）不需要等待
-    const hasActiveStreaming = displayedMessages.value.some(
-        msg => msg.role === 'assistant' && msg.id !== messageId && msg.isStreaming
-    );
-
-    console.log('[handleStreamingMessageEnd] 检查结果:', {
-        hasActiveStreaming,
-        currentMessageId: messageId,
-        allMessages: displayedMessages.value.map(m => ({
-            id: m.id,
-            role: m.role,
-            isStreaming: m.isStreaming,
-            disableTyping: m.disableTyping,
-            content: m.content?.substring(0, 20) + '...'
-        }))
-    });
-
-    // 如果没有活跃的流式消息，设置 isGenerating = false
-    if (!hasActiveStreaming) {
-        console.log('[handleStreamingMessageEnd] 设置 isGenerating = false');
-        chatStore.setIsGenerating(false);
-    }
-
-    // 延迟滚动，确保 DOM 完全渲染
-    setTimeout(() => {
-        scrollToBottom();
-    }, 40);
 };
 
 /**
@@ -724,23 +719,28 @@ const setupGlobalGenerateHandler = () => {
     wsManager.onMessage("generate_response", currentGenerateHandler);
 
     // 注册生成结束处理器
-    currentGenerateEndHandler = (data: any) => {
+    currentGenerateEndHandler = async (data: any) => {
+        console.log('[generate_end] 收到结束信号，原始数据:', data);
+        
         // 从结束信号中获取 conversationID
         const conversationId = data.conversationID;
         if (!conversationId) {
-            console.warn('结束信号中没有 conversationID');
+            console.warn('[generate_end] 结束信号中没有 conversationID');
             return;
         }
 
         const state = getWsGenerateState(conversationId);
 
-        // 设置消息为非流式状态（但 markdown 还未结束）
-        // 注意：不在这里设置 isGenerating = false，而是等待 markdown 的 onEnd 回调后再设置
+        console.log('[generate_end] 消息 ID:', state.messageAssistantId);
+
+        // 设置消息为非流式状态（但不设置 isGenerating = false）
+        // isGenerating 将在打字完成后由 handleTypedChar 设置为 false
         if (state.messageAssistantId) {
-            // 立即设置 isStreaming = false，让 markdown 的 onEnd 回调能够正确处理
             chatStore.updateMessage(state.messageAssistantId, {
                 isStreaming: false,
             });
+
+            console.log('[generate_end] 已设置 isStreaming = false，等待打字完成');
         }
 
         // 显示积分扣除提示
@@ -755,9 +755,6 @@ const setupGlobalGenerateHandler = () => {
             accumulatedReasoningContent: "",
             lastReasoningTime: 0,
         });
-
-        // 注意：不再在这里设置 isGenerating = false
-        // 而是在 markdown 的 onEnd 回调中设置
     };
 
     wsManager.onMessage("generate_end", currentGenerateEndHandler);
