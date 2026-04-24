@@ -519,38 +519,56 @@ func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int6
 
 	fmt.Printf("[续流检查] 缓存总数=%d, 匹配的消息数=%d\n", cacheCount, len(pendingMessages))
 
-	if len(pendingMessages) > 0 {
-		// 有缓存消息，发送续流通知
-		fmt.Printf("[续流检查] 发现缓存消息，发送续流\n")
+	if len(pendingMessages) == 0 {
+		// 没有缓存消息
+		fmt.Printf("[续流检查] 没有缓存消息\n")
+		sendWSResponse(conn, "resume_status", gin.H{
+			"status":  "completed",
+			"message": "没有进行中的对话",
+		})
+		return
+	}
+
+	// 筛选出未完成的消息
+	var uncompletedMessages []map[string]interface{}
+	for _, msg := range pendingMessages {
+		content := msg["content"].(*utils.MessageContent)
+		if !content.Completed {
+			uncompletedMessages = append(uncompletedMessages, msg)
+		}
+	}
+
+	// 如果没有未完成的消息
+	if len(uncompletedMessages) == 0 {
+		fmt.Printf("[续流检查] 所有消息已完成，不发送缓存内容\n")
+		sendWSResponse(conn, "resume_status", gin.H{
+			"status":  "completed",
+			"message": "没有进行中的对话",
+		})
+		return
+	}
+
+	// 检查是否有内容可以发送
+	hasContent := false
+	for _, msg := range uncompletedMessages {
+		content := msg["content"].(*utils.MessageContent)
+		if content.Content != "" || content.ReasoningContent != "" {
+			hasContent = true
+			break
+		}
+	}
+
+	if hasContent {
+		// 有缓存内容，发送续流通知
+		fmt.Printf("[续流检查] 发现 %d 条未完成的缓存消息，发送续流\n", len(uncompletedMessages))
 		sendWSResponse(conn, "resume_status", gin.H{
 			"status":  "resuming",
 			"message": "检测到缓存的对话内容，正在续流...",
 		})
 
 		// 发送缓存内容
-		for _, msg := range pendingMessages {
+		for _, msg := range uncompletedMessages {
 			content := msg["content"].(*utils.MessageContent)
-			_ = msg["messageAssistantID"].(int64) // 保留变量，后续可能使用
-
-			// 问题 2 修复：在发送缓存内容之前，先发送用户消息
-			// 从 ConversationIDMessageIDs 中获取用户消息 ID
-			utils.ConversationIDMessageIDsMutex.RLock()
-			convMsgID, ok := utils.ConversationIDMessageIDs[conversationID]
-			utils.ConversationIDMessageIDsMutex.RUnlock()
-
-			if ok {
-				// 查询用户消息
-				userMsg, err := utils.LoadMessage(convMsgID.MessageUserID)
-				if err == nil && userMsg.Content != "" {
-					sendWSResponse(conn, "generate_response", MSG{
-						Success:       true,
-						Content:       userMsg.Content,
-						IsCached:      true,
-						IsUserMessage: true, // 标记为用户消息
-					})
-					time.Sleep(50 * time.Millisecond)
-				}
-			}
 
 			// 发送缓存的推理内容（如果有）
 			if content.ReasoningContent != "" {
@@ -574,34 +592,33 @@ func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int6
 				})
 				time.Sleep(50 * time.Millisecond)
 			}
-
-			// 检查生成是否还在进行
-			threadID := strconv.FormatInt(conversationID, 10)
-			utils.ThreadMutex.RLock()
-			_, threadExists := utils.ThreadRegistry[threadID]
-			utils.ThreadMutex.RUnlock()
-
-			if threadExists && !content.Completed {
-				// 生成还在进行中
-				sendWSResponse(conn, "resume_status", gin.H{
-					"status":  "streaming",
-					"message": "生成正在进行中，将继续接收后续内容",
-				})
-			} else {
-				// 生成已完成
-				sendWSResponse(conn, "resume_status", gin.H{
-					"status":  "completed",
-					"message": "生成已完成",
-				})
-			}
 		}
+		
+		// 发送完缓存内容后，直接返回，不再检查线程状态
+		return
 	} else {
-		// 没有缓存消息
-		fmt.Printf("[续流检查] 没有缓存消息\n")
-		sendWSResponse(conn, "resume_status", gin.H{
-			"status":  "completed",
-			"message": "没有进行中的对话",
-		})
+		// 没有缓存内容，但生成正在进行
+		fmt.Printf("[续流检查] 生成正在进行中，但暂无缓存内容\n")
+		
+		// 检查线程是否还在运行
+		threadID := strconv.FormatInt(conversationID, 10)
+		utils.ThreadMutex.RLock()
+		_, threadExists := utils.ThreadRegistry[threadID]
+		utils.ThreadMutex.RUnlock()
+
+		if threadExists {
+			// 生成还在进行中
+			sendWSResponse(conn, "resume_status", gin.H{
+				"status":  "streaming",
+				"message": "生成正在进行中，将继续接收后续内容",
+			})
+		} else {
+			// 生成已完成
+			sendWSResponse(conn, "resume_status", gin.H{
+				"status":  "completed",
+				"message": "没有进行中的对话",
+			})
+		}
 	}
 }
 

@@ -153,8 +153,9 @@ const removeAttachment = () => {
 const handleSendMessage = async () => {
   if (!canSendMessage.value) return;
 
-  // 设置 store 中的 isGenerating 状态
+  // 设置 store 中的 isGenerating 和 isTyping 状态
   chatStore.setIsGenerating(true);
+  chatStore.setIsTyping(true);
 
   try {
     // 获取当前对话 ID
@@ -267,7 +268,7 @@ const handleSendMessage = async () => {
 const handleStopGeneration = () => {
   // 停止逻辑在 MessagesContainer 中处理
   // 这里只需要通知 store 即可
-  chatStore.setIsGenerating(false);
+  chatStore.setIsTyping(false);
 };
 
 // 切换推理模式

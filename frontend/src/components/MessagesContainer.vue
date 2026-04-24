@@ -602,20 +602,20 @@ let currentResumeStatusHandler: ((data: any) => void) | null = null;
 const setupGlobalGenerateHandler = () => {
     // 处理续流状态消息
     const handleResumeStatus = (data: any) => {
-        console.log('收到续流状态:', data);
-        
+        console.log('[续流] 收到续流状态:', data);
+
         const convId = currentConversationId.value;
         if (isNaN(convId)) return;
-        
-        if (data.status === 'resuming' || data.status === 'streaming') {
+
+        // 只在 resuming 状态时创建占位消息
+        if (data.status === 'resuming') {
             // 检查是否已经有流式消息
             const messages = chatStore.getMessagesByConversationId(convId);
             const hasStreamingMessage = messages.some(msg => msg.role === 'assistant' && msg.isStreaming);
-            
+
             if (!hasStreamingMessage) {
-                // 创建占位消息，messageAssistantId 会在收到第一条缓存消息时设置
-                console.log('续流：创建占位消息');
-                // 创建一个临时的 assistant 消息作为占位符
+                // 创建续流占位消息
+                console.log('[续流] 创建占位消息');
                 const tempMessage = {
                     id: Date.now(), // 临时 ID
                     role: 'assistant' as const,
@@ -625,14 +625,28 @@ const setupGlobalGenerateHandler = () => {
                     conversationID: convId,
                     createdAt: new Date().toISOString(),
                     isStreaming: true,
-                    disableTyping: false, // 续流需要打字效果
+                    isHistory: false, // 续流消息不是历史消息，使用 DsMarkdownCMD
                 };
                 chatStore.addMessage(convId, tempMessage);
+
                 // 更新状态中的 messageAssistantId
                 const state = getWsGenerateState(convId);
                 state.messageAssistantId = tempMessage.id;
+
+                // 初始化打字状态
+                const typingState = getTypingState(tempMessage.id);
+                typingState.expectedContent = '';
+                typingState.typedContent = '';
+                typingState.isTyping = true;
+
+                // 设置全局状态
+                chatStore.setIsGenerating(true);
+                chatStore.setIsTyping(true);
+
+                console.log('[续流] 占位消息已创建，ID:', tempMessage.id);
             }
         }
+        // streaming 状态不需要创建占位消息，只是表示生成正在进行
     };
     
     // 保存处理器引用并注册
@@ -649,52 +663,30 @@ const setupGlobalGenerateHandler = () => {
 
         const state = getWsGenerateState(convId);
 
-        // 如果是缓存消息，需要先设置 messageAssistantId
+        // 如果是缓存消息且没有 messageAssistantId，查找续流占位消息
         if (data.isCached && !state.messageAssistantId) {
-            // 从聊天 store 中查找最后一个 assistant 消息
             const messages = chatStore.getMessagesByConversationId(convId);
             const lastAssistantMessage = messages.reverse().find(msg => msg.role === 'assistant' && msg.isStreaming);
             if (lastAssistantMessage && lastAssistantMessage.id) {
                 state.messageAssistantId = lastAssistantMessage.id;
+                console.log('[缓存消息] 找到续流占位消息，ID:', lastAssistantMessage.id);
             } else {
-                // 如果找不到对应的 assistant 消息，直接添加新消息
-                console.warn('缓存消息未找到对应的 assistant 消息，直接添加新消息');
-                chatStore.addMessage(convId, {
-                    id: Date.now(), // 临时 ID
-                    role: 'assistant' as const,
-                    content: data.content || '',
-                    reasoningContent: data.reasoningContent || '',
-                    reasoningTime: data.reasoningTime || 0,
-                    conversationID: convId,
-                    createdAt: new Date().toISOString(),
-                    isStreaming: false, // 缓存消息不是流式
-                    disableTyping: true, // 缓存消息不需要打字效果
-                });
-                return; // 直接返回，不执行后续的 updateMessage
+                console.warn('[缓存消息] 未找到续流占位消息，忽略');
+                return;
             }
         }
 
         if (!state.messageAssistantId) {
-            console.warn('没有设置 messageAssistantId，忽略响应');
+            console.warn('[generate_response] 没有设置 messageAssistantId，忽略响应');
             return;
         }
 
         if (data.success) {
-            // 区分缓存消息和正常流式消息的处理方式
-            if (data.isCached) {
-                // 缓存消息：累加内容（因为缓存可能分多条发送）
-                state.accumulatedContent += data.content || "";
-                state.accumulatedReasoningContent += data.reasoningContent || "";
-                if (data.reasoningTime !== undefined) {
-                    state.lastReasoningTime = data.reasoningTime;
-                }
-            } else {
-                // 正常流式消息：累加内容
-                state.accumulatedContent += data.content || "";
-                state.accumulatedReasoningContent += data.reasoningContent || "";
-                if (data.reasoningTime !== undefined) {
-                    state.lastReasoningTime = data.reasoningTime;
-                }
+            // 累加内容（缓存消息和流式消息处理方式相同）
+            state.accumulatedContent += data.content || "";
+            state.accumulatedReasoningContent += data.reasoningContent || "";
+            if (data.reasoningTime !== undefined) {
+                state.lastReasoningTime = data.reasoningTime;
             }
 
             // 更新助手消息
@@ -704,6 +696,15 @@ const setupGlobalGenerateHandler = () => {
                 reasoningTime: state.lastReasoningTime,
                 isStreaming: true,
             });
+
+            // 更新打字状态的预期内容
+            if (state.messageAssistantId) {
+                const typingState = getTypingState(state.messageAssistantId);
+                typingState.expectedContent = state.accumulatedContent;
+                typingState.isTyping = true;
+                // 同步更新全局 isTyping 状态
+                chatStore.setIsTyping(true);
+            }
         } else {
             console.error("服务器返回错误:", data.error);
             toastError(data.error || "生成失败", 15000); // 15 秒
@@ -721,7 +722,7 @@ const setupGlobalGenerateHandler = () => {
     // 注册生成结束处理器
     currentGenerateEndHandler = async (data: any) => {
         console.log('[generate_end] 收到结束信号，原始数据:', data);
-        
+
         // 从结束信号中获取 conversationID
         const conversationId = data.conversationID;
         if (!conversationId) {
@@ -741,6 +742,17 @@ const setupGlobalGenerateHandler = () => {
             });
 
             console.log('[generate_end] 已设置 isStreaming = false，等待打字完成');
+
+            // 设置7.5秒超时，如果打字动画还没完成，强制设置 isTyping = false
+            setTimeout(() => {
+                const typingState = getTypingState(state.messageAssistantId!);
+                if (typingState.isTyping) {
+                    console.log('[generate_end] 打字超时，强制设置 isTyping = false');
+                    typingState.isTyping = false;
+                    chatStore.setIsTyping(false);
+                    chatStore.setIsGenerating(false);
+                }
+            }, 7500);
         }
 
         // 显示积分扣除提示

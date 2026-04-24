@@ -106,11 +106,29 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 	}
 	MessageContentCacheMutex.Unlock()
 
-	// 4. 提交任务到队列中执行
-	// 使用 QueueTask 方法来安排任务
-	conversationIDCopy := conversationID // 创建副本以在闭包中使用
-	promptCopy := prompt                 // 创建副本以在闭包中使用
-	base64Copy := base64                 // 创建副本以在闭包中使用
+	// 4. 在开始AI生成前，先保存用户消息到数据库
+	// 从数据库加载历史消息
+	historyMessages, err := LoadConversationHistoryFormat2(conversationID)
+	if err != nil {
+		fmt.Printf("加载历史消息失败：%v\n", err)
+		historyMessages = []messageFormat{} // 如果加载失败，使用空列表
+	}
+
+	// 添加当前用户消息
+	userMessage := messageFormat{
+		ID:             messageUserID,
+		ConversationID: conversationID,
+		Role:           "user",
+		Content:        prompt,
+		Base64:         base64,
+		CreatedAt:      time.Now().Format("2006-01-02T15:04:05Z07:00"),
+	}
+	historyMessages = append(historyMessages, userMessage)
+
+	// 保存包含用户消息的历史记录
+	if err := SaveConversationHistoryFormat2(conversationID, historyMessages); err != nil {
+		fmt.Printf("保存用户消息失败：%v\n", err)
+	}
 
 	go func() {
 		err := TaskQueue.QueueTask(func(ctx context.Context) error {
@@ -123,66 +141,55 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 				}
 				MessageContentCacheMutex.Unlock()
 
-				// 生成完成后，保存整个对话历史到数据库
+				// 生成完成后，只保存AI消息到数据库（用户消息已经保存过了）
 				// 从缓存中获取完整的 AI 回复内容
 				MessageContentCacheMutex.RLock()
 				aiContent := MessageContentCache[messageAssistantID]
 				MessageContentCacheMutex.RUnlock()
 
 				if aiContent != nil {
-					// 从数据库加载历史消息
-					historyMessages, err := LoadConversationHistoryFormat2(conversationIDCopy)
+					// 从数据库加载历史消息（包含刚才保存的用户消息）
+					historyMessages, err := LoadConversationHistoryFormat2(conversationID)
 					if err != nil {
 						fmt.Printf("加载历史消息失败：%v\n", err)
 					} else {
-						// 构建完整的消息列表：历史消息 + 当前用户消息 + AI 回复
-						completeMessages := historyMessages
-
-						// 添加当前用户消息（使用前端传来的 messageUserID）
-						userMessage := messageFormat{
-							ID:             messageUserID,
-							ConversationID: conversationIDCopy,
-							Role:           "user",
-							Content:        promptCopy,
-							Base64:         base64Copy,
-							CreatedAt:      time.Now().Format("2006-01-02T15:04:05Z07:00"),
-						}
-						completeMessages = append(completeMessages, userMessage)
-
 						// 添加 AI 回复到消息列表（使用前端传来的 messageAssistantID）
 						aiMessage := messageFormat{
 							ID:               messageAssistantID,
-							ConversationID:   conversationIDCopy,
+							ConversationID:   conversationID,
 							Role:             "assistant",
 							Content:          aiContent.Content,
 							ReasoningContent: aiContent.ReasoningContent,
 							CreatedAt:        time.Now().Format("2006-01-02T15:04:05Z07:00"),
 						}
-						completeMessages = append(completeMessages, aiMessage)
+						historyMessages = append(historyMessages, aiMessage)
 
 						// 保存整个对话历史到数据库
-						if err := SaveConversationHistoryFormat2(conversationIDCopy, completeMessages); err != nil {
+						if err := SaveConversationHistoryFormat2(conversationID, historyMessages); err != nil {
 							fmt.Printf("保存对话历史失败：%v\n", err)
 						}
 					}
 				}
 
-				// 清理缓存（问题 1 修复）
-				MessageContentCacheMutex.Lock()
-				delete(MessageContentCache, messageAssistantID)
-				MessageContentCacheMutex.Unlock()
-				fmt.Printf("[清理缓存] messageAssistantID=%d\n", messageAssistantID)
+				// 延迟清理缓存，给续流检查留出时间（5分钟后清理）
+				go func() {
+					time.Sleep(5 * time.Minute)
+					MessageContentCacheMutex.Lock()
+					delete(MessageContentCache, messageAssistantID)
+					MessageContentCacheMutex.Unlock()
+					fmt.Printf("[清理缓存] messageAssistantID=%d\n", messageAssistantID)
+				}()
 
 				close(resp)
 				ThreadMutex.Lock()
 				delete(ThreadRegistry, threadID)
 				ThreadMutex.Unlock()
 				ConversationIDMessageIDsMutex.Lock()
-				delete(ConversationIDMessageIDs, conversationIDCopy)
+				delete(ConversationIDMessageIDs, conversationID)
 				ConversationIDMessageIDsMutex.Unlock()
 			}()
 
-			Openai(ctx, conversationIDCopy, messageUserID, messageAssistantID, model, prompt, base64, reasoning, resp)
+			Openai(ctx, conversationID, messageUserID, messageAssistantID, model, prompt, base64, reasoning, resp)
 			return nil
 		})
 
@@ -209,6 +216,43 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 // Openai 调用 OpenAI API 并流式返回结果，同时更新消息内容缓存
 func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64Image string, reasoning bool, resp chan string) {
 	config := GetConfig()
+
+	// 记录开始时间，用于空窗期超时检测
+	startTime := time.Now()
+	hasReceivedContent := false
+	var contentMutex sync.Mutex
+
+	// 启动超时检测 goroutine
+	timeoutCtx, cancelTimeout := context.WithCancel(ctx)
+	defer cancelTimeout()
+
+	go func() {
+		select {
+		case <-time.After(10 * time.Second):
+			contentMutex.Lock()
+			received := hasReceivedContent
+			contentMutex.Unlock()
+
+			if !received {
+				elapsed := time.Since(startTime).Seconds()
+				fmt.Printf("[超时检测] conversationID=%d, 10秒内未收到AI回复，已等待%.1f秒，断开连接\n", conversationID, elapsed)
+
+				// 发送超时错误消息
+				jsonResp, _ := json.Marshal(Response{
+					Success: false,
+					Error:   "AI服务器响应超时，请稍后重试",
+				})
+				select {
+				case resp <- string(jsonResp):
+				default:
+					// 通道可能已关闭，忽略错误
+				}
+			}
+		case <-timeoutCtx.Done():
+			// 超时检测被取消（已收到内容）
+			return
+		}
+	}()
 
 	// 创建 OpenAI 客户端配置
 	c := openai.DefaultConfig(config.APIKey)
@@ -381,6 +425,15 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 				// 更新缓存：推理内容
 				if delta.ReasoningContent != "" {
+					// 标记已收到内容，取消超时检测
+					contentMutex.Lock()
+					if !hasReceivedContent {
+						hasReceivedContent = true
+						cancelTimeout()
+						fmt.Printf("[超时检测] conversationID=%d, 已收到AI回复，取消超时检测\n", conversationID)
+					}
+					contentMutex.Unlock()
+
 					MessageContentCacheMutex.Lock()
 					if content, exists := MessageContentCache[messageAssistantID]; exists {
 						content.ReasoningContent += delta.ReasoningContent
@@ -390,6 +443,15 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 				// 更新缓存：普通内容
 				if delta.Content != "" {
+					// 标记已收到内容，取消超时检测
+					contentMutex.Lock()
+					if !hasReceivedContent {
+						hasReceivedContent = true
+						cancelTimeout()
+						fmt.Printf("[超时检测] conversationID=%d, 已收到AI回复，取消超时检测\n", conversationID)
+					}
+					contentMutex.Unlock()
+
 					MessageContentCacheMutex.Lock()
 					if content, exists := MessageContentCache[messageAssistantID]; exists {
 						content.Content += delta.Content
