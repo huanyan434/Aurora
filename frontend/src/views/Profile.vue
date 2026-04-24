@@ -1,116 +1,144 @@
 <template>
-  <div class="profile-container">
-    <!-- 头部导航 -->
-    <div class="header-container">
-      <button @click="goBack" class="back-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" class="back-btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-      <h1 class="page-title">个人中心</h1>
-    </div>
-
-    <div class="content-container">
-      <!-- 用户信息卡片 -->
-      <div class="user-info-card">
-        <div class="user-info-content">
-          <div class="user-avatar">
-            {{ userInfo?.username?.charAt(0).toUpperCase() || 'U' }}
+  <div class="profile-page">
+    <div class="profile-shell">
+      <header class="profile-hero">
+        <div class="hero-copy">
+          <div class="hero-title-row">
+            <button @click="goBack" class="back-btn back-btn-inline" aria-label="返回">
+              <svg xmlns="http://www.w3.org/2000/svg" class="back-btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div class="hero-badge">个人中心</div>
           </div>
+          <h1 class="hero-title">欢迎回来，{{ userInfo?.username || '用户' }}</h1>
+          <p class="hero-description">在这里管理你的账号信息、会员权益、积分状态和签到记录。</p>
+        </div>
+      </header>
 
-          <div class="user-details">
-            <h2 class="user-name">{{ userInfo?.username || '用户' }}</h2>
-            <p class="user-email">{{ userInfo?.email || '未设置邮箱' }}</p>
-          </div>
-
-          <div class="user-stats">
-            <div class="stat-item clickable-stat" @click="showPointsRecordsDialog">
-              <div class="stat-label">积分</div>
-              <div class="stat-value">{{ userInfo?.points || 0 }}</div>
+      <main class="profile-grid">
+        <section class="profile-card profile-summary-card">
+          <div class="summary-top">
+            <div class="user-avatar user-avatar-lg">
+              {{ userInfo?.username?.charAt(0).toUpperCase() || 'U' }}
             </div>
-            <div class="stat-item">
-              <div class="stat-label">会员状态</div>
-              <div class="stat-value" :class="{ 'vip-status': userInfo?.isMember }">
-                {{ getMemberLevelText(userInfo?.memberLevel) }}
+            <div class="summary-copy">
+              <div class="summary-tag">账户概览</div>
+              <h2 class="user-name">{{ userInfo?.username || '用户' }}</h2>
+              <p class="user-email">{{ userInfo?.email || '未设置邮箱' }}</p>
+              <div class="status-row">
+                <span class="status-pill" :class="{ 'status-pill-member': userInfo?.isMember }">
+                  {{ getMemberLevelText(userInfo?.memberLevel) }}
+                </span>
+                <span class="status-pill status-pill-muted">
+                  {{ signInStatus ? '今日已签到' : '今日未签到' }}
+                </span>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- 功能区域 -->
-      <div class="features-grid">
-        <!-- 签到卡片 -->
-        <div class="feature-card">
-          <div class="feature-card-content">
-            <div class="feature-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+          <div class="summary-metrics">
+            <button class="metric-card metric-card-clickable" @click="showPointsRecordsDialog">
+              <span class="metric-label">可用积分</span>
+              <span class="metric-value">{{ userInfo?.points || 0 }}</span>
+              <span class="metric-hint">点击查看积分记录</span>
+            </button>
+            <div class="metric-card">
+              <span class="metric-label">签到状态</span>
+              <span class="metric-value metric-value-soft">{{ signInStatus ? '已签到' : '待签到' }}</span>
+              <span class="metric-hint">每日签到可获得积分</span>
             </div>
-            <div class="feature-text">
-              <h3 class="feature-title">每日签到</h3>
-              <p class="feature-desc">{{ signInStatus ? '今日已签到' : '点击签到获取积分' }}</p>
+            <div class="metric-card">
+              <span class="metric-label">账号等级</span>
+              <span class="metric-value metric-value-soft">{{ getMemberLevelText(userInfo?.memberLevel) }}</span>
+              <span class="metric-hint">不同等级享有不同权益</span>
             </div>
-            <Button
-              :disabled="signInStatus || signingIn"
-              variant="default"
-              @click="handleSignIn"
-            >
-              {{ signingIn ? '签到中...' : (signInStatus ? '已签到' : '签到') }}
-            </Button>
           </div>
-        </div>
+        </section>
 
-        <!-- 会员开通 -->
-        <div class="feature-card">
-          <div class="feature-card-content">
-            <div class="feature-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
+        <section class="profile-card profile-actions-card">
+          <div class="section-header">
+            <div>
+              <div class="section-kicker">快捷操作</div>
+              <h3 class="section-title">常用功能</h3>
             </div>
-            <div class="feature-text">
-              <h3 class="feature-title">会员开通</h3>
-              <p class="feature-desc">开通会员享受更多特权</p>
-            </div>
-            <Button
-              @click="showVipUpgrade = true"
-              variant="default"
-            >
-              {{ userInfo?.isMember ? '续费会员' : '开通会员' }}
-            </Button>
           </div>
-        </div>
 
-        <!-- 积分充值 -->
-        <div class="feature-card">
-          <div class="feature-card-content">
-            <div class="feature-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div class="feature-text">
-              <h3 class="feature-title">积分充值</h3>
-              <p class="feature-desc">充值积分享受更多服务</p>
-            </div>
-            <Button
-              @click="showPointsRecharge = true"
-              variant="default"
-            >
-              充值积分
-            </Button>
+          <div class="action-list">
+            <button class="action-item" :disabled="signInStatus || signingIn" @click="handleSignIn">
+              <div class="action-icon action-icon-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div class="action-content">
+                <h4>每日签到</h4>
+                <p>{{ signInStatus ? '今日已完成签到' : '点击签到获取积分奖励' }}</p>
+              </div>
+              <span class="action-cta">{{ signingIn ? '签到中...' : (signInStatus ? '已签到' : '去签到') }}</span>
+            </button>
+
+            <button class="action-item" @click="showVipUpgrade = true">
+              <div class="action-icon action-icon-warm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+              </div>
+              <div class="action-content">
+                <h4>会员开通</h4>
+                <p>解锁更低的模型消耗和更多权益</p>
+              </div>
+              <span class="action-cta">{{ userInfo?.isMember ? '续费会员' : '开通会员' }}</span>
+            </button>
+
+            <button class="action-item" @click="showPointsRecharge = true">
+              <div class="action-icon action-icon-emerald">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="action-content">
+                <h4>积分充值</h4>
+                <p>补充积分，解锁更多对话与功能</p>
+              </div>
+              <span class="action-cta">立即充值</span>
+            </button>
           </div>
-        </div>
-      </div>
+        </section>
+
+        <section class="profile-card profile-panel-card">
+          <div class="section-header">
+            <div>
+              <div class="section-kicker">账户安全</div>
+              <h3 class="section-title">状态说明</h3>
+            </div>
+          </div>
+
+          <div class="info-stack">
+            <div class="info-row">
+              <span class="info-label">邮箱</span>
+              <span class="info-value">{{ userInfo?.email || '未设置邮箱' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">会员状态</span>
+              <span class="info-value" :class="{ 'vip-status': userInfo?.isMember }">{{ getMemberLevelText(userInfo?.memberLevel) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">签到</span>
+              <span class="info-value">{{ signInStatus ? '今日已签到' : '可签到领取积分' }}</span>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
 
-    <!-- 会员开通弹窗 -->
-    <div v-if="showVipUpgrade" class="modal-overlay">
-      <div class="modal-content">
+    <div v-if="showVipUpgrade" class="modal-overlay" @click.self="showVipUpgrade = false">
+      <div class="modal-content modal-large">
         <div class="modal-header">
-          <h2 class="modal-title">会员开通</h2>
+          <div>
+            <h2 class="modal-title">会员开通</h2>
+            <p class="modal-subtitle">选择适合你的会员方案，享受更低积分消耗与更多权益。</p>
+          </div>
           <button @click="showVipUpgrade = false" class="modal-close-btn">
             <svg xmlns="http://www.w3.org/2000/svg" class="modal-close-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -121,8 +149,11 @@
         <div class="modal-body">
           <div class="pricing-section">
             <div class="pricing-plans-container">
-              <!-- VIP套餐 -->
               <div class="pricing-plan">
+                <div class="plan-topline">
+                  <span class="plan-badge plan-badge-vip">VIP</span>
+                  <span class="plan-duration">月卡</span>
+                </div>
                 <div class="plan-header">
                   <span class="plan-name">月VIP</span>
                   <span class="plan-price">￥5.00</span>
@@ -132,13 +163,17 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://ifdian.net/a/mchyj" target="_blank">
-                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  <a href="https://ifdian.net/a/mchyj" target="_blank" rel="noreferrer" class="plan-payment-link">
+                    <Button variant="outline" size="sm" class="plan-action-btn">前往支付</Button>
                   </a>
                 </div>
               </div>
 
               <div class="pricing-plan">
+                <div class="plan-topline">
+                  <span class="plan-badge plan-badge-vip">VIP</span>
+                  <span class="plan-duration">季卡</span>
+                </div>
                 <div class="plan-header">
                   <span class="plan-name">季VIP</span>
                   <span class="plan-price">￥15.00</span>
@@ -148,13 +183,17 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://ifdian.net/a/mchyj" target="_blank">
-                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  <a href="https://ifdian.net/a/mchyj" target="_blank" rel="noreferrer" class="plan-payment-link">
+                    <Button variant="outline" size="sm" class="plan-action-btn">前往支付</Button>
                   </a>
                 </div>
               </div>
 
-              <div class="pricing-plan">
+              <div class="pricing-plan pricing-plan-featured">
+                <div class="plan-topline">
+                  <span class="plan-badge plan-badge-featured">推荐</span>
+                  <span class="plan-duration">年卡</span>
+                </div>
                 <div class="plan-header">
                   <span class="plan-name">年VIP</span>
                   <div class="plan-price-container">
@@ -167,14 +206,17 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://ifdian.net/a/mchyj" target="_blank">
-                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  <a href="https://ifdian.net/a/mchyj" target="_blank" rel="noreferrer" class="plan-payment-link">
+                    <Button variant="outline" size="sm" class="plan-action-btn">前往支付</Button>
                   </a>
                 </div>
               </div>
 
-              <!-- SVIP套餐 -->
               <div class="pricing-plan">
+                <div class="plan-topline">
+                  <span class="plan-badge plan-badge-svip">SVIP</span>
+                  <span class="plan-duration">月卡</span>
+                </div>
                 <div class="plan-header">
                   <span class="plan-name">月SVIP</span>
                   <span class="plan-price">￥10.00</span>
@@ -184,13 +226,17 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://ifdian.net/a/mchyj" target="_blank">
-                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  <a href="https://ifdian.net/a/mchyj" target="_blank" rel="noreferrer" class="plan-payment-link">
+                    <Button variant="outline" size="sm" class="plan-action-btn">前往支付</Button>
                   </a>
                 </div>
               </div>
 
               <div class="pricing-plan">
+                <div class="plan-topline">
+                  <span class="plan-badge plan-badge-svip">SVIP</span>
+                  <span class="plan-duration">季卡</span>
+                </div>
                 <div class="plan-header">
                   <span class="plan-name">季SVIP</span>
                   <div class="plan-price-container">
@@ -203,13 +249,17 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://ifdian.net/a/mchyj" target="_blank">
-                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  <a href="https://ifdian.net/a/mchyj" target="_blank" rel="noreferrer" class="plan-payment-link">
+                    <Button variant="outline" size="sm" class="plan-action-btn">前往支付</Button>
                   </a>
                 </div>
               </div>
 
-              <div class="pricing-plan">
+              <div class="pricing-plan pricing-plan-featured">
+                <div class="plan-topline">
+                  <span class="plan-badge plan-badge-svip">SVIP</span>
+                  <span class="plan-duration">年卡</span>
+                </div>
                 <div class="plan-header">
                   <span class="plan-name">年SVIP</span>
                   <div class="plan-price-container">
@@ -222,8 +272,8 @@
                   <li>更多内测功能</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://ifdian.net/a/mchyj" target="_blank">
-                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  <a href="https://ifdian.net/a/mchyj" target="_blank" rel="noreferrer" class="plan-payment-link">
+                    <Button variant="outline" size="sm" class="plan-action-btn">前往支付</Button>
                   </a>
                 </div>
               </div>
@@ -231,13 +281,12 @@
           </div>
         </div>
 
-        <!-- 订单号验证区域 -->
         <div class="verification-section">
           <div class="verification-input-group">
             <input
               v-model="vipOrderId"
               type="text"
-              placeholder="请先在购买会员界面复制订单号，在此粘贴"
+              placeholder="请粘贴会员订单号"
               class="verification-input"
             />
             <Button
@@ -252,11 +301,13 @@
       </div>
     </div>
 
-    <!-- 积分套餐弹窗 -->
-    <div v-if="showPointsRecharge" class="modal-overlay">
-      <div class="modal-content">
+    <div v-if="showPointsRecharge" class="modal-overlay" @click.self="showPointsRecharge = false">
+      <div class="modal-content modal-large">
         <div class="modal-header">
-          <h2 class="modal-title">积分套餐</h2>
+          <div>
+            <h2 class="modal-title">积分充值</h2>
+            <p class="modal-subtitle">为账户补充积分，解锁更多对话能力与功能权限。</p>
+          </div>
           <button @click="showPointsRecharge = false" class="modal-close-btn">
             <svg xmlns="http://www.w3.org/2000/svg" class="modal-close-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -267,7 +318,11 @@
         <div class="modal-body">
           <div class="pricing-section">
             <div class="pricing-plans-container">
-              <div class="pricing-plan">
+              <div class="pricing-plan pricing-plan-featured">
+                <div class="plan-topline">
+                  <span class="plan-badge plan-badge-points">积分</span>
+                  <span class="plan-duration">单次充值</span>
+                </div>
                 <div class="plan-header">
                   <span class="plan-name">Aurora 积分</span>
                   <div class="plan-price-container">
@@ -279,8 +334,8 @@
                   <li>使用对话模型</li>
                 </ul>
                 <div class="plan-action-container">
-                  <a href="https://ifdian.net/a/mchyj?tab=shop" target="_blank">
-                    <Button variant="outline" size="sm" class="plan-action-btn">发电</Button>
+                  <a href="https://ifdian.net/a/mchyj?tab=shop" target="_blank" rel="noreferrer">
+                    <Button variant="outline" size="sm" class="plan-action-btn">前往支付</Button>
                   </a>
                 </div>
               </div>
@@ -288,13 +343,12 @@
           </div>
         </div>
 
-        <!-- 订单号验证区域 -->
         <div class="verification-section">
           <div class="verification-input-group">
             <input
               v-model="pointsOrderId"
               type="text"
-              placeholder="请先在购买积分界面复制订单号，在此粘贴"
+              placeholder="请粘贴积分订单号"
               class="verification-input"
             />
             <Button
@@ -309,11 +363,13 @@
       </div>
     </div>
 
-    <!-- 积分记录对话框 -->
-    <div v-if="showPointsRecords" class="modal-overlay">
-      <div class="modal-content">
+    <div v-if="showPointsRecords" class="modal-overlay" @click.self="showPointsRecords = false">
+      <div class="modal-content modal-medium">
         <div class="modal-header">
-          <h2 class="modal-title">积分记录</h2>
+          <div>
+            <h2 class="modal-title">积分记录</h2>
+            <p class="modal-subtitle">查看近期积分变动，方便了解签到、充值和消耗情况。</p>
+          </div>
           <button @click="showPointsRecords = false" class="modal-close-btn">
             <svg xmlns="http://www.w3.org/2000/svg" class="modal-close-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -322,12 +378,8 @@
         </div>
 
         <div class="modal-body">
-          <div v-if="loadingPointsRecords" class="loading-container">
-            <p>正在加载积分记录...</p>
-          </div>
-          <div v-else-if="pointsRecords.length === 0" class="empty-records">
-            <p>暂无积分记录</p>
-          </div>
+          <div v-if="loadingPointsRecords" class="state-box">正在加载积分记录...</div>
+          <div v-else-if="pointsRecords.length === 0" class="state-box">暂无积分记录</div>
           <div v-else class="records-list">
             <div v-for="(record, index) in pointsRecords" :key="index" class="record-item">
               <div class="record-info">
@@ -357,7 +409,6 @@ import { Button } from '@/components/ui/button';
 const router = useRouter();
 const userStore = useUserStore();
 
-// 响应式数据
 const signInStatus = ref(false);
 const signingIn = ref(false);
 const showVipUpgrade = ref(false);
@@ -370,21 +421,12 @@ const verifyingPointsOrder = ref(false);
 const pointsRecords = ref<PointsRecord[]>([]);
 const loadingPointsRecords = ref(false);
 
-// 计算属性
 const userInfo = computed(() => userStore.userInfo);
 
-/**
- * 返回上一页
- */
 const goBack = () => {
   router.go(-1);
 };
 
-/**
- * 获取会员等级显示文本
- * @param {string} memberLevel - 会员等级
- * @returns {string} 显示文本
- */
 const getMemberLevelText = (memberLevel: string | undefined) => {
   if (!memberLevel || memberLevel === 'free') {
     return '普通用户';
@@ -392,9 +434,6 @@ const getMemberLevelText = (memberLevel: string | undefined) => {
   return memberLevel + '用户';
 };
 
-/**
- * 处理签到
- */
 const handleSignIn = async () => {
   signingIn.value = true;
   try {
@@ -426,7 +465,6 @@ const handleSignIn = async () => {
       }
 
       toastSuccess(message);
-      // 刷新用户信息
       await userStore.init();
     } else {
       toastError(result.data.message || '签到失败');
@@ -439,9 +477,6 @@ const handleSignIn = async () => {
   }
 };
 
-/**
- * 验证VIP订单
- */
 const verifyVipOrder = async () => {
   if (!vipOrderId.value.trim()) {
     toastError('请输入订单号');
@@ -459,7 +494,6 @@ const verifyVipOrder = async () => {
       toastSuccess('VIP验证成功!');
       showVipUpgrade.value = false;
       vipOrderId.value = '';
-      // 刷新用户信息以显示新的VIP状态
       await userStore.init();
     } else {
       toastError(response.data.message || '验证失败');
@@ -472,9 +506,6 @@ const verifyVipOrder = async () => {
   }
 };
 
-/**
- * 验证积分订单
- */
 const verifyPointsOrder = async () => {
   if (!pointsOrderId.value.trim()) {
     toastError('请输入订单号');
@@ -491,7 +522,6 @@ const verifyPointsOrder = async () => {
       toastSuccess('积分充值验证成功!');
       showPointsRecharge.value = false;
       pointsOrderId.value = '';
-      // 刷新用户信息以显示新的积分
       await userStore.init();
     } else {
       toastError(response.data.message || '验证失败');
@@ -504,9 +534,6 @@ const verifyPointsOrder = async () => {
   }
 };
 
-/**
- * 检查签到状态
- */
 const checkSignInStatus = async () => {
   try {
     const result = await getHasSigned();
@@ -518,15 +545,11 @@ const checkSignInStatus = async () => {
   }
 };
 
-/**
- * 获取积分记录
- */
 const fetchPointsRecords = async () => {
   loadingPointsRecords.value = true;
   try {
     const result = await getPointsRecords();
     if (result.data.success) {
-      // 按时间倒序排列，最新的在前面
       pointsRecords.value = (result.data.data || []).sort((a: PointsRecord, b: PointsRecord) => {
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       });
@@ -541,955 +564,1006 @@ const fetchPointsRecords = async () => {
   }
 };
 
-/**
- * 显示积分记录对话框
- */
 const showPointsRecordsDialog = async () => {
   await fetchPointsRecords();
   showPointsRecords.value = true;
 };
 
-/**
- * 格式化时间戳
- * @param {string} timestamp - ISO格式的时间戳
- * @returns {string} 格式化后的时间字符串
- */
 const formatTimestamp = (timestamp: string): string => {
   if (!timestamp) return '';
 
-  // 解析时间戳
   const date = new Date(timestamp);
-
-  // 获取当前时间
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-
-  // 获取目标日期
   const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  // 格式化时间部分
   const hours = date.getHours().toString().padStart(2, '0');
   const minutes = date.getMinutes().toString().padStart(2, '0');
 
-  // 根据日期差异返回不同格式
   if (targetDate.getTime() === today.getTime()) {
-    // 今天
     return `今天 ${hours}:${minutes}`;
   } else if (targetDate.getTime() === yesterday.getTime()) {
-    // 昨天
     return `昨天 ${hours}:${minutes}`;
   } else {
-    // 其他日期
     const year = date.getFullYear();
-    const month = date.getMonth() + 1; // 月份从0开始，需要+1
+    const month = date.getMonth() + 1;
     const day = date.getDate();
 
     if (year === now.getFullYear()) {
-      // 今年内，显示 MM-DD
       return `${month}-${day}`;
     } else {
-      // 不在今年内，显示 YYYY-MM-DD
       return `${year}-${month}-${day}`;
     }
   }
 };
 
-// 组件挂载时初始化数据
 onMounted(async () => {
-  // 获取用户信息
   await userStore.init();
-
-  // 检查签到状态
   await checkSignInStatus();
 });
 </script>
 
 <style scoped>
-.profile-container {
-  min-height: 100vh;
-  background-color: #f8fafc; /* bg-slate-50 */
-  color: var(--color-gray-800);
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-}
-
-.dark .profile-container {
-  background-color: #020817; /* dark:bg-slate-950 */
-  color: var(--color-gray-100);
-}
-
-.header-container {
+.hero-title-row {
   display: flex;
   align-items: center;
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
+}
+
+.profile-page {
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.12), transparent 26%),
+    linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+  color: var(--color-slate-800);
+  padding: 1rem;
+}
+
+.dark .profile-page {
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.12), transparent 26%),
+    linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  color: var(--color-slate-100);
+}
+
+.profile-shell {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.profile-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 1.35rem;
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  padding: 1.1rem 1.15rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.dark .profile-hero {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+
+.profile-hero::after {
+  content: '';
+  position: absolute;
+  inset: auto -8rem -8rem auto;
+  width: 14rem;
+  height: 14rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.14), transparent 65%);
+  pointer-events: none;
 }
 
 .back-btn {
-  padding: 0.375rem; /* p-1.5 */
-  border-radius: var(--border-radius-md);
-  display: flex;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--color-slate-700);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: transparent;
-  border: none;
   cursor: pointer;
-  color: var(--color-gray-700);
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  z-index: 1;
 }
 
 .back-btn:hover {
-  background-color: var(--color-slate-200); /* hover:bg-slate-200 */
-  color: var(--color-slate-700); /* hover:text-slate-700 */
+  transform: translateX(-2px);
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.dark .back-btn {
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--color-slate-200);
+  border-color: rgba(148, 163, 184, 0.16);
 }
 
 .dark .back-btn:hover {
-  background-color: var(--color-slate-700); /* dark:hover:bg-slate-700 */
-  color: var(--color-slate-100); /* dark:hover:text-slate-100 */
+  background: rgba(30, 41, 59, 0.95);
 }
 
 .back-btn-icon {
-  height: var(--spacing-lg);
-  width: var(--spacing-lg);
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
-.page-title {
-  margin-left: var(--spacing-md);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-}
-
-.content-container {
-  max-width: 64rem; /* max-w-4xl */
-  margin-left: auto;
-  margin-right: auto;
-  width: 100%;
-  padding: 0 var(--spacing-md);
-}
-
-.user-info-card {
-  background-color: var(--color-white);
-  border: 1px solid var(--color-slate-200); /* border-slate-200 */
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-xl);
-  margin-bottom: var(--spacing-lg);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  min-height: 140px;
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-.dark .user-info-card {
-  background-color: #0f172a; /* dark:bg-slate-900 */
-  border-color: var(--color-slate-700); /* dark:border-slate-700 */
-}
-
-.user-info-content {
+.hero-copy {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  width: 100%;
+  gap: 0.35rem;
+  z-index: 1;
 }
 
-@media (min-width: 1135px) {
-  .user-info-content {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--spacing-lg);
-  }
+.hero-badge,
+.section-kicker,
+.summary-tag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.3rem 0.65rem;
+  border-radius: 9999px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.dark .hero-badge,
+.dark .section-kicker,
+.dark .summary-tag {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: clamp(1.45rem, 2.2vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.hero-description {
+  margin: 0;
+  max-width: 42rem;
+  color: #64748b;
+  line-height: 1.65;
+  font-size: 0.96rem;
+}
+
+.dark .hero-description {
+  color: #94a3b8;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.9fr);
+  grid-template-rows: auto auto;
+  gap: 0.9rem;
+}
+
+.profile-card {
+  min-height: 0;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border-radius: 1.35rem;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+}
+
+.dark .profile-card {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.profile-summary-card {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  padding: 1.1rem;
+  min-height: 0;
+  overflow: auto;
+}
+
+.summary-top {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .user-avatar {
-  width: 5rem;
-  height: 5rem;
-  border-radius: var(--border-radius-full);
-  background-color: var(--color-slate-200); /* bg-slate-200 */
-  display: flex;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  color: var(--color-slate-700); /* text-slate-700 */
-  border: 2px solid #cbd5e1; /* border-2 border-slate-300 */
-  flex-shrink: 0;
+  font-weight: 800;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1d4ed8;
+}
+
+.user-avatar-lg {
+  width: 4.4rem;
+  height: 4.4rem;
+  font-size: 1.4rem;
+  border: 2px solid rgba(59, 130, 246, 0.16);
 }
 
 .dark .user-avatar {
-  background-color: var(--color-slate-700); /* dark:bg-slate-700 */
-  color: #cbd5e1; /* dark:text-slate-300 */
-  border-color: #475569; /* dark:border-slate-600 */
+  background: linear-gradient(135deg, #1e3a8a, #312e81);
+  color: #dbeafe;
+  border-color: rgba(59, 130, 246, 0.22);
 }
 
-.user-details {
+.summary-copy {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
+  gap: 0.3rem;
 }
-
-@media (min-width: 1135px) {
-  .user-details {
-    align-items: flex-start;
-    text-align: left;
-  }
-}
-
 
 .user-name {
-  font-size: var(--font-size-2xl);
-  font-weight: 600; /* font-medium */
-  color: var(--color-slate-800); /* text-slate-800 */
   margin: 0;
-}
-
-.dark .user-name {
-  color: var(--color-slate-100); /* dark:text-slate-100 */
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .user-email {
-  color: #64748b; /* text-slate-500 */
-  margin-top: var(--spacing-xs);
-  margin-bottom: 0;
-  font-size: var(--font-size-sm);
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
 }
 
 .dark .user-email {
-  color: #94a3b8; /* dark:text-slate-400 */
+  color: #94a3b8;
 }
 
-.user-stats {
+.status-row {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--spacing-xl);
-  margin-top: var(--spacing-md);
+  gap: 0.45rem;
+  margin-top: 0.4rem;
 }
 
-@media (min-width: 1135px) {
-  .user-stats {
-    position: absolute;
-    right: var(--spacing-xl);
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    gap: var(--spacing-md);
-    margin: 0;
-  }
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  background: rgba(226, 232, 240, 0.85);
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
-.stat-item {
-  text-align: center;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background-color: var(--color-slate-100); /* bg-slate-100 */
-  border-radius: var(--border-radius-md);
-  min-width: 80px;
+.dark .status-pill {
+  background: rgba(51, 65, 85, 0.9);
+  color: #cbd5e1;
+}
+
+.status-pill-member {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.dark .status-pill-member {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
+.status-pill-muted {
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+}
+
+.dark .status-pill-muted {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+.summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.metric-card {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.95));
+  border-radius: 1rem;
+  padding: 0.85rem;
+  text-align: left;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 60px;
-  width: 100px;
+  gap: 0.3rem;
 }
 
-@media (min-width: 1135px) {
-  .stat-item {
-    text-align: center;
-  }
+.dark .metric-card {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.92));
+  border-color: rgba(148, 163, 184, 0.12);
 }
 
-.dark .stat-item {
-  background-color: var(--color-slate-700); /* dark:bg-slate-700 */
+.metric-card-clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.stat-label {
-  font-size: var(--font-size-sm);
-  color: #64748b; /* text-slate-500 */
-  margin: 0 auto var(--spacing-xs) auto;
-  align-self: stretch;
-  text-align: center;
+.metric-card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.06);
 }
 
-.dark .stat-label {
-  color: #94a3b8; /* dark:text-slate-400 */
+.metric-value-soft {
+  font-size: 1.05rem;
 }
 
-.stat-value {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-slate-800); /* text-slate-800 */
-  margin: 0 auto;
-  align-self: stretch;
-  text-align: center;
+.metric-hint {
+  color: #2563eb;
+  font-size: 0.9rem;
 }
 
-.dark .stat-value {
-  color: var(--color-slate-100); /* dark:text-slate-100 */
+.dark .metric-hint {
+  color: #93c5fd;
 }
 
-.vip-status {
-  color: #ca8a04; /* text-amber-500 */
+.profile-actions-card,
+.profile-panel-card {
+  padding: 1.05rem;
+  min-height: 0;
+  overflow: auto;
 }
 
-.features-grid {
+.profile-actions-card {
+  grid-column: 2 / 3;
+  grid-row: 1 / span 2;
+}
+
+.profile-panel-card {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.85rem;
+}
+
+.section-title {
+  margin: 0.25rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.action-item {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 1rem;
+  padding: 0.85rem;
   display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: var(--spacing-md);
-}
-
-@media (min-width: 1135px) {
-  .features-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1500px) {
-  .features-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.feature-card {
-  background-color: var(--color-white);
-  border: 1px solid var(--color-slate-200); /* border-slate-200 */
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-lg);
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  align-content: center;
-}
-
-.feature-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  border-color: #cbd5e1; /* hover:border-slate-300 */
-}
-
-.dark .feature-card {
-  background-color: #0f172a; /* dark:bg-slate-900 */
-  border-color: var(--color-slate-700); /* dark:border-slate-700 */
-}
-
-.dark .feature-card:hover {
-  border-color: #475569; /* dark:hover:border-slate-600 */
-}
-
-.feature-card-content {
-  display: flex;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.feature-icon {
-  width: 3rem;
-  height: 3rem;
-  border-radius: var(--border-radius-lg);
-  background-color: #e0f2fe; /* bg-sky-100 */
-  display: flex;
+.action-item:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.22);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+}
+
+.action-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.dark .action-item {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.1);
+}
+
+.action-icon {
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 0.9rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
-.dark .feature-icon {
-  background-color: #0c4a6e; /* dark:bg-sky-900/30 */
+.action-icon-primary {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
 }
 
-.icon {
-  height: 1.5rem;
-  width: 1.5rem;
-  color: #0284c7; /* text-sky-600 */
+.action-icon-warm {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
 }
 
-.dark .icon {
-  color: #7dd3fc; /* dark:text-sky-400 */
+.action-icon-emerald {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
 }
 
-.feature-text {
-  flex: 1;
+.dark .action-icon-primary {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
 }
 
-.feature-title {
-  font-weight: 500;
+.dark .action-icon-warm {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
+.dark .action-icon-emerald {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+}
+
+.action-content h4 {
   margin: 0;
-  color: var(--color-slate-800); /* text-slate-800 */
-  font-size: var(--font-size-base);
+  font-size: 0.98rem;
+  font-weight: 700;
 }
 
-.dark .feature-title {
-  color: var(--color-slate-100); /* dark:text-slate-100 */
+.action-content p {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+  font-size: 0.83rem;
+  line-height: 1.45;
 }
 
-.feature-desc {
-  font-size: var(--font-size-sm);
-  color: #64748b; /* text-slate-500 */
-  margin-top: var(--spacing-xs);
-  margin-bottom: 0;
+.dark .action-content p {
+  color: #94a3b8;
 }
 
-.dark .feature-desc {
-  color: #94a3b8; /* dark:text-slate-400 */
+.action-cta {
+  color: #2563eb;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.sign-in-btn {
-  padding: var(--spacing-sm) var(--spacing-md); /* px-4 py-2 */
-  border-radius: var(--border-radius-md); /* rounded-md */
-  font-size: var(--font-size-sm); /* text-sm */
-  font-weight: 500; /* font-medium */
-  transition: color 150ms;
+.dark .action-cta {
+  color: #93c5fd;
 }
 
-.sign-in-btn:hover {
-  background-color: var(--color-blue-600); /* hover:bg-blue-600 */
+.info-stack {
+  display: grid;
+  gap: 0.65rem;
 }
 
-.sign-in-btn:disabled {
-  opacity: 0.5; /* disabled:opacity-50 */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.95rem;
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.1);
 }
 
-.sign-in-btn-disabled {
-  background-color: var(--color-gray-100); /* bg-gray-100 */
-  color: var(--color-gray-500); /* text-gray-500 */
-  cursor: not-allowed; /* cursor-not-allowed */
-}
-
-.dark .sign-in-btn-disabled {
-  background-color: var(--color-gray-800); /* dark:bg-gray-800 */
-  color: var(--color-gray-400); /* dark:text-gray-400 */
-}
-
-.vip-upgrade-btn {
-  padding: var(--spacing-sm) var(--spacing-md); /* px-4 py-2 */
-  background-color: #f59e0b; /* bg-amber-500 */
-  color: var(--color-white); /* text-white */
-  border-radius: var(--border-radius-md); /* rounded-md */
-  font-size: var(--font-size-sm); /* text-sm */
-  font-weight: 500; /* font-medium */
-  transition: all 150ms;
-}
-
-.vip-upgrade-btn:hover {
-  background-color: #d97706; /* hover:bg-amber-600 */
-}
-
-.points-recharge-btn {
-  padding: var(--spacing-sm) var(--spacing-md); /* px-4 py-2 */
-  background-color: #10b981; /* bg-green-500 */
-  color: var(--color-white); /* text-white */
-  border-radius: var(--border-radius-md); /* rounded-md */
-  font-size: var(--font-size-sm); /* text-sm */
-  font-weight: 500; /* font-medium */
-  transition: all 150ms;
-}
-
-.points-recharge-btn:hover {
-  background-color: #059669; /* hover:bg-green-600 */
+.dark .info-row {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.1);
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 50;
-  padding: var(--spacing-lg);
+  padding: 1rem;
 }
 
 .modal-content {
-  background-color: var(--color-white);
-  border: 1px solid var(--color-slate-200); /* border-slate-200 */
-  border-radius: var(--border-radius-lg);
   width: 100%;
-  max-width: 60rem;
-  max-height: 80vh;
-  min-height: 80vh; /* 设置最小高度 */
   overflow-y: auto;
-  padding: var(--spacing-lg);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: slideIn 0.2s ease-out;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 1.35rem;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.22);
+  animation: modalIn 0.2s ease-out;
+}
+
+.modal-large {
+  max-width: 68rem;
+  max-height: 86vh;
+}
+
+.modal-medium {
+  max-width: 48rem;
+  max-height: 78vh;
 }
 
 .dark .modal-content {
-  background-color: #0f172a; /* dark:bg-slate-900 */
-  border-color: var(--color-slate-700); /* dark:border-slate-700 */
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(148, 163, 184, 0.14);
 }
 
-@keyframes slideIn {
+@keyframes modalIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(10px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-slate-200); /* border-b border-slate-200 */
-}
-
-.dark .modal-header {
-  border-bottom: 1px solid var(--color-slate-700); /* dark:border-slate-700 */
-}
-
-.modal-title {
-  font-size: var(--font-size-xl);
-  font-weight: 600; /* font-medium */
-  color: var(--color-slate-800); /* text-slate-800 */
-  margin: 0;
-}
-
-.dark .modal-title {
-  color: var(--color-slate-100); /* dark:text-slate-100 */
-}
-
-.modal-close-btn {
-  padding: var(--spacing-xs);
-  border-radius: var(--border-radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  color: #64748b; /* text-slate-500 */
-  transition: all 0.15s ease;
-}
-
-.modal-close-btn:hover {
-  background-color: var(--color-slate-100); /* hover:bg-slate-100 */
-  color: #475569; /* hover:text-slate-600 */
-}
-
-.dark .modal-close-btn:hover {
-  background-color: var(--color-slate-700); /* dark:hover:bg-slate-700 */
-  color: var(--color-slate-200); /* dark:hover:text-slate-200 */
-}
-
-.modal-close-icon {
-  height: var(--spacing-lg);
-  width: var(--spacing-lg);
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.1rem 1.15rem 0.9rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 .modal-body {
-  margin-bottom: var(--spacing-lg);
+  padding: 1rem 1.15rem 0.45rem;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
 }
 
 .modal-subtitle {
-  font-weight: 500;
-  margin-bottom: var(--spacing-sm);
-  color: var(--color-slate-800); /* text-slate-800 */
+  margin: 0.3rem 0 0;
+  color: #64748b;
+  line-height: 1.55;
+  font-size: 0.88rem;
 }
 
 .dark .modal-subtitle {
-  color: var(--color-slate-100); /* dark:text-slate-100 */
+  color: #94a3b8;
 }
 
-.privileges-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.privilege-item {
-  display: flex;
-  align-items: flex-start;
-  font-size: var(--font-size-sm);
-  color: #475569; /* text-slate-600 */
-}
-
-.dark .privilege-item {
-  color: #94a3b8; /* dark:text-slate-400 */
-}
-
-.privilege-check {
-  color: #059669; /* text-emerald-600 */
-  margin-right: var(--spacing-sm);
-}
-
-.vip-purchase-btn {
-  margin-top: var(--spacing-md);
-}
-
-.points-purchase-btn {
-  margin-top: var(--spacing-md);
-}
-
-.full-width {
-  width: 100%;
-}
-
-
-.verification-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
-}
-
-.verification-input-group {
-  display: flex;
-  gap: var(--spacing-sm);
+.modal-close-btn {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 9999px;
+  border: none;
+  background: rgba(148, 163, 184, 0.12);
+  color: #475569;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.verification-input {
-  flex: 1;
+.modal-close-btn:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.dark .modal-close-btn {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.modal-close-icon {
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
 .pricing-section {
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-md);
-}
-
-.dark .pricing-section {
+  padding-bottom: 0.9rem;
 }
 
 .pricing-plans-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-md);
-}
-
-.pricing-title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  margin-bottom: var(--spacing-md);
-  color: var(--color-gray-800);
-}
-
-.dark .pricing-title {
-  color: var(--color-gray-200);
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.9rem;
 }
 
 .pricing-plan {
-  background-color: var(--color-white);
-  border: 1px solid var(--color-gray-200);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-md);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  transition: all 150ms;
   position: relative;
   overflow: hidden;
-}
-
-.pricing-plan:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  border-color: var(--color-gray-300);
+  border-radius: 1.15rem;
+  padding: 0.95rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.98));
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
 }
 
 .dark .pricing-plan {
-  background-color: var(--color-gray-900);
-  border: 1px solid var(--color-gray-800);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.98));
+  border-color: rgba(148, 163, 184, 0.12);
 }
 
-.dark .pricing-plan:hover {
-  border-color: var(--color-gray-700);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
+.pricing-plan-featured {
+  border-color: rgba(59, 130, 246, 0.22);
+  box-shadow: 0 12px 28px rgba(59, 130, 246, 0.06);
+}
+
+.plan-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.plan-badge-vip {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.plan-badge-svip {
+  background: rgba(168, 85, 247, 0.12);
+  color: #7c3aed;
+}
+
+.plan-badge-points {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.plan-badge-featured {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.dark .plan-badge-vip {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
+.dark .plan-badge-svip {
+  background: rgba(168, 85, 247, 0.18);
+  color: #d8b4fe;
+}
+
+.dark .plan-badge-points {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+}
+
+.dark .plan-badge-featured {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
 }
 
 .plan-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--spacing-sm);
+  gap: 1rem;
 }
 
 .plan-name {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-gray-900);
-  margin: 0;
-}
-
-.dark .plan-name {
-  color: var(--color-gray-100);
+  font-size: 1.02rem;
+  font-weight: 800;
 }
 
 .plan-price {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-gray-900);
-  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 900;
   line-height: 1;
 }
 
-.dark .plan-price {
-  color: var(--color-gray-100);
-}
-
 .plan-original-price {
-  font-size: var(--font-size-base);
-  color: var(--color-gray-500);
+  font-size: 0.9rem;
+  color: #94a3b8;
   text-decoration: line-through;
-  margin: 0;
-  display: block;
-  align-self: center;
-}
-
-.dark .plan-original-price {
-  color: var(--color-gray-400);
+  text-align: right;
 }
 
 .plan-duration {
-  font-size: var(--font-size-sm);
-  color: #64748b; /* text-slate-500 */
-  margin-top: var(--spacing-xs);
-  font-weight: var(--font-weight-medium);
-}
-
-.dark .plan-duration {
-  color: #94a3b8; /* dark:text-slate-400 */
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
 }
 
 .plan-features {
   list-style: none;
+  margin: 0.8rem 0 0.95rem;
   padding: 0;
-  margin: var(--spacing-md) 0;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 0.35rem;
 }
 
 .plan-features li {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-xs);
-  color: #475569; /* text-slate-600 */
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-xs) 0;
+  gap: 0.5rem;
+  color: #475569;
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .dark .plan-features li {
-  color: #94a3b8; /* dark:text-slate-400 */
+  color: #cbd5e1;
 }
 
 .plan-features li::before {
-  content: "✓";
-  color: #059669; /* text-emerald-600 */
-  font-weight: bold;
-  display: flex;
+  content: '✓';
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 1.25rem;
-  width: 1.25rem;
-  border-radius: 50%;
-  background-color: #d1fae5; /* bg-emerald-100 */
-  font-size: 0.75rem;
-  flex-shrink: 0;
-  margin-top: 0.125rem;
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+  font-size: 0.68rem;
+  font-weight: 800;
+  margin-top: 0.12rem;
 }
 
 .dark .plan-features li::before {
-  background-color: #047857; /* dark:bg-emerald-900/30 */
-  color: #a7f3d0; /* dark:text-emerald-300 */
-}
-
-.plan-action-btn {
-  display: inline-block;
-  text-align: center;
-  width: 100%;
-}
-
-.plan-price-container {
-  display: flex;
-  flex-direction: row-reverse;
-  align-items: baseline;
-  gap: var(--spacing-xs);
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
 }
 
 .plan-action-container {
-  margin-top: var(--spacing-sm);
   display: flex;
   justify-content: flex-end;
 }
 
+.plan-payment-link {
+  display: inline-flex;
+  color: inherit;
+  text-decoration: none;
+}
 
-.verification-input {
+.plan-payment-link:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+.plan-action-btn {
   width: 100%;
-  padding: 0.625rem var(--spacing-md); /* p-2.5 */
-  border: 1px solid #cbd5e1; /* border-slate-300 */
-  border-radius: var(--border-radius-lg);
-  font-size: var(--font-size-sm);
-  background-color: var(--color-white);
-  color: var(--color-slate-800); /* text-slate-800 */
-  transition: all 0.15s ease;
-}
-
-.dark .verification-input {
-  background-color: var(--color-slate-800); /* dark:bg-slate-800 */
-  border-color: #475569; /* dark:border-slate-600 */
-  color: var(--color-slate-100); /* dark:text-slate-100 */
-}
-
-.verification-input:focus {
-  outline: none;
-  border-color: #94a3b8; /* focus:border-slate-400 */
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2); /* focus:ring focus:ring-slate-400 focus:ring-opacity-50 */
-}
-
-.dark .verification-input:focus {
-  border-color: #94a3b8; /* dark:focus:border-slate-400 */
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2); /* dark:focus:ring-slate-400 */
-}
-
-.verification-btn {
-  width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: #38bdf8; /* bg-sky-500 */
-  color: var(--color-white);
-  border-radius: var(--border-radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  transition: all 150ms;
-  border: none;
-  cursor: pointer;
-}
-
-.verification-btn:hover {
-  background-color: #0ea5e9; /* hover:bg-sky-600 */
-}
-
-.verification-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .verification-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--color-slate-200); /* border-t border-slate-200 */
-}
-
-.dark .verification-section {
-  border-top: 1px solid var(--color-slate-700); /* dark:border-slate-700 */
+  padding: 0 1.15rem 1.15rem;
 }
 
 .verification-input-group {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 0.65rem;
   align-items: center;
 }
 
-@media (max-width: 640px) {
-  .verification-input-group {
-    flex-direction: column;
-  }
-
-  .verification-input {
-    width: 100%;
-  }
+.verification-input {
+  flex: 1;
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 0.95rem;
+  padding: 0.78rem 0.9rem;
+  background: rgba(248, 250, 252, 0.95);
+  color: var(--color-slate-800);
+  outline: none;
+  transition: all 0.2s ease;
 }
 
-.clickable-stat {
-  cursor: pointer;
+.verification-input:focus {
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
-.clickable-stat:hover {
-  cursor: pointer;
+.dark .verification-input {
+  background: rgba(15, 23, 42, 0.96);
+  color: var(--color-slate-100);
+  border-color: rgba(148, 163, 184, 0.14);
 }
 
-.loading-container,
-.empty-records {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: var(--spacing-xl);
-  color: #64748b; /* text-slate-500 */
+.state-box {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+  border-radius: 1rem;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px dashed rgba(148, 163, 184, 0.18);
 }
 
-.dark .loading-container,
-.dark .empty-records {
-  color: #94a3b8; /* dark:text-slate-400 */
+.dark .state-box {
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.14);
 }
 
 .records-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  max-height: 400px;
+  gap: 0.65rem;
+  max-height: 420px;
   overflow-y: auto;
-  padding: var(--spacing-sm);
+  padding-bottom: 0.65rem;
 }
 
 .record-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-slate-200); /* border-b border-slate-200 */
-  cursor: default; /* 设置默认光标 */
-  user-select: none; /* 禁止选中 */
-  -webkit-user-select: none; /* Safari兼容 */
-  -moz-user-select: none; /* Firefox兼容 */
-  -ms-user-select: none; /* IE/Edge兼容 */
+  gap: 1rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(248, 250, 252, 0.95);
 }
 
 .dark .record-item {
-  border-bottom-color: var(--color-slate-700); /* dark:border-slate-700 */
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.1);
 }
 
 .record-info {
   display: flex;
   flex-direction: column;
+  gap: 0.2rem;
 }
 
 .record-description {
-  font-weight: 500;
-  color: var(--color-slate-800); /* text-slate-800 */
+  font-weight: 700;
+  color: var(--color-slate-800);
 }
 
 .dark .record-description {
-  color: var(--color-slate-100); /* dark:text-slate-100 */
+  color: var(--color-slate-100);
 }
 
 .record-time {
-  font-size: var(--font-size-sm);
-  color: #64748b; /* text-slate-500 */
-  margin-top: var(--spacing-xs);
+  font-size: 0.82rem;
+  color: #64748b;
 }
 
 .dark .record-time {
-  color: #94a3b8; /* dark:text-slate-400 */
+  color: #94a3b8;
 }
 
 .record-amount {
-  font-weight: 600;
-  font-size: var(--font-size-base);
+  font-weight: 900;
+  font-size: 1rem;
 }
 
 .positive {
-  color: #059669; /* text-emerald-600 */
+  color: #059669;
 }
 
 .negative {
-  color: var(--color-red-600); /* text-red-600 */
+  color: #dc2626;
 }
 
 .dark .positive {
-  color: #34d399; /* dark:text-emerald-400 */
+  color: #34d399;
 }
 
 .dark .negative {
-  color: #f87171; /* dark:text-red-400 */
+  color: #f87171;
+}
+
+@media (max-width: 1100px) {
+  .profile-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .profile-summary-card,
+  .profile-actions-card,
+  .profile-panel-card {
+    grid-column: auto;
+    grid-row: auto;
+    overflow: visible;
+  }
+
+  .profile-actions-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .profile-page {
+    min-height: 100vh;
+    overflow-y: auto;
+    padding: 0.85rem;
+  }
+
+  .profile-shell {
+    gap: 0.85rem;
+    min-height: calc(100vh - 1.7rem);
+  }
+
+  .profile-hero,
+  .profile-card,
+  .modal-header,
+  .modal-body,
+  .verification-section {
+    padding-left: 0.95rem;
+    padding-right: 0.95rem;
+  }
+
+  .summary-metrics,
+  .verification-input-group {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .action-item,
+  .record-item,
+  .summary-top {
+    grid-template-columns: 1fr;
+    display: grid;
+    justify-items: start;
+  }
+
+  .action-cta {
+    justify-self: start;
+  }
+
+  .verification-input-group {
+    gap: 0.55rem;
+  }
+
+  .plan-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .plan-action-container {
+    justify-content: stretch;
+  }
 }
 </style>
