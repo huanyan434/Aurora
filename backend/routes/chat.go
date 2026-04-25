@@ -409,7 +409,19 @@ func handleWSDeleteConversation(conn *websocket.Conn, conversationID int64) {
 func handleWSConversationsList(conn *websocket.Conn, userID int64) {
 	var conversations []utils.Conversation
 	utils.GetDB().Table("conversations").Where("user_id = ?", userID).Order("updated_at DESC").Find(&conversations)
-	sendWSResponse(conn, "conversations_list", gin.H{"conversations": conversations})
+
+	formattedConversations := make([]gin.H, 0, len(conversations))
+	for _, conversation := range conversations {
+		formattedConversations = append(formattedConversations, gin.H{
+			"conversationID": strconv.FormatInt(conversation.ID, 10),
+			"title":          conversation.Title,
+			"summary":        conversation.Summary,
+			"createdAt":      conversation.CreatedAt.Format(time.RFC3339),
+			"updatedAt":      conversation.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	sendWSResponse(conn, "conversations_list", gin.H{"conversations": formattedConversations})
 }
 
 // WebSocket: 获取历史消息

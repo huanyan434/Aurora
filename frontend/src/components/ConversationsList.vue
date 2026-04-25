@@ -183,41 +183,85 @@ const toggleAllConversations = () => {
 const groupedConversations = computed(() => {
   const conversations = filteredConversations.value;
   const now = new Date();
-  const groups: Record<string, any[]> = {
-    '今天': [],
-    '过去 7 天': [],
-    '过去 30 天': [],
-    '更早': []
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfThisYear = new Date(now.getFullYear(), 0, 1).getTime();
+  const startOfLast30Days = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+  const startOfLast7Days = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
+  const today: any[] = [];
+  const past7Days: any[] = [];
+  const past30Days: any[] = [];
+  const monthGroups = new Map<string, any[]>();
+  const yearGroups = new Map<string, any[]>();
+
+  const monthOrder = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
   };
 
-  // 获取今天的开始时间（凌晨 0 点）
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const monthLabel = (date: Date) => {
+    const months = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+    return `${months[date.getMonth()]}月`;
+  };
+  const yearLabel = (date: Date) => `${date.getFullYear()}年`;
 
-  conversations.forEach(conv => {
-    const convDate = new Date(conv.createdAt);
+  for (const conv of conversations) {
+    const convDate = new Date(conv.updatedAt || conv.createdAt);
     const convTime = convDate.getTime();
-    const diffTime = now.getTime() - convTime;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    if (convTime >= todayStart) {
-      // 今天的对话
-      groups['今天']!.push(conv);
-    } else if (diffDays < 7) {
-      // 过去 7 天（不包括今天）
-      groups['过去 7 天']!.push(conv);
-    } else if (diffDays < 30) {
-      // 过去 30 天
-      groups['过去 30 天']!.push(conv);
-    } else {
-      // 更早
-      groups['更早']!.push(conv);
+    if (Number.isNaN(convTime)) {
+      continue;
     }
-  });
 
-  // 转换为数组并过滤空组
-  return Object.entries(groups)
-    .filter(([_, items]) => items.length > 0)
-    .map(([title, conversations]) => ({ title, conversations }));
+    if (convTime >= startOfToday) {
+      today.push(conv);
+      continue;
+    }
+
+    if (convTime >= startOfLast7Days) {
+      past7Days.push(conv);
+      continue;
+    }
+
+    if (convTime >= startOfLast30Days) {
+      past30Days.push(conv);
+      continue;
+    }
+
+    if (convTime >= startOfThisYear) {
+      const key = monthOrder(convDate);
+      const items = monthGroups.get(key) ?? [];
+      items.push(conv);
+      monthGroups.set(key, items);
+      continue;
+    }
+
+    const key = yearLabel(convDate);
+    const items = yearGroups.get(key) ?? [];
+    items.push(conv);
+    yearGroups.set(key, items);
+  }
+
+  const result: Array<{ title: string; conversations: any[] }> = [];
+  if (today.length > 0) result.push({ title: '今天', conversations: today });
+  if (past7Days.length > 0) result.push({ title: '过去 7 天', conversations: past7Days });
+  if (past30Days.length > 0) result.push({ title: '过去 30 天', conversations: past30Days });
+
+  const months = Array.from(monthGroups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  for (const [key, items] of months) {
+    const [year, month] = key.split('-');
+    const date = new Date(Number(year), Number(month) - 1, 1);
+    result.push({ title: monthLabel(date), conversations: items });
+  }
+
+  const years = Array.from(yearGroups.entries())
+    .sort((a, b) => Number(b[0].replace('年', '')) - Number(a[0].replace('年', '')));
+  for (const [title, items] of years) {
+    result.push({ title, conversations: items });
+  }
+
+  return result;
 });
 
 // 监听路由变化
@@ -491,7 +535,7 @@ defineExpose({
   padding-top: var(--spacing-sm); /* py-2 */
   padding-bottom: var(--spacing-sm); /* py-2 */
   margin-bottom: var(--spacing-xs); /* mb-1 */
-  border-radius: var(--border-radius-md); /* rounded-md */
+  border-radius: var(--border-radius-lg);
   display: flex;
   align-items: center;
   cursor: pointer;

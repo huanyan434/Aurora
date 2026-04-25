@@ -296,10 +296,6 @@ const clearAndFocusMessageInput = () => {
   focusAndClearInput();
 };
 
-const handleExternalFocus = async () => {
-  await focusAndClearInput();
-};
-
 defineExpose({
   focusMessageInput,
   clearAndFocusMessageInput,
