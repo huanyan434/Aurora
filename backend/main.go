@@ -39,6 +39,7 @@ func main() {
 	})
 	r.Use(sessions.Sessions("SESSIONID", store))
 	gob.Register(utils.User{})
+	gob.Register(routes.CurrentUserSession{})
 	gob.Register(time.Time{})
 
 	// 数据库迁移 - 确保 base64 列存在

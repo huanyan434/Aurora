@@ -25,6 +25,7 @@ type User struct {
 	Username     string    `gorm:"column:username;type:varchar(64);not null"`
 	Email        string    `gorm:"column:email;type:varchar(120);uniqueIndex:idx_email;not null"`
 	PasswordHash string    `gorm:"column:password_hash;type:varchar(255)"`
+	Avatar       []byte    `gorm:"column:avatar;type:longblob"`
 	IsMember     bool      `gorm:"column:is_member;type:boolean;default:false"`
 	MemberLevel  string    `gorm:"column:member_level;type:varchar(20);default:'free'"`
 	MemberSince  time.Time `gorm:"column:member_since;type:datetime;null"`
@@ -341,10 +342,18 @@ func RegisterUser(username, email, password string) (User, error) {
 		ID:          id,
 		Username:    username,
 		Email:       email,
+		Avatar:      nil,
 		IsMember:    false,  // 显式初始化布尔字段
 		MemberLevel: "free", // 显式初始化会员级别
 		Points:      0,      // 显式初始化积分数
 	}
+
+	avatarBytes, err := GenerateUserAvatar(id, email)
+	if err != nil {
+		tx.Rollback()
+		return User{}, err
+	}
+	user.Avatar = avatarBytes
 
 	// 设置密码
 	SetPassword(&user, password)
@@ -395,6 +404,8 @@ func InitDB() {
 
 	fmt.Println("数据库表结构初始化完成")
 
+	ensureExistingUserAvatars()
+
 
 	// 配置连接池
 	sqlDB, err := DB.DB()
@@ -422,10 +433,46 @@ func FilterByEmail(email string) User {
 	return user
 }
 
+// FilterByID 通过用户ID过滤用户。
+func FilterByID(userID int64) User {
+	var user User
+	GetDB().Table("users").Where("id = ?", userID).First(&user)
+	return user
+}
+
 // VerifyPassword 比较密码
 func VerifyPassword(inputPassword string, passwordHash string) bool {
 	// 将输入的密码进行哈希处理并与存储的哈希值进行比较
 	return HashPassword(inputPassword) == passwordHash
+}
+
+func ensureExistingUserAvatars() {
+	db := GetDB()
+	if db == nil {
+		return
+	}
+
+	var users []User
+	if err := db.Select("id, email, avatar").Find(&users).Error; err != nil {
+		fmt.Println("读取用户头像数据失败：", err)
+		return
+	}
+
+	for _, user := range users {
+		if len(user.Avatar) > 0 {
+			continue
+		}
+
+		avatarBytes, err := GenerateUserAvatar(user.ID, user.Email)
+		if err != nil {
+			fmt.Printf("生成用户 %d 头像失败：%v\n", user.ID, err)
+			continue
+		}
+
+		if err := db.Model(&User{}).Where("id = ?", user.ID).Update("avatar", avatarBytes).Error; err != nil {
+			fmt.Printf("更新用户 %d 头像失败：%v\n", user.ID, err)
+		}
+	}
 }
 
 // LoadConversationHistory 加载指定conversationID的对话历史

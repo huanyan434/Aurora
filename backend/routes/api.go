@@ -44,6 +44,9 @@ func ApiInit(r *gin.Engine) {
 		// 退出登录
 		api.POST("/logout", logoutHandler)
 
+		// 获取头像
+		api.GET("/avatar/:filename", avatarHandler)
+
 		// 获取积分记录
 		api.GET("/points_records", pointsRecordsHandler)
 
@@ -103,8 +106,7 @@ func loginHandler(c *gin.Context) {
 
 	//在数据库通过邮箱找用户
 	user := utils.FilterByEmail(email)
-
-	if (user == utils.User{}) || !utils.VerifyPassword(password, user.PasswordHash) {
+	if user.ID == 0 || !utils.VerifyPassword(password, user.PasswordHash) {
 		c.JSON(400, gin.H{
 			"success": false,
 			"message": "用户名或密码错误",
@@ -153,7 +155,7 @@ func signupHandler(c *gin.Context) {
 	}
 
 	// 检测邮箱是否存在
-	if (utils.FilterByEmail(email) != utils.User{}) {
+	if utils.FilterByEmail(email).ID != 0 {
 		c.JSON(400, gin.H{
 			"success": false,
 			"message": "该邮箱已被注册",
@@ -189,6 +191,7 @@ func signupHandler(c *gin.Context) {
 			"id":       strconv.FormatInt(user.ID, 10),
 			"username": user.Username,
 			"email":    user.Email,
+			"avatar":   user.Avatar,
 		},
 	})
 }
@@ -215,6 +218,7 @@ func currentUserHandler(c *gin.Context) {
 		"id":          strconv.FormatInt(userInfo.ID, 10),
 		"username":    userInfo.Username,
 		"email":       userInfo.Email,
+		"avatar":      userInfo.Avatar,
 		"isMember":    userInfo.IsMember,
 		"memberLevel": userInfo.MemberLevel,
 		"points":      userInfo.Points,
@@ -421,7 +425,13 @@ func verifyPointsHandler(c *gin.Context) {
 
 func setCurrentUser(c *gin.Context, userInfo utils.User) {
 	session := sessions.Default(c)
-	session.Set("currentUser", userInfo)
+	session.Set("currentUser", CurrentUserSession{
+		ID:          userInfo.ID,
+		Email:       userInfo.Email,
+		Username:    userInfo.Username,
+		IsMember:    userInfo.IsMember,
+		MemberLevel: userInfo.MemberLevel,
+	})
 	// 一定要Save否则不生效，若未使用gob注册User结构体，调用Save时会返回一个Error
 	err := session.Save()
 	if err != nil {
@@ -440,13 +450,17 @@ func getCurrentUser(c *gin.Context) (userInfo utils.User, err error) {
 	}
 
 	// 类型断言检查
-	userInfo, ok := userInfoInterface.(utils.User)
+	currentSession, ok := userInfoInterface.(CurrentUserSession)
 	if !ok {
 		err = fmt.Errorf("内部错误")
 		return
 	}
 
-	userInfo = utils.FilterByEmail(userInfo.Email)
+	userInfo = utils.FilterByID(currentSession.ID)
+	if userInfo.ID == 0 {
+		err = fmt.Errorf("用户不存在")
+		return
+	}
 	if !utils.IsActiveMember(&userInfo) {
 		userInfo.IsMember = false
 		userInfo.MemberLevel = "free"
@@ -478,6 +492,37 @@ func logoutHandler(c *gin.Context) {
 		"success": true,
 		"message": "退出成功",
 	})
+}
+
+// @Summary 获取头像
+// @Description 从数据库获取用户头像并返回PNG图片
+// @Tags 用户
+// @Produce image/png
+// @Param id path string true "用户ID"
+// @Success 200 "头像图片"
+// @Failure 400 {object} map[string]interface{} "头像不存在"
+// @Router /api/avatar/{id} [get]
+func avatarHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	userID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || userID <= 0 {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "用户ID无效",
+		})
+		return
+	}
+
+	user := utils.FilterByID(userID)
+	if len(user.Avatar) == 0 {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "头像不存在",
+		})
+		return
+	}
+
+	c.Data(200, "image/png", user.Avatar)
 }
 
 // 请求和响应结构体定义
