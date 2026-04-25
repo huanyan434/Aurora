@@ -876,7 +876,7 @@ watch(darkMode, (enabled) => {
 
 .user-avatar {
   flex-shrink: 0;
-  border-radius: 1.1rem;
+  border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
