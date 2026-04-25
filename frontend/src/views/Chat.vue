@@ -30,29 +30,9 @@
     <div class="main-content-wrapper" :class="{
       'main-content-collapsed': sidebarStore.collapsed && !isMobile,
     }">
-      <MainContent ref="mainContentRef" @open-settings="openSettingsDialogFromChild" />
+      <MainContent ref="mainContentRef" />
     </div>
 
-    <!-- 设置对话框 -->
-    <Dialog v-model:open="isSettingsDialogOpen">
-      <DialogContent class="settings-dialog-content">
-        <DialogHeader>
-          <DialogTitle>设置</DialogTitle>
-        </DialogHeader>
-        <div class="settings-dialog-body">
-          <div class="dark-mode-setting">
-            <div class="setting-label">
-              <span>深色模式</span>
-            </div>
-            <Switch v-model="darkMode" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="closeSettingsDialog">取消</Button>
-          <Button type="button" @click="saveSettings">保存</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </div>
 </template>
 
@@ -62,16 +42,6 @@ import { ref, onMounted } from "vue";
 import { useRouter } from 'vue-router';
 import Sidebar from "@/components/Sidebar.vue";
 import MainContent from "@/components/MainContent.vue";
-import { useSettingsStore } from '@/stores/settings';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
 import { wsManager } from '@/api/chat';
 import { toastError } from '@/components/ui/toast/use-toast';
 
@@ -79,13 +49,6 @@ const sidebarStore = useSidebarStore();
 const isMobile = ref(false);
 const mainContentRef = ref<InstanceType<typeof MainContent> | null>(null);
 const router = useRouter();
-
-// 设置对话框状态
-const isSettingsDialogOpen = ref(false);
-// 设置选项状态
-const darkMode = ref(false);
-const notifications = ref(true);
-const settingsStore = useSettingsStore();
 
 // 检测屏幕尺寸并设置 isMobile 标志
 const checkScreenSize = () => {
@@ -108,10 +71,6 @@ onMounted(async () => {
   } catch (error) {
     toastError("WebSocket 连接失败，请检查后端服务是否正常运行");
   }
-
-  // 应用深色模式设置
-  const darkModeSetting = settingsStore.getSetting('darkMode');
-  applyDarkMode(darkModeSetting);
 });
 
 // 移动端关闭侧边栏
@@ -124,39 +83,6 @@ const closeSidebarOnMobile = () => {
 // 切换侧边栏（适用于所有模式）
 const toggleSidebarForMobile = () => {
   sidebarStore.toggleSidebar();
-};
-
-// 应用深色模式到整个应用
-const applyDarkMode = (enabled: boolean) => {
-  if (enabled) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-};
-
-// 关闭设置对话框
-const closeSettingsDialog = () => {
-  isSettingsDialogOpen.value = false;
-};
-
-// 保存设置
-const saveSettings = () => {
-  console.log(`darkMode:` + darkMode.value);
-  // 保存到设置 store
-  settingsStore.setSetting('darkMode', darkMode.value);
-  settingsStore.setSetting('notifications', notifications.value);
-
-  // 应用深色模式到整个应用
-  applyDarkMode(darkMode.value);
-  closeSettingsDialog();
-};
-
-// 打开设置对话框（从子组件触发）
-const openSettingsDialogFromChild = () => {
-  // 初始化设置选项
-  darkMode.value = settingsStore.getSetting('darkMode');
-  isSettingsDialogOpen.value = true;
 };
 
 const handleNewConversation = async () => {

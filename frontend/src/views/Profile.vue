@@ -109,6 +109,23 @@
         <section class="profile-card profile-panel-card">
           <div class="section-header">
             <div>
+              <div class="section-kicker">外观设置</div>
+              <h3 class="section-title">深色模式</h3>
+            </div>
+          </div>
+
+          <div class="theme-setting-row">
+            <div class="theme-setting-copy">
+              <h4 class="theme-setting-title">夜间主题</h4>
+              <p class="theme-setting-desc">开启后，界面会切换到深色模式。</p>
+            </div>
+            <Switch v-model="darkMode" />
+          </div>
+        </section>
+
+        <section class="profile-card profile-panel-card">
+          <div class="section-header">
+            <div>
               <div class="section-kicker">账户安全</div>
               <h3 class="section-title">状态说明</h3>
             </div>
@@ -398,17 +415,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
+import { useSettingsStore } from '@/stores/settings';
 import { sign, verifyPoints, verifyVip, getHasSigned, getPointsRecords } from '@/api/user';
 import type { PointsRecord } from '@/api/user';
 import { toastSuccess, toastError } from '@/components/ui/toast/use-toast';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 
 const router = useRouter();
 const userStore = useUserStore();
+const settingsStore = useSettingsStore();
 
+const applyDarkMode = (enabled: boolean) => {
+  if (enabled) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+};
+
+const darkMode = ref(false);
 const signInStatus = ref(false);
 const signingIn = ref(false);
 const showVipUpgrade = ref(false);
@@ -599,15 +628,60 @@ const formatTimestamp = (timestamp: string): string => {
 };
 
 onMounted(async () => {
+  const darkModeSetting = settingsStore.getSetting('darkMode');
+  darkMode.value = !!darkModeSetting;
+  applyDarkMode(darkMode.value);
+
   await userStore.init();
   await checkSignInStatus();
+});
+
+watch(darkMode, (enabled) => {
+  settingsStore.setSetting('darkMode', enabled);
+  applyDarkMode(enabled);
 });
 </script>
 
 <style scoped>
-.hero-title-row {
+.theme-setting-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 1rem;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.dark .theme-setting-row {
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.theme-setting-copy {
+  min-width: 0;
+}
+
+.theme-setting-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dark .theme-setting-title {
+  color: #f8fafc;
+}
+
+.theme-setting-desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.dark .theme-setting-desc {
+  color: #94a3b8;
 }
 
 .profile-page {

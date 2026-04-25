@@ -363,12 +363,16 @@ defineExpose({
   display: flex;
   flex-direction: row;
   gap: var(--spacing-sm);
+  padding: 0.25rem 0.35rem;
+  border-radius: 0.9rem;
 }
 
 .input-button-group-right {
   position: absolute;
   right: var(--spacing-sm);
   bottom: var(--spacing-sm);
+  padding: 0.25rem;
+  border-radius: 0.9rem;
 }
 
 .input-addon-button {
@@ -386,14 +390,15 @@ defineExpose({
 }
 
 .dark .input-addon-button {
-  border-color: #4b5563;
-  color: #9ca3af;
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #d1d5db;
 }
 
 .dark .input-addon-button:hover {
   background-color: #374151;
-  border-color: #6b7280;
-  color: #e5e7eb;
+  border-color: #4b5563;
+  color: #f3f4f6;
 }
 
 /* 推理按钮样式 */
@@ -432,25 +437,33 @@ defineExpose({
 }
 
 .dark .reasoning-button {
-  border-color: #4b5563;
-  color: #9ca3af;
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #d1d5db;
 }
 
 .dark .reasoning-button:hover {
   background-color: #374151;
-  border-color: #6b7280;
-  color: #e5e7eb;
+  border-color: #4b5563;
+  color: #f3f4f6;
 }
 
-.dark .reasoning-button-active {
+/* 推理按钮选中状态 - 简约黑白风 */
+.reasoning-button-active {
   background-color: #f9fafb; /* 浅色背景 */
   border-color: #f9fafb;
   color: #111827;
 }
 
+.dark .reasoning-button-active {
+  background-color: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
 .dark .reasoning-button-active:hover {
-  background-color: #f3f4f6;
-  border-color: #f3f4f6;
+  background-color: #d1d5db;
+  border-color: #d1d5db;
   color: #111827;
 }
 
@@ -485,14 +498,14 @@ defineExpose({
 }
 
 .dark .input-send-button {
-  background-color: #f9fafb;
-  border-color: #f9fafb;
+  background-color: #e5e7eb;
+  border-color: #e5e7eb;
   color: #111827;
 }
 
 .dark .input-send-button:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border-color: #f3f4f6;
+  background-color: #d1d5db;
+  border-color: #d1d5db;
 }
 
 .dark .input-send-button:disabled {
@@ -515,6 +528,7 @@ defineExpose({
 }
 
 .dark .input-send-button-stop {
+  background-color: transparent !important;
   border-color: #f87171 !important;
   color: #f87171 !important;
 }

@@ -139,10 +139,6 @@ const goToProfile = () => {
     router.push('/profile');
 };
 
-const openSettingsDialog = () => {
-    emit('open-settings');
-};
-
 const handleLogout = async () => {
     try {
         await logout();
