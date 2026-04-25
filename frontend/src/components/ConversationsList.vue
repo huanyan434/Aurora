@@ -37,16 +37,16 @@
                     <Button variant="ghost" size="icon"
                       class="more-options-btn"
                       @click.stop>
-                      <svg xmlns="http://www.w3.org/2000/svg" class="more-options-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/>
-                      </svg>
+                      <Ellipsis class="more-options-icon" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent class="more-options-dropdown">
                     <DropdownMenuItem @click.stop="renameConversationHandler(conversation)" class="rename-menu-item">
+                      <PenLine class="menu-item-icon" />
                       <span>重命名</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem @click.stop="deleteConversationHandler(conversation)" class="delete-menu-item">
+                      <Trash2 class="menu-item-icon" />
                       <span class="delete-text">删除</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -124,6 +124,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Ellipsis, PenLine, Trash2 } from 'lucide-vue-next';
 import {
   Tooltip,
   TooltipContent,
@@ -601,13 +602,24 @@ defineExpose({
   width: var(--spacing-md); /* w-4 */
 }
 
+.menu-item-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
 .rename-menu-item {
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .delete-menu-item {
   cursor: pointer;
   color: var(--color-red-600); /* text-red-600 */
+  display: flex;
+  align-items: center;
 }
 
 .dark .delete-menu-item {
