@@ -374,8 +374,7 @@ defineExpose({
 .input-addon-button {
   height: var(--button-size);
   width: var(--button-size);
-  background-color: transparent;
-  border: 1px solid #d1d5db; /* 默认显示边框 */
+  background-color: #f5f5f5;
   border-radius: 0.75rem; /* 苹果风格小圆角 */
   color: #6b7280; /* 默认图标颜色 */
 }
@@ -402,8 +401,7 @@ defineExpose({
   height: var(--button-size);
   width: auto;
   padding: 0 0.75rem;
-  background-color: transparent;
-  border: 1px solid #d1d5db; /* 默认显示边框 */
+  background-color: #f5f5f5;
   border-radius: 0.75rem; /* 苹果风格小圆角 */
   color: #6b7280; /* 默认图标颜色 */
   font-size: 0.875rem;

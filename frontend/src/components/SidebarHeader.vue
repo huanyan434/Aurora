@@ -1,8 +1,34 @@
 <template>
     <div class="sidebar-header-container">
-        <!-- Logo 和切换侧边栏按钮 -->
-        <div class="logo-section" v-if="!isCollapsed">
-            <span class="logo-text">Aurora</span>
+        <!-- 用户区 + 侧边栏控制 -->
+        <div class="brand-user-section">
+            <div class="user-menu-container">
+                <DropdownMenu>
+                    <DropdownMenuTrigger>
+                        <Button variant="ghost" class="user-menu-btn" type="button">
+                            <Avatar class="user-avatar">
+                                <AvatarImage src="/avatars/user.jpg" alt="@user" />
+                                <AvatarFallback>{{ userInitial || 'U' }}</AvatarFallback>
+                            </Avatar>
+                            <div class="user-info">
+                                <span class="user-name">{{ userStore.userInfo.username || '未登录' }}</span>
+                            </div>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent class="user-dropdown-content" align="start" :sideOffset="8">
+                        <DropdownMenuItem class="profile-menu-item" @click="goToProfile">
+                            <UserRound class="menu-item-icon" />
+                            <span>个人中心</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem class="logout-menu-item" @click="handleLogout">
+                            <LogOut class="menu-item-icon" />
+                            <span>退出登录</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
             <Button
                 variant="ghost"
                 size="icon"
@@ -10,13 +36,6 @@
                 @click="toggleGlobalSidebar"
             >
                 <PanelLeftClose class="toggle-sidebar-icon" />
-            </Button>
-        </div>
-        <div class="top-actions" v-else>
-            <Button variant="ghost" class="toggle-sidebar-btn" @click="toggleGlobalSidebar">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                </svg>
             </Button>
         </div>
 
@@ -63,12 +82,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Compass, MessageCirclePlus, PanelLeftClose, Search } from 'lucide-vue-next';
+import { Compass, LogOut, MessageCirclePlus, PanelLeftClose, Search, UserRound } from 'lucide-vue-next';
 import { useSidebarStore } from '@/stores/sidebar';
+import { useUserStore } from '@/stores/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { getInitial } from '@/lib/utils';
+import { logout } from '@/api/user';
 
 interface Props {
     isMobileToggleVisible?: boolean;
@@ -87,31 +117,47 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const router = useRouter();
+const userStore = useUserStore();
+const userInitial = computed(() => {
+    return getInitial(userStore.userInfo.username);
+});
 const searchQuery = ref('');
 const isSearchActive = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const searchContainerRef = ref<HTMLDivElement | null>(null);
 
-// emit 事件
 const emit = defineEmits<{
     search: [query: string];
+    'open-settings': [];
 }>();
 
-// 监听搜索词变化，实时触发搜索
 watch(searchQuery, (newQuery) => {
     emit('search', newQuery);
 });
 
-// 点击外部关闭搜索
+const goToProfile = () => {
+    router.push('/profile');
+};
+
+const openSettingsDialog = () => {
+    emit('open-settings');
+};
+
+const handleLogout = async () => {
+    try {
+        await logout();
+        userStore.logout();
+        router.push('/login');
+    } catch (error) {
+        console.error('退出登录失败:', error);
+    }
+};
+
 const handleClickOutside = (event: MouseEvent) => {
     if (isSearchActive.value && searchContainerRef.value) {
         const targetNode = event.target as Node;
         const targetHTMLElement = event.target as HTMLElement;
-
-        // 检查点击的元素是否是对话 item 或其子元素
         const isConversationItem = targetHTMLElement.closest('.conversation-item');
-
-        // 如果点击的是对话 item，不关闭搜索框
         if (isConversationItem) {
             return;
         }
@@ -129,7 +175,6 @@ onUnmounted(() => {
     document.removeEventListener('mousedown', handleClickOutside);
 });
 
-// 使用传入的函数或默认行为
 const toggleGlobalSidebar = () => {
     if (typeof props.toggleSidebar === 'function') {
         props.toggleSidebar();
@@ -149,7 +194,6 @@ const handleNewConversation = async () => {
     }
 };
 
-// 打开搜索
 const openSearch = async () => {
     isSearchActive.value = true;
     await nextTick();
@@ -161,7 +205,6 @@ const openSearch = async () => {
     }
 };
 
-// 关闭搜索
 const closeSearch = () => {
     isSearchActive.value = false;
     searchQuery.value = '';
@@ -173,7 +216,7 @@ const handleCommunity = () => {
 };
 
 defineExpose({
-    closeSearch
+    closeSearch,
 });
 </script>
 
@@ -183,6 +226,110 @@ defineExpose({
     flex-direction: column;
     padding: 0.5rem;
     gap: 0.5rem;
+}
+
+.brand-user-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.5rem 0.25rem 0.5rem;
+}
+
+.user-menu-container {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-menu-btn {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    padding: 0.1rem 0.1rem;
+    height: auto;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.user-menu-btn:hover {
+    background-color: transparent;
+}
+
+.dark .user-menu-btn:hover {
+    background-color: transparent;
+}
+
+.user-avatar {
+    height: 2rem;
+    width: 2rem;
+    flex-shrink: 0;
+}
+
+.user-info {
+    min-width: 0;
+    flex: 1;
+    text-align: left;
+}
+
+.user-name {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1F2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dark .user-name {
+    color: #F3F4F6;
+}
+
+.user-dropdown-content {
+    width: 14rem;
+    background-color: #0f0f0f;
+    border-color: #404040;
+    z-index: 2100;
+}
+
+.dark .user-dropdown-content {
+    background-color: #0f0f0f;
+    border-color: #404040;
+    z-index: 2100;
+}
+
+.menu-item-icon {
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+}
+
+.profile-menu-item,
+.settings-menu-item,
+.logout-menu-item {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.profile-menu-item,
+.settings-menu-item {
+    color: #1f2937;
+}
+
+.dark .profile-menu-item,
+.dark .settings-menu-item {
+    color: #f5f5f5;
+}
+
+.logout-menu-item {
+    color: var(--color-red-600);
+}
+
+.dark .logout-menu-item {
+    color: #f87171;
 }
 
 .logo-section {

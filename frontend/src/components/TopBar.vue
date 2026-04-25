@@ -7,95 +7,20 @@
 
     <!-- 模型选择器 -->
     <ModelSelector />
-
-    <!-- 用户头像下拉菜单 -->
-    <div class="user-menu-container">
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <Button variant="ghost" class="user-avatar-btn">
-            <Avatar class="user-avatar">
-              <AvatarImage src="/avatars/user.jpg" alt="@user" />
-              <AvatarFallback>{{ userInitial || 'U' }}</AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent class="user-dropdown-content" align="end">
-          <DropdownMenuItem @click="goToProfile" class="profile-menu-item">
-            <span>个人资料</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem @click="openSettingsDialog" class="settings-menu-item">
-            <span>设置</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem @click="handleLogout" class="logout-menu-item">
-            <span class="logout-text">退出登录</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
 import { useSidebarStore } from '@/stores/sidebar';
-import { useUserStore } from '@/stores/user';
-import { useRouter } from 'vue-router';
-import { computed } from 'vue';
-import { getInitial } from '@/lib/utils';
-import { logout } from '@/api/user';
 import { PanelLeftOpen } from 'lucide-vue-next';
 import ModelSelector from './ModelSelector.vue';
 
-const router = useRouter();
 const sidebarStore = useSidebarStore();
-const userStore = useUserStore();
-
-// 定义 emit
-const emit = defineEmits(['open-settings']);
 
 // 直接调用store方法来切换侧边栏状态
 const toggleSidebar = () => {
   sidebarStore.toggleSidebar();
-};
-
-// 跳转到个人资料页面
-const goToProfile = () => {
-  router.push('/profile');
-};
-
-// 打开设置对话框
-const openSettingsDialog = () => {
-  emit('open-settings');
-};
-
-// 获取用户昵称首字母
-const userInitial = computed(() => {
-  return getInitial(userStore.userInfo.username);
-});
-
-// 处理退出登录
-const handleLogout = async () => {
-  try {
-    // 调用退出登录 API
-    await logout();
-
-    // 清除用户信息
-    userStore.logout();
-
-    // 跳转到登录页
-    router.push('/login');
-  } catch (error) {
-    console.error('退出登录失败:', error);
-  }
 };
 </script>
 

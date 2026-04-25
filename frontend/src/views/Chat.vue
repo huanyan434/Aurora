@@ -219,7 +219,7 @@ const handleNewConversation = async () => {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 879;
+  z-index: 850;
   transition: opacity var(--transition-duration-slow) ease-in-out;
 }
 
@@ -229,7 +229,7 @@ const handleNewConversation = async () => {
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 999;
+    z-index: 1300;
     transform: translateX(-100%);
     width: 80% !important;
     /* 移动端侧边栏宽度 */
