@@ -12,7 +12,7 @@
         <h1 class="welcome-title">{{ greeting }}, 有什么可以帮你？</h1>
         <!-- 居中的inputarea -->
         <div class="welcome-input-container">
-          <InputArea />
+          <InputArea ref="homeInputAreaRef" />
         </div>
       </div>
       <div v-else class="messages-container-wrapper">
@@ -22,19 +22,21 @@
 
     <!-- 在对话界面中inputarea始终固定在底部 -->
     <div v-if="!isHomeRoute">
-      <InputArea />
+      <InputArea ref="chatInputAreaRef" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import TopBar from './TopBar.vue';
 import MessagesContainer from './MessagesContainer.vue';
 import InputArea from './InputArea.vue';
 
 const route = useRoute();
+const homeInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
+const chatInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
 
 // 定义 emit
 const emit = defineEmits(['open-settings']);
@@ -52,6 +54,26 @@ const greeting = computed(() => {
   } else {
     return '晚上好';
   }
+});
+
+const focusInputArea = async () => {
+  if (isHomeRoute.value) {
+    homeInputAreaRef.value?.focusMessageInput?.();
+    return;
+  }
+  chatInputAreaRef.value?.focusMessageInput?.();
+};
+
+const handleExternalFocusInputArea = () => {
+  focusInputArea();
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus-input-area', handleExternalFocusInputArea);
+}
+
+defineExpose({
+  focusInputArea,
 });
 </script>
 

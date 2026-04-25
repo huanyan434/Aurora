@@ -9,9 +9,7 @@
                 class="toggle-sidebar-btn"
                 @click="toggleGlobalSidebar"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                    <path fill-rule="evenodd" d="M21 5H11v14h10zM3 5h6v14H3zm0-2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm2 4.25a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5zm-.75 3.5A.75.75 0 0 1 5 10h2a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75m.75 2a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5z"/>
-                </svg>
+                <PanelLeftClose class="toggle-sidebar-icon" />
             </Button>
         </div>
         <div class="top-actions" v-else>
@@ -25,18 +23,18 @@
         <!-- 核心功能区 -->
         <div v-if="!isCollapsed" class="actions-section">
             <!-- 新建对话按钮 -->
-            <Button variant="ghost" class="action-btn" @click="handleNewConversation">
-                <svg xmlns="http://www.w3.org/2000/svg" class="action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
+            <Button
+                variant="ghost"
+                class="action-btn action-btn-new-conversation"
+                @click="handleNewConversation"
+            >
+                <MessageCirclePlus class="action-icon" />
                 <span>新建对话</span>
             </Button>
 
             <!-- 搜索按钮/输入框 -->
             <div v-if="isSearchActive" class="search-container" ref="searchContainerRef">
-                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
+                <Search class="search-icon" />
                 <Input
                     ref="searchInputRef"
                     v-model="searchQuery"
@@ -51,17 +49,13 @@
                 </button>
             </div>
             <Button v-else variant="ghost" class="action-btn" @click="openSearch">
-                <svg xmlns="http://www.w3.org/2000/svg" class="action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
+                <Search class="action-icon" />
                 <span>搜索对话</span>
             </Button>
 
             <!-- 社区按钮 -->
             <Button variant="ghost" class="action-btn" @click="handleCommunity">
-                <svg xmlns="http://www.w3.org/2000/svg" class="action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
+                <Compass class="action-icon" />
                 <span>社区</span>
             </Button>
         </div>
@@ -71,6 +65,7 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { Compass, MessageCirclePlus, PanelLeftClose, Search } from 'lucide-vue-next';
 import { useSidebarStore } from '@/stores/sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,7 +110,7 @@ const handleClickOutside = (event: MouseEvent) => {
 
         // 检查点击的元素是否是对话 item 或其子元素
         const isConversationItem = targetHTMLElement.closest('.conversation-item');
-        
+
         // 如果点击的是对话 item，不关闭搜索框
         if (isConversationItem) {
             return;
@@ -144,8 +139,14 @@ const toggleGlobalSidebar = () => {
     }
 };
 
-const handleNewConversation = () => {
-    router.push('/');
+const handleNewConversation = async () => {
+    await router.push('/');
+    window.dispatchEvent(new CustomEvent('focus-input-area'));
+
+    const sidebarStore = useSidebarStore();
+    if (window.innerWidth < 1135) {
+        sidebarStore.setSidebarCollapsed(true);
+    }
 };
 
 // 打开搜索
@@ -153,7 +154,6 @@ const openSearch = async () => {
     isSearchActive.value = true;
     await nextTick();
     if (searchInputRef.value) {
-        // Input 组件实例，需要通过 $el 访问底层 input 元素
         const inputElement = (searchInputRef.value as any).$el as HTMLInputElement;
         if (inputElement) {
             inputElement.focus();
@@ -170,10 +170,8 @@ const closeSearch = () => {
 
 const handleCommunity = () => {
     console.log('打开社区');
-    // TODO: 实现社区功能
 };
 
-// 暴露 closeSearch 方法供父组件调用
 defineExpose({
     closeSearch
 });
@@ -187,7 +185,6 @@ defineExpose({
     gap: 0.5rem;
 }
 
-/* Logo 区域 */
 .logo-section {
     display: flex;
     align-items: center;
@@ -206,7 +203,6 @@ defineExpose({
     color: #F3F4F6;
 }
 
-/* 顶部操作区 */
 .top-actions {
     display: flex;
     align-items: center;
@@ -232,18 +228,11 @@ defineExpose({
     background-color: #374151;
 }
 
-.logo-section .toggle-sidebar-btn {
-    width: 2rem;
-    height: 2rem;
-    padding: 0.25rem;
-}
-
-.logo-section .toggle-sidebar-btn svg {
+.toggle-sidebar-icon {
     width: 1.5rem;
     height: 1.5rem;
 }
 
-/* 核心功能区 */
 .actions-section {
     display: flex;
     flex-direction: column;
@@ -259,6 +248,12 @@ defineExpose({
     padding-bottom: 0.5rem;
     height: 2.5rem;
     color: #4B5563;
+    user-select: none;
+}
+
+.action-btn-new-conversation {
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .action-btn:hover {
@@ -279,7 +274,6 @@ defineExpose({
     margin-right: 0.5rem;
 }
 
-/* 搜索框容器 */
 .search-container {
     position: relative;
     display: flex;
@@ -313,8 +307,8 @@ defineExpose({
 
 .search-input:focus {
     outline: none;
-    border-color: #6D28D9;
-    box-shadow: 0 0 0 2px rgba(109, 40, 189, 0.1);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
 .dark .search-input {
@@ -324,8 +318,8 @@ defineExpose({
 }
 
 .dark .search-input:focus {
-    border-color: #A78BFA;
-    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.1);
+    border-color: #60A5FA;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.1);
 }
 
 .search-input::placeholder {
@@ -336,7 +330,6 @@ defineExpose({
     color: #6B7280;
 }
 
-/* 搜索关闭按钮 */
 .search-close-btn {
     position: absolute;
     right: 0.5rem;

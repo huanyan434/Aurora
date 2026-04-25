@@ -22,7 +22,7 @@
       <div class="sidebar-content" :style="{
         opacity: sidebarStore.collapsed && !isMobile ? 0 : 1,
       }">
-        <Sidebar :toggleSidebar="toggleSidebarForMobile" />
+        <Sidebar :toggleSidebar="toggleSidebarForMobile" @new-conversation="handleNewConversation" />
       </div>
     </div>
 
@@ -30,7 +30,7 @@
     <div class="main-content-wrapper" :class="{
       'main-content-collapsed': sidebarStore.collapsed && !isMobile,
     }">
-      <MainContent @open-settings="openSettingsDialogFromChild" />
+      <MainContent ref="mainContentRef" @open-settings="openSettingsDialogFromChild" />
     </div>
 
     <!-- 设置对话框 -->
@@ -59,6 +59,7 @@
 <script setup lang="ts">
 import { useSidebarStore } from "@/stores/sidebar";
 import { ref, onMounted } from "vue";
+import { useRouter } from 'vue-router';
 import Sidebar from "@/components/Sidebar.vue";
 import MainContent from "@/components/MainContent.vue";
 import { useSettingsStore } from '@/stores/settings';
@@ -76,6 +77,8 @@ import { toastError } from '@/components/ui/toast/use-toast';
 
 const sidebarStore = useSidebarStore();
 const isMobile = ref(false);
+const mainContentRef = ref<InstanceType<typeof MainContent> | null>(null);
+const router = useRouter();
 
 // 设置对话框状态
 const isSettingsDialogOpen = ref(false);
@@ -154,6 +157,11 @@ const openSettingsDialogFromChild = () => {
   // 初始化设置选项
   darkMode.value = settingsStore.getSetting('darkMode');
   isSettingsDialogOpen.value = true;
+};
+
+const handleNewConversation = async () => {
+  await router.push('/');
+  await mainContentRef.value?.focusInputArea?.();
 };
 </script>
 

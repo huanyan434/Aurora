@@ -66,10 +66,22 @@ const isGenerating = computed(() => chatStore.getIsGenerating);
 const isTyping = computed(() => chatStore.getIsTyping);
 const isReasoning = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<HTMLTextAreaElement | null>(null);
 const attachment = ref<string>(''); // 存储base64编码的图片
 const chatStore = useChatStore();
 const route = useRoute();
 const router = useRouter();
+
+const focusInput = async () => {
+  await nextTick();
+  inputRef.value?.focus();
+};
+
+const focusAndClearInput = async () => {
+  inputMessage.value = '';
+  attachment.value = '';
+  await focusInput();
+};
 
 const isReasoningDisabled = computed(() => {
   // 获取当前模型列表
@@ -275,6 +287,23 @@ const handleStopGeneration = () => {
 const toggleReasoning = () => {
   isReasoning.value = !isReasoning.value;
 };
+
+const focusMessageInput = () => {
+  focusInput();
+};
+
+const clearAndFocusMessageInput = () => {
+  focusAndClearInput();
+};
+
+const handleExternalFocus = async () => {
+  await focusAndClearInput();
+};
+
+defineExpose({
+  focusMessageInput,
+  clearAndFocusMessageInput,
+});
 </script>
 
 <style scoped>
