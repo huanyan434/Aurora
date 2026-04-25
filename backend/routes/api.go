@@ -1,7 +1,9 @@
 package routes
 
 import (
+	"encoding/base64"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 	"utils"
@@ -45,7 +47,7 @@ func ApiInit(r *gin.Engine) {
 		api.POST("/logout", logoutHandler)
 
 		// 获取头像
-		api.GET("/avatar/:filename", avatarHandler)
+		api.GET("/avatar/:id", avatarHandler)
 
 		// 获取积分记录
 		api.GET("/points_records", pointsRecordsHandler)
@@ -212,13 +214,13 @@ func currentUserHandler(c *gin.Context) {
 		})
 		return
 	}
-	// 以json格式返回
+	avatarURL := userInfo.Avatar
 	c.JSON(200, gin.H{
 		"success":     true,
 		"id":          strconv.FormatInt(userInfo.ID, 10),
 		"username":    userInfo.Username,
 		"email":       userInfo.Email,
-		"avatar":      userInfo.Avatar,
+		"avatarUrl":   avatarURL,
 		"isMember":    userInfo.IsMember,
 		"memberLevel": userInfo.MemberLevel,
 		"points":      userInfo.Points,
@@ -504,8 +506,8 @@ func logoutHandler(c *gin.Context) {
 // @Router /api/avatar/{id} [get]
 func avatarHandler(c *gin.Context) {
 	idStr := c.Param("id")
-	userID, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || userID <= 0 {
+	log.Printf("avatarHandler raw id=%q", idStr)
+	if idStr == "" {
 		c.JSON(400, gin.H{
 			"success": false,
 			"message": "用户ID无效",
@@ -513,32 +515,71 @@ func avatarHandler(c *gin.Context) {
 		return
 	}
 
-	user := utils.FilterByID(userID)
-	if len(user.Avatar) == 0 {
+	userID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
-			"message": "头像不存在",
+			"message": "用户ID无效",
+		})
+		return
+	}
+	if userID <= 0 {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "用户ID无效",
+		})
+		return
+	}
+	log.Printf("avatarHandler parsed userID=%d", userID)
+
+	user := utils.FilterByID(userID)
+	log.Printf("avatarHandler query result userID=%d found=%t avatarLen=%d", user.ID, user.ID != 0, len(user.Avatar))
+	if user.ID == 0 {
+		c.JSON(404, gin.H{
+			"success": false,
+			"message": "用户不存在",
 		})
 		return
 	}
 
-	c.Data(200, "image/png", user.Avatar)
+	if len(user.Avatar) == 0 {
+		log.Printf("avatarHandler avatar empty, generating userID=%d", user.ID)
+		avatarBytes, genErr := utils.GenerateUserAvatar(strconv.FormatInt(user.ID, 10))
+		if genErr != nil {
+			c.JSON(500, gin.H{
+				"success": false,
+				"message": "生成头像失败",
+			})
+			return
+		}
+		avatarBase64 := base64.StdEncoding.EncodeToString(avatarBytes)
+		if err := utils.GetDB().Table("users").Where("id = ?", user.ID).Update("avatar", avatarBase64).Error; err != nil {
+			c.JSON(500, gin.H{
+				"success": false,
+				"message": "保存头像失败",
+			})
+			return
+		}
+		log.Printf("avatarHandler avatar generated and saved userID=%d avatarLen=%d", user.ID, len(avatarBase64))
+		user.Avatar = avatarBase64
+	}
+
+	avatarBytes, decodeErr := base64.StdEncoding.DecodeString(user.Avatar)
+	if decodeErr != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "头像数据损坏",
+		})
+		return
+	}
+
+	log.Printf("avatarHandler return png userID=%d avatarLen=%d", user.ID, len(user.Avatar))
+	c.Data(200, "image/png", avatarBytes)
 }
 
-// 请求和响应结构体定义
 type loginRequest struct {
 	Email    string `json:"email" example:"user@example.com"`
 	Password string `json:"password" example:"password123"`
-}
-
-type loginResponseSuccess struct {
-	Success bool   `json:"success" example:"true"`
-	Message string `json:"message" example:"登录成功"`
-}
-
-type loginResponseFailed struct {
-	Success bool   `json:"success" example:"false"`
-	Message string `json:"message" example:"用户名或密码错误"`
 }
 
 type signupRequest struct {
@@ -547,6 +588,7 @@ type signupRequest struct {
 	Password   string `json:"password" example:"password123"`
 	VerifyCode string `json:"verifyCode" example:"123456"`
 }
+
 
 type signupResponseSuccess struct {
 	Success bool       `json:"success" example:"true"`

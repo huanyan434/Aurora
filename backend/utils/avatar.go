@@ -2,34 +2,65 @@ package utils
 
 import (
 	"bytes"
-	"fmt"
+	"crypto/sha256"
 	"image"
+	"image/color"
+	"image/draw"
 	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/aofei/cameron"
 )
 
 // AvatarSeed 生成头像使用的种子。
-func AvatarSeed(userID int64, email string) string {
-	return fmt.Sprintf("%d:%s", userID, strings.ToLower(strings.TrimSpace(email)))
+func AvatarSeed(userID string) string {
+	return strings.TrimSpace(userID)
 }
 
-// GenerateAvatarBytes 生成 GitHub 风格头像并返回 PNG 二进制。
+// GenerateAvatarBytes 生成对称格子风格头像并返回 PNG 二进制。
 func GenerateAvatarBytes(seed string, size int) ([]byte, error) {
 	if size <= 0 {
 		size = 256
 	}
 
-	img := cameron.Identicon([]byte(seed), size)
+	hash := sha256.Sum256([]byte(seed))
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	draw.Draw(img, img.Bounds(), &image.Uniform{C: color.RGBA{255, 255, 255, 255}}, image.Point{}, draw.Src)
 
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, toRGBA(img)); err != nil {
-		return nil, err
+	margin := size / 8
+	grid := 7
+	usable := size - margin*2
+	cell := usable / grid
+	if cell <= 0 {
+		cell = 1
 	}
 
+	fg := color.RGBA{R: hash[0], G: hash[1], B: hash[2], A: 255}
+	pattern := hash[3:]
+	idx := 0
+	for x := 0; x < grid/2+1; x++ {
+		for y := 0; y < grid; y++ {
+			b := pattern[idx%len(pattern)]
+			idx++
+			if b%2 != 0 {
+				continue
+			}
+
+			x0 := margin + x*cell
+			y0 := margin + y*cell
+			draw.Draw(img, image.Rect(x0, y0, x0+cell, y0+cell), &image.Uniform{C: fg}, image.Point{}, draw.Src)
+
+			mirrorX := margin + (grid-1-x)*cell
+			if mirrorX != x0 {
+				draw.Draw(img, image.Rect(mirrorX, y0, mirrorX+cell, y0+cell), &image.Uniform{C: fg}, image.Point{}, draw.Src)
+			}
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
@@ -52,21 +83,6 @@ func GenerateAvatar(userID int64, seed string, outputPath string, size int) erro
 }
 
 // GenerateUserAvatar 为用户生成头像二进制。
-func GenerateUserAvatar(userID int64, email string) ([]byte, error) {
-	return GenerateAvatarBytes(AvatarSeed(userID, email), 256)
-}
-
-func toRGBA(src image.Image) image.Image {
-	if _, ok := src.(*image.RGBA); ok {
-		return src
-	}
-
-	bounds := src.Bounds()
-	dst := image.NewRGBA(bounds)
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			dst.Set(x, y, src.At(x, y))
-		}
-	}
-	return dst
+func GenerateUserAvatar(userID string) ([]byte, error) {
+	return GenerateAvatarBytes(AvatarSeed(userID), 256)
 }

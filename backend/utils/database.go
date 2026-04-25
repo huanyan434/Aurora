@@ -2,12 +2,14 @@ package utils
 
 import (
 	"crypto/md5"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,7 +27,7 @@ type User struct {
 	Username     string    `gorm:"column:username;type:varchar(64);not null"`
 	Email        string    `gorm:"column:email;type:varchar(120);uniqueIndex:idx_email;not null"`
 	PasswordHash string    `gorm:"column:password_hash;type:varchar(255)"`
-	Avatar       []byte    `gorm:"column:avatar;type:longblob"`
+	Avatar       string    `gorm:"column:avatar;type:longtext"`
 	IsMember     bool      `gorm:"column:is_member;type:boolean;default:false"`
 	MemberLevel  string    `gorm:"column:member_level;type:varchar(20);default:'free'"`
 	MemberSince  time.Time `gorm:"column:member_since;type:datetime;null"`
@@ -342,18 +344,18 @@ func RegisterUser(username, email, password string) (User, error) {
 		ID:          id,
 		Username:    username,
 		Email:       email,
-		Avatar:      nil,
+		Avatar:      "",
 		IsMember:    false,  // 显式初始化布尔字段
 		MemberLevel: "free", // 显式初始化会员级别
 		Points:      0,      // 显式初始化积分数
 	}
 
-	avatarBytes, err := GenerateUserAvatar(id, email)
+	avatarBytes, err := GenerateUserAvatar(strconv.FormatInt(id, 10))
 	if err != nil {
 		tx.Rollback()
 		return User{}, err
 	}
-	user.Avatar = avatarBytes
+	user.Avatar = base64.StdEncoding.EncodeToString(avatarBytes)
 
 	// 设置密码
 	SetPassword(&user, password)
@@ -459,17 +461,19 @@ func ensureExistingUserAvatars() {
 	}
 
 	for _, user := range users {
-		if len(user.Avatar) > 0 {
+		if strings.TrimSpace(user.Avatar) != "" {
 			continue
 		}
 
-		avatarBytes, err := GenerateUserAvatar(user.ID, user.Email)
+		avatarBytes, err := GenerateUserAvatar(strconv.FormatInt(user.ID, 10))
 		if err != nil {
 			fmt.Printf("生成用户 %d 头像失败：%v\n", user.ID, err)
 			continue
 		}
+		avatarBase64 := base64.StdEncoding.EncodeToString(avatarBytes)
 
-		if err := db.Model(&User{}).Where("id = ?", user.ID).Update("avatar", avatarBytes).Error; err != nil {
+		fmt.Printf("补齐用户头像：userID=%d avatarLen=%d\n", user.ID, len(avatarBase64))
+		if err := db.Model(&User{}).Where("id = ?", user.ID).Update("avatar", avatarBase64).Error; err != nil {
 			fmt.Printf("更新用户 %d 头像失败：%v\n", user.ID, err)
 		}
 	}

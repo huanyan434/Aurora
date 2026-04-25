@@ -77,15 +77,19 @@ func wsHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	userInfoInterface := session.Get("currentUser")
 	if userInfoInterface == nil {
-		// 用户未登录，直接返回，不建立 WebSocket 连接
+		c.Status(http.StatusUnauthorized)
 		return
 	}
-	userInfo, ok := userInfoInterface.(utils.User)
+	currentSession, ok := userInfoInterface.(CurrentUserSession)
 	if !ok {
-		// 内部错误，直接返回
+		c.Status(http.StatusUnauthorized)
 		return
 	}
-	userInfo = utils.FilterByEmail(userInfo.Email)
+	userInfo := utils.FilterByID(currentSession.ID)
+	if userInfo.ID == 0 {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

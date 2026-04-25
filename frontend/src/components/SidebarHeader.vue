@@ -7,7 +7,7 @@
                     <DropdownMenuTrigger>
                         <Button variant="ghost" class="user-menu-btn" type="button">
                             <Avatar class="user-avatar">
-                                <AvatarImage src="/avatars/user.jpg" alt="@user" />
+                                <AvatarImage :src="avatarSrc" alt="@user" />
                                 <AvatarFallback>{{ userInitial || 'U' }}</AvatarFallback>
                             </Avatar>
                             <div class="user-info">
@@ -99,6 +99,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getInitial } from '@/lib/utils';
 import { logout } from '@/api/user';
+
+const avatarSrc = computed(() => userStore.userInfo.avatar || '')
 
 interface Props {
     isMobileToggleVisible?: boolean;

@@ -518,12 +518,12 @@ export class WebSocketManager {
 
       this.ws = new WebSocket(wsUrl)
 
-      // 设置连接超时（5 秒）
+      // 设置连接超时（3 秒）
       connectTimeout = setTimeout(() => {
         console.log('⏱️ WebSocket 连接超时')
         this.connectPromise = null
         reject(new Error('WebSocket 连接超时'))
-      }, 5000)
+      }, 3000)
 
       this.ws.onopen = () => {
         console.log('✅ WebSocket 连接成功 (onopen)')
@@ -542,8 +542,7 @@ export class WebSocketManager {
         console.log('❌ WebSocket 连接错误 (onerror):', error)
         if (connectTimeout) clearTimeout(connectTimeout)
         this.connectPromise = null
-        // 不 reject，避免未处理的错误
-        resolve()
+        reject(new Error('WebSocket 连接错误'))
       }
 
       this.ws.onclose = () => {

@@ -20,7 +20,8 @@
         <section class="profile-card profile-summary-card">
           <div class="summary-top">
             <div class="user-avatar user-avatar-lg">
-              {{ userInfo?.username?.charAt(0).toUpperCase() || 'U' }}
+              <img v-if="userInfo?.avatar" :src="avatarSrc" class="avatar-image" alt="用户头像" />
+              <span v-else>{{ userInfo?.username?.charAt(0).toUpperCase() || 'U' }}</span>
             </div>
             <div class="summary-copy">
               <div class="summary-tag">账户概览</div>
@@ -451,6 +452,7 @@ const pointsRecords = ref<PointsRecord[]>([]);
 const loadingPointsRecords = ref(false);
 
 const userInfo = computed(() => userStore.userInfo);
+const avatarSrc = computed(() => userInfo.value.avatar || '')
 
 const goBack = () => {
   router.go(-1);
@@ -643,6 +645,11 @@ watch(darkMode, (enabled) => {
 </script>
 
 <style scoped>
+.hero-title-row {
+  display: flex;
+  align-items: center;
+}
+
 .theme-setting-row {
   display: flex;
   align-items: center;
@@ -757,6 +764,7 @@ watch(darkMode, (enabled) => {
   cursor: pointer;
   transition: all 0.2s ease;
   z-index: 1;
+  margin-right: 0.5rem;
 }
 
 .back-btn:hover {
@@ -868,13 +876,14 @@ watch(darkMode, (enabled) => {
 
 .user-avatar {
   flex-shrink: 0;
-  border-radius: 9999px;
+  border-radius: 1.1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   background: linear-gradient(135deg, #dbeafe, #bfdbfe);
   color: #1d4ed8;
+  overflow: hidden;
 }
 
 .user-avatar-lg {

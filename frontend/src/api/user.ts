@@ -113,6 +113,7 @@ export const sendVerifyCode = async (data: SendVerifyCodeRequest) => {
 
 // 获取当前用户信息
 export interface CurrentUserResponseSuccess {
+  avatarUrl: string
   email: string
   id: string
   isMember: boolean

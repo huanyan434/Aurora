@@ -50,7 +50,7 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
 
-  // 初始化用户状态
+  // 初始化用户状态：首次进入或本地状态不完整时，优先尝试拉取服务端会话
   if (!userStore.checkAuthenticated()) {
     console.log("初始化用户状态")
     await userStore.init()
