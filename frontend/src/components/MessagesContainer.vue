@@ -128,41 +128,14 @@
                         @click="copyMessage(message.content)"
                         class="copy-btn"
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                        <rect x="9" y="9" width="10" height="10" rx="2"></rect>
-                        <path d="M5 15V7a2 2 0 0 1 2-2h8"></path>
-                        </svg>
+                        <Copy class="message-action-icon" />
                     </button>
 
                     <button
                         @click="openDeleteDialog(message.id)"
                         class="delete-btn"
                     >
-                        <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                d="M3 6H5M5 6H21M5 6V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 20.1046 19 20V6H5ZM10 11V17M14 11V17M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6H8Z"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            />
-                        </svg>
+                        <Trash2 class="message-action-icon" />
                     </button>
                 </div>
             </div>
@@ -220,6 +193,7 @@ import { useChatStore } from "@/stores/chat";
 import ReasoningContent from "./ReasoningContent.vue";
 import DsMarkdown from "./DsMarkdown.vue";
 import DsMarkdownCMD from "./DsMarkdownCMD.vue";
+import { Copy, Trash2 } from 'lucide-vue-next';
 import { toastSuccess, toastError, toastInfo } from "@/components/ui/toast/use-toast";
 import {
     Dialog,
@@ -1071,6 +1045,11 @@ onUnmounted(() => {
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.message-action-icon {
+    width: 1rem;
+    height: 1rem;
 }
 
 .copy-btn:hover {
