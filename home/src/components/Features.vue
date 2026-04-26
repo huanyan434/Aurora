@@ -45,16 +45,6 @@ const features = [
     icon: '🔍',
     title: '联网搜索',
     description: '整合实时信息，输出更可靠的搜索与归纳结果。'
-  },
-  {
-    icon: '⚡',
-    title: '自动化执行',
-    description: '将复杂任务拆解并执行，提高个人与团队效率。'
-  },
-  {
-    icon: '🔌',
-    title: 'API 接入',
-    description: '提供标准化 API，方便接入业务系统与应用生态。'
   }
 ]
 </script>

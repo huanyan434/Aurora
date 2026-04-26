@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import loadingLogo from '@/assets/bl-icon.svg'
+import loadingLogo from '@/assets/icon.svg'
 </script>
 
 <style scoped>

@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card animate-fade-in">
-      <img src="/icon.png" alt="Aurora" class="login-logo" />
+      <img src="/src/assets/icon.svg" alt="Aurora" class="login-logo" />
       <h1 class="login-title">Aurora</h1>
       <p class="login-subtitle">管理后台</p>
 

@@ -5,7 +5,7 @@
         <!-- 品牌信息 -->
         <div class="md:col-span-1">
           <div class="flex items-center gap-2 mb-4">
-            <img src="@/assets/icon.png" alt="Aurora" class="w-8 h-8" />
+            <img src="@/assets/icon.svg" alt="Aurora" class="w-8 h-8" />
             <span class="text-lg font-semibold">Aurora</span>
           </div>
           <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed">

@@ -36,16 +36,8 @@ const scenes = [
     description: '写文章、写方案、生成标题、润色表达，激发创作灵感。'
   },
   {
-    title: '软件开发',
-    description: '代码生成、调试排错、接口设计、技术文档，辅助开发流程。'
-  },
-  {
     title: '商业分析',
     description: '竞品调研、数据归纳、行业信息整理，支持商业决策。'
-  },
-  {
-    title: '团队协作',
-    description: 'API 调用、工作流接入、内部系统智能化，赋能团队协作。'
   }
 ]
 </script>

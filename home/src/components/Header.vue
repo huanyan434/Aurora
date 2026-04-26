@@ -10,7 +10,7 @@
     <div class="container-wide h-[72px] flex items-center justify-between">
       <!-- Logo -->
       <div class="flex items-center gap-2 cursor-pointer" @click="$emit('logo-click')">
-        <img src="@/assets/icon.png" alt="Aurora" class="w-8 h-8" />
+        <img src="@/assets/icon.svg" alt="Aurora" class="w-8 h-8" />
         <span class="text-lg font-semibold text-[var(--color-text-primary)]">Aurora</span>
       </div>
 
