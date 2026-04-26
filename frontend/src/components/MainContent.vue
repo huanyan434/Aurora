@@ -51,6 +51,7 @@ const messagesAreaRef = ref<HTMLElement | null>(null);
 const chatInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
 const messagesReady = ref(false);
 const loadingStartTime = ref(0);
+let firstMounted = true;
 let loadingTimer: number | undefined;
 let followBottomFrameId: number | undefined;
 let followBottomStartTime = 0;
@@ -80,7 +81,7 @@ const scrollMessagesAreaToBottom = async (force = false) => {
   if (!container) return;
 
   const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-  if (force || distanceToBottom <= 100) {
+  if (force || distanceToBottom <= 50) {
     container.scrollTop = container.scrollHeight;
   }
 };
@@ -103,15 +104,16 @@ const runFollowBottomLoop = () => {
     }
 
     const elapsed = Date.now() - followBottomStartTime;
-    if (followBottomPhase === 'force' && elapsed <= 5000) {
+    if (followBottomPhase === 'force' && elapsed <= 2000 && firstMounted == true) {
       container.scrollTop = container.scrollHeight;
       followBottomFrameId = window.requestAnimationFrame(tick);
+      firstMounted = false;
       return;
     }
 
     followBottomPhase = 'follow';
     const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (distanceToBottom <= 100) {
+    if (distanceToBottom <= 50) {
       container.scrollTop = container.scrollHeight;
     }
 
