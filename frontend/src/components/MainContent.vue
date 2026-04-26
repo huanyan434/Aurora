@@ -6,17 +6,23 @@
     <!-- Messages Container 或者欢迎界面 -->
     <div class="main-content-area">
       <div
-        v-if="isHomeRoute"
         class="welcome-container"
+        v-show="isHomeRoute"
       >
+
         <h1 class="welcome-title">{{ greeting }}, 有什么可以帮你？</h1>
         <!-- 居中的inputarea -->
         <div class="welcome-input-container">
           <InputArea ref="homeInputAreaRef" />
         </div>
       </div>
-      <div v-else class="messages-container-wrapper">
-        <MessagesContainer class="messages-container" />
+      <div v-show="!isHomeRoute" class="messages-layer">
+        <div class="messages-loading-layer" v-show="!messagesReady">
+          <LoadingLogo />
+        </div>
+        <div class="messages-container-wrapper" v-show="messagesReady">
+          <MessagesContainer class="messages-container" @render-complete="handleMessagesRenderComplete" />
+        </div>
       </div>
     </div>
 
@@ -28,15 +34,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import TopBar from './TopBar.vue';
 import MessagesContainer from './MessagesContainer.vue';
 import InputArea from './InputArea.vue';
+import LoadingLogo from './LoadingLogo.vue';
 
 const route = useRoute();
 const homeInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
 const chatInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
+const messagesReady = ref(false);
+const loadingStartTime = ref(0);
+let loadingTimer: number | undefined;
 
 // 定义 emit
 const emit = defineEmits(['open-settings']);
@@ -56,6 +66,40 @@ const greeting = computed(() => {
   }
 });
 
+const scrollMessagesAreaToBottom = async () => {
+  await nextTick();
+  const container = document.querySelector('.main-content-area');
+  if (container) {
+    container.scrollTop = container.scrollHeight;
+  }
+};
+
+const handleMessagesRenderComplete = (value: boolean) => {
+  if (!value) {
+    if (loadingTimer !== undefined) {
+      window.clearTimeout(loadingTimer);
+      loadingTimer = undefined;
+    }
+    loadingStartTime.value = Date.now();
+    messagesReady.value = false;
+    return;
+  }
+
+  const elapsed = Date.now() - loadingStartTime.value;
+  const remaining = Math.max(0, 1000 - elapsed);
+
+  if (loadingTimer !== undefined) {
+    window.clearTimeout(loadingTimer);
+  }
+
+  loadingTimer = window.setTimeout(async () => {
+    messagesReady.value = true;
+    loadingTimer = undefined;
+    await scrollMessagesAreaToBottom();
+  }, remaining);
+};
+
+
 const focusInputArea = async () => {
   if (isHomeRoute.value) {
     homeInputAreaRef.value?.focusMessageInput?.();
@@ -71,6 +115,30 @@ const handleExternalFocusInputArea = () => {
 if (typeof window !== 'undefined') {
   window.addEventListener('focus-input-area', handleExternalFocusInputArea);
 }
+
+watch(
+  () => route.path,
+  (path, prevPath) => {
+    if (path === '/') {
+      messagesReady.value = false;
+      if (loadingTimer !== undefined) {
+        window.clearTimeout(loadingTimer);
+        loadingTimer = undefined;
+      }
+      return;
+    }
+
+    if (path !== prevPath && path.startsWith('/c/')) {
+      messagesReady.value = false;
+      loadingStartTime.value = Date.now();
+      if (loadingTimer !== undefined) {
+        window.clearTimeout(loadingTimer);
+        loadingTimer = undefined;
+      }
+    }
+  },
+  { immediate: true },
+);
 
 defineExpose({
   focusInputArea,
@@ -93,6 +161,21 @@ defineExpose({
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-md); /* p-4 */
+  min-height: 0;
+}
+
+.messages-layer {
+  position: relative;
+  min-height: 100%;
+}
+
+.messages-loading-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
 .welcome-container {

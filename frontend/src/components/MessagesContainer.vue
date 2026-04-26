@@ -1,19 +1,8 @@
 <template>
     <div ref="containerRef" class="messages-scroll-container w-full h-full overflow-y-auto p-4">
         <div class="max-w-3xl mx-auto space-y-6">
-            <!-- 加载动画 -->
-            <div
-                v-if="isLoading"
-                class="flex justify-center items-center py-10"
-            >
-                <div
-                    class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"
-                ></div>
-            </div>
-
             <!-- 消息列表 -->
             <div
-                v-else
                 v-for="(message, index) in displayedMessages"
                 :key="message.id || index"
                 class="flex flex-col"
@@ -23,7 +12,7 @@
             >
                 <div
                     :class="[
-                        'rounded-lg px-4 py-3',
+                        'rounded-lg px-4 py-3 min-h-[48px]',
                         message.role === 'user'
                             ? 'bg-gray-100 dark:bg-user-msg-bg user-message'
                             : 'assistant-message',
@@ -113,7 +102,7 @@
                 <!-- 消息操作按钮 -->
                 <div
                     :class="[
-                        'flex flex-row items-start mt-1',
+                        'flex flex-row items-start mt-1 min-h-[24px] transition-opacity duration-150',
                         message.role === 'user' ? 'mr-2' : 'ml-2',
                         hoveredMessageId === (message.id || null) ||
                         index === displayedMessages.length - 1
@@ -225,6 +214,14 @@ interface TypingState {
 }
 const typingStates = ref<Map<number, TypingState>>(new Map());
 
+// 向父组件报告历史消息渲染状态
+const emit = defineEmits<{
+    (e: 'render-complete', value: boolean): void;
+}>();
+const emittedRenderComplete = ref(false);
+const totalHistoryCount = ref(0);
+const renderedHistoryCount = ref(0);
+
 // 获取容器元素的引用
 const containerRef = ref<HTMLElement | null>(null);
 
@@ -248,6 +245,46 @@ const displayedMessages = computed(() => {
         markdownEnded: markdownEndedIds.value.has(msg.id || -1),
     }));
 });
+
+watch(
+    () => currentConversationId.value,
+    () => {
+        emittedRenderComplete.value = false;
+        totalHistoryCount.value = 0;
+        renderedHistoryCount.value = 0;
+        markdownEndedIds.value = new Set();
+        emit('render-complete', false);
+    },
+    { immediate: true },
+);
+
+watch(
+    displayedMessages,
+    (messages) => {
+        const historyMessages = messages.filter((message) => message.role === 'assistant' && message.isHistory);
+        totalHistoryCount.value = historyMessages.length;
+        renderedHistoryCount.value = historyMessages.filter((message) => {
+            if (!message.id) return false;
+            return markdownEndedIds.value.has(message.id);
+        }).length;
+
+        if (historyMessages.length === 0) {
+            emit('render-complete', true);
+            emittedRenderComplete.value = true;
+            return;
+        }
+
+        if (renderedHistoryCount.value >= totalHistoryCount.value && !emittedRenderComplete.value) {
+            emittedRenderComplete.value = true;
+            emit('render-complete', true);
+            nextTick(() => {
+                scrollToBottom(true);
+            });
+        }
+    },
+    { immediate: true, deep: true },
+);
+
 
 /**
  * 滚动到容器底部
@@ -275,20 +312,20 @@ const scrollToBottom = (force: boolean = false) => {
  */
 const handleHistoryMessageEnd = (messageId: number | undefined) => {
     if (messageId === undefined) return;
-    
-    console.log('[handleHistoryMessageEnd] 历史消息渲染完成，消息 ID:', messageId);
-    
-    // 强制滚动到底部
-    setTimeout(() => {
-        scrollToBottom(true);
-    }, 200);
-    setTimeout(() => {
-        scrollToBottom(true);
-    }, 400);
-    setTimeout(() => {
-        scrollToBottom(true);
-    }, 600);
+
+    // console.log('[handleHistoryMessageEnd] 历史消息渲染完成，消息 ID:', messageId);
+    markdownEndedIds.value.add(messageId);
+
+    const historyMessages = displayedMessages.value.filter((message) => message.role === 'assistant' && message.isHistory);
+    const renderedCount = historyMessages.filter((message) => message.id && markdownEndedIds.value.has(message.id)).length;
+    if (historyMessages.length > 0 && renderedCount >= historyMessages.length && !emittedRenderComplete.value) {
+        setTimeout(() => {
+            emittedRenderComplete.value = true;
+            emit('render-complete', true);
+        }, 100)
+    }
 };
+
 
 /**
  * 获取或初始化打字状态
@@ -1106,6 +1143,10 @@ onUnmounted(() => {
 }
 
 /* 滚动条样式 */
+.messages-scroll-container {
+  min-height: 100%;
+}
+
 .messages-scroll-container::-webkit-scrollbar {
   width: 8px;
 }

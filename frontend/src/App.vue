@@ -1,30 +1,10 @@
 <template>
-  <div v-if="modelsLoaded">
-    <router-view />
-    <Toast />
-  </div>
-  <div v-else class="flex items-center justify-center h-screen bg-white dark:bg-black">
-    <div class="text-center">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-gray-100 mx-auto"></div>
-      <p class="mt-4 text-gray-600 dark:text-gray-400">加载中...</p>
-    </div>
-  </div>
+  <router-view />
+  <Toast />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useChatStore } from './stores/chat'
 import Toast from './components/ui/toast/Toast.vue'
-
-const modelsLoaded = ref(false)
-const chatStore = useChatStore()
-
-onMounted(async () => {
-  if (!chatStore.modelsLoaded) {
-    await chatStore.fetchModels()
-  }
-  modelsLoaded.value = true
-})
 </script>
 
 <style>
