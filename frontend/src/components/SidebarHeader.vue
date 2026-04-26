@@ -373,6 +373,12 @@ defineExpose({
     background-color: #374151;
 }
 
+@media (max-width: 1135px) {
+    .toggle-sidebar-btn {
+        display: none;
+    }
+}
+
 .toggle-sidebar-icon {
     width: 1.5rem;
     height: 1.5rem;
