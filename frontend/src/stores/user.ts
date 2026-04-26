@@ -34,6 +34,7 @@ export const useUserStore = defineStore('user', () => {
         userInfo.isMember = data.isMember
         userInfo.memberLevel = data.memberLevel
         userInfo.avatar = normalizeAvatarUrl(data.avatarUrl)
+        userInfo.points = data.points ?? 0
 
         // 检查是否有任何字段为空，如果有重置字段
         if (!userInfo.id || !userInfo.email || !userInfo.username) {
