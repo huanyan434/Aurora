@@ -41,7 +41,7 @@ const advantages = [
   {
     number: '03',
     title: '更强的扩展能力',
-    description: '支持 API、系统集成与团队级使用场景。'
+    description: '支持自定义参数与团队级使用场景。'
   },
   {
     number: '04',

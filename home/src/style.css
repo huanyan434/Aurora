@@ -6,34 +6,43 @@
   --color-bg-secondary: #F8FAFC;
   --color-bg-card: #FFFFFF;
   --color-bg-card-hover: #F1F5F9;
-  
+
   /* 主文字 */
   --color-text-primary: #0F172A;
   --color-text-secondary: #64748B;
   --color-text-muted: #94A3B8;
-  
+
   /* 品牌渐变 */
   --color-brand-blue: #6366F1;
   --color-brand-cyan: #06B6D4;
   --color-brand-purple: #8B5CF6;
-  
+
+  /* 主题主色 */
+  --color-primary: #4F46E5;
+  --color-primary-hover: #4338CA;
+  --color-primary-soft: rgba(79, 70, 229, 0.08);
+
+  /* CTA 主色 */
+  --color-cta-start: #7B8CFF;
+  --color-cta-end: #5CE1E6;
+
   /* 边框 */
   --color-border-subtle: #E2E8F0;
   --color-border-medium: #CBD5E1;
-  
+
   /* 发光效果 */
   --color-glow-blue: rgba(99, 102, 241, 0.1);
   --color-glow-cyan: rgba(6, 182, 212, 0.1);
   --color-glow-purple: rgba(139, 92, 246, 0.1);
-  
+
   /* 圆角 */
   --radius-button: 999px;
   --radius-input: 24px;
   --radius-card: 20px;
-  
+
   /* 间距 */
   --spacing-section: 120px;
-  
+
   /* 阴影 */
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
   --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.08);
@@ -103,18 +112,20 @@ body {
   display: inline-block;
   padding: 14px 32px;
   border-radius: var(--radius-button);
-  background: linear-gradient(135deg, var(--color-brand-blue), var(--color-brand-cyan));
+  background: linear-gradient(135deg, var(--color-cta-start), var(--color-cta-end));
   color: white;
   font-weight: 500;
   text-decoration: none;
   transition: all 0.2s ease;
   cursor: pointer;
   border: none;
+  box-shadow: 0 10px 28px rgba(92, 145, 236, 0.18);
 }
 
 .btn-primary:hover {
   opacity: 0.9;
   transform: scale(1.02);
+  box-shadow: 0 12px 32px rgba(92, 145, 236, 0.22);
 }
 
 .btn-secondary {

@@ -69,6 +69,40 @@ jobs:
         path: frontend/dist
         if-no-files-found: error
 
+  # ================= Home 构建 (Vue3 + Vite + pnpm) =================
+  build-home:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./home
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '23'
+
+    - name: Install pnpm via npm
+      run: |
+        echo "Installing pnpm..."
+        npm install -g pnpm
+        pnpm --version
+
+    - name: Install Dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build Home
+      run: pnpm build
+
+    - name: Upload Home Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: home-dist
+        path: home/dist
+        if-no-files-found: error
+
   # ================= Dashboard 构建 (Vue3 + Vite + pnpm) =================
   build-dashboard:
     runs-on: ubuntu-latest
@@ -102,3 +136,4 @@ jobs:
         name: dashboard
         path: dashboard/dist
         if-no-files-found: error
+
