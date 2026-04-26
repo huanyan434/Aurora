@@ -228,14 +228,14 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 	go func() {
 		select {
-		case <-time.After(10 * time.Second):
+		case <-time.After(30 * time.Second):
 			contentMutex.Lock()
 			received := hasReceivedContent
 			contentMutex.Unlock()
 
 			if !received {
 				elapsed := time.Since(startTime).Seconds()
-				fmt.Printf("[超时检测] conversationID=%d, 10秒内未收到AI回复，已等待%.1f秒，断开连接\n", conversationID, elapsed)
+				fmt.Printf("[超时检测] conversationID=%d, 30秒内未收到AI回复，已等待%.1f秒，断开连接\n", conversationID, elapsed)
 
 				// 发送超时错误消息
 				jsonResp, _ := json.Marshal(Response{
@@ -247,6 +247,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 				default:
 					// 通道可能已关闭，忽略错误
 				}
+				return
 			}
 		case <-timeoutCtx.Done():
 			// 超时检测被取消（已收到内容）
