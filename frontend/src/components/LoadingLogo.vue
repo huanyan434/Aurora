@@ -1,6 +1,6 @@
 <template>
   <div class="loading-logo-wrap">
-    <img :src="loadingLogo" alt="加载中" class="loading-logo" />
+    <img :src="loadingLogo" class="loading-logo" />
   </div>
 </template>
 

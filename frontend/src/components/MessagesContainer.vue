@@ -1,5 +1,5 @@
 <template>
-    <div ref="containerRef" class="messages-scroll-container w-full h-full overflow-y-auto p-4">
+    <div class="messages-scroll-container w-full h-full overflow-y-auto p-4">
         <div class="max-w-3xl mx-auto space-y-6">
             <!-- 消息列表 -->
             <div
@@ -12,7 +12,7 @@
             >
                 <div
                     :class="[
-                        'rounded-lg px-4 py-3 min-h-[48px]',
+                        'rounded-lg px-4 py-3',
                         message.role === 'user'
                             ? 'bg-gray-100 dark:bg-user-msg-bg user-message'
                             : 'assistant-message',
@@ -58,25 +58,26 @@
                         />
 
                         <!-- 回复内容 - 根据 isHistory 字段选择组件 -->
-                        <!-- 历史消息使用 DsMarkdown -->
-                        <DsMarkdown
-                            v-if="message.isHistory"
-                            :content="message.content"
-                            :interval="0"
-                            :show-cursor="false"
-                            :disable-typing="true"
-                            cursor="circle"
-                            :on-end="() => handleHistoryMessageEnd(message.id)"
-                        />
+                        <div v-if="message.isHistory">
+                            <DsMarkdown
+                                :content="message.content"
+                                :interval="0"
+                                :show-cursor="false"
+                                :disable-typing="true"
+                                cursor="circle"
+                                :on-end="() => handleHistoryMessageEnd(message.id)"
+                            />
+                        </div>
                         <!-- 流式消息使用 DsMarkdownCMD -->
-                        <DsMarkdownCMD
-                            v-else-if="message.content || !message.isStreaming"
-                            :content="message.content"
-                            :interval="15"
-                            :show-cursor="message.isStreaming"
-                            cursor="circle"
-                            :on-typed-char="(data) => handleTypedChar(message.id, data)"
-                        />
+                        <div v-else-if="message.content || !message.isStreaming">
+                            <DsMarkdownCMD
+                                :content="message.content"
+                                :interval="15"
+                                :show-cursor="message.isStreaming"
+                                cursor="circle"
+                                :on-typed-char="(data) => handleTypedChar(message.id, data)"
+                            />
+                        </div>
 
                         <!-- 加载占位符 -->
                         <div
@@ -170,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import {
     deleteMessage as deleteMessageAPI,
     getModelsList,
@@ -217,13 +218,12 @@ const typingStates = ref<Map<number, TypingState>>(new Map());
 // 向父组件报告历史消息渲染状态
 const emit = defineEmits<{
     (e: 'render-complete', value: boolean): void;
+    (e: 'force-scroll-to-bottom', value: boolean): void;
+    (e: 'register-message-assistant-id', value: { conversationID: number; messageAssistantID: number }): void;
 }>();
 const emittedRenderComplete = ref(false);
 const totalHistoryCount = ref(0);
 const renderedHistoryCount = ref(0);
-
-// 获取容器元素的引用
-const containerRef = ref<HTMLElement | null>(null);
 
 // 使用计算属性获取当前对话 ID（从路由路径）
 const currentConversationId = computed(() => {
@@ -270,6 +270,7 @@ watch(
 
         if (historyMessages.length === 0) {
             emit('render-complete', true);
+            emit('force-scroll-to-bottom', true);
             emittedRenderComplete.value = true;
             return;
         }
@@ -277,33 +278,12 @@ watch(
         if (renderedHistoryCount.value >= totalHistoryCount.value && !emittedRenderComplete.value) {
             emittedRenderComplete.value = true;
             emit('render-complete', true);
-            nextTick(() => {
-                scrollToBottom(true);
-            });
+            emit('force-scroll-to-bottom', true);
         }
     },
     { immediate: true, deep: true },
 );
 
-
-/**
- * 滚动到容器底部
- * @param force 是否强制滚动到底部，默认为 false。为 true 时强制滚动，否则仅在用户已在底部时滚动
- */
-const scrollToBottom = (force: boolean = false) => {
-    if (!containerRef.value) return;
-    
-    if (force) {
-        // 强制滚动到底部
-        containerRef.value.scrollTop = containerRef.value.scrollHeight;
-    } else {
-        // 检查用户是否在底部（允许 100px 的误差范围）
-        const isAtBottom = containerRef.value.scrollHeight - containerRef.value.scrollTop - containerRef.value.clientHeight < 100;
-        if (isAtBottom) {
-            containerRef.value.scrollTop = containerRef.value.scrollHeight;
-        }
-    }
-};
 
 /**
  * 处理历史消息的 onEnd 回调
@@ -354,8 +334,6 @@ const handleTypedChar = (messageId: number | undefined, data?: any) => {
         state.typedContent = data.content;
     }
 
-    // 滚动到底部
-    scrollToBottom();
 
     // 检查是否打字完成
     const message = displayedMessages.value.find(msg => msg.id === messageId);
@@ -655,6 +633,7 @@ const setupGlobalGenerateHandler = () => {
                 chatStore.setIsTyping(true);
 
                 console.log('[续流] 占位消息已创建，ID:', tempMessage.id);
+                emit('force-scroll-to-bottom', true);
             }
         }
         // streaming 状态不需要创建占位消息，只是表示生成正在进行
@@ -665,8 +644,8 @@ const setupGlobalGenerateHandler = () => {
     wsManager.onMessage('resume_status', handleResumeStatus);
 
     currentGenerateHandler = (data: any) => {
-        // 获取当前对话 ID
-        const convId = currentConversationId.value;
+        // 优先使用后端返回的 conversationID，避免路由切换时状态错位
+        const convId = data.conversationID || currentConversationId.value;
         if (isNaN(convId)) {
             console.warn('当前对话 ID 无效');
             return;
@@ -674,7 +653,10 @@ const setupGlobalGenerateHandler = () => {
 
         const state = getWsGenerateState(convId);
 
-        // 如果是缓存消息且没有 messageAssistantId，查找续流占位消息
+        // 如果后端直接带回了 assistant 消息 ID，优先写入状态
+        if (data.messageAssistantID && !state.messageAssistantId) {
+            state.messageAssistantId = data.messageAssistantID;
+        }
         if (data.isCached && !state.messageAssistantId) {
             const messages = chatStore.getMessagesByConversationId(convId);
             const lastAssistantMessage = messages.reverse().find(msg => msg.role === 'assistant' && msg.isStreaming);
@@ -684,6 +666,15 @@ const setupGlobalGenerateHandler = () => {
             } else {
                 console.warn('[缓存消息] 未找到续流占位消息，忽略');
                 return;
+            }
+        }
+
+        if (!state.messageAssistantId) {
+            const messages = chatStore.getMessagesByConversationId(convId);
+            const lastAssistantMessage = [...messages].reverse().find(msg => msg.role === 'assistant' && msg.isStreaming);
+            if (lastAssistantMessage && lastAssistantMessage.id) {
+                state.messageAssistantId = lastAssistantMessage.id;
+                console.log('[generate_response] 从占位消息恢复 messageAssistantId:', lastAssistantMessage.id);
             }
         }
 
@@ -715,6 +706,7 @@ const setupGlobalGenerateHandler = () => {
                 typingState.isTyping = true;
                 // 同步更新全局 isTyping 状态
                 chatStore.setIsTyping(true);
+                emit('force-scroll-to-bottom', true);
             }
         } else {
             console.error("服务器返回错误:", data.error);
@@ -734,8 +726,8 @@ const setupGlobalGenerateHandler = () => {
     currentGenerateEndHandler = async (data: any) => {
         console.log('[generate_end] 收到结束信号，原始数据:', data);
 
-        // 从结束信号中获取 conversationID
-        const conversationId = data.conversationID;
+        // 优先使用后端返回的 conversationID，避免路由切换时状态错位
+        const conversationId = data.conversationID || currentConversationId.value;
         if (!conversationId) {
             console.warn('[generate_end] 结束信号中没有 conversationID');
             return;
@@ -802,78 +794,6 @@ const setupGlobalGenerateHandler = () => {
     wsManager.onConnected(currentConnectedHandler);
 };
 
-// 监听消息变化，自动滚动到底部
-// 在流式消息存在且 markdown 未结束之前持续滚动
-watch(
-    displayedMessages,
-    (newMessages) => {
-        nextTick(() => {
-            // 检查是否有正在进行流式传输或 markdown 未结束的消息
-            const hasActiveStreaming = newMessages.some(
-                msg => msg.role === 'assistant' && (msg.isStreaming || !msg.markdownEnded)
-            );
-            
-            // 如果有活跃的消息（流式中或 markdown 未结束），继续滚动
-            if (hasActiveStreaming) {
-                scrollToBottom();
-            }
-        });
-    },
-    { deep: true },
-);
-
-// 监听 chatStore 中的消息更新，检查是否有流式消息但 markdownEndedIds 中不存在的情况
-// 这种情况发生在切换对话或页面刷新时
-watch(
-    () => chatStore.messages,
-    (newMessages) => {
-        const convId = currentConversationId.value;
-        if (isNaN(convId)) return;
-        
-        const messages = newMessages[convId];
-        if (!messages || messages.length === 0) return;
-        
-        // 检查是否有流式消息但不在 markdownEndedIds 中
-        const streamingMessage = messages.find(
-            msg => msg.role === 'assistant' && msg.isStreaming && !markdownEndedIds.value.has(msg.id || -1)
-        );
-        
-        if (streamingMessage) {
-            // 这是一个新的流式消息，确保它不在 markdownEndedIds 中
-            // （正常情况下不应该在，但为了安全起见）
-            markdownEndedIds.value.delete(streamingMessage.id || -1);
-        }
-    },
-    { deep: true },
-);
-
-// 监听 store 中的消息变化，当有新的流式消息时设置 wsGenerateState
-watch(
-    () => chatStore.messages,
-    (newMessages) => {
-        // 获取当前对话 ID
-        const convId = currentConversationId.value;
-        if (isNaN(convId)) return;
-
-        // 获取当前对话的消息
-        const messages = newMessages[convId];
-        if (!messages || messages.length === 0) return;
-
-        // 找到最新的流式消息
-        const streamingMessage = messages.find(msg => msg.isStreaming && msg.role === 'assistant');
-        if (streamingMessage && streamingMessage.id) {
-            // 设置该对话的 wsGenerateState
-            const state = getWsGenerateState(convId);
-            if (state.messageAssistantId !== streamingMessage.id) {
-                state.messageAssistantId = streamingMessage.id;
-                state.accumulatedContent = "";
-                state.accumulatedReasoningContent = "";
-                state.lastReasoningTime = 0;
-            }
-        }
-    },
-    { deep: true },
-);
 
 /**
  * 从消息内容中提取模型名称
@@ -950,16 +870,6 @@ const loadConversationHistory = async (conversationId: number) => {
             chatStore.setMessages(conversationId, formattedMessages);
             isLoading.value = false;
             
-            // 等待 DOM 渲染完成后强制滚动到底部
-            // 使用多次 nextTick 确保所有 DsMarkdown 组件都已渲染
-            await nextTick();
-            await nextTick();
-            scrollToBottom(true);
-            
-            // 再次延迟滚动，确保长消息完全渲染
-            //setTimeout(() => {
-            //    scrollToBottom(true);
-            //}, 150);
         }
     } catch (error) {
         console.error("获取历史消息失败:", error);
@@ -1030,12 +940,8 @@ onMounted(async () => {
 
     // 显式调用 loadCurrentConversation，确保页面初始化时触发续流检查
     loadCurrentConversation();
-
-    // 监听强制滚动事件（来自 InputArea 发送新消息）
-    window.addEventListener('force-scroll-to-bottom', () => {
-        scrollToBottom(true);
-    });
 });
+
 
 // 在组件卸载时清理资源
 onUnmounted(() => {

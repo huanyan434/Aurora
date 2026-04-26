@@ -4,7 +4,7 @@
     <TopBar @open-settings="$emit('open-settings')" />
 
     <!-- Messages Container 或者欢迎界面 -->
-    <div class="main-content-area">
+    <div class="main-content-area" ref="messagesAreaRef">
       <div
         class="welcome-container"
         v-show="isHomeRoute"
@@ -21,7 +21,11 @@
           <LoadingLogo />
         </div>
         <div class="messages-container-wrapper" v-show="messagesReady">
-          <MessagesContainer class="messages-container" @render-complete="handleMessagesRenderComplete" />
+          <MessagesContainer
+            class="messages-container"
+            @render-complete="handleMessagesRenderComplete"
+            @force-scroll-to-bottom="handleForceScrollToBottom"
+          />
         </div>
       </div>
     </div>
@@ -34,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import TopBar from './TopBar.vue';
 import MessagesContainer from './MessagesContainer.vue';
@@ -43,10 +47,14 @@ import LoadingLogo from './LoadingLogo.vue';
 
 const route = useRoute();
 const homeInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
+const messagesAreaRef = ref<HTMLElement | null>(null);
 const chatInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
 const messagesReady = ref(false);
 const loadingStartTime = ref(0);
 let loadingTimer: number | undefined;
+let followBottomFrameId: number | undefined;
+let followBottomStartTime = 0;
+let followBottomPhase = 'idle' as 'force' | 'follow' | 'idle';
 
 // 定义 emit
 const emit = defineEmits(['open-settings']);
@@ -66,12 +74,71 @@ const greeting = computed(() => {
   }
 });
 
-const scrollMessagesAreaToBottom = async () => {
+const scrollMessagesAreaToBottom = async (force = false) => {
   await nextTick();
-  const container = document.querySelector('.main-content-area');
-  if (container) {
+  const container = messagesAreaRef.value;
+  if (!container) return;
+
+  const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+  if (force || distanceToBottom <= 100) {
     container.scrollTop = container.scrollHeight;
   }
+};
+
+const runFollowBottomLoop = () => {
+  if (followBottomFrameId !== undefined) {
+    window.cancelAnimationFrame(followBottomFrameId);
+  }
+
+  const tick = () => {
+    if (followBottomPhase === 'idle') {
+      followBottomFrameId = undefined;
+      return;
+    }
+
+    const container = messagesAreaRef.value;
+    if (!container) {
+      followBottomFrameId = window.requestAnimationFrame(tick);
+      return;
+    }
+
+    const elapsed = Date.now() - followBottomStartTime;
+    if (followBottomPhase === 'force' && elapsed <= 5000) {
+      container.scrollTop = container.scrollHeight;
+      followBottomFrameId = window.requestAnimationFrame(tick);
+      return;
+    }
+
+    followBottomPhase = 'follow';
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceToBottom <= 100) {
+      container.scrollTop = container.scrollHeight;
+    }
+
+    followBottomFrameId = window.requestAnimationFrame(tick);
+  };
+
+  followBottomFrameId = window.requestAnimationFrame(tick);
+};
+
+const handleForceScrollToBottom = async (value: boolean | CustomEvent) => {
+  if (typeof value === 'boolean') {
+    if (!value) return;
+    await scrollMessagesAreaToBottom(true);
+    return;
+  }
+
+  if (value?.detail) {
+    await scrollMessagesAreaToBottom(true);
+  }
+};
+
+const handleWindowForceScrollToBottom = (event: Event) => {
+  const customEvent = event as CustomEvent<{ conversationID: number; messageAssistantID: number }>;
+  if (customEvent.detail) {
+    console.log('[MainContent] 收到发送后强制滚动:', customEvent.detail);
+  }
+  scrollMessagesAreaToBottom(true);
 };
 
 const handleMessagesRenderComplete = (value: boolean) => {
@@ -82,6 +149,11 @@ const handleMessagesRenderComplete = (value: boolean) => {
     }
     loadingStartTime.value = Date.now();
     messagesReady.value = false;
+    followBottomPhase = 'idle';
+    if (followBottomFrameId !== undefined) {
+      window.cancelAnimationFrame(followBottomFrameId);
+      followBottomFrameId = undefined;
+    }
     return;
   }
 
@@ -93,9 +165,15 @@ const handleMessagesRenderComplete = (value: boolean) => {
   }
 
   loadingTimer = window.setTimeout(async () => {
-    messagesReady.value = true;
     loadingTimer = undefined;
-    await scrollMessagesAreaToBottom();
+    window.setTimeout(async () => {
+      messagesReady.value = true;
+      followBottomStartTime = Date.now();
+      followBottomPhase = 'force';
+      runFollowBottomLoop();
+      await scrollMessagesAreaToBottom(true);
+    }, 300);
+
   }, remaining);
 };
 
@@ -114,6 +192,7 @@ const handleExternalFocusInputArea = () => {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('focus-input-area', handleExternalFocusInputArea);
+  window.addEventListener('force-scroll-to-bottom', handleWindowForceScrollToBottom as EventListener);
 }
 
 watch(
@@ -121,6 +200,11 @@ watch(
   (path, prevPath) => {
     if (path === '/') {
       messagesReady.value = false;
+      followBottomPhase = 'idle';
+      if (followBottomFrameId !== undefined) {
+        window.cancelAnimationFrame(followBottomFrameId);
+        followBottomFrameId = undefined;
+      }
       if (loadingTimer !== undefined) {
         window.clearTimeout(loadingTimer);
         loadingTimer = undefined;
@@ -131,6 +215,11 @@ watch(
     if (path !== prevPath && path.startsWith('/c/')) {
       messagesReady.value = false;
       loadingStartTime.value = Date.now();
+      followBottomPhase = 'idle';
+      if (followBottomFrameId !== undefined) {
+        window.cancelAnimationFrame(followBottomFrameId);
+        followBottomFrameId = undefined;
+      }
       if (loadingTimer !== undefined) {
         window.clearTimeout(loadingTimer);
         loadingTimer = undefined;
@@ -139,6 +228,22 @@ watch(
   },
   { immediate: true },
 );
+
+onBeforeUnmount(() => {
+  if (followBottomFrameId !== undefined) {
+    window.cancelAnimationFrame(followBottomFrameId);
+    followBottomFrameId = undefined;
+  }
+  if (loadingTimer !== undefined) {
+    window.clearTimeout(loadingTimer);
+    loadingTimer = undefined;
+  }
+  followBottomPhase = 'idle';
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus-input-area', handleExternalFocusInputArea);
+    window.removeEventListener('force-scroll-to-bottom', handleWindowForceScrollToBottom as EventListener);
+  }
+});
 
 defineExpose({
   focusInputArea,

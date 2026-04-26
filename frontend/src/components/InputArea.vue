@@ -255,8 +255,13 @@ const handleSendMessage = async () => {
     // 发送新消息后强制滚动到底部
     // 需要等待 DOM 更新后再滚动
     await nextTick();
-    // 通过事件通知 MessagesContainer 强制滚动
-    window.dispatchEvent(new CustomEvent('force-scroll-to-bottom'));
+    // 通过事件通知上层强制滚动，并传递本次发送的对话和消息 ID
+    window.dispatchEvent(new CustomEvent('force-scroll-to-bottom', {
+      detail: {
+        conversationID: conversationId,
+        messageAssistantID: messageAssistantId,
+      },
+    }));
 
     // 通过 WebSocket 发送生成请求
     wsManager.send({

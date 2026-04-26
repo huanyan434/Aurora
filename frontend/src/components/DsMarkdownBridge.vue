@@ -33,7 +33,8 @@ const getSystemTheme = (): 'light' | 'dark' => {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
 }
 
-function renderReact() {
+async function renderReact() {
+  // await nextTick()
   if (!containerRef.value) return
 
   if (!root) {
@@ -49,8 +50,7 @@ function renderReact() {
       cursor: props.cursor,
       theme: getSystemTheme(),
       onEnd: props.onEnd,
-      onTypedChar: props.onTypedChar,
-      isStreaming: props.isStreaming,
+      onTypedChar: props.onTypedChar
     })
   )
 }
