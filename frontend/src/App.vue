@@ -91,6 +91,8 @@ onMounted(async () => {
   --color-red-600: #dc2626;
 
   /* 蓝色系 - 用于链接、主要操作 */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
   --color-blue-600: #2563eb;
 
   /* Slate 色系 - 用于侧边栏、背景等 */
@@ -194,6 +196,11 @@ onMounted(async () => {
   --input-wrapper-inset-ring-shadow: 0 0 #0000;
   --input-wrapper-ring-offset-shadow: 0 0 #0000;
   --input-wrapper-ring-shadow: 0 0 #0000;
+
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #60a5fa;
+  --color-primary-dark: #1b48a7;
 
   /* 推理按钮相关颜色变量 */
   --reasoning-button-active-bg: #3b82f6;

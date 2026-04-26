@@ -382,33 +382,33 @@ onUnmounted(() => {
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
   font-size: var(--font-size-sm); /* text-sm */
   font-weight: 500; /* font-medium */
-  color: var(--color-black); /* text-black */
-  background-color: var(--color-white); /* bg-white */
+  color: var(--color-white);
+  background-color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .verify-code-btn:hover:not(:disabled) {
-  background-color: var(--color-gray-50); /* hover:bg-gray-50 */
+  background-color: var(--color-primary-hover);
 }
 
 .dark .verify-code-btn {
-  color: var(--color-white); /* dark:text-white */
-  background-color: var(--color-black); /* dark:bg-black */
+  color: var(--color-white);
+  background-color: var(--color-primary);
 }
 
 .dark .verify-code-btn:hover:not(:disabled) {
-  background-color: var(--color-gray-900); /* dark:hover:bg-gray-900 */
+  background-color: var(--color-primary-hover);
 }
 
 .verify-code-btn:focus {
   outline: none; /* focus:outline-none */
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 1), 0 0 0 4px rgba(0, 0, 0, 0.1); /* focus:ring-2 focus:ring-offset-2 focus:ring-black */
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 1), 0 0 0 4px rgba(37, 99, 235, 0.35);
 }
 
 .dark .verify-code-btn:focus {
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 1), 0 0 0 4px rgba(255, 255, 255, 0.1); /* dark:focus:ring-white */
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 1), 0 0 0 4px rgba(37, 99, 235, 0.35);
 }
 
 .verify-code-btn:disabled {
@@ -461,29 +461,29 @@ onUnmounted(() => {
   font-size: var(--font-size-sm); /* text-sm */
   font-weight: 500; /* font-medium */
   color: var(--color-white); /* text-white */
-  background-color: var(--color-black); /* bg-black */
+  background-color: var(--color-primary);
 }
 
 .register-btn:hover:not(:disabled) {
-  background-color: var(--color-gray-800); /* hover:bg-gray-800 */
+  background-color: var(--color-primary-hover);
 }
 
 .dark .register-btn {
-  color: var(--color-black); /* dark:text-black */
-  background-color: var(--color-white); /* dark:bg-white */
+  color: var(--color-white);
+  background-color: var(--color-primary);
 }
 
 .dark .register-btn:hover:not(:disabled) {
-  background-color: var(--color-gray-200); /* dark:hover:bg-gray-200 */
+  background-color: var(--color-primary-hover);
 }
 
 .register-btn:focus {
   outline: none; /* focus:outline-none */
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 1), 0 0 0 4px rgba(0, 0, 0, 0.1); /* focus:ring-2 focus:ring-offset-2 focus:ring-black */
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 1), 0 0 0 4px rgba(37, 99, 235, 0.35);
 }
 
 .dark .register-btn:focus {
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 1), 0 0 0 4px rgba(255, 255, 255, 0.1); /* dark:focus:ring-white */
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 1), 0 0 0 4px rgba(37, 99, 235, 0.35);
 }
 
 .login-info {
@@ -498,18 +498,18 @@ onUnmounted(() => {
 
 .login-link {
   font-weight: 500; /* font-medium */
-  color: var(--color-black); /* text-black */
+  color: var(--color-primary);
 }
 
 .login-link:hover {
-  color: var(--color-gray-600); /* hover:text-gray-800 */
+  color: var(--color-primary-hover);
 }
 
 .dark .login-link {
-  color: var(--color-white); /* dark:text-white */
+  color: var(--color-primary);
 }
 
 .dark .login-link:hover {
-  color: var(--color-gray-300); /* dark:hover:text-gray-300 */
+  color: var(--color-primary-hover);
 }
 </style>

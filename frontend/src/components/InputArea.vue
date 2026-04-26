@@ -17,7 +17,7 @@
       <!-- 左下角按钮组 -->
       <div class="input-button-group-left">
         <!-- 文件上传按钮 -->
-        <Button variant="ghost" size="icon" class="input-addon-button" @click="triggerFileUpload">
+        <Button variant="ghost" size="icon" class="input-addon-button input-upload-button" @click="triggerFileUpload">
           <Paperclip class="icon-small" />
         </Button>
 
@@ -26,7 +26,7 @@
 
         <!-- 推理按钮 -->
         <Button variant="ghost" size="icon"
-          :class="['input-addon-button', 'reasoning-button', { 'reasoning-button-active': isReasoning }]"
+          :class="['input-addon-button', 'reasoning-button', { 'reasoning-button-active': isReasoning } ]"
           :disabled="isReasoningDisabled" @click="toggleReasoning">
           <Lightbulb class="icon-small" />
           <span class="reasoning-text">推理</span>
@@ -383,6 +383,30 @@ defineExpose({
   color: #6b7280; /* 默认图标颜色 */
 }
 
+.input-upload-button {
+  background-color: #f5f5f5;
+  border-color: #e5e7eb;
+  color: #6b7280;
+}
+
+.input-upload-button:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.dark .input-upload-button {
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #d1d5db;
+}
+
+.dark .input-upload-button:hover {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
 .input-addon-button:hover {
   background-color: #f3f4f6;
   border-color: #9ca3af;
@@ -422,49 +446,23 @@ defineExpose({
   color: #374151;
 }
 
-/* 推理按钮选中状态 - 简约黑白风 */
+/* 推理按钮选中状态 - 使用主题色 */
 .reasoning-button-active {
-  background-color: #111827; /* 深色背景 */
-  border-color: #111827;
-  border-radius: 0.75rem; /* 苹果风格小圆角 */
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
   color: #ffffff;
-}
-
-.reasoning-button-active:hover {
-  background-color: #1f2937;
-  border-color: #1f2937;
-  color: #ffffff;
-}
-
-.dark .reasoning-button {
-  background-color: #1f2937;
-  border-color: #374151;
-  color: #d1d5db;
-}
-
-.dark .reasoning-button:hover {
-  background-color: #374151;
-  border-color: #4b5563;
-  color: #f3f4f6;
-}
-
-/* 推理按钮选中状态 - 简约黑白风 */
-.reasoning-button-active {
-  background-color: #f9fafb; /* 浅色背景 */
-  border-color: #f9fafb;
-  color: #111827;
 }
 
 .dark .reasoning-button-active {
-  background-color: #e5e7eb;
-  border-color: #e5e7eb;
-  color: #111827;
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  color: #ffffff;
 }
 
 .dark .reasoning-button-active:hover {
-  background-color: #d1d5db;
-  border-color: #d1d5db;
-  color: #111827;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
 }
 
 .reasoning-text {
@@ -479,15 +477,16 @@ defineExpose({
 .input-send-button {
   height: var(--button-size);
   width: var(--button-size);
-  background-color: #111827; /* 深色背景 */
-  border: 1px solid #111827;
+  background-color: var(--color-primary);
+  border: 1px solid var(--color-primary);
   border-radius: 0.75rem; /* 苹果风格小圆角 */
-  color: #ffffff; /* 白色图标 */
+  color: #ffffff; /* 默认图标颜色 */
 }
 
 .input-send-button:hover:not(:disabled) {
-  background-color: #1f2937;
-  border-color: #1f2937;
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: #ffffff;
 }
 
 .input-send-button:disabled {
@@ -498,14 +497,15 @@ defineExpose({
 }
 
 .dark .input-send-button {
-  background-color: #e5e7eb;
-  border-color: #e5e7eb;
-  color: #111827;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
 }
 
 .dark .input-send-button:hover:not(:disabled) {
-  background-color: #d1d5db;
-  border-color: #d1d5db;
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: #ffffff;
 }
 
 .dark .input-send-button:disabled {
@@ -513,6 +513,8 @@ defineExpose({
   border-color: #374151;
   color: #6b7280;
 }
+
+
 
 /* 由于我们无法直接通过CSS检测按钮是否在isGenerating状态下，需要使用一个新类名 */
 .input-send-button-stop {

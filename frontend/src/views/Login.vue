@@ -257,19 +257,19 @@ const goToRegister = () => {
 
 .forgot-password-link {
   font-weight: 500; /* font-medium */
-  color: var(--color-black); /* text-black */
+  color: var(--color-primary);
 }
 
 .forgot-password-link:hover {
-  color: var(--color-gray-600); /* hover:text-gray-800 */
+  color: var(--color-primary-hover);
 }
 
 .dark .forgot-password-link {
-  color: var(--color-white); /* dark:text-white */
+  color: var(--color-primary);
 }
 
 .dark .forgot-password-link:hover {
-  color: var(--color-gray-300); /* dark:hover:text-gray-300 */
+  color: var(--color-primary-hover);
 }
 
 .login-button {
@@ -286,29 +286,29 @@ const goToRegister = () => {
   font-size: var(--font-size-sm); /* text-sm */
   font-weight: 500; /* font-medium */
   color: var(--color-white); /* text-white */
-  background-color: var(--color-black); /* bg-black */
+  background-color: var(--color-primary);
 }
 
 .login-button:hover:not(:disabled) {
-  background-color: var(--color-gray-800); /* hover:bg-gray-800 */
+  background-color: var(--color-primary-hover);
 }
 
 .dark .login-button {
-  color: var(--color-black); /* dark:text-black */
-  background-color: var(--color-white); /* dark:bg-white */
+  color: var(--color-white);
+  background-color: var(--color-primary);
 }
 
 .dark .login-button:hover:not(:disabled) {
-  background-color: var(--color-gray-200); /* dark:hover:bg-gray-200 */
+  background-color: var(--color-primary-hover);
 }
 
 .login-button:focus {
   outline: none; /* focus:outline-none */
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 1), 0 0 0 4px rgba(0, 0, 0, 0.1); /* focus:ring-2 focus:ring-offset-2 focus:ring-black */
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 1), 0 0 0 4px rgba(37, 99, 235, 0.35);
 }
 
 .dark .login-button:focus {
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 1), 0 0 0 4px rgba(255, 255, 255, 0.1); /* dark:focus:ring-white */
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 1), 0 0 0 4px rgba(37, 99, 235, 0.35);
 }
 
 .login-button:disabled {
@@ -327,18 +327,18 @@ const goToRegister = () => {
 
 .register-link {
   font-weight: 500; /* font-medium */
-  color: var(--color-black); /* text-black */
+  color: var(--color-primary);
 }
 
 .register-link:hover {
-  color: var(--color-gray-600); /* hover:text-gray-800 */
+  color: var(--color-primary-hover);
 }
 
 .dark .register-link {
-  color: var(--color-white); /* dark:text-white */
+  color: var(--color-primary);
 }
 
 .dark .register-link:hover {
-  color: var(--color-gray-300); /* dark:hover:text-gray-300 */
+  color: var(--color-primary-hover);
 }
 </style>
