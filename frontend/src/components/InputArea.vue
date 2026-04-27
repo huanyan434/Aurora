@@ -458,6 +458,12 @@ defineExpose({
   color: #ffffff;
 }
 
+.reasoning-button-active:hover {
+  background-color: var(--color-primary-hover);
+  border-color: vat(--color-primary-hover);
+  color: #ffffff;
+}
+
 .dark .reasoning-button-active {
   background-color: var(--color-primary-dark);
   border-color: var(--color-primary-dark);

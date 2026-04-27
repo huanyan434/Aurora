@@ -54,7 +54,6 @@ const loadingStartTime = ref(0);
 let firstMounted = true;
 let loadingTimer: number | undefined;
 let followBottomFrameId: number | undefined;
-let followBottomStartTime = 0;
 let followBottomPhase = 'idle' as 'force' | 'follow' | 'idle';
 
 // 定义 emit
@@ -103,15 +102,6 @@ const runFollowBottomLoop = () => {
       return;
     }
 
-    const elapsed = Date.now() - followBottomStartTime;
-    if (followBottomPhase === 'force' && elapsed <= 2000 && firstMounted == true) {
-      container.scrollTop = container.scrollHeight;
-      followBottomFrameId = window.requestAnimationFrame(tick);
-      firstMounted = false;
-      return;
-    }
-
-    followBottomPhase = 'follow';
     const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     if (distanceToBottom <= 50) {
       container.scrollTop = container.scrollHeight;
@@ -159,8 +149,11 @@ const handleMessagesRenderComplete = (value: boolean) => {
     return;
   }
 
-  const elapsed = Date.now() - loadingStartTime.value;
-  const remaining = Math.max(0, 1000 - elapsed);
+  let remaining = 300;
+  if (firstMounted) {
+    firstMounted = false;
+    remaining = 2000;
+  }
 
   if (loadingTimer !== undefined) {
     window.clearTimeout(loadingTimer);
@@ -168,14 +161,10 @@ const handleMessagesRenderComplete = (value: boolean) => {
 
   loadingTimer = window.setTimeout(async () => {
     loadingTimer = undefined;
-    window.setTimeout(async () => {
-      messagesReady.value = true;
-      followBottomStartTime = Date.now();
-      followBottomPhase = 'force';
-      runFollowBottomLoop();
-      await scrollMessagesAreaToBottom(true);
-    }, 300);
-
+    messagesReady.value = true;
+    followBottomPhase = 'follow';
+    runFollowBottomLoop();
+    await scrollMessagesAreaToBottom(true);
   }, remaining);
 };
 

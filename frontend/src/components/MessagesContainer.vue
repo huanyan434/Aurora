@@ -270,7 +270,6 @@ watch(
 
         if (historyMessages.length === 0) {
             emit('render-complete', true);
-            emit('force-scroll-to-bottom', true);
             emittedRenderComplete.value = true;
             return;
         }
@@ -278,7 +277,6 @@ watch(
         if (renderedHistoryCount.value >= totalHistoryCount.value && !emittedRenderComplete.value) {
             emittedRenderComplete.value = true;
             emit('render-complete', true);
-            emit('force-scroll-to-bottom', true);
         }
     },
     { immediate: true, deep: true },
@@ -633,8 +631,7 @@ const setupGlobalGenerateHandler = () => {
                 chatStore.setIsTyping(true);
 
                 console.log('[续流] 占位消息已创建，ID:', tempMessage.id);
-                emit('force-scroll-to-bottom', true);
-            }
+                }
         }
         // streaming 状态不需要创建占位消息，只是表示生成正在进行
     };
@@ -706,8 +703,7 @@ const setupGlobalGenerateHandler = () => {
                 typingState.isTyping = true;
                 // 同步更新全局 isTyping 状态
                 chatStore.setIsTyping(true);
-                emit('force-scroll-to-bottom', true);
-            }
+                }
         } else {
             console.error("服务器返回错误:", data.error);
             toastError(data.error || "生成失败", 15000); // 15 秒
