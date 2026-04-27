@@ -55,6 +55,8 @@ let firstMounted = true;
 let loadingTimer: number | undefined;
 let followBottomFrameId: number | undefined;
 let followBottomPhase = 'idle' as 'force' | 'follow' | 'idle';
+let lastScrollHeight = 0;
+let lastScrollTop = 0;
 
 // 定义 emit
 const emit = defineEmits(['open-settings']);
@@ -102,10 +104,20 @@ const runFollowBottomLoop = () => {
       return;
     }
 
-    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (distanceToBottom <= 50) {
-      container.scrollTop = container.scrollHeight;
+    const currentScrollHeight = container.scrollHeight;
+    const currentScrollTop = container.scrollTop;
+    const clientHeight = container.clientHeight;
+
+    const distanceToBottom = currentScrollHeight - currentScrollTop - clientHeight;
+    const heightIncreased = currentScrollHeight > lastScrollHeight;
+    const scrollTopIncreased = currentScrollTop > lastScrollTop;
+
+    if ((heightIncreased || scrollTopIncreased) && distanceToBottom <= 50) {
+      container.scrollTop = currentScrollHeight;
     }
+
+    lastScrollHeight = currentScrollHeight;
+    lastScrollTop = currentScrollTop;
 
     followBottomFrameId = window.requestAnimationFrame(tick);
   };
