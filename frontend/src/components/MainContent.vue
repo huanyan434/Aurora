@@ -112,7 +112,7 @@ const runFollowBottomLoop = () => {
     const heightIncreased = currentScrollHeight > lastScrollHeight;
     const scrollTopIncreased = currentScrollTop > lastScrollTop;
 
-    if ((heightIncreased || scrollTopIncreased) && distanceToBottom <= 50) {
+    if (((heightIncreased || scrollTopIncreased) && distanceToBottom <= 50) || firstMounted === true) {
       container.scrollTop = currentScrollHeight;
     }
 
@@ -163,7 +163,6 @@ const handleMessagesRenderComplete = (value: boolean) => {
 
   let remaining = 300;
   if (firstMounted) {
-    firstMounted = false;
     remaining = 2000;
   }
 
@@ -177,6 +176,9 @@ const handleMessagesRenderComplete = (value: boolean) => {
     followBottomPhase = 'follow';
     runFollowBottomLoop();
     await scrollMessagesAreaToBottom(true);
+    if (firstMounted === true) {
+      firstMounted = false;
+    }
   }, remaining);
 };
 
