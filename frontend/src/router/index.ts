@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router"
-import { useUserStore } from "@/stores/user.ts"
+import { useUserStore } from "@/stores/user"
 
 // 路由配置
 const routes = [
@@ -50,17 +50,14 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
 
-  // 初始化用户状态：首次进入或本地状态不完整时，优先尝试拉取服务端会话
-  if (!userStore.checkAuthenticated()) {
-    console.log("初始化用户状态")
-    await userStore.init()
-  }
+  // 每次路由变更都重新检测服务端会话有效性，防止 cookie 过期
+  console.log("初始化用户状态")
+  await userStore.init()
 
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
   const requiresGuest = to.matched.some((record) => record.meta.requiresGuest)
 
   if (requiresAuth && !userStore.checkAuthenticated()) {
-    // 需要认证但未登录，跳转到登录页
     console.log("跳转到登录页")
     next({ name: "Login", query: { redirect: to.fullPath } })
   } else if (requiresGuest && userStore.checkAuthenticated()) {
@@ -77,3 +74,6 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
+
+
+
