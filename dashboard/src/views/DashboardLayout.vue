@@ -47,7 +47,7 @@
         </div>
         <div class="version-info">
           <span>Aurora Dashboard</span>
-          <span class="version">v1.0.0</span>
+          <span class="version">v26.4.28</span>
         </div>
       </div>
     </aside>
