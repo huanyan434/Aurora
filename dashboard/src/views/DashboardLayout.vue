@@ -37,7 +37,7 @@
           :class="{ 'nav-item-active': isActive(item.path) }"
           @click="onNavClick"
         >
-          <span class="nav-icon">{{ item.icon }}</span>
+          <component :is="item.icon" class="nav-icon" />
           <span class="nav-text">{{ item.name }}</span>
         </router-link>
       </nav>
@@ -60,9 +60,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { Database, UserRound, UserRoundKey, CircleUserRound, MessageCircleMore, Sparkle, UserStar } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -84,13 +85,13 @@ const checkMobile = () => {
 
 const navItems = computed(() => {
   const items = [
-    { path: '/dashboard/overview', name: '数据概览', icon: '📊' },
-    { path: '/dashboard/users', name: '用户管理', icon: '👥' },
-    { path: '/dashboard/points', name: '积分统计', icon: '💰' }
+    { path: '/dashboard/overview', name: '数据概览', icon: h(Database) },
+    { path: '/dashboard/users', name: '用户管理', icon: h(UserRound) },
+    { path: '/dashboard/points', name: '积分统计', icon: h(Sparkle) }
   ]
   // 仅0级管理员显示管理员管理
   if (userStore.currentUser?.adminLevel === 0) {
-    items.push({ path: '/dashboard/admins', name: '管理员管理', icon: '🔐' })
+    items.push({ path: '/dashboard/admins', name: '管理员管理', icon: h(UserRoundKey) })
   }
   return items
 })

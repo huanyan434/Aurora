@@ -10,7 +10,9 @@
       <!-- 总用户数 -->
       <div class="stat-card stat-card-primary">
         <div class="stat-header">
-          <div class="stat-icon stat-icon-primary">👥</div>
+          <div class="stat-icon stat-icon-primary">
+            <CircleUserRound class="w-10 h-10" color="#ffffff" />
+          </div>
           <div class="stat-value">{{ overview.totalUsers }}</div>
         </div>
         <div class="stat-label">总用户数</div>
@@ -22,7 +24,9 @@
       <!-- 总对话数 -->
       <div class="stat-card stat-card-info">
         <div class="stat-header">
-          <div class="stat-icon stat-icon-info">💬</div>
+          <div class="stat-icon stat-icon-info">
+            <MessageCircleMore class="w-10 h-10" color="#ffffff" />
+          </div>
           <div class="stat-value">{{ overview.totalConversations }}</div>
         </div>
         <div class="stat-label">总对话数</div>
@@ -34,7 +38,9 @@
       <!-- 今日发放积分 -->
       <div class="stat-card stat-card-success">
         <div class="stat-header">
-          <div class="stat-icon stat-icon-success">💰</div>
+          <div class="stat-icon stat-icon-success">
+            <Sparkle class="w-10 h-10" color="#ffffff" />
+          </div>
           <div class="stat-value">{{ overview.todayPointsIssued.toLocaleString() }}</div>
         </div>
         <div class="stat-label">今日发放积分</div>
@@ -43,7 +49,9 @@
       <!-- VIP 用户 -->
       <div class="stat-card stat-card-warning">
         <div class="stat-header">
-          <div class="stat-icon stat-icon-warning">⭐</div>
+          <div class="stat-icon stat-icon-warning">
+            <UserStar class="w-10 h-10" color="#ffffff" />
+          </div>
           <div class="stat-value">{{ overview.vipUsers }}</div>
         </div>
         <div class="stat-label">VIP 用户</div>
@@ -74,6 +82,7 @@
 import { ref, onMounted } from 'vue'
 import { dashboardApi } from '@/api/dashboard'
 import type { DashboardOverview } from '@/types'
+import { CircleUserRound, MessageCircleMore, Sparkle, UserStar } from 'lucide-vue-next'
 
 const overview = ref<DashboardOverview>({
   totalUsers: 0,
