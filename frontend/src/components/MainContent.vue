@@ -4,10 +4,10 @@
     <TopBar @open-settings="$emit('open-settings')" />
 
     <!-- Messages Container 或者欢迎界面 -->
-    <div class="main-content-area" ref="messagesAreaRef">
+    <div class="main-content-area">
       <div
         class="welcome-container"
-        v-show="isHomeRoute"
+        :class="{ 'hidden': !isHomeRoute }"
       >
 
         <h1 class="welcome-title">{{ greeting }}, 有什么可以帮你？</h1>
@@ -16,15 +16,14 @@
           <InputArea ref="homeInputAreaRef" />
         </div>
       </div>
-      <div v-show="!isHomeRoute" class="messages-layer">
-        <div class="messages-loading-layer" v-show="!messagesReady">
+      <div :class="{ 'messages-layer': true, 'hidden': isHomeRoute }">
+        <div :class="{ 'messages-loading-layer': true, 'visible': !messagesReady }">
           <LoadingLogo />
         </div>
-        <div class="messages-container-wrapper" v-show="messagesReady">
+        <div :class="{ 'messages-container-wrapper': true, 'visible': messagesReady }" ref="messagesContainerWrapperRef">
           <MessagesContainer
             class="messages-container"
             @render-complete="handleMessagesRenderComplete"
-            @force-scroll-to-bottom="handleForceScrollToBottom"
           />
         </div>
       </div>
@@ -38,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import TopBar from './TopBar.vue';
 import MessagesContainer from './MessagesContainer.vue';
@@ -47,16 +46,10 @@ import LoadingLogo from './LoadingLogo.vue';
 
 const route = useRoute();
 const homeInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
-const messagesAreaRef = ref<HTMLElement | null>(null);
 const chatInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
 const messagesReady = ref(false);
 const loadingStartTime = ref(0);
-let firstMounted = true;
 let loadingTimer: number | undefined;
-let followBottomFrameId: number | undefined;
-let followBottomPhase = 'idle' as 'force' | 'follow' | 'idle';
-let lastScrollHeight = 0;
-let lastScrollTop = 0;
 
 // 定义 emit
 const emit = defineEmits(['open-settings']);
@@ -76,110 +69,12 @@ const greeting = computed(() => {
   }
 });
 
-const scrollMessagesAreaToBottom = async (force = false) => {
-  await nextTick();
-  const container = messagesAreaRef.value;
-  if (!container) return;
-
-  const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-  if (force || distanceToBottom <= 50) {
-    container.scrollTop = container.scrollHeight;
-  }
-};
-
-const runFollowBottomLoop = () => {
-  if (followBottomFrameId !== undefined) {
-    window.cancelAnimationFrame(followBottomFrameId);
-  }
-
-  const tick = () => {
-    if (followBottomPhase === 'idle') {
-      followBottomFrameId = undefined;
-      return;
-    }
-
-    const container = messagesAreaRef.value;
-    if (!container) {
-      followBottomFrameId = window.requestAnimationFrame(tick);
-      return;
-    }
-
-    const currentScrollHeight = container.scrollHeight;
-    const currentScrollTop = container.scrollTop;
-    const clientHeight = container.clientHeight;
-
-    const distanceToBottom = currentScrollHeight - currentScrollTop - clientHeight;
-    const heightIncreased = currentScrollHeight > lastScrollHeight;
-    const scrollTopIncreased = currentScrollTop > lastScrollTop;
-
-    if (((heightIncreased || scrollTopIncreased) && distanceToBottom <= 50) || firstMounted === true) {
-      container.scrollTop = currentScrollHeight;
-    }
-
-    lastScrollHeight = currentScrollHeight;
-    lastScrollTop = currentScrollTop;
-
-    followBottomFrameId = window.requestAnimationFrame(tick);
-  };
-
-  followBottomFrameId = window.requestAnimationFrame(tick);
-};
-
-const handleForceScrollToBottom = async (value: boolean | CustomEvent) => {
-  if (typeof value === 'boolean') {
-    if (!value) return;
-    await scrollMessagesAreaToBottom(true);
-    return;
-  }
-
-  if (value?.detail) {
-    await scrollMessagesAreaToBottom(true);
-  }
-};
-
-const handleWindowForceScrollToBottom = (event: Event) => {
-  const customEvent = event as CustomEvent<{ conversationID: number; messageAssistantID: number }>;
-  if (customEvent.detail) {
-    console.log('[MainContent] 收到发送后强制滚动:', customEvent.detail);
-  }
-  scrollMessagesAreaToBottom(true);
-};
-
 const handleMessagesRenderComplete = (value: boolean) => {
   if (!value) {
-    if (loadingTimer !== undefined) {
-      window.clearTimeout(loadingTimer);
-      loadingTimer = undefined;
-    }
-    loadingStartTime.value = Date.now();
     messagesReady.value = false;
-    followBottomPhase = 'idle';
-    if (followBottomFrameId !== undefined) {
-      window.cancelAnimationFrame(followBottomFrameId);
-      followBottomFrameId = undefined;
-    }
     return;
   }
-
-  let remaining = 300;
-  if (firstMounted) {
-    remaining = 2000;
-  }
-
-  if (loadingTimer !== undefined) {
-    window.clearTimeout(loadingTimer);
-  }
-
-  loadingTimer = window.setTimeout(async () => {
-    loadingTimer = undefined;
-    messagesReady.value = true;
-    followBottomPhase = 'follow';
-    runFollowBottomLoop();
-    await scrollMessagesAreaToBottom(true);
-    if (firstMounted === true && isHomeRoute.value === false) {
-      firstMounted = false;
-    }
-  }, remaining);
+  messagesReady.value = true;
 };
 
 
@@ -197,7 +92,6 @@ const handleExternalFocusInputArea = () => {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('focus-input-area', handleExternalFocusInputArea);
-  window.addEventListener('force-scroll-to-bottom', handleWindowForceScrollToBottom as EventListener);
 }
 
 watch(
@@ -205,11 +99,6 @@ watch(
   (path, prevPath) => {
     if (path === '/') {
       messagesReady.value = false;
-      followBottomPhase = 'idle';
-      if (followBottomFrameId !== undefined) {
-        window.cancelAnimationFrame(followBottomFrameId);
-        followBottomFrameId = undefined;
-      }
       if (loadingTimer !== undefined) {
         window.clearTimeout(loadingTimer);
         loadingTimer = undefined;
@@ -220,11 +109,6 @@ watch(
     if (path !== prevPath && path.startsWith('/c/')) {
       messagesReady.value = false;
       loadingStartTime.value = Date.now();
-      followBottomPhase = 'idle';
-      if (followBottomFrameId !== undefined) {
-        window.cancelAnimationFrame(followBottomFrameId);
-        followBottomFrameId = undefined;
-      }
       if (loadingTimer !== undefined) {
         window.clearTimeout(loadingTimer);
         loadingTimer = undefined;
@@ -235,18 +119,12 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  if (followBottomFrameId !== undefined) {
-    window.cancelAnimationFrame(followBottomFrameId);
-    followBottomFrameId = undefined;
-  }
   if (loadingTimer !== undefined) {
     window.clearTimeout(loadingTimer);
     loadingTimer = undefined;
   }
-  followBottomPhase = 'idle';
   if (typeof window !== 'undefined') {
     window.removeEventListener('focus-input-area', handleExternalFocusInputArea);
-    window.removeEventListener('force-scroll-to-bottom', handleWindowForceScrollToBottom as EventListener);
   }
 });
 
@@ -269,60 +147,137 @@ defineExpose({
 
 .main-content-area {
   flex: 1;
+  overflow: hidden;
+  position: relative;
   overflow-y: auto;
   padding: var(--spacing-md); /* p-4 */
   min-height: 0;
-}
-
-.messages-layer {
-  position: relative;
-  min-height: 100%;
-}
-
-.messages-loading-layer {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
 }
 
 .welcome-container {
   height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  margin-top: calc(-1 * var(--spacing-2xl)); /* -mt-12 */
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+  transition: opacity 0.3s ease;
+}
+
+.welcome-container.hidden {
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .welcome-title {
-  font-size: var(--font-size-3xl); /* text-3xl */
-  font-weight: 700; /* font-bold */
-  color: var(--color-gray-800); /* text-gray-800 */
-  margin-bottom: var(--spacing-lg); /* mb-6 */
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  background: linear-gradient(90deg, #18181b, #27272a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.dark .welcome-title {
-  color: var(--sidebar-text-color); /* 使用新的深色模式变量 */
+@media (max-width: 768px) {
+  .welcome-title {
+    font-size: 24px;
+  }
 }
 
 .welcome-input-container {
   width: 100%;
-  max-width: var(--max-width-2xl); /* max-w-2xl */
+  max-width: 768px;
 }
 
-.messages-container-wrapper {
+.messages-layer {
   height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
+  min-height: 100%;
+}
+
+.messages-layer.hidden {
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.messages-loading-layer {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.messages-loading-layer.visible {
+  visibility: visible;
+  position: relative;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.messages-container-wrapper {
+  flex: 1;
+  display: flex;
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  height: 100%;
+  flex-direction: column;
+}
+
+.messages-container-wrapper.visible {
+  visibility: visible;
+  position: relative;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .messages-container {
   flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  width: 100%;
+  height: 100%;
   word-break: break-all;
   overflow-x: hidden;
+}
+
+/* 深色模式适配 */
+.dark .welcome-title {
+  background: linear-gradient(90deg, #fafafa, #e5e7eb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .dark .messages-container {

@@ -1,5 +1,5 @@
 <template>
-    <div class="messages-scroll-container w-full h-full overflow-y-auto p-4">
+    <div class="messages-scroll-container w-full h-full overflow-y-auto p-4" ref="containerRef">
         <div class="max-w-3xl mx-auto space-y-6">
             <!-- 消息列表 -->
             <div
@@ -171,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from "vue";
 import {
     deleteMessage as deleteMessageAPI,
     getModelsList,
@@ -204,8 +204,15 @@ const hoveredMessageId = ref<number | null>(null);
 const isDeleteDialogOpen = ref(false);
 const messageToDelete = ref<number | null>(null);
 const models = ref<any[]>([]);
+const containerRef = ref<HTMLElement | null>(null);
 // 跟踪哪些消息的 markdown 渲染已完成
 const markdownEndedIds = ref<Set<number>>(new Set());
+
+// 滚动相关状态
+const followBottomFrameId = ref<number | undefined>(undefined);
+const followBottomPhase = ref<'idle' | 'following'>('following');
+const lastScrollHeight = ref(0);
+const lastScrollTop = ref(0);
 
 // 打字状态管理
 interface TypingState {
@@ -218,12 +225,78 @@ const typingStates = ref<Map<number, TypingState>>(new Map());
 // 向父组件报告历史消息渲染状态
 const emit = defineEmits<{
     (e: 'render-complete', value: boolean): void;
-    (e: 'force-scroll-to-bottom', value: boolean): void;
-    (e: 'register-message-assistant-id', value: { conversationID: number; messageAssistantID: number }): void;
 }>();
+emit("render-complete", false);
 const emittedRenderComplete = ref(false);
 const totalHistoryCount = ref(0);
 const renderedHistoryCount = ref(0);
+
+/**
+ * 滚动消息区域到底部
+ * @param force 是否强制滚动到底部
+ */
+const scrollMessagesAreaToBottom = async (force = false) => {
+  await nextTick();
+  const container = containerRef.value;
+  if (!container) return;
+
+  const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+  if (force || distanceToBottom <= 50) {
+    container.scrollTop = container.scrollHeight;
+  }
+};
+
+/**
+ * 运行跟随底部循环
+ */
+const runFollowBottomLoop = () => {
+  if (followBottomFrameId.value !== undefined) {
+    window.cancelAnimationFrame(followBottomFrameId.value);
+  }
+
+  const tick = () => {
+    if (followBottomPhase.value === 'idle') {
+      followBottomFrameId.value = undefined;
+      return;
+    }
+
+    const container = containerRef.value;
+    if (!container) {
+      followBottomFrameId.value = window.requestAnimationFrame(tick);
+      return;
+    }
+
+    const currentScrollHeight = container.scrollHeight;
+    const currentScrollTop = container.scrollTop;
+    const clientHeight = container.clientHeight;
+
+    const distanceToBottom = currentScrollHeight - currentScrollTop - clientHeight;
+    const heightIncreased = currentScrollHeight > lastScrollHeight.value;
+    const scrollTopIncreased = currentScrollTop > lastScrollTop.value;
+
+    if ((heightIncreased || scrollTopIncreased) && distanceToBottom <= 50) {
+      container.scrollTop = currentScrollHeight;
+    }
+
+    lastScrollHeight.value = currentScrollHeight;
+    lastScrollTop.value = currentScrollTop;
+
+    followBottomFrameId.value = window.requestAnimationFrame(tick);
+  };
+
+  followBottomFrameId.value = window.requestAnimationFrame(tick);
+};
+
+/**
+ * 处理强制滚动到底部事件
+ * @param event 滚动事件
+ */
+const handleForceScrollToBottom = async (event: Event) => {
+  const customEvent = event as CustomEvent;
+  if (customEvent?.detail) {
+    await scrollMessagesAreaToBottom(true);
+  }
+};
 
 // 使用计算属性获取当前对话 ID（从路由路径）
 const currentConversationId = computed(() => {
@@ -239,6 +312,10 @@ const displayedMessages = computed(() => {
     const convId = currentConversationId.value;
     if (isNaN(convId)) return [];
     const messages = chatStore.getMessagesByConversationId(convId) || [];
+    // 更新总历史消息数
+    const historyMessages = messages.filter((message) => message.role === 'assistant' && message.isHistory);
+    totalHistoryCount.value = historyMessages.length;
+
     // 为每条消息添加 markdownEnded 状态
     return messages.map(msg => ({
         ...msg,
@@ -253,33 +330,8 @@ watch(
         totalHistoryCount.value = 0;
         renderedHistoryCount.value = 0;
         markdownEndedIds.value = new Set();
-        emit('render-complete', false);
     },
     { immediate: true },
-);
-
-watch(
-    displayedMessages,
-    (messages) => {
-        const historyMessages = messages.filter((message) => message.role === 'assistant' && message.isHistory);
-        totalHistoryCount.value = historyMessages.length;
-        renderedHistoryCount.value = historyMessages.filter((message) => {
-            if (!message.id) return false;
-            return markdownEndedIds.value.has(message.id);
-        }).length;
-
-        if (historyMessages.length === 0) {
-            emit('render-complete', true);
-            emittedRenderComplete.value = true;
-            return;
-        }
-
-        if (renderedHistoryCount.value >= totalHistoryCount.value && !emittedRenderComplete.value) {
-            emittedRenderComplete.value = true;
-            emit('render-complete', true);
-        }
-    },
-    { immediate: true, deep: true },
 );
 
 
@@ -291,16 +343,65 @@ watch(
 const handleHistoryMessageEnd = (messageId: number | undefined) => {
     if (messageId === undefined) return;
 
-    // console.log('[handleHistoryMessageEnd] 历史消息渲染完成，消息 ID:', messageId);
     markdownEndedIds.value.add(messageId);
+    renderedHistoryCount.value++;
 
-    const historyMessages = displayedMessages.value.filter((message) => message.role === 'assistant' && message.isHistory);
-    const renderedCount = historyMessages.filter((message) => message.id && markdownEndedIds.value.has(message.id)).length;
-    if (historyMessages.length > 0 && renderedCount >= historyMessages.length && !emittedRenderComplete.value) {
-        setTimeout(() => {
-            emittedRenderComplete.value = true;
-            emit('render-complete', true);
-        }, 100)
+    // 检查是否所有历史消息都渲染完成
+    if (renderedHistoryCount.value >= totalHistoryCount.value && totalHistoryCount.value > 0) {
+        // 使用 nextTick + 双 RAF 确保 DOM 渲染稳定
+        nextTick().then(() => {
+            let lastHeight = 0;
+            let stableFrames = 0;
+            let checkCount = 0;
+
+            // 兜底超时，防止 RAF 循环卡住
+            const timeoutId = setTimeout(() => {
+                // 滚动到底部
+                if (containerRef.value) {
+                    containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                }
+                emit('render-complete', true);
+                console.log("emit 超时");
+            }, 10000); // 10秒兜底
+
+            const checkStable = () => {
+                checkCount++;
+                const currentHeight = containerRef.value?.scrollHeight || 0;
+                if (currentHeight === lastHeight) {
+                    stableFrames++;
+                    if (stableFrames >= 2) {
+                        // 高度连续两帧稳定，认为渲染完成
+                        clearTimeout(timeoutId); // 清除兜底定时器
+                        // 滚动到底部
+                        if (containerRef.value) {
+                            containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                        }
+                        emit('render-complete', true);
+                        console.log("emit: complete");
+                        return;
+                    }
+                } else {
+                    // 高度变化，重置计数
+                    stableFrames = 0;
+                    lastHeight = currentHeight;
+                }
+
+                // 防止无限循环
+                if (checkCount > 100) {
+                    clearTimeout(timeoutId);
+                    // 滚动到底部
+                    if (containerRef.value) {
+                        containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                    }
+                    emit('render-complete', true);
+                    console.log("emit 循环");
+                    return;
+                }
+
+                requestAnimationFrame(checkStable);
+            };
+            requestAnimationFrame(checkStable);
+        });
     }
 };
 
@@ -865,7 +966,9 @@ const loadConversationHistory = async (conversationId: number) => {
 
             chatStore.setMessages(conversationId, formattedMessages);
             isLoading.value = false;
-            
+
+            // 增加已渲染完成计数
+            renderedHistoryCount.value++;
         }
     } catch (error) {
         console.error("获取历史消息失败:", error);
@@ -936,6 +1039,12 @@ onMounted(async () => {
 
     // 显式调用 loadCurrentConversation，确保页面初始化时触发续流检查
     loadCurrentConversation();
+
+    // 启动跟随底部循环
+    runFollowBottomLoop();
+
+    // 监听强制滚动事件
+    window.addEventListener('force-scroll-to-bottom', handleForceScrollToBottom as EventListener);
 });
 
 
@@ -961,6 +1070,14 @@ onUnmounted(() => {
         wsManager.offMessage('resume_status', currentResumeStatusHandler);
         currentResumeStatusHandler = null;
     }
+
+    // 清理滚动相关的资源
+    if (followBottomFrameId.value !== undefined) {
+        window.cancelAnimationFrame(followBottomFrameId.value);
+    }
+
+    // 移除事件监听器
+    window.removeEventListener('force-scroll-to-bottom', handleForceScrollToBottom as EventListener);
 });
 </script>
 
