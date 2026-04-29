@@ -176,7 +176,7 @@ const handleMessagesRenderComplete = (value: boolean) => {
     followBottomPhase = 'follow';
     runFollowBottomLoop();
     await scrollMessagesAreaToBottom(true);
-    if (firstMounted === true) {
+    if (firstMounted === true && isHomeRoute.value === false) {
       firstMounted = false;
     }
   }, remaining);
