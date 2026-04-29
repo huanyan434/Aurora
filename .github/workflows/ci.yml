@@ -99,7 +99,7 @@ jobs:
     - name: Upload Home Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: home-dist
+        name: home
         path: home/dist
         if-no-files-found: error
 
