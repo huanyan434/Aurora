@@ -7,7 +7,7 @@
     <div class="main-content-area">
       <div
         class="welcome-container"
-        :class="{ 'hidden': !isHomeRoute }"
+        v-if="isHomeRoute"
       >
 
         <h1 class="welcome-title">{{ greeting }}, 有什么可以帮你？</h1>
@@ -16,7 +16,7 @@
           <InputArea ref="homeInputAreaRef" />
         </div>
       </div>
-      <div :class="{ 'messages-layer': true, 'hidden': isHomeRoute }">
+      <div :class="{ 'messages-layer': true }" v-if="!isHomeRoute">
         <div :class="{ 'messages-loading-layer': true, 'visible': !messagesReady }">
           <LoadingLogo />
         </div>
