@@ -399,8 +399,21 @@ export const tts = async (data: TtsRequest) => {
 }
 
 // 获取分享内容
+export interface SharedMessage {
+  id: number
+  content: string
+  role: 'user' | 'assistant'
+  conversationID: number
+  createdAt: string
+  reasoningContent: string
+  base64: string
+  username: string
+  avatar: string
+  modelName: string
+}
+
 export interface LoadShareMessagesResponseSuccess {
-  messages: Message[]
+  messages: SharedMessage[]
   success: true
 }
 

@@ -2,139 +2,119 @@
     <div class="messages-scroll-container w-full h-full overflow-y-auto p-4" ref="containerRef">
         <div class="max-w-3xl mx-auto space-y-6">
             <!-- 消息列表 -->
-            <div
-                v-for="(message, index) in displayedMessages"
-                :key="message.id || index"
-                class="flex flex-col"
+            <div v-for="(message, index) in displayedMessages" :key="message.id || index" class="flex flex-col"
                 :class="message.role === 'user' ? 'items-end' : 'items-start'"
-                @mouseenter="hoveredMessageId = message.id || null"
-                @mouseleave="hoveredMessageId = null"
-            >
-                <div
-                    :class="[
-                        'rounded-lg px-4 py-3',
-                        message.role === 'user'
-                            ? 'bg-gray-100 dark:bg-user-msg-bg user-message'
-                            : 'assistant-message',
-                    ]"
-                >
+                @mouseenter="hoveredMessageId = message.id || null" @mouseleave="hoveredMessageId = null">
+                <div :class="[
+                    'rounded-lg px-4 py-3',
+                    message.role === 'user'
+                        ? 'bg-gray-100 dark:bg-user-msg-bg user-message'
+                        : 'assistant-message',
+                ]">
                     <!-- 用户消息 -->
                     <div v-if="message.role === 'user'">
                         <!-- 文本内容 -->
-                        <div
-                            v-if="message.content"
-                            class="text-gray-800 dark:text-gray-200"
-                            v-html="renderUserContent(message.content)"
-                        ></div>
+                        <div v-if="message.content" class="text-gray-800 dark:text-gray-200"
+                            v-html="renderUserContent(message.content)"></div>
 
                         <!-- 图片附件 -->
                         <div v-if="message.base64" class="mt-2">
-                            <img
-                                :src="getImageSrc(message.base64)"
-                                alt="上传的图片"
-                                class="max-w-full h-auto rounded"
-                                @error="handleImageError"
-                            />
+                            <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-full h-auto rounded"
+                                @error="handleImageError" />
                         </div>
                     </div>
 
                     <!-- 助手消息 -->
                     <div v-else>
                         <!-- 模型名称显示 -->
-                        <div
-                            v-if="extractModelName(message.content)"
-                            class="mb-2 text-sm text-gray-500 dark:text-gray-300"
-                        >
+                        <div v-if="extractModelName(message.content)"
+                            class="mb-2 text-sm text-gray-500 dark:text-gray-300">
                             {{ extractModelName(message.content) }}
                         </div>
 
                         <!-- 推理内容 -->
-                        <ReasoningContent
-                            v-if="message.reasoningContent"
-                            :content="message.reasoningContent"
-                            :reasoning-time="message.reasoningTime || 0"
-                            :is-streaming="message.isStreaming || false"
-                            :disable-typing="message.disableTyping || false"
-                        />
+                        <ReasoningContent v-if="message.reasoningContent" :content="message.reasoningContent"
+                            :reasoning-time="message.reasoningTime || 0" :is-streaming="message.isStreaming || false"
+                            :disable-typing="message.disableTyping || false" />
 
                         <!-- 回复内容 - 根据 isHistory 字段选择组件 -->
                         <div v-if="message.isHistory">
-                            <DsMarkdown
-                                :content="message.content"
-                                :interval="0"
-                                :show-cursor="false"
-                                :disable-typing="true"
-                                cursor="circle"
-                                :on-end="() => handleHistoryMessageEnd(message.id)"
-                            />
+                            <DsMarkdown :content="message.content" :interval="0" :show-cursor="false"
+                                :disable-typing="true" cursor="circle"
+                                :on-end="() => handleHistoryMessageEnd(message.id)" />
                         </div>
                         <!-- 流式消息使用 DsMarkdownCMD -->
                         <div v-else-if="message.content || !message.isStreaming">
-                            <DsMarkdownCMD
-                                :content="message.content"
-                                :interval="15"
-                                :show-cursor="message.isStreaming"
-                                cursor="circle"
-                                :on-typed-char="(data) => handleTypedChar(message.id, data)"
-                            />
+                            <DsMarkdownCMD :content="message.content" :interval="15" :show-cursor="message.isStreaming"
+                                cursor="circle" :on-typed-char="(data) => handleTypedChar(message.id, data)" />
                         </div>
 
                         <!-- 加载占位符 -->
-                        <div
-                            v-else-if="message.isStreaming"
-                            class="inline-flex items-center space-x-1"
-                        >
-                            <div
-                                class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
-                                style="animation-duration: 0.6s"
-                            ></div>
-                            <div
-                                class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
-                                style="animation-duration: 0.6s; animation-delay: 0.1s"
-                            ></div>
-                            <div
-                                class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
-                                style="animation-duration: 0.6s; animation-delay: 0.2s"
-                            ></div>
+                        <div v-else-if="message.isStreaming" class="inline-flex items-center space-x-1">
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
+                                style="animation-duration: 0.6s"></div>
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
+                                style="animation-duration: 0.6s; animation-delay: 0.1s"></div>
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
+                                style="animation-duration: 0.6s; animation-delay: 0.2s"></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 消息操作按钮 -->
-                <div
-                    :class="[
-                        'flex flex-row items-start mt-1 min-h-[24px] transition-opacity duration-150',
-                        message.role === 'user' ? 'mr-2' : 'ml-2',
-                        hoveredMessageId === (message.id || null) ||
+                <div :class="[
+                    'flex flex-row items-start mt-1 min-h-[24px] transition-opacity duration-150',
+                    message.role === 'user' ? 'mr-2' : 'ml-2',
+                    hoveredMessageId === (message.id || null) ||
                         index === displayedMessages.length - 1
-                            ? 'opacity-100'
-                            : 'opacity-0',
-                    ]"
-                    v-show="
-                        !(message.role === 'assistant' && (typingStates.get(message.id || -1)?.isTyping || message.isStreaming))
-                    "
-                >
-                    <button
-                        @click="copyMessage(message.content)"
-                        class="copy-btn"
-                    >
+                        ? 'opacity-100'
+                        : 'opacity-0',
+                ]" v-show="!(message.role === 'assistant' && (typingStates.get(message.id || -1)?.isTyping || message.isStreaming))
+                        ">
+                    <button @click="copyMessage(message.content)" class="copy-btn">
                         <Copy class="message-action-icon" />
                     </button>
 
-                    <button
-                        @click="openDeleteDialog(message.id)"
-                        class="delete-btn"
-                    >
+                    <button @click="openShareDialog(message.id)" class="copy-btn">
+                        <Share2 class="message-action-icon" />
+                    </button>
+
+                    <button @click="openDeleteDialog(message.id)" class="delete-btn">
                         <Trash2 class="message-action-icon" />
                     </button>
                 </div>
             </div>
 
+            <!-- 分享链接对话框 -->
+            <Dialog :open="isShareDialogOpen" @update:open="isShareDialogOpen = $event">
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>分享对话</DialogTitle>
+                        <DialogDescription>
+                            生成公开分享链接后，任何拿到链接的人都可以查看当前消息及其之前的对话内容。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div class="share-dialog-body">
+                        <div v-if="shareLink" class="share-link-box">
+                            {{ shareLink }}
+                        </div>
+                        <div v-else class="share-dialog-placeholder">
+                            点击下方按钮生成分享链接。
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" @click="isShareDialogOpen = false">
+                            关闭
+                        </Button>
+                        <Button @click="handleShareMessage" :disabled="isSharing" class="share-confirm-btn">
+                            {{ isSharing ? '生成中...' : shareLink ? '复制链接' : '生成链接' }}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <!-- 删除确认对话框 -->
-            <Dialog
-                :open="isDeleteDialogOpen"
-                @update:open="isDeleteDialogOpen = $event"
-            >
+            <Dialog :open="isDeleteDialogOpen" @update:open="isDeleteDialogOpen = $event">
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>确认删除</DialogTitle>
@@ -143,16 +123,12 @@
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <button
-                            @click="isDeleteDialogOpen = false"
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none"
-                        >
+                        <button @click="isDeleteDialogOpen = false"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none">
                             取消
                         </button>
-                        <button
-                            @click="confirmDeleteMessage"
-                            class="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 focus:outline-none"
-                        >
+                        <button @click="confirmDeleteMessage"
+                            class="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 focus:outline-none">
                             删除
                         </button>
                     </DialogFooter>
@@ -160,10 +136,8 @@
             </Dialog>
 
             <!-- 占位消息，提示目前逻辑为空 -->
-            <div
-                v-if="!isLoading && displayedMessages.length === 0"
-                class="text-center text-gray-500 dark:text-gray-400 py-10"
-            >
+            <div v-if="!isLoading && displayedMessages.length === 0"
+                class="text-center text-gray-500 dark:text-gray-400 py-10">
                 尚无消息，开始对话吧！
             </div>
         </div>
@@ -176,15 +150,18 @@ import {
     deleteMessage as deleteMessageAPI,
     getModelsList,
     getMessagesList,
+    shareMessages,
     wsManager,
 } from "@/api/chat";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useChatStore } from "@/stores/chat";
+import type { Message } from '@/stores/chat';
 import ReasoningContent from "./ReasoningContent.vue";
 import DsMarkdown from "./DsMarkdown.vue";
 import DsMarkdownCMD from "./DsMarkdownCMD.vue";
-import { Copy, Trash2 } from 'lucide-vue-next';
+import { Copy, Share2, Trash2 } from 'lucide-vue-next';
 import { toastSuccess, toastError, toastInfo } from "@/components/ui/toast/use-toast";
+import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
@@ -196,13 +173,19 @@ import {
 
 // 路由和路由参数
 const route = useRoute();
+const router = useRouter();
 const chatStore = useChatStore();
 
 // 状态变量
 const isLoading = ref(false);
 const hoveredMessageId = ref<number | null>(null);
 const isDeleteDialogOpen = ref(false);
+const isShareDialogOpen = ref(false);
+const isSharing = ref(false);
+const shareLink = ref('');
+const shareLinkCache = ref<Map<number, string>>(new Map());
 const messageToDelete = ref<number | null>(null);
+const messageToShare = ref<number | null>(null);
 const models = ref<any[]>([]);
 const containerRef = ref<HTMLElement | null>(null);
 // 跟踪哪些消息的 markdown 渲染已完成
@@ -236,55 +219,55 @@ const renderedHistoryCount = ref(0);
  * @param force 是否强制滚动到底部
  */
 const scrollMessagesAreaToBottom = async (force = false) => {
-  await nextTick();
-  const container = containerRef.value;
-  if (!container) return;
+    await nextTick();
+    const container = containerRef.value;
+    if (!container) return;
 
-  const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-  if (force || distanceToBottom <= 50) {
-    container.scrollTop = container.scrollHeight;
-  }
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (force || distanceToBottom <= 50) {
+        container.scrollTop = container.scrollHeight;
+    }
 };
 
 /**
  * 运行跟随底部循环
  */
 const runFollowBottomLoop = () => {
-  if (followBottomFrameId.value !== undefined) {
-    window.cancelAnimationFrame(followBottomFrameId.value);
-  }
-
-  const tick = () => {
-    if (followBottomPhase.value === 'idle') {
-      followBottomFrameId.value = undefined;
-      return;
+    if (followBottomFrameId.value !== undefined) {
+        window.cancelAnimationFrame(followBottomFrameId.value);
     }
 
-    const container = containerRef.value;
-    if (!container) {
-      followBottomFrameId.value = window.requestAnimationFrame(tick);
-      return;
-    }
+    const tick = () => {
+        if (followBottomPhase.value === 'idle') {
+            followBottomFrameId.value = undefined;
+            return;
+        }
 
-    const currentScrollHeight = container.scrollHeight;
-    const currentScrollTop = container.scrollTop;
-    const clientHeight = container.clientHeight;
+        const container = containerRef.value;
+        if (!container) {
+            followBottomFrameId.value = window.requestAnimationFrame(tick);
+            return;
+        }
 
-    const distanceToBottom = currentScrollHeight - currentScrollTop - clientHeight;
-    const heightIncreased = currentScrollHeight > lastScrollHeight.value;
-    const scrollTopIncreased = currentScrollTop > lastScrollTop.value;
+        const currentScrollHeight = container.scrollHeight;
+        const currentScrollTop = container.scrollTop;
+        const clientHeight = container.clientHeight;
 
-    if ((heightIncreased || scrollTopIncreased) && distanceToBottom <= 50) {
-      container.scrollTop = currentScrollHeight;
-    }
+        const distanceToBottom = currentScrollHeight - currentScrollTop - clientHeight;
+        const heightIncreased = currentScrollHeight > lastScrollHeight.value;
+        const scrollTopIncreased = currentScrollTop > lastScrollTop.value;
 
-    lastScrollHeight.value = currentScrollHeight;
-    lastScrollTop.value = currentScrollTop;
+        if ((heightIncreased || scrollTopIncreased) && distanceToBottom <= 50) {
+            container.scrollTop = currentScrollHeight;
+        }
+
+        lastScrollHeight.value = currentScrollHeight;
+        lastScrollTop.value = currentScrollTop;
+
+        followBottomFrameId.value = window.requestAnimationFrame(tick);
+    };
 
     followBottomFrameId.value = window.requestAnimationFrame(tick);
-  };
-
-  followBottomFrameId.value = window.requestAnimationFrame(tick);
 };
 
 /**
@@ -292,10 +275,10 @@ const runFollowBottomLoop = () => {
  * @param event 滚动事件
  */
 const handleForceScrollToBottom = async (event: Event) => {
-  const customEvent = event as CustomEvent;
-  if (customEvent?.detail) {
-    await scrollMessagesAreaToBottom(true);
-  }
+    const customEvent = event as CustomEvent;
+    if (customEvent?.detail) {
+        await scrollMessagesAreaToBottom(true);
+    }
 };
 
 // 使用计算属性获取当前对话 ID（从路由路径）
@@ -427,7 +410,7 @@ const handleTypedChar = (messageId: number | undefined, data?: any) => {
     if (messageId === undefined) return;
 
     const state = getTypingState(messageId);
-    
+
     // 更新已打字内容
     if (data && data.content !== undefined) {
         state.typedContent = data.content;
@@ -530,12 +513,107 @@ const renderUserContent = (content: string) => {
     return escapedParts.join("");
 };
 
+const getShareableMessages = (messages: Message[], targetMessageId: number) => {
+    const targetIndex = messages.findIndex((message) => message.id === targetMessageId);
+    if (targetIndex === -1) {
+        return [];
+    }
+
+    return messages
+        .slice(0, targetIndex + 1)
+        .filter((message) => typeof message.id === 'number' && !message.isStreaming);
+};
+
+const copyText = async (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (!successful) {
+            throw new Error('execCommand 复制失败');
+        }
+    } finally {
+        document.body.removeChild(textArea);
+    }
+};
+
+const openShareDialog = (messageId: number | undefined) => {
+    if (messageId === undefined) return;
+
+    messageToShare.value = messageId;
+    shareLink.value = shareLinkCache.value.get(messageId) || '';
+    isShareDialogOpen.value = true;
+};
+
+const handleShareMessage = async () => {
+    if (!messageToShare.value) {
+        toastError('未找到要分享的消息');
+        return;
+    }
+
+    if (shareLink.value) {
+        try {
+            await copyText(shareLink.value);
+            toastSuccess('分享链接已复制到剪贴板');
+        } catch (error) {
+            console.error('复制分享链接失败:', error);
+            toastError('复制分享链接失败');
+        }
+        return;
+    }
+
+    const shareableMessages = getShareableMessages(displayedMessages.value as Message[], messageToShare.value);
+    if (shareableMessages.length === 0) {
+        toastError('当前消息暂时无法分享');
+        return;
+    }
+
+    isSharing.value = true;
+    try {
+        const response = await shareMessages({
+            messageIDs: shareableMessages.map((message) => String(message.id)),
+        });
+
+        if (!response.data.success) {
+            throw new Error(response.data.error || '生成分享链接失败');
+        }
+
+        const resolved = router.resolve({
+            name: 'Share',
+            params: {
+                shareId: response.data.share_id,
+            },
+        });
+        shareLink.value = `${window.location.origin}${resolved.href}`;
+        shareLinkCache.value.set(messageToShare.value, shareLink.value);
+        await copyText(shareLink.value);
+        toastSuccess('分享链接已生成并复制到剪贴板');
+    } catch (error) {
+        console.error('生成分享链接失败:', error);
+        toastError('生成分享链接失败');
+    } finally {
+        isSharing.value = false;
+    }
+};
+
 // 复制消息内容到剪贴板
 const copyMessage = async (content: string) => {
     try {
         // 在复制之前移除 <model=xxx> 标签
         const cleanContent = content.replace(/<model=[^>]+>/g, "").trim();
-        
+
         // 检查 navigator.clipboard 是否可用
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(cleanContent);
@@ -549,7 +627,7 @@ const copyMessage = async (content: string) => {
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-            
+
             try {
                 const successful = document.execCommand('copy');
                 if (successful) {
@@ -560,11 +638,11 @@ const copyMessage = async (content: string) => {
             } catch (err) {
                 console.error('execCommand 复制失败:', err);
             }
-            
+
             document.body.removeChild(textArea);
             throw new Error('剪贴板 API 不可用');
         }
-        
+
         toastSuccess("消息已复制到剪贴板");
     } catch (err) {
         console.error("复制失败:", err);
@@ -732,11 +810,11 @@ const setupGlobalGenerateHandler = () => {
                 chatStore.setIsTyping(true);
 
                 console.log('[续流] 占位消息已创建，ID:', tempMessage.id);
-                }
+            }
         }
         // streaming 状态不需要创建占位消息，只是表示生成正在进行
     };
-    
+
     // 保存处理器引用并注册
     currentResumeStatusHandler = handleResumeStatus;
     wsManager.onMessage('resume_status', handleResumeStatus);
@@ -804,7 +882,7 @@ const setupGlobalGenerateHandler = () => {
                 typingState.isTyping = true;
                 // 同步更新全局 isTyping 状态
                 chatStore.setIsTyping(true);
-                }
+            }
         } else {
             console.error("服务器返回错误:", data.error);
             toastError(data.error || "生成失败", 15000); // 15 秒
@@ -998,15 +1076,12 @@ const loadCurrentConversation = async () => {
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.delete("type");
                 window.history.replaceState({}, "", newUrl.toString());
+                emit("render-complete", true);
+                console.log("emit: type=2")
+            } else {
+                // 加载历史消息
+                await loadConversationHistory(conversationId);
             }
-
-            // 加载历史消息
-            await loadConversationHistory(conversationId);
-
-            // 注意：页面刷新时不再主动通过 thread_list 检查未完成的对话
-            // 续流逻辑由 WebSocket 连接时的 resume_check 处理：
-            // - WebSocket 连接建立后，后端会主动检查并推送缓存内容
-            // - 前端不需要在此处发送 generate 请求
         }
     }
 };
@@ -1083,11 +1158,61 @@ onUnmounted(() => {
 
 <style scoped>
 .user-message {
-  background: #f3f4f6;
+    background: #f3f4f6;
 }
 
 .dark .user-message {
-  background: #262626;
+    background: #262626;
+}
+
+.share-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.share-link-box {
+    word-break: break-all;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+    color: #111827;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.dark .share-link-box {
+    border-color: #374151;
+    background-color: #111827;
+    color: #f3f4f6;
+}
+
+.share-dialog-placeholder {
+    border-radius: 0.75rem;
+    border: 1px dashed #d1d5db;
+    color: #6b7280;
+    padding: 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.dark .share-dialog-placeholder {
+    border-color: #4b5563;
+    color: #9ca3af;
+}
+
+.share-confirm-btn {
+    background-color: var(--color-primary) !important;
+    color: var(--color-white) !important;
+}
+
+.share-confirm-btn:hover {
+    background-color: var(--color-primary-hover) !important;
+}
+
+.share-confirm-btn:disabled {
+    background-color: var(--color-primary) !important;
 }
 
 .copy-btn {
@@ -1163,41 +1288,43 @@ onUnmounted(() => {
 
 /* 滚动条样式 */
 .messages-scroll-container {
-  min-height: 100%;
+    min-height: 100%;
 }
 
 .messages-scroll-container::-webkit-scrollbar {
-  width: 8px;
+    width: 8px;
 }
 
 .messages-scroll-container::-webkit-scrollbar-track {
-  background: var(--scrollbar-track-bg);
+    background: var(--scrollbar-track-bg);
 }
 
 .messages-scroll-container::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-bg);
-  border-radius: 4px;
+    background: var(--scrollbar-thumb-bg);
+    border-radius: 4px;
 }
 
 .messages-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover-bg);
+    background: var(--scrollbar-thumb-hover-bg);
 }
 
 /* 深色模式滚动条样式 */
 .dark .messages-scroll-container::-webkit-scrollbar {
-  width: 8px;
+    width: 8px;
 }
 
 .dark .messages-scroll-container::-webkit-scrollbar-track {
-  background: #374151;
+    background: #374151;
 }
 
 .dark .messages-scroll-container::-webkit-scrollbar-thumb {
-  background: #525252; /* 灰色滚动条颜色，与 ConversationsContainer 保持一致 */
-  border-radius: 4px;
+    background: #525252;
+    /* 灰色滚动条颜色，与 ConversationsContainer 保持一致 */
+    border-radius: 4px;
 }
 
 .dark .messages-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #404040; /* 深灰色悬停颜色，与 ConversationsContainer 保持一致 */
+    background: #404040;
+    /* 深灰色悬停颜色，与 ConversationsContainer 保持一致 */
 }
 </style>

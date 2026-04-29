@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -97,6 +98,19 @@ type Message struct {
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 	ReasoningContent string    `gorm:"column:reasoning_content;type:mediumtext"`
 	Base64           string    `gorm:"column:base64;type:mediumtext"`
+}
+
+type SharedMessage struct {
+	ID               int64     `json:"id"`
+	Content          string    `json:"content"`
+	Role             string    `json:"role"`
+	ConversationID   int64     `json:"conversationID"`
+	CreatedAt        time.Time `json:"createdAt"`
+	ReasoningContent string    `json:"reasoningContent"`
+	Base64           string    `json:"base64"`
+	Username         string    `json:"username"`
+	Avatar           string    `json:"avatar"`
+	ModelName        string    `json:"modelName"`
 }
 
 // TableName 指定Message结构体对应的表名
@@ -1077,6 +1091,134 @@ func LoadMessage(messageID int64) (Message, error) {
 		return message, result.Error
 	}
 	return message, nil
+}
+
+func LoadMessagesByIDs(messageIDs []int64) ([]Message, error) {
+	db := GetDB()
+	if len(messageIDs) == 0 {
+		return []Message{}, nil
+	}
+
+	var messages []Message
+	result := db.Table("messages").Where("id IN ?", messageIDs).Find(&messages)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	messageMap := make(map[int64]Message, len(messages))
+	for _, message := range messages {
+		messageMap[message.ID] = message
+	}
+
+	orderedMessages := make([]Message, 0, len(messageIDs))
+	for _, messageID := range messageIDs {
+		message, ok := messageMap[messageID]
+		if !ok {
+			return nil, fmt.Errorf("消息不存在: %d", messageID)
+		}
+		orderedMessages = append(orderedMessages, message)
+	}
+
+	return orderedMessages, nil
+}
+
+func getModelNameFromContent(content string) string {
+	matches := regexp.MustCompile(`^<model=([^>]+)>`).FindStringSubmatch(content)
+	if len(matches) < 2 {
+		return ""
+	}
+
+	modelID := matches[1]
+	for _, model := range GetConfig().Models {
+		if model.ID == modelID {
+			return model.Name
+		}
+	}
+
+	return ""
+}
+
+func LoadSharedMessagesByIDs(messageIDs []int64) ([]SharedMessage, error) {
+	messages, err := LoadMessagesByIDs(messageIDs)
+	if err != nil {
+		return nil, err
+	}
+	if len(messages) == 0 {
+		return []SharedMessage{}, nil
+	}
+
+	conversationIDs := make([]int64, 0, len(messages))
+	conversationIDSeen := make(map[int64]struct{}, len(messages))
+	for _, message := range messages {
+		if _, exists := conversationIDSeen[message.ConversationID]; exists {
+			continue
+		}
+		conversationIDSeen[message.ConversationID] = struct{}{}
+		conversationIDs = append(conversationIDs, message.ConversationID)
+	}
+
+	type conversationOwner struct {
+		ID       int64 `gorm:"column:id"`
+		UserID   int64 `gorm:"column:user_id"`
+		Username string `gorm:"column:username"`
+		Avatar   string `gorm:"column:avatar"`
+	}
+
+	var owners []conversationOwner
+	result := GetDB().Table("conversations").
+		Select("conversations.id, conversations.user_id, users.username, users.avatar").
+		Joins("JOIN users ON users.id = conversations.user_id").
+		Where("conversations.id IN ?", conversationIDs).
+		Find(&owners)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	ownerMap := make(map[int64]conversationOwner, len(owners))
+	for _, owner := range owners {
+		ownerMap[owner.ID] = owner
+	}
+
+	sharedMessages := make([]SharedMessage, 0, len(messages))
+	for _, message := range messages {
+		owner, ok := ownerMap[message.ConversationID]
+		if !ok {
+			return nil, fmt.Errorf("对话不存在: %d", message.ConversationID)
+		}
+
+		sharedMessages = append(sharedMessages, SharedMessage{
+			ID:               message.ID,
+			Content:          message.Content,
+			Role:             message.Role,
+			ConversationID:   message.ConversationID,
+			CreatedAt:        message.CreatedAt,
+			ReasoningContent: message.ReasoningContent,
+			Base64:           message.Base64,
+			Username:         owner.Username,
+			Avatar:           owner.Avatar,
+			ModelName:        getModelNameFromContent(message.Content),
+		})
+	}
+
+	return sharedMessages, nil
+}
+
+func DoesMessagesBelongToUser(messageIDs []int64, userID int64) (bool, error) {
+	db := GetDB()
+	if len(messageIDs) == 0 {
+		return false, fmt.Errorf("消息ID不能为空")
+	}
+
+	var count int64
+	result := db.Table("messages").
+		Joins("JOIN conversations ON conversations.id = messages.conversation_id").
+		Where("messages.id IN ? AND conversations.user_id = ?", messageIDs, userID).
+		Count(&count)
+	if result.Error != nil {
+		return false, result.Error
+	}
+
+	return count == int64(len(messageIDs)), nil
 }
 
 // VerifyOrder 向orders表插入orderID

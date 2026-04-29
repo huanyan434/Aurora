@@ -45,11 +45,6 @@
               <span class="metric-hint">点击查看积分记录</span>
             </button>
             <div class="metric-card">
-              <span class="metric-label">签到状态</span>
-              <span class="metric-value metric-value-soft">{{ signInStatus ? '已签到' : '待签到' }}</span>
-              <span class="metric-hint">每日签到可获得积分</span>
-            </div>
-            <div class="metric-card">
               <span class="metric-label">账号等级</span>
               <span class="metric-value metric-value-soft">{{ getMemberLevelText(userInfo?.memberLevel) }}</span>
               <span class="metric-hint">不同等级享有不同权益</span>

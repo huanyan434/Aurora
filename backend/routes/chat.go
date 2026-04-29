@@ -1004,16 +1004,32 @@ func messagesListHandler(c *gin.Context) {
 // @Failure 400 {object} shareMessagesResponseFailed "创建分享失败"
 // @Router /chat/share_messages [post]
 func shareMessagesHandler(c *gin.Context) {
+	user, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
 	var req shareMessagesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
-			"error":   err,
+			"error":   err.Error(),
+		})
+		return
+	}
+	if len(req.MessageIDs) == 0 {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   "请选择要分享的消息",
 		})
 		return
 	}
 	// 将字符串类型的 MessageIDs 转换为 int64 类型
-	var messageIDs []int64
+	messageIDs := make([]int64, 0, len(req.MessageIDs))
 	for _, id := range req.MessageIDs {
 		parsedID, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
@@ -1026,11 +1042,27 @@ func shareMessagesHandler(c *gin.Context) {
 		messageIDs = append(messageIDs, parsedID)
 	}
 
+	belongsToUser, err := utils.DoesMessagesBelongToUser(messageIDs, user.ID)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+	if !belongsToUser {
+		c.JSON(403, gin.H{
+			"success": false,
+			"error":   "只能分享当前用户自己的消息",
+		})
+		return
+	}
+
 	shareID, err := utils.SaveShareMessages(messageIDs)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
-			"error":   err,
+			"error":   err.Error(),
 		})
 		return
 	}
@@ -1055,21 +1087,20 @@ func loadShareMessagesHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
-			"error":   err,
+			"error":   err.Error(),
 		})
 		return
 	}
-	var messages []utils.Message
-	for _, m := range messageIDs {
-		message, err := utils.LoadMessage(m)
-		if err != nil {
-			c.JSON(400, gin.H{
-				"success": false,
-				"error":   err,
-			})
-		}
-		messages = append(messages, message)
+
+	messages, err := utils.LoadSharedMessagesByIDs(messageIDs)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
 	}
+
 	c.JSON(200, gin.H{
 		"success":  true,
 		"messages": messages,
