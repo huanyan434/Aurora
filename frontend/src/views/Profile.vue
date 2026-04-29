@@ -1037,7 +1037,7 @@ watch(darkMode, (enabled) => {
 }
 
 .section-title {
-  margin: 0.25rem 0 0;
+  margin: 0.5rem 0.5rem 0;
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: -0.02em;
