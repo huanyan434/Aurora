@@ -46,7 +46,8 @@
                         <!-- 流式消息使用 DsMarkdownCMD -->
                         <div v-else-if="message.content || !message.isStreaming">
                             <DsMarkdownCMD :content="message.content" :interval="15" :show-cursor="message.isStreaming"
-                                cursor="circle" :on-typed-char="(data) => handleTypedChar(message.id, data)" />
+                                cursor="circle" :on-typed-char="(data) => handleTypedChar(message.id, data)"
+                                :on-end="() => handleStreamMessageEnd(message.id)" />
                         </div>
 
                         <!-- 加载占位符 -->
@@ -426,7 +427,27 @@ const handleTypedChar = (messageId: number | undefined, data?: any) => {
         console.log('[handleTypedChar] 打字完成，消息 ID:', messageId);
         state.isTyping = false;
         markdownEndedIds.value.add(messageId);
+        chatStore.setIsTyping(false);
+        chatStore.setIsGenerating(false);
     }
+};
+
+/**
+ * 处理流式消息打字完成事件
+ */
+const handleStreamMessageEnd = (messageId: number | undefined) => {
+    if (messageId === undefined) return;
+
+    const state = getTypingState(messageId);
+    const message = displayedMessages.value.find(msg => msg.id === messageId);
+    if (!message || message.isStreaming) return;
+
+    console.log('[handleStreamMessageEnd] 打字结束，消息 ID:', messageId);
+    state.typedContent = state.expectedContent;
+    state.isTyping = false;
+    markdownEndedIds.value.add(messageId);
+    chatStore.setIsTyping(false);
+    chatStore.setIsGenerating(false);
 };
 
 /**
@@ -913,24 +934,13 @@ const setupGlobalGenerateHandler = () => {
         console.log('[generate_end] 消息 ID:', state.messageAssistantId);
 
         // 设置消息为非流式状态（但不设置 isGenerating = false）
-        // isGenerating 将在打字完成后由 handleTypedChar 设置为 false
+        // 由打字完成回调统一收尾，避免实际已打完却被固定超时误判
         if (state.messageAssistantId) {
             chatStore.updateMessage(state.messageAssistantId, {
                 isStreaming: false,
             });
 
-            console.log('[generate_end] 已设置 isStreaming = false，等待打字完成');
-
-            // 设置7.5秒超时，如果打字动画还没完成，强制设置 isTyping = false
-            setTimeout(() => {
-                const typingState = getTypingState(state.messageAssistantId!);
-                if (typingState.isTyping) {
-                    console.log('[generate_end] 打字超时，强制设置 isTyping = false');
-                    typingState.isTyping = false;
-                    chatStore.setIsTyping(false);
-                    chatStore.setIsGenerating(false);
-                }
-            }, 7500);
+            console.log('[generate_end] 已设置 isStreaming = false，等待打字完成回调');
         }
 
         // 显示积分扣除提示
