@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,6 +58,47 @@ var (
 // 初始化队列
 func init() {
 	TaskQueue = queue.NewPool(100) // 同时处理 100 个并发请求
+}
+
+func generateConversationTitleByAI(ctx context.Context, model string, userMessage string, assistantMessage string) string {
+	userMessage = strings.TrimSpace(userMessage)
+	assistantMessage = strings.TrimSpace(assistantMessage)
+	if userMessage == "" || assistantMessage == "" {
+		return ""
+	}
+
+	config := GetConfig()
+	c := openai.DefaultConfig(config.APIKey)
+	c.BaseURL = config.API
+	client := openai.NewClientWithConfig(c)
+
+	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: model,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: "你是对话标题生成助手。请根据用户首条消息和AI首条回复，生成一个简洁、规范、准确的中文对话标题。要求：1. 8到20个字；2. 不要使用引号、书名号、冒号、句号等多余标点；3. 不要出现\"用户\"\"AI\"\"对话\"\"请求\"等词；4. 只输出标题本身。",
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: fmt.Sprintf("用户首条消息：%s\nAI首条回复：%s\n请直接输出标题。", userMessage, assistantMessage),
+			},
+		},
+	})
+	if err != nil {
+		fmt.Printf("AI生成对话标题失败：%v\n", err)
+		return ""
+	}
+	if len(resp.Choices) == 0 {
+		return ""
+	}
+
+	title := strings.TrimSpace(resp.Choices[0].Message.Content)
+	title = strings.Trim(title, "\"'《》【】[]()（）:：;；,.，。!！?？")
+	if title == "" || title == "新对话" {
+		return ""
+	}
+	return title
 }
 
 // --- 核心功能：并发处理 OpenAI 请求 ---
@@ -153,6 +195,8 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 					if err != nil {
 						fmt.Printf("加载历史消息失败：%v\n", err)
 					} else {
+						isFirstRound := len(historyMessages) == 1 && historyMessages[0].Role == "user"
+
 						// 添加 AI 回复到消息列表（使用前端传来的 messageAssistantID）
 						aiMessage := messageFormat{
 							ID:               messageAssistantID,
@@ -167,6 +211,12 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 						// 保存整个对话历史到数据库
 						if err := SaveConversationHistoryFormat2(conversationID, historyMessages); err != nil {
 							fmt.Printf("保存对话历史失败：%v\n", err)
+						} else if isFirstRound {
+							titleModel := GetConfig().DefaultDialogNamingModel
+							title := generateConversationTitleByAI(ctx, titleModel, historyMessages[0].Content, aiContent.Content)
+							if err := UpdateConversationTitleIfDefault(conversationID, title); err != nil {
+								fmt.Printf("更新对话标题失败：%v\n", err)
+							}
 						}
 					}
 				}

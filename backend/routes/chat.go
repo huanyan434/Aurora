@@ -6,8 +6,10 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 	"utils"
 
 	"github.com/gin-contrib/sessions"
@@ -609,13 +611,13 @@ func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int6
 				time.Sleep(50 * time.Millisecond)
 			}
 		}
-		
+
 		// 发送完缓存内容后，直接返回，不再检查线程状态
 		return
 	} else {
 		// 没有缓存内容，但生成正在进行
 		fmt.Printf("[续流检查] 生成正在进行中，但暂无缓存内容\n")
-		
+
 		// 检查线程是否还在运行
 		threadID := strconv.FormatInt(conversationID, 10)
 		utils.ThreadMutex.RLock()
@@ -908,6 +910,15 @@ func deleteConversationHandler(c *gin.Context) {
 // @Failure 400 {object} renameConversationResponseFailed "重命名对话失败"
 // @Router /chat/rename_conversation [post]
 func renameConversationHandler(c *gin.Context) {
+	User, err := getCurrentUser(c)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   err,
+		})
+		return
+	}
+
 	var req renameConversationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{
@@ -916,7 +927,24 @@ func renameConversationHandler(c *gin.Context) {
 		})
 		return
 	}
-	err := utils.RenameConversation(req.ConversationID, req.Title)
+
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   "标题不能为空",
+		})
+		return
+	}
+	if utf8.RuneCountInString(title) > 100 {
+		c.JSON(400, gin.H{
+			"success": false,
+			"error":   "标题长度不能超过100个字符",
+		})
+		return
+	}
+
+	err = utils.RenameConversation(User.ID, req.ConversationID, title)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,

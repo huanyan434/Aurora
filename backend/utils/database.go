@@ -422,7 +422,6 @@ func InitDB() {
 
 	ensureExistingUserAvatars()
 
-
 	// 配置连接池
 	sqlDB, err := DB.DB()
 	if err != nil {
@@ -640,20 +639,22 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 		}
 	}
 
-	// 检查是否需要生成标题
-	var conversation Conversation
-	if err := db.Table("conversations").Where("id = ?", conversationID).First(&conversation).Error; err == nil {
-		if conversation.Title == "新对话" {
-			// 生成新标题
-			newTitle := GenerateConversationTitle(messages)
-			if newTitle != "新对话" {
-				if err := db.Model(&Conversation{}).Where("id = ?", conversationID).Update("title", newTitle).Error; err != nil {
-					fmt.Printf("更新对话标题失败：%v\n", err)
-				}
-			}
-		}
+	// 标题生成逻辑由 gpt.go 在首轮用户消息和 AI 回复完成后调用 AI 生成，
+	// 这里不再基于本地规则自动覆盖标题。
+
+	return nil
+}
+
+func UpdateConversationTitleIfDefault(conversationID int64, title string) error {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return nil
 	}
 
+	result := GetDB().Model(&Conversation{}).Where("id = ? AND title = ?", conversationID, "新对话").Update("title", title)
+	if result.Error != nil {
+		return result.Error
+	}
 	return nil
 }
 
@@ -1074,11 +1075,14 @@ func DeleteConversation(conversationID int64) error {
 	return nil
 }
 
-func RenameConversation(conversationID int64, title string) error {
+func RenameConversation(userID, conversationID int64, title string) error {
 	db := GetDB()
-	result := db.Table("conversations").Where("id = ?", conversationID).Update("title", title)
+	result := db.Model(&Conversation{}).Where("id = ? AND user_id = ?", conversationID, userID).Update("title", title)
 	if result.Error != nil {
 		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("对话不存在或无权限")
 	}
 	return nil
 }
@@ -1158,8 +1162,8 @@ func LoadSharedMessagesByIDs(messageIDs []int64) ([]SharedMessage, error) {
 	}
 
 	type conversationOwner struct {
-		ID       int64 `gorm:"column:id"`
-		UserID   int64 `gorm:"column:user_id"`
+		ID       int64  `gorm:"column:id"`
+		UserID   int64  `gorm:"column:user_id"`
 		Username string `gorm:"column:username"`
 		Avatar   string `gorm:"column:avatar"`
 	}

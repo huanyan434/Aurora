@@ -13,8 +13,6 @@ type Config struct {
 	APIKey                   string `yaml:"apiKey"`
 	ModelTTS                 string `yaml:"modelTTS"`
 	ModelSTT                 string `yaml:"modelSTT"`
-	API2                     string `yaml:"api2"`
-	APIKey2                  string `yaml:"apiKey2"`
 	DefaultDialogNamingModel string `yaml:"defaultDialogNamingModel"`
 	DefaultVisualModel       string `yaml:"defaultVisualModel"`
 	Models                   []struct {

@@ -3,7 +3,6 @@ module utils
 go 1.25.0
 
 require (
-	github.com/aofei/cameron v1.3.3
 	github.com/sashabaranov/go-openai v1.41.2
 	golang.org/x/crypto v0.48.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
