@@ -70,8 +70,7 @@
                         index === displayedMessages.length - 1
                         ? 'opacity-100'
                         : 'opacity-0',
-                ]" v-show="!(message.role === 'assistant' && (typingStates.get(message.id || -1)?.isTyping || message.isStreaming))
-                        ">
+                ]" v-show="!isMessageInProgress(message)">
                     <button @click="copyMessage(message.content)" class="copy-btn">
                         <Copy class="message-action-icon" />
                     </button>
@@ -211,7 +210,6 @@ const emit = defineEmits<{
     (e: 'render-complete', value: boolean): void;
 }>();
 emit("render-complete", false);
-const emittedRenderComplete = ref(false);
 const totalHistoryCount = ref(0);
 const renderedHistoryCount = ref(0);
 
@@ -292,6 +290,14 @@ const currentConversationId = computed(() => {
 });
 
 // 从 store 中获取消息
+const isMessageInProgress = (message: Message) => {
+    if (message.role !== 'assistant') {
+        return false;
+    }
+
+    return Boolean(message.isStreaming || typingStates.value.get(message.id || -1)?.isTyping);
+};
+
 const displayedMessages = computed(() => {
     const convId = currentConversationId.value;
     if (isNaN(convId)) return [];
@@ -307,16 +313,38 @@ const displayedMessages = computed(() => {
     }));
 });
 
-watch(
-    () => currentConversationId.value,
-    () => {
-        emittedRenderComplete.value = false;
-        totalHistoryCount.value = 0;
-        renderedHistoryCount.value = 0;
-        markdownEndedIds.value = new Set();
-    },
-    { immediate: true },
-);
+const hasActiveAssistantRendering = computed(() => {
+    return displayedMessages.value.some((message) => isMessageInProgress(message as Message));
+});
+
+const finalizeAssistantRendering = async () => {
+    await scrollMessagesAreaToBottom(true);
+
+    await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const container = containerRef.value;
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+                resolve();
+            });
+        });
+    });
+
+    followBottomPhase.value = 'idle';
+};
+
+watch(hasActiveAssistantRendering, (active) => {
+    if (active) {
+        followBottomPhase.value = 'following';
+        runFollowBottomLoop();
+        void scrollMessagesAreaToBottom();
+        return;
+    }
+
+    void finalizeAssistantRendering();
+}, { immediate: true });
 
 
 /**
@@ -1136,7 +1164,7 @@ onMounted(async () => {
     // 显式调用 loadCurrentConversation，确保页面初始化时触发续流检查
     loadCurrentConversation();
 
-    // 启动跟随底部循环
+    // 启动跟随底部循环（实际启停由 hasActiveAssistantRendering 与 finalizeAssistantRendering 控制）
     runFollowBottomLoop();
 
     // 监听强制滚动事件
