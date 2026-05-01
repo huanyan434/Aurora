@@ -79,7 +79,7 @@
                         <Share2 class="message-action-icon" />
                     </button>
 
-                    <button @click="openDeleteDialog(message.id)" class="delete-btn">
+                    <button v-if="message.role === 'user'" @click="openDeleteDialog(message.id)" class="delete-btn">
                         <Trash2 class="message-action-icon" />
                     </button>
                 </div>
@@ -750,14 +750,42 @@ const confirmDeleteMessage = async () => {
     if (messageToDelete.value === null) return;
 
     try {
+        const conversationId = currentConversationId.value;
+        const conversationMessages = chatStore.getMessagesByConversationId(conversationId);
+        const targetIndex = conversationMessages.findIndex(msg => msg.id === messageToDelete.value);
+        const messageIdsToDelete: number[] = [];
+
+        if (targetIndex !== -1) {
+            const targetMessage = conversationMessages[targetIndex];
+            if (targetMessage?.id) {
+                messageIdsToDelete.push(targetMessage.id);
+            }
+
+            const pairedAssistantMessage = conversationMessages
+                .slice(targetIndex + 1)
+                .find(msg => msg.role === 'assistant');
+
+            if (pairedAssistantMessage?.id) {
+                messageIdsToDelete.push(pairedAssistantMessage.id);
+            }
+        }
+
+        if (messageIdsToDelete.length === 0) {
+            throw new Error('未找到要删除的消息');
+        }
+
         // 关闭对话框
         isDeleteDialogOpen.value = false;
 
         // 调用 API 删除消息
-        await deleteMessageAPIFunc(messageToDelete.value);
+        for (const messageId of messageIdsToDelete) {
+            await deleteMessageAPIFunc(messageId);
+        }
 
         // 从 store 中移除消息
-        chatStore.removeMessage(messageToDelete.value);
+        for (const messageId of messageIdsToDelete) {
+            chatStore.removeMessage(messageId);
+        }
 
         // 显示成功提示
         toastSuccess("消息已成功删除");
