@@ -1,11 +1,9 @@
 <template>
   <router-view />
-  <AnnouncementDialog />
   <Toast />
 </template>
 
 <script setup lang="ts">
-import AnnouncementDialog from './components/AnnouncementDialog.vue'
 import Toast from './components/ui/toast/Toast.vue'
 </script>
 

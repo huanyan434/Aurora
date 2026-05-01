@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="open" @update:open="handleOpenChange">
-    <DialogContent class="announcement-dialog-content">
+    <DialogContent class="announcement-dialog-content" :class="{ 'announcement-dialog-content-visible': isVisible }">
       <DialogHeader class="announcement-dialog-header">
         <div class="announcement-dialog-badge">
           <BellRing class="announcement-dialog-badge-icon" />
@@ -64,6 +64,7 @@ const announcement = ref({
   summary: '',
   items: [] as string[],
 });
+const isVisible = computed(() => shouldShowOnRoute.value && hasAnnouncementContent.value);
 
 const hasAnnouncementContent = computed(() => {
   return Boolean(
@@ -84,7 +85,7 @@ const getDismissedVersion = () => {
 };
 
 const updateOpenState = () => {
-  if (!shouldShowOnRoute.value || !hasAnnouncementContent.value) {
+  if (!isVisible.value) {
     open.value = false;
     return;
   }
@@ -141,11 +142,16 @@ const handleOpenChange = (nextOpen: boolean) => {
     return;
   }
 
+  if (!isVisible.value) {
+    open.value = false;
+    return;
+  }
+
   open.value = nextOpen;
 };
 
 const handleManualOpen = () => {
-  if (!hasAnnouncementContent.value) {
+  if (!isVisible.value) {
     return;
   }
 
@@ -176,6 +182,11 @@ onUnmounted(() => {
   border-color: rgba(147, 197, 253, 0.42);
   background: linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%);
   box-shadow: 0 24px 60px -24px rgba(37, 99, 235, 0.42);
+  visibility: hidden;
+}
+
+.announcement-dialog-content-visible {
+  visibility: visible;
 }
 
 .announcement-dialog-header {

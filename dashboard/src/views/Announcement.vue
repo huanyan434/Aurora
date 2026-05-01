@@ -57,24 +57,36 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">前台预览</h2>
-            <p class="card-description">模拟用户在聊天页看到的公告内容。</p>
+            <p class="card-description">直接复用前台公告弹窗的布局，仅展示当前配置的效果。</p>
           </div>
           <span class="preview-version">{{ form.version || '未设置版本' }}</span>
         </div>
 
-        <div class="preview-panel" :class="form.enabled ? 'preview-panel-enabled' : 'preview-panel-disabled'">
-          <div class="preview-badge">系统公告</div>
-          <h3 class="preview-title">{{ form.title || '暂无公告标题' }}</h3>
-          <p class="preview-summary">{{ form.summary || '暂无公告摘要' }}</p>
+        <div class="announcement-dialog-content">
+          <div class="announcement-dialog-header">
+            <div class="announcement-dialog-badge">
+              <BellRing class="announcement-dialog-badge-icon" />
+              <span>系统公告</span>
+            </div>
+            <DialogTitle class="announcement-dialog-title">
+              {{ form.title || '暂无公告标题' }}
+            </DialogTitle>
+            <DialogDescription class="announcement-dialog-description">
+              {{ form.summary || '暂无公告摘要' }}
+            </DialogDescription>
+          </div>
 
-          <ul v-if="previewItems.length > 0" class="preview-list">
-            <li v-for="item in previewItems" :key="item" class="preview-list-item">
-              <span class="preview-list-dot"></span>
-              <span>{{ item }}</span>
-            </li>
-          </ul>
-          <div v-else class="preview-empty">
-            公告内容为空时，前台不会弹窗显示。
+          <div class="announcement-dialog-body">
+            <ul v-if="previewItems.length > 0" class="announcement-dialog-list">
+              <li
+                v-for="item in previewItems"
+                :key="item"
+                class="announcement-dialog-list-item"
+              >
+                <span class="announcement-dialog-list-dot"></span>
+                <span>{{ item }}</span>
+              </li>
+            </ul>
           </div>
         </div>
 
@@ -86,6 +98,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { BellRing } from 'lucide-vue-next'
 import { dashboardApi } from '@/api/dashboard'
 import { addToast } from '@/components/ui/toast/use-toast'
 
@@ -386,79 +399,151 @@ onMounted(() => {
 }
 
 .preview-panel {
-  border-radius: 20px;
-  border: 1px solid rgba(191, 219, 254, 0.8);
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.96) 0%, rgba(255, 255, 255, 1) 100%);
-  padding: 24px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  display: none;
 }
 
-.preview-panel-disabled {
-  opacity: 0.72;
+.announcement-dialog-content {
+  max-width: 32rem;
+  border-color: rgba(147, 197, 253, 0.42);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%);
+  box-shadow: 0 24px 60px -24px rgba(37, 99, 235, 0.42);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
 }
 
-.preview-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 14px;
-  border-radius: 9999px;
-  background: rgba(37, 99, 235, 0.12);
-  padding: 6px 12px;
-  color: #1d4ed8;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.preview-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 10px;
-}
-
-.preview-summary {
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.8;
-  margin-bottom: 18px;
-}
-
-.preview-list {
+.announcement-dialog-header {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  list-style: none;
+  gap: 0.875rem;
+}
+
+.announcement-dialog-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(37, 99, 235, 0.12);
+  padding: 0.375rem 0.875rem;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.announcement-dialog-badge-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.announcement-dialog-title {
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.announcement-dialog-description {
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.announcement-dialog-body {
+  margin-top: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(191, 219, 254, 0.75);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 1rem;
+}
+
+.announcement-dialog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
-.preview-list-item {
+.announcement-dialog-list-item {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 0.75rem;
   color: #1e293b;
-  font-size: 14px;
-  line-height: 1.8;
+  font-size: 0.925rem;
+  line-height: 1.7;
 }
 
-.preview-list-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 8px;
+.announcement-dialog-list-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.5rem;
   flex-shrink: 0;
   border-radius: 9999px;
   background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.14);
 }
 
-.preview-empty {
-  border: 1px dashed rgba(148, 163, 184, 0.45);
-  border-radius: 16px;
-  padding: 20px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.7;
-  background: rgba(255, 255, 255, 0.72);
+.announcement-dialog-footer {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.announcement-dialog-secondary,
+.announcement-dialog-primary {
+  flex: 1;
+  min-height: 42px;
+  border-radius: 0.875rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.announcement-dialog-secondary {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.announcement-dialog-primary {
+  border: 1px solid #1d4ed8;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+}
+
+.dark .announcement-dialog-content {
+  border-color: rgba(96, 165, 250, 0.28);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(2, 6, 23, 0.98) 100%);
+  box-shadow: 0 24px 60px -24px rgba(15, 23, 42, 0.88);
+}
+
+.dark .announcement-dialog-badge {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+}
+
+.dark .announcement-dialog-title {
+  color: #eff6ff;
+}
+
+.dark .announcement-dialog-description {
+  color: #cbd5e1;
+}
+
+.dark .announcement-dialog-body {
+  border-color: rgba(59, 130, 246, 0.2);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.dark .announcement-dialog-list-item {
+  color: #e2e8f0;
+}
+
+.dark .announcement-dialog-secondary {
+  border-color: #475569;
+  background: #0f172a;
+  color: #e2e8f0;
 }
 
 .updated-at {
