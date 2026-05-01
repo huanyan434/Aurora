@@ -308,7 +308,6 @@ defineExpose({
 .menu-item-icon {
     width: 1rem;
     height: 1rem;
-    margin-right: 0.5rem;
     flex-shrink: 0;
 }
 
@@ -430,7 +429,6 @@ defineExpose({
 .action-icon {
     width: 1.25rem;
     height: 1.25rem;
-    margin-right: 0.5rem;
 }
 
 .search-container {
