@@ -639,7 +639,6 @@ defineExpose({
   width: 60px;
   height: 60px;
   border-radius: 6px;
-  overflow: hidden;
   border: 1px solid var(--color-gray-300);
   display: flex;
   align-items: center;
