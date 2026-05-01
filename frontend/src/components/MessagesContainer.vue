@@ -1339,41 +1339,4 @@ onUnmounted(() => {
 .messages-scroll-container {
     min-height: 100%;
 }
-
-.messages-scroll-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.messages-scroll-container::-webkit-scrollbar-track {
-    background: var(--scrollbar-track-bg);
-}
-
-.messages-scroll-container::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb-bg);
-    border-radius: 4px;
-}
-
-.messages-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: var(--scrollbar-thumb-hover-bg);
-}
-
-/* 深色模式滚动条样式 */
-.dark .messages-scroll-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.dark .messages-scroll-container::-webkit-scrollbar-track {
-    background: #374151;
-}
-
-.dark .messages-scroll-container::-webkit-scrollbar-thumb {
-    background: #525252;
-    /* 灰色滚动条颜色，与 ConversationsContainer 保持一致 */
-    border-radius: 4px;
-}
-
-.dark .messages-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: #404040;
-    /* 深灰色悬停颜色，与 ConversationsContainer 保持一致 */
-}
 </style>
