@@ -127,6 +127,39 @@ export interface CurrentUserResponseFailed {
   success: false
 }
 
+export interface AnnouncementItem {
+  id: string
+  title: string
+  summary: string
+  content: string
+  enabled: boolean
+  version: string
+  updatedAt: string
+}
+
+export interface AnnouncementResponseSuccess {
+  success: true
+  data: AnnouncementItem | null
+}
+
+export interface AnnouncementResponseFailed {
+  success: false
+  message: string
+}
+
+export const getAnnouncement = async () => {
+  const response = await fetch('/api/announcement')
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+
+  const responseData = await response.json()
+  return {
+    data: responseData
+  }
+}
+
 export const getCurrentUser = async () => {
   const response = await fetch('/api/current_user')
 

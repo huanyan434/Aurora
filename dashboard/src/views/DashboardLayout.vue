@@ -47,7 +47,7 @@
         </div>
         <div class="version-info">
           <span>Aurora Dashboard</span>
-          <span class="version">v26.4.28</span>
+          <span class="version">v26.5.1</span>
         </div>
       </div>
     </aside>
@@ -63,7 +63,7 @@
 import { ref, computed, onMounted, onUnmounted, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { Database, UserRound, UserRoundKey, CircleUserRound, MessageCircleMore, Sparkle, UserStar } from 'lucide-vue-next'
+import { Database, UserRound, UserRoundKey, CircleUserRound, MessageCircleMore, Sparkle, UserStar, BellRing } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -87,7 +87,8 @@ const navItems = computed(() => {
   const items = [
     { path: '/dashboard/overview', name: '数据概览', icon: h(Database) },
     { path: '/dashboard/users', name: '用户管理', icon: h(UserRound) },
-    { path: '/dashboard/points', name: '积分统计', icon: h(Sparkle) }
+    { path: '/dashboard/points', name: '积分统计', icon: h(Sparkle) },
+    { path: '/dashboard/announcement', name: '公告管理', icon: h(BellRing) }
   ]
   // 仅0级管理员显示管理员管理
   if (userStore.currentUser?.adminLevel === 0) {

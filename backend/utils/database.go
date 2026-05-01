@@ -213,6 +213,22 @@ func (Admin) TableName() string {
 	return "admins"
 }
 
+type Announcement struct {
+	ID        int64     `gorm:"column:id;type:bigint;primaryKey"`
+	Title     string    `gorm:"column:title;type:varchar(255);not null"`
+	Summary   string    `gorm:"column:summary;type:text"`
+	Content   string    `gorm:"column:content;type:mediumtext"`
+	Enabled   bool      `gorm:"column:enabled;type:tinyint(1);not null;default:0"`
+	Version   string    `gorm:"column:version;type:varchar(64);not null"`
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`
+}
+
+// TableName 指定Announcement结构体对应的表名
+func (Announcement) TableName() string {
+	return "announcements"
+}
+
 // SetPassword 设置用户密码
 func SetPassword(u *User, password string) {
 	u.PasswordHash = HashPassword(password)
@@ -412,7 +428,7 @@ func InitDB() {
 	}
 	// 自动迁移表结构
 	// 如果表不存在则创建，如果存在但结构不匹配则修改表结构
-	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{}, &PointsRecord{}, &Admin{})
+	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{}, &PointsRecord{}, &Admin{}, &Announcement{})
 	if err != nil {
 		fmt.Println("自动迁移表结构失败：", err)
 		return
@@ -1719,4 +1735,65 @@ func DeleteAdmin(adminID int64) error {
 		return fmt.Errorf("管理员不存在")
 	}
 	return nil
+}
+
+// GetLatestEnabledAnnouncement 获取最新启用公告
+func GetLatestEnabledAnnouncement() (*Announcement, error) {
+	var announcement Announcement
+	result := DB.Where("enabled = ?", true).Order("updated_at DESC").First(&announcement)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return &announcement, nil
+}
+
+// GetDashboardAnnouncement 获取管理后台公告配置
+func GetDashboardAnnouncement() (*Announcement, error) {
+	var announcement Announcement
+	result := DB.Order("updated_at DESC").First(&announcement)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return &announcement, nil
+}
+
+// UpsertAnnouncement 创建或更新公告
+func UpsertAnnouncement(title, summary, content string, enabled bool, version string) (*Announcement, error) {
+	var announcement Announcement
+	result := DB.Order("updated_at DESC").First(&announcement)
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, result.Error
+	}
+
+	if announcement.ID == 0 {
+		id, err := GenerateSnowflakeId()
+		if err != nil {
+			return nil, err
+		}
+		announcement.ID = id
+	}
+
+	announcement.Title = title
+	announcement.Summary = summary
+	announcement.Content = content
+	announcement.Enabled = enabled
+	announcement.Version = version
+
+	if announcement.ID != 0 && result.Error == nil {
+		if err := DB.Save(&announcement).Error; err != nil {
+			return nil, err
+		}
+		return &announcement, nil
+	}
+
+	if err := DB.Create(&announcement).Error; err != nil {
+		return nil, err
+	}
+	return &announcement, nil
 }

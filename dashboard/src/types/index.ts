@@ -37,3 +37,13 @@ export interface DashboardOverview {
   todayPointsIssued: number
   vipUsers: number
 }
+
+export interface Announcement {
+  id?: string
+  title: string
+  summary: string
+  content: string
+  enabled: boolean
+  version: string
+  updatedAt?: string
+}

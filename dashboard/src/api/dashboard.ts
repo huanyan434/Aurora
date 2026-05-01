@@ -1,5 +1,5 @@
 import api from '.'
-import type { DashboardOverview, User, PointsRecord } from '@/types'
+import type { DashboardOverview, User, PointsRecord, Announcement } from '@/types'
 
 export interface OverviewResponse {
   success: boolean
@@ -98,6 +98,20 @@ export interface AdminOperationResponse {
   message: string
 }
 
+export interface AnnouncementResponse {
+  success: boolean
+  data: Announcement
+  message?: string
+}
+
+export interface UpdateAnnouncementRequest {
+  title: string
+  summary: string
+  content: string
+  enabled: boolean
+  version: string
+}
+
 export const dashboardApi = {
   // 登录
   login: (data: LoginRequest) => api.post<LoginResponse>('/dashboard/login', data),
@@ -120,6 +134,12 @@ export const dashboardApi = {
   // 获取积分记录
   getPointsRecords: (page = 1, pageSize = 20) =>
     api.get<PointsResponse>(`/dashboard/points_records?page=${page}&pageSize=${pageSize}`),
+
+  // 公告管理接口
+  getAnnouncement: () => api.get<AnnouncementResponse>('/dashboard/announcement'),
+
+  updateAnnouncement: (data: UpdateAnnouncementRequest) =>
+    api.post<AnnouncementResponse>('/dashboard/announcement', data),
 
   // 管理员管理接口
   getAdmins: () => api.get<AdminsResponse>('/dashboard/admins'),

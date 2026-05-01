@@ -35,6 +35,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Points.vue')
       },
       {
+        path: 'announcement',
+        name: 'Announcement',
+        component: () => import('@/views/Announcement.vue')
+      },
+      {
         path: 'admins',
         name: 'Admins',
         component: () => import('@/views/Admins.vue'),
@@ -64,6 +69,7 @@ router.beforeEach(async (to, from, next) => {
     try {
       const response = await api.get('/dashboard/overview')
       if (response.data.success) {
+        const adminLevel = Number(response.headers['x-admin-level'] ?? 3)
         // 后端 session 有效，设置用户信息
         userStore.setUser({
           id: '1',
@@ -71,7 +77,8 @@ router.beforeEach(async (to, from, next) => {
           email: 'admin@aurora.com',
           isMember: true,
           memberLevel: 'SVIP',
-          points: 999999
+          points: 999999,
+          adminLevel
         })
         next()
       } else {

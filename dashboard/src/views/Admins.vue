@@ -62,9 +62,9 @@
             <label>权限等级</label>
             <select v-model.number="formData.level" required>
               <option :value="0">0级 - 最高权限</option>
-              <option :value="1">1级 - 不能修改用户名密码</option>
+              <option :value="1">1级 - 不能修改用户</option>
               <option :value="2">2级 - 不能修改会员</option>
-              <option :value="3">3级 - 仅查看</option>
+              <option :value="3">3级 - 仅可访问</option>
             </select>
           </div>
           <div v-if="error" class="error-message">{{ error }}</div>
@@ -118,10 +118,10 @@ const deleteTarget = ref<Admin | null>(null)
 
 const getLevelText = (level: number) => {
   const map: Record<number, string> = {
-    0: '0级-最高权限',
-    1: '1级-不能改用户名密码',
-    2: '2级-不能改会员',
-    3: '3级-仅查看'
+    0: '0级',
+    1: '1级',
+    2: '2级',
+    3: '3级'
   }
   return map[level] || '未知'
 }

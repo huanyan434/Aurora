@@ -51,6 +51,7 @@ func ApiInit(r *gin.Engine) {
 
 		// 获取积分记录
 		api.GET("/points_records", pointsRecordsHandler)
+		api.GET("/announcement", announcementHandler)
 
 		// Dashboard 管理面板接口
 		api.POST("/dashboard/login", dashboardLoginHandler)
@@ -65,6 +66,8 @@ func ApiInit(r *gin.Engine) {
 			dashboard.POST("/users/update-info", dashboardUpdateUserInfoHandler)
 			dashboard.GET("/conversations", dashboardConversationsHandler)
 			dashboard.GET("/points_records", dashboardPointsRecordsHandler)
+			dashboard.GET("/announcement", dashboardAnnouncementHandler)
+			dashboard.POST("/announcement", dashboardUpsertAnnouncementHandler)
 
 			// 管理员管理接口（仅0级可访问）
 			dashboard.GET("/admins", requireLevel0Middleware(), dashboardAdminsHandler)
@@ -754,6 +757,44 @@ type pointsRecordsResponseFailed struct {
 	Message string `json:"message" example:"获取积分记录失败"`
 }
 
+// @Summary 获取当前启用公告
+// @Description 获取前台展示用的当前启用公告
+// @Tags 用户
+// @Produce json
+// @Success 200 {object} map[string]interface{} "获取公告成功"
+// @Router /api/announcement [get]
+func announcementHandler(c *gin.Context) {
+	announcement, err := utils.GetLatestEnabledAnnouncement()
+	if err != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "获取公告失败: " + err.Error(),
+		})
+		return
+	}
+
+	if announcement == nil {
+		c.JSON(200, gin.H{
+			"success": true,
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data": gin.H{
+			"id":        strconv.FormatInt(announcement.ID, 10),
+			"title":     announcement.Title,
+			"summary":   announcement.Summary,
+			"content":   announcement.Content,
+			"enabled":   announcement.Enabled,
+			"version":   announcement.Version,
+			"updatedAt": announcement.UpdatedAt.Format("2006-01-02 15:04:05"),
+		},
+	})
+}
+
 // @Summary Dashboard 登录
 // @Description 管理后台登录验证
 // @Tags Dashboard
@@ -906,6 +947,11 @@ func dashboardUpdateUserHandler(c *gin.Context) {
 // @Router /api/dashboard/overview [get]
 func dashboardOverviewHandler(c *gin.Context) {
 	// 获取概览数据（不需要用户 ID）
+	session := sessions.Default(c)
+	if adminLevel := session.Get("admin_level"); adminLevel != nil {
+		c.Header("X-Admin-Level", strconv.Itoa(adminLevel.(int)))
+	}
+
 	overview, err := utils.GetDashboardOverview(0)
 	if err != nil {
 		c.JSON(400, gin.H{
@@ -1114,6 +1160,92 @@ func dashboardPointsRecordsHandler(c *gin.Context) {
 	})
 }
 
+// @Summary 获取公告配置
+// @Description 获取 Dashboard 当前公告配置
+// @Tags Dashboard
+// @Produce json
+// @Success 200 {object} map[string]interface{} "获取公告配置成功"
+// @Router /api/dashboard/announcement [get]
+func dashboardAnnouncementHandler(c *gin.Context) {
+	announcement, err := utils.GetDashboardAnnouncement()
+	if err != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "获取公告配置失败：" + err.Error(),
+		})
+		return
+	}
+
+	if announcement == nil {
+		c.JSON(200, gin.H{
+			"success": true,
+			"data": gin.H{
+				"title":   "",
+				"summary": "",
+				"content": "",
+				"enabled": false,
+				"version": "",
+			},
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data": gin.H{
+			"id":        strconv.FormatInt(announcement.ID, 10),
+			"title":     announcement.Title,
+			"summary":   announcement.Summary,
+			"content":   announcement.Content,
+			"enabled":   announcement.Enabled,
+			"version":   announcement.Version,
+			"updatedAt": announcement.UpdatedAt.Format("2006-01-02 15:04:05"),
+		},
+	})
+}
+
+// @Summary 保存公告配置
+// @Description 创建或更新 Dashboard 公告配置
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param request body dashboardAnnouncementRequest true "公告配置"
+// @Success 200 {object} map[string]interface{} "保存成功"
+// @Router /api/dashboard/announcement [post]
+func dashboardUpsertAnnouncementHandler(c *gin.Context) {
+	var req dashboardAnnouncementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误：" + err.Error(),
+		})
+		return
+	}
+
+	announcement, err := utils.UpsertAnnouncement(req.Title, req.Summary, req.Content, req.Enabled, req.Version)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "保存公告失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "公告保存成功",
+		"data": gin.H{
+			"id":        strconv.FormatInt(announcement.ID, 10),
+			"title":     announcement.Title,
+			"summary":   announcement.Summary,
+			"content":   announcement.Content,
+			"enabled":   announcement.Enabled,
+			"version":   announcement.Version,
+			"updatedAt": announcement.UpdatedAt.Format("2006-01-02 15:04:05"),
+		},
+	})
+}
+
 // Dashboard 响应结构体
 type dashboardOverviewResponseSuccess struct {
 	Success bool                   `json:"success" example:"true"`
@@ -1153,6 +1285,14 @@ type dashboardPointsRecordsResponseSuccess struct {
 type dashboardPointsRecordsResponseFailed struct {
 	Success bool   `json:"success" example:"false"`
 	Message string `json:"message"`
+}
+
+type dashboardAnnouncementRequest struct {
+	Title   string `json:"title"`
+	Summary string `json:"summary"`
+	Content string `json:"content"`
+	Enabled bool   `json:"enabled"`
+	Version string `json:"version"`
 }
 
 // Dashboard 登录请求

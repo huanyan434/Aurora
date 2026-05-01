@@ -20,6 +20,10 @@
                             <UserRound class="menu-item-icon" />
                             <span>个人中心</span>
                         </DropdownMenuItem>
+                        <DropdownMenuItem class="profile-menu-item" @click="openAnnouncementDialog">
+                            <BellRing class="menu-item-icon" />
+                            <span>系统公告</span>
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem class="logout-menu-item" @click="handleLogout">
                             <LogOut class="menu-item-icon" />
@@ -84,7 +88,7 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Compass, LogOut, MessageCirclePlus, PanelLeftClose, Search, UserRound } from 'lucide-vue-next';
+import { Compass, LogOut, MessageCirclePlus, PanelLeftClose, Search, UserRound, BellRing } from 'lucide-vue-next';
 import { useSidebarStore } from '@/stores/sidebar';
 import { useUserStore } from '@/stores/user';
 import { Button } from '@/components/ui/button';
@@ -139,6 +143,10 @@ watch(searchQuery, (newQuery) => {
 
 const goToProfile = () => {
     router.push('/profile');
+};
+
+const openAnnouncementDialog = () => {
+    window.dispatchEvent(new CustomEvent('open-announcement-dialog'));
 };
 
 const handleLogout = async () => {

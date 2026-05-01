@@ -119,11 +119,11 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
   font-weight: 500;
   line-height: 1.4;
   letter-spacing: 0;
-  color: rgba(255, 255, 255, 0.9);
+  color: #111111;
 }
 
 .toast-card.toast--success .toast-text {
-  color: #15803d;
+  color: #111111;
 }
 
 .toast-card.toast--error .toast-text {
@@ -218,6 +218,6 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 }
 
 .dark .toast-card .toast-text {
-  color: rgba(255, 255, 255, 0.85);
+  color: #111111;
 }
 </style>
