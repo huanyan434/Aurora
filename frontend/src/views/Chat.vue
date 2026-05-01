@@ -72,7 +72,7 @@ onMounted(async () => {
   try {
     await wsManager.connect();
   } catch (error) {
-    toastError("WebSocket 连接失败，请检查后端服务是否正常运行");
+    toastError("后端连接失败，请检查网络");
   }
 });
 
