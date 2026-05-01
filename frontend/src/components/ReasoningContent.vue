@@ -1,56 +1,54 @@
 <template>
-  <div class="message-reasoning">
+  <section
+    class="message-reasoning"
+    :class="{
+      'message-reasoning-streaming': isStreaming,
+      'message-reasoning-completed': isCompleted,
+      'message-reasoning-expanded': isExpanded,
+    }"
+  >
     <div class="reasoning-header">
-      <span class="reasoning-title">
-        {{ isCompleted ? '已完成思考' : `思考中（用时${reasoningTime}秒）` }}
-      </span>
+      <div class="reasoning-header-main">
+        <div class="reasoning-status-dot"></div>
+        <div class="reasoning-heading-group">
+          <span class="reasoning-label">深度思考</span>
+          <span class="reasoning-title">
+            {{ isCompleted ? '思考完成' : `思考中 · 已用时 ${reasoningTime} 秒` }}
+          </span>
+        </div>
+      </div>
     </div>
-    
-    <div 
+
+    <div
       ref="contentRef"
       class="reasoning-content"
-      :class="{ 'expanded': isExpanded }"
+      :class="{ expanded: isExpanded }"
     >
-      <div 
-        class="reasoning-text"
-        v-html="formattedContent"
-      ></div>
-      
-      <div 
-        v-if="isContentLong && !isExpanded" 
-        class="reasoning-overlay"
-      >
-        <button 
-          class="show-more-button"
-          @click.stop="toggleExpand"
-        >
+      <div class="reasoning-text" v-html="formattedContent"></div>
+
+      <div v-if="isContentLong && !isExpanded" class="reasoning-overlay">
+        <button class="show-more-button" @click.stop="toggleExpand">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span>查看更多</span>
+          <span>展开思考过程</span>
         </button>
       </div>
-      
-      <div 
-        v-else-if="isContentLong && isExpanded" 
-        class="reasoning-overlay expanded"
-      >
-        <button 
-          class="show-more-button"
-          @click.stop="toggleExpand"
-        >
+
+      <div v-else-if="isContentLong && isExpanded" class="reasoning-overlay expanded">
+        <button class="show-more-button" @click.stop="toggleExpand">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span>收起</span>
+          <span>收起思考过程</span>
         </button>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { marked } from 'marked';
 
 interface Props {
@@ -62,30 +60,26 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   isStreaming: false,
-  disableTyping: false
+  disableTyping: false,
 });
 
-// 响应式状态
-const isCollapsed = ref(false); // 默认展开
+// const contentRef = ref<HTMLElement | null>(null);
 const isExpanded = ref(false);
 
-// 计算属性
 const isCompleted = computed(() => props.reasoningTime === 0);
 
 const isContentLong = computed(() => {
   if (!props.content) return false;
-  // 简单判断内容是否较长（超过3行，约150字符）
   return props.content.length > 150;
 });
 
 const formattedContent = computed(() => {
   if (!props.content) return '';
-  
+
   try {
-    // 使用 marked 渲染 Markdown 内容
     return marked.parse(props.content, {
       breaks: true,
-      gfm: true
+      gfm: true,
     });
   } catch (error) {
     console.error('推理内容Markdown渲染失败:', error);
@@ -96,59 +90,87 @@ const formattedContent = computed(() => {
 const toggleExpand = () => {
   isExpanded.value = !isExpanded.value;
 };
-
-// 监听内容变化和流式状态
-watch([() => props.content, () => props.isStreaming], ([newContent, newIsStreaming]) => {
-  // 如果是流式传输且有内容，则展开
-  if (newIsStreaming && newContent) {
-    isCollapsed.value = false;
-  }
-  // 如果不是流式传输（历史记录），也默认展开
-  else if (!newIsStreaming) {
-    isCollapsed.value = false;
-  }
-}, { immediate: true });
 </script>
 
 <style scoped>
 .message-reasoning {
-  background-color: #ffffff;
-  border-radius: 8px;
   margin-bottom: 12px;
-  border: 1px solid #cbd5e1;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   overflow: hidden;
-  padding: 4px;
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.message-reasoning-streaming {
+  border-color: rgba(59, 130, 246, 0.28);
+  box-shadow: 0 14px 36px rgba(37, 99, 235, 0.12);
+}
+
+.message-reasoning-completed {
+  border-color: rgba(148, 163, 184, 0.22);
 }
 
 .reasoning-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
-  font-size: 14px;
-  color: #475569;
-  user-select: none;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.88) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.reasoning-header-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.reasoning-status-dot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #2563eb;
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.12);
+}
+
+.message-reasoning-streaming .reasoning-status-dot {
+  animation: reasoning-pulse 1.8s ease-in-out infinite;
+}
+
+.reasoning-heading-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reasoning-label {
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #2563eb;
 }
 
 .reasoning-title {
-  font-weight: 500;
-}
-
-.collapse-icon {
-  transition: transform 0.3s ease;
-  color: #94a3b8;
-}
-
-.collapse-icon.rotated {
-  transform: rotate(180deg);
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #334155;
 }
 
 .reasoning-content {
-  padding: 0 14px 10px 14px;
   position: relative;
-  max-height: 120px;
   overflow: hidden;
+  max-height: 164px;
+  padding: 4px 16px 14px;
 }
 
 .reasoning-content.expanded {
@@ -156,122 +178,224 @@ watch([() => props.content, () => props.isStreaming], ([newContent, newIsStreami
 }
 
 .reasoning-text {
-  font-size: 14px;
+  padding-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.75;
   color: #64748b;
-  line-height: 1.5;
-  padding-top: 8px;
+  word-break: break-word;
+}
+
+.reasoning-text :deep(p) {
+  margin: 0.55em 0;
+}
+
+.reasoning-text :deep(:first-child) {
+  margin-top: 0;
+}
+
+.reasoning-text :deep(:last-child) {
+  margin-bottom: 0;
+}
+
+.reasoning-text :deep(ul),
+.reasoning-text :deep(ol) {
+  padding-left: 1.3em;
+}
+
+.reasoning-text :deep(code) {
+  padding: 0.12rem 0.35rem;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.12);
+  font-size: 0.92em;
+}
+
+.reasoning-text :deep(pre) {
+  overflow-x: auto;
+  margin: 0.9em 0;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.reasoning-text :deep(blockquote) {
+  margin: 0.85em 0;
+  padding-left: 12px;
+  border-left: 3px solid rgba(59, 130, 246, 0.3);
+  color: #64748b;
 }
 
 .reasoning-overlay {
   position: absolute;
+  right: 0;
   bottom: 0;
   left: 0;
-  right: 0;
-  text-align: center;
-  padding: 30px 0 8px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.9), white);
   display: flex;
   justify-content: center;
+  padding: 40px 16px 2px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 0.92) 56%, rgba(248, 250, 252, 1) 100%);
 }
 
 .reasoning-overlay.expanded {
   position: static;
+  padding: 12px 0 0;
   background: none;
-  padding: 8px 0 0;
-  text-align: left;
 }
 
 .show-more-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 9999px;
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 13px;
-  color: #475569;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  transition:
+    transform var(--transition-duration-normal) ease,
+    box-shadow var(--transition-duration-normal) ease,
+    border-color var(--transition-duration-normal) ease,
+    color var(--transition-duration-normal) ease,
+    background-color var(--transition-duration-normal) ease;
 }
 
 .show-more-button:hover {
-  background: white;
-  border-color: #94a3b8;
-  color: var(--color-slate-700);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transform: translateY(-1px);
+  border-color: rgba(59, 130, 246, 0.28);
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
 }
 
 .show-more-button:active {
-  transform: translateY(1px);
-  transition: all 0.1s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform: translateY(0);
 }
 
-/* 深色模式样式 */
+.message-reasoning-expanded .show-more-button {
+  background: rgba(248, 250, 252, 0.92);
+}
+
 .dark .message-reasoning {
-  background-color: #1f2937; /* 深色模式背景 */
-  border-color: #374151; /* 深色模式边框 */
+  border-color: rgba(96, 165, 250, 0.18);
+  background: linear-gradient(180deg, rgba(23, 23, 23, 0.96) 0%, rgba(15, 23, 42, 0.96) 100%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+.dark .message-reasoning-streaming {
+  border-color: rgba(96, 165, 250, 0.28);
+  box-shadow: 0 16px 38px rgba(37, 99, 235, 0.18);
 }
 
 .dark .reasoning-header {
-  color: #9ca3af; /* 深色模式文字颜色 */
+  border-bottom-color: rgba(71, 85, 105, 0.28);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0) 100%);
+}
+
+.dark .reasoning-status-dot {
+  background: #60a5fa;
+  box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.14);
+}
+
+.dark .reasoning-label {
+  color: #93c5fd;
+}
+
+.dark .reasoning-title {
+  color: #e2e8f0;
+}
+
+.dark .reasoning-badge {
+  border-color: rgba(71, 85, 105, 0.42);
+  background: rgba(15, 23, 42, 0.68);
+  color: #cbd5e1;
+}
+
+.dark .message-reasoning-streaming .reasoning-badge {
+  border-color: rgba(96, 165, 250, 0.22);
+  color: #93c5fd;
 }
 
 .dark .reasoning-text {
-  color: #d1d5db; /* 深色模式文字颜色 */
+  color: #cbd5e1;
+}
+
+.dark .reasoning-text :deep(code) {
+  background: rgba(51, 65, 85, 0.45);
+}
+
+.dark .reasoning-text :deep(pre) {
+  border-color: rgba(71, 85, 105, 0.32);
+  background: rgba(2, 6, 23, 0.52);
+}
+
+.dark .reasoning-text :deep(blockquote) {
+  border-left-color: rgba(96, 165, 250, 0.4);
+  color: #94a3b8;
 }
 
 .dark .reasoning-overlay {
-  background: linear-gradient(to bottom, rgba(31, 41, 55, 0.4), rgba(31, 41, 55, 0.9), #1f2937);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.92) 56%, rgba(15, 23, 42, 1) 100%);
 }
 
 .dark .show-more-button {
-  background: rgba(31, 41, 55, 0.9);
-  border-color: #4b5563;
-  color: #9ca3af;
+  border-color: rgba(71, 85, 105, 0.44);
+  background: rgba(15, 23, 42, 0.88);
+  color: #cbd5e1;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.34);
 }
 
 .dark .show-more-button:hover {
-  background: #1f2937;
-  border-color: #6b7280;
-  color: #e5e7eb;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border-color: rgba(96, 165, 250, 0.36);
+  background: rgba(30, 41, 59, 0.96);
+  color: #dbeafe;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.2);
 }
 
-/* 滚动条样式 */
-.message-reasoning::-webkit-scrollbar {
-  width: 6px;
+@keyframes reasoning-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.82;
+  }
 }
 
-.message-reasoning::-webkit-scrollbar-track {
-  background: var(--scrollbar-track-bg);
-}
+@media (max-width: 640px) {
+  .reasoning-header {
+    align-items: flex-start;
+    padding: 13px 14px 10px;
+  }
 
-.message-reasoning::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-bg);
-  border-radius: 3px;
-}
+  .reasoning-header-main {
+    gap: 10px;
+  }
 
-.message-reasoning::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover-bg);
-}
+  .reasoning-title {
+    font-size: 13px;
+  }
 
-.dark .message-reasoning::-webkit-scrollbar {
-  width: 6px;
-}
+  .reasoning-content {
+    max-height: 148px;
+    padding: 2px 14px 12px;
+  }
 
-.dark .message-reasoning::-webkit-scrollbar-track {
-  background: #374151;
-}
+  .reasoning-text {
+    font-size: 12px;
+    line-height: 1.7;
+  }
 
-.dark .message-reasoning::-webkit-scrollbar-thumb {
-  background: #525252; /* 灰色滚动条颜色 */
-  border-radius: 3px;
-}
-
-.dark .message-reasoning::-webkit-scrollbar-thumb:hover {
-  background: #404040; /* 深灰色悬停颜色 */
+  .show-more-button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>
