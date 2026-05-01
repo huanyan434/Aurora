@@ -94,6 +94,11 @@ func wsHandler(c *gin.Context) {
 		c.Status(http.StatusUnauthorized)
 		return
 	}
+	if !utils.IsActiveMember(&userInfo) {
+		userInfo.IsMember = false
+		userInfo.MemberLevel = "free"
+	}
+	fmt.Printf("[当前用户][WS] userID=%d isMember=%v memberLevel=%s points=%d\n", userInfo.ID, userInfo.IsMember, userInfo.MemberLevel, userInfo.Points)
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -287,33 +292,46 @@ func sendWSResponse(conn *websocket.Conn, respType string, data interface{}) {
 
 // WebSocket: 生成 AI 回复
 func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
+	fmt.Printf("[积分检查][WS] userID=%d model=%s reasoning=%v points=%d isMember=%v memberLevel=%s\n", user.ID, req.Model, req.Reasoning, user.Points, user.IsMember, user.MemberLevel)
+
 	// 积分检查和扣除
 	config := utils.GetConfig()
 	pointsDeducted := 0
+	matchedModel := false
 	for _, m := range config.Models {
-		if m.Name == req.Model {
+		if m.ID == req.Model {
+			matchedModel = true
+			fmt.Printf("[积分检查][WS] 匹配模型 id=%s name=%s points=%d reasoning=%v\n", m.ID, m.Name, m.Points, m.Reasoning)
 			if req.Reasoning && m.Reasoning != req.Model {
 				// 推理模式，积分消耗为1.5倍
 				if user.IsMember {
 					switch user.MemberLevel {
 					case "VIP":
 						pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points/2)) * 1.5))
+						fmt.Printf("[积分检查][WS] 计划扣费=%d (VIP 推理)\n", pointsDeducted)
 						if user.Points < pointsDeducted {
 							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 							return
 						}
-						utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
+						if err := utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型"); err != nil {
+							sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+							return
+						}
 					case "SVIP":
 						// SVIP 免费
 						pointsDeducted = 0
 					}
 				} else {
 					pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points)) * 1.5))
+					fmt.Printf("[积分检查][WS] 计划扣费=%d (普通用户推理)\n", pointsDeducted)
 					if user.Points < pointsDeducted {
 						sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 						return
 					}
-					utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
+					if err := utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型"); err != nil {
+						sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+						return
+					}
 				}
 			} else {
 				// 普通模式
@@ -321,26 +339,37 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 					switch user.MemberLevel {
 					case "VIP":
 						pointsDeducted = int(math.Ceil(float64(m.Points / 2)))
+						fmt.Printf("[积分检查][WS] 计划扣费=%d (VIP 普通)\n", pointsDeducted)
 						if user.Points < pointsDeducted {
 							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 							return
 						}
-						utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
+						if err := utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型"); err != nil {
+							sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+							return
+						}
 					case "SVIP":
 						// SVIP 免费
 						pointsDeducted = 0
 					}
 				} else {
 					pointsDeducted = m.Points
+					fmt.Printf("[积分检查][WS] 计划扣费=%d (普通用户普通)\n", pointsDeducted)
 					if user.Points < pointsDeducted {
 						sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 						return
 					}
-					utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
+					if err := utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型"); err != nil {
+						sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+						return
+					}
 				}
 			}
 			break
 		}
+	}
+	if !matchedModel {
+		fmt.Printf("[积分检查][WS] 未匹配到模型，req.Model=%s\n", req.Model)
 	}
 
 	// 调用 AI 生成
@@ -676,10 +705,14 @@ func generateHandler(c *gin.Context) {
 		})
 		return
 	}
+	if !utils.IsActiveMember(&User) {
+		User.IsMember = false
+		User.MemberLevel = "free"
+	}
 
 	config := utils.GetConfig()
 	for _, m := range config.Models {
-		if m.Name == req.Model {
+		if m.ID == req.Model {
 			if req.Reasoning == true && m.Reasoning != req.Model {
 				if User.IsMember == true {
 					if User.MemberLevel == "VIP" {
@@ -690,7 +723,13 @@ func generateHandler(c *gin.Context) {
 							})
 							return
 						}
-						utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points/2))))*1.5), "使用大语言模型")
+						if err := utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points/2))))*1.5), "使用大语言模型"); err != nil {
+							c.JSON(500, gin.H{
+								"success": false,
+								"error":   "扣除积分失败: " + err.Error(),
+							})
+							return
+						}
 					}
 				} else {
 					if User.Points < int(math.Ceil((math.Ceil(float64(m.Points))))*1.5) {
@@ -700,7 +739,13 @@ func generateHandler(c *gin.Context) {
 						})
 						return
 					}
-					utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points))))*1.5), "使用大语言模型")
+					if err := utils.AddPoints(User.ID, -int(math.Ceil((math.Ceil(float64(m.Points))))*1.5), "使用大语言模型"); err != nil {
+						c.JSON(500, gin.H{
+							"success": false,
+							"error":   "扣除积分失败: " + err.Error(),
+						})
+						return
+					}
 				}
 			} else {
 				if User.IsMember == true {
@@ -712,7 +757,13 @@ func generateHandler(c *gin.Context) {
 							})
 							return
 						}
-						utils.AddPoints(User.ID, -int((math.Ceil(float64(m.Points / 2)))), "使用大语言模型")
+						if err := utils.AddPoints(User.ID, -int((math.Ceil(float64(m.Points / 2)))), "使用大语言模型"); err != nil {
+							c.JSON(500, gin.H{
+								"success": false,
+								"error":   "扣除积分失败: " + err.Error(),
+							})
+							return
+						}
 					}
 				} else {
 					if User.Points < m.Points {
@@ -722,7 +773,13 @@ func generateHandler(c *gin.Context) {
 						})
 						return
 					}
-					utils.AddPoints(User.ID, -m.Points, "使用大语言模型")
+					if err := utils.AddPoints(User.ID, -m.Points, "使用大语言模型"); err != nil {
+						c.JSON(500, gin.H{
+							"success": false,
+							"error":   "扣除积分失败: " + err.Error(),
+						})
+						return
+					}
 				}
 			}
 		}
@@ -767,10 +824,12 @@ func generateHandler(c *gin.Context) {
 
 		reasoningTime, reasoningContent, _ := utils.ParseThinkBlock(parsedResponse.ReasoningContent)
 		msg = MSG{
-			Success:          true,
-			ReasoningContent: reasoningContent,
-			ReasoningTime:    reasoningTime,
-			Content:          parsedResponse.Content,
+			Success:            true,
+			ReasoningContent:   reasoningContent,
+			ReasoningTime:      reasoningTime,
+			Content:            parsedResponse.Content,
+			ConversationID:     req.ConversationID,
+			MessageAssistantID: req.MessageAssistantID,
 		}
 
 		jsonData, _ := json.Marshal(msg)

@@ -215,6 +215,7 @@ func currentUserHandler(c *gin.Context) {
 		return
 	}
 	avatarURL := userInfo.Avatar
+	fmt.Printf("[当前用户][HTTP] userID=%d isMember=%v memberLevel=%s points=%d\n", userInfo.ID, userInfo.IsMember, userInfo.MemberLevel, userInfo.Points)
 	c.JSON(200, gin.H{
 		"success":     true,
 		"id":          strconv.FormatInt(userInfo.ID, 10),
@@ -955,12 +956,18 @@ func dashboardUsersHandler(c *gin.Context) {
 	// 格式化用户数据
 	var formattedUsers []map[string]interface{}
 	for _, user := range users {
+		effectiveIsMember := utils.IsActiveMember(&user)
+		effectiveMemberLevel := user.MemberLevel
+		if !effectiveIsMember {
+			effectiveMemberLevel = "free"
+		}
+
 		formattedUser := map[string]interface{}{
 			"id":          strconv.FormatInt(user.ID, 10),
 			"username":    user.Username,
 			"email":       user.Email,
-			"isMember":    user.IsMember,
-			"memberLevel": user.MemberLevel,
+			"isMember":    effectiveIsMember,
+			"memberLevel": effectiveMemberLevel,
 			"points":      user.Points,
 			"memberSince": "",
 			"memberUntil": "",

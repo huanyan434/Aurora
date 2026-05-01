@@ -1348,9 +1348,17 @@ func GetDashboardOverview(userID int64) (map[string]interface{}, error) {
 	var todayPointsIssued int64
 	db.Model(&PointsRecord{}).Where("amount > 0 AND created_at >= ?", today).Select("COALESCE(SUM(amount), 0)").Scan(&todayPointsIssued)
 
-	// VIP 用户数
+	// VIP 用户数（仅统计当前有效会员）
+	var allUsers []User
+	if err := db.Select("id, is_member, member_level, member_until").Find(&allUsers).Error; err != nil {
+		return nil, err
+	}
 	var vipUsers int64
-	db.Model(&User{}).Where("is_member = ? AND member_level IN ?", true, []string{"VIP", "SVIP"}).Count(&vipUsers)
+	for _, user := range allUsers {
+		if IsActiveMember(&user) && (user.MemberLevel == "VIP" || user.MemberLevel == "SVIP") {
+			vipUsers++
+		}
+	}
 
 	return map[string]interface{}{
 		"totalUsers":         totalUsers,
