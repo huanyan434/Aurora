@@ -399,12 +399,34 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			ConversationID:     req.ConversationID,
 			MessageAssistantID: req.MessageAssistantID,
 		}
+		fmt.Printf("[generate_response] conversationID=%d messageAssistantID=%d content_len=%d reasoning_len=%d\n", req.ConversationID, req.MessageAssistantID, len(msg.Content), len(msg.ReasoningContent))
 		sendWSResponse(conn, "generate_response", msg)
 
 		// 更新缓存内容已在 gpt.go 的 Openai 函数中完成，此处不再重复更新
 	}
 
+	// 如果已经生成完成但最终内容为空，先补发兜底消息
+	utils.MessageContentCacheMutex.RLock()
+	finalContent := ""
+	if cachedContent, exists := utils.MessageContentCache[req.MessageAssistantID]; exists {
+		finalContent = strings.TrimSpace(cachedContent.Content)
+	}
+	utils.MessageContentCacheMutex.RUnlock()
+
+	if finalContent == "" {
+		fmt.Printf("[generate_end] empty final content, sending fallback conversationID=%d messageAssistantID=%d\n", req.ConversationID, req.MessageAssistantID)
+		sendWSResponse(conn, "generate_response", MSG{
+			Success:            true,
+			ReasoningContent:   "",
+			ReasoningTime:      0,
+			Content:            "当前内容为空，请重新生成。",
+			ConversationID:     req.ConversationID,
+			MessageAssistantID: req.MessageAssistantID,
+		})
+	}
+
 	// 生成结束，发送结束信号
+	fmt.Printf("[generate_end] sending end conversationID=%d messageAssistantID=%d finalContentLen=%d pointsDeducted=%d\n", req.ConversationID, req.MessageAssistantID, len(finalContent), pointsDeducted)
 	sendWSResponse(conn, "generate_end", gin.H{
 		"conversationID":     req.ConversationID,
 		"messageAssistantID": req.MessageAssistantID,

@@ -390,6 +390,44 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 	return resp
 }
 
+func appendToolCallArguments(buffer map[string]string, toolCallID string, argumentsChunk string) (string, bool) {
+	buffer[toolCallID] += argumentsChunk
+	arguments := buffer[toolCallID]
+	fmt.Printf("[tool_call] toolCallID=%s chunk_len=%d total_len=%d valid_json=%v\n", toolCallID, len(argumentsChunk), len(arguments), json.Valid([]byte(arguments)))
+	if !json.Valid([]byte(arguments)) {
+		return "", false
+	}
+	delete(buffer, toolCallID)
+	return arguments, true
+}
+
+func buildFallbackSearchQuery(reasoning string, prompt string) string {
+	reasoning = strings.TrimSpace(reasoning)
+	prompt = strings.TrimSpace(stripBase64Block(prompt))
+
+	query := prompt
+	if reasoning != "" {
+		lines := strings.FieldsFunc(reasoning, func(r rune) bool {
+			return r == '\n' || r == '。' || r == '！' || r == '？'
+		})
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			if strings.Contains(line, "搜索") || strings.Contains(line, "query") || strings.Contains(line, "武器") {
+				query = line
+			}
+		}
+	}
+
+	query = strings.TrimSpace(strings.Trim(query, "\"'：:，,。！？!?"))
+	if query == "" {
+		query = "请根据上下文搜索相关信息"
+	}
+	return query
+}
+
 // Openai 调用 OpenAI API 并流式返回结果，同时更新消息内容缓存
 func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64Image string, reasoning bool, resp chan string) {
 	config := GetConfig()
@@ -546,6 +584,9 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 	}
 	defer stream.Close()
 
+	// 流式工具调用参数缓冲
+	toolCallArgumentsBuffer := make(map[string]string)
+
 	// 流式读取响应
 	for {
 		select {
@@ -567,30 +608,70 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 			if len(response.Choices) > 0 {
 				delta := response.Choices[0].Delta
+				finishReason := response.Choices[0].FinishReason
+				if finishReason != "" {
+					fmt.Printf("[stream] finish_reason=%s conversationID=%d messageAssistantID=%d\n", finishReason, conversationID, messageAssistantID)
+					if finishReason == "tool_calls" {
+						fmt.Printf("[stream] tool_calls finished but pending_buffers=%d buffers=%v\n", len(toolCallArgumentsBuffer), toolCallArgumentsBuffer)
+
+						for toolCallID, bufferedArguments := range toolCallArgumentsBuffer {
+							if strings.TrimSpace(bufferedArguments) != "" {
+								continue
+							}
+
+							MessageContentCacheMutex.RLock()
+							reasoningText := ""
+							if cachedContent, exists := MessageContentCache[messageAssistantID]; exists {
+								reasoningText = cachedContent.ReasoningContent
+							}
+							MessageContentCacheMutex.RUnlock()
+
+							fallbackQuery := buildFallbackSearchQuery(reasoningText, prompt)
+							fmt.Printf("[tool_call_fallback] id=%s query=%q\n", toolCallID, fallbackQuery)
+						}
+					}
+				}
 
 				// 处理工具调用
 				if len(delta.ToolCalls) > 0 {
 					for _, toolCall := range delta.ToolCalls {
 						if toolCall.Function.Name == "web_search" {
+							fmt.Printf("[tool_call] received name=%s id=%s raw_chunk=%q\n", toolCall.Function.Name, toolCall.ID, toolCall.Function.Arguments)
+							arguments, ok := appendToolCallArguments(toolCallArgumentsBuffer, toolCall.ID, toolCall.Function.Arguments)
+							if !ok {
+								continue
+							}
+
+							fmt.Printf("[tool_call] complete id=%s arguments=%s\n", toolCall.ID, arguments)
+
 							// 解析搜索参数
 							var params struct {
 								Query string `json:"query"`
 							}
-							if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &params); err != nil {
+							if err := json.Unmarshal([]byte(arguments), &params); err != nil {
 								fmt.Printf("解析工具调用参数失败: %v\n", err)
 								continue
 							}
 
 							// 执行搜索
+							fmt.Printf("[tool_call] search start query=%q\n", params.Query)
 							searchResult, err := SimpleSearch(params.Query)
 							if err != nil {
 								searchResult = fmt.Sprintf("搜索失败: %v", err)
 							}
+							fmt.Printf("[tool_call] search done query=%q result_len=%d err=%v\n", params.Query, len(searchResult), err)
 
 							// 将工具调用和结果添加到消息历史
 							messages = append(messages, openai.ChatCompletionMessage{
 								Role:      openai.ChatMessageRoleAssistant,
-								ToolCalls: []openai.ToolCall{toolCall},
+								ToolCalls: []openai.ToolCall{{
+									ID:   toolCall.ID,
+									Type: toolCall.Type,
+									Function: openai.FunctionCall{
+										Name:      toolCall.Function.Name,
+										Arguments: arguments,
+									},
+								}},
 							})
 							messages = append(messages, openai.ChatCompletionMessage{
 								Role:       openai.ChatMessageRoleTool,
