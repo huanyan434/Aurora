@@ -225,7 +225,7 @@ const scrollMessagesAreaToBottom = async (force = false) => {
     if (!container) return;
 
     const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (force || distanceToBottom <= 50) {
+    if (force || distanceToBottom <= 150) {
         container.scrollTop = container.scrollHeight;
     }
 };
@@ -258,7 +258,7 @@ const runFollowBottomLoop = () => {
         const heightIncreased = currentScrollHeight > lastScrollHeight.value;
         const scrollTopIncreased = currentScrollTop > lastScrollTop.value;
 
-        if ((heightIncreased || scrollTopIncreased) && distanceToBottom <= 50) {
+        if ((heightIncreased || scrollTopIncreased) && distanceToBottom <= 150) {
             container.scrollTop = currentScrollHeight;
         }
 

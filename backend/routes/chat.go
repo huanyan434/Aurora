@@ -42,13 +42,15 @@ func ChatInit(r *gin.Engine) {
 }
 
 type MSG struct {
-	Success          bool   `json:"success" default:"false"`
-	Error            string `json:"error" default:""`
-	ReasoningContent string `json:"reasoningContent" default:""`
-	ReasoningTime    int    `json:"reasoningTime" default:""`
-	Content          string `json:"content" default:""`
-	IsCached         bool   `json:"isCached" default:"false"`      // 是否是缓存内容
-	IsUserMessage    bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
+	Success            bool   `json:"success" default:"false"`
+	Error              string `json:"error" default:""`
+	ReasoningContent   string `json:"reasoningContent" default:""`
+	ReasoningTime      int    `json:"reasoningTime" default:""`
+	Content            string `json:"content" default:""`
+	ConversationID     int64  `json:"conversationID"`
+	MessageAssistantID int64  `json:"messageAssistantID"`
+	IsCached           bool   `json:"isCached" default:"false"`      // 是否是缓存内容
+	IsUserMessage      bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
 }
 
 // WebSocket 响应消息
@@ -198,10 +200,12 @@ func wsHandler(c *gin.Context) {
 
 						reasoningTime, reasoningContent, _ := utils.ParseThinkBlock(parsedResponse.ReasoningContent)
 						msg = MSG{
-							Success:          true,
-							ReasoningContent: reasoningContent,
-							ReasoningTime:    reasoningTime,
-							Content:          parsedResponse.Content,
+							Success:            true,
+							ReasoningContent:   reasoningContent,
+							ReasoningTime:      reasoningTime,
+							Content:            parsedResponse.Content,
+							ConversationID:     convID,
+							MessageAssistantID: messageAssistantID,
 						}
 						sendWSResponse(conn, "generate_response", msg)
 					}
@@ -291,14 +295,15 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			if req.Reasoning && m.Reasoning != req.Model {
 				// 推理模式，积分消耗为1.5倍
 				if user.IsMember {
-					if user.MemberLevel == "VIP" {
+					switch user.MemberLevel {
+					case "VIP":
 						pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points/2)) * 1.5))
 						if user.Points < pointsDeducted {
 							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 							return
 						}
 						utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
-					} else if user.MemberLevel == "SVIP" {
+					case "SVIP":
 						// SVIP 免费
 						pointsDeducted = 0
 					}
@@ -313,14 +318,15 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			} else {
 				// 普通模式
 				if user.IsMember {
-					if user.MemberLevel == "VIP" {
+					switch user.MemberLevel {
+					case "VIP":
 						pointsDeducted = int(math.Ceil(float64(m.Points / 2)))
 						if user.Points < pointsDeducted {
 							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 							return
 						}
 						utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型")
-					} else if user.MemberLevel == "SVIP" {
+					case "SVIP":
 						// SVIP 免费
 						pointsDeducted = 0
 					}
@@ -357,10 +363,12 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 
 		reasoningTime, reasoningContent, _ := utils.ParseThinkBlock(parsedResponse.ReasoningContent)
 		msg = MSG{
-			Success:          true,
-			ReasoningContent: reasoningContent,
-			ReasoningTime:    reasoningTime,
-			Content:          parsedResponse.Content,
+			Success:            true,
+			ReasoningContent:   reasoningContent,
+			ReasoningTime:      reasoningTime,
+			Content:            parsedResponse.Content,
+			ConversationID:     req.ConversationID,
+			MessageAssistantID: req.MessageAssistantID,
 		}
 		sendWSResponse(conn, "generate_response", msg)
 

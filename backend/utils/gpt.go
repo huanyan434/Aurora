@@ -202,7 +202,7 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 							ID:               messageAssistantID,
 							ConversationID:   conversationID,
 							Role:             "assistant",
-							Content:          aiContent.Content,
+							Content:          "<model=" + model + ">" + aiContent.Content,
 							ReasoningContent: aiContent.ReasoningContent,
 							CreatedAt:        time.Now().Format("2006-01-02T15:04:05Z07:00"),
 						}
@@ -490,6 +490,14 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 						content.ReasoningContent += delta.ReasoningContent
 					}
 					MessageContentCacheMutex.Unlock()
+
+					jsonResp, _ := json.Marshal(Response{
+						Success:          true,
+						Content:          "",
+						ReasoningContent: delta.ReasoningContent,
+						Error:            "",
+					})
+					resp <- string(jsonResp)
 				}
 
 				// 更新缓存：普通内容
@@ -503,8 +511,12 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 					}
 					contentMutex.Unlock()
 
+					contentDelta := delta.Content
 					MessageContentCacheMutex.Lock()
 					if content, exists := MessageContentCache[messageAssistantID]; exists {
+						if content.Content == "" {
+							contentDelta = "<model=" + model + ">" + contentDelta
+						}
 						content.Content += delta.Content
 					}
 					MessageContentCacheMutex.Unlock()
@@ -512,8 +524,8 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 					// 写入响应通道（JSON 格式）
 					jsonResp, _ := json.Marshal(Response{
 						Success:          true,
-						Content:          delta.Content,
-						ReasoningContent: delta.ReasoningContent,
+						Content:          contentDelta,
+						ReasoningContent: "",
 						Error:            "",
 					})
 					resp <- string(jsonResp)
