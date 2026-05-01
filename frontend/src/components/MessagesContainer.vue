@@ -27,9 +27,9 @@
                     <!-- 助手消息 -->
                     <div v-else>
                         <!-- 模型名称显示 -->
-                        <div v-if="extractModelName(message.content)"
+                        <div v-if="extractModelName(message.rawContent || message.content)"
                             class="mb-2 text-sm text-gray-500 dark:text-gray-300">
-                            {{ extractModelName(message.content) }}
+                            {{ extractModelName(message.rawContent || message.content) }}
                         </div>
 
                         <!-- 推理内容 -->
@@ -633,7 +633,7 @@ const handleShareMessage = async () => {
 const copyMessage = async (content: string) => {
     try {
         // 在复制之前移除 <model=xxx> 标签
-        const cleanContent = content.replace(/<model=[^>]+>/g, "").trim();
+        const cleanContent = removeModelTag(content);
 
         // 检查 navigator.clipboard 是否可用
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -807,6 +807,7 @@ const setupGlobalGenerateHandler = () => {
                     id: Date.now(), // 临时 ID
                     role: 'assistant' as const,
                     content: '',
+                    rawContent: '',
                     reasoningContent: '',
                     reasoningTime: 0,
                     conversationID: convId,
@@ -890,7 +891,8 @@ const setupGlobalGenerateHandler = () => {
 
             // 更新助手消息
             chatStore.updateMessage(state.messageAssistantId, {
-                content: state.accumulatedContent,
+                content: removeModelTag(state.accumulatedContent),
+                rawContent: state.accumulatedContent,
                 reasoningContent: state.accumulatedReasoningContent,
                 reasoningTime: state.lastReasoningTime,
                 isStreaming: true,
@@ -899,7 +901,7 @@ const setupGlobalGenerateHandler = () => {
             // 更新打字状态的预期内容
             if (state.messageAssistantId) {
                 const typingState = getTypingState(state.messageAssistantId);
-                typingState.expectedContent = state.accumulatedContent;
+                typingState.expectedContent = removeModelTag(state.accumulatedContent);
                 typingState.isTyping = true;
                 // 同步更新全局 isTyping 状态
                 chatStore.setIsTyping(true);
@@ -1001,6 +1003,11 @@ const extractModelName = (content: string) => {
     return null;
 };
 
+const removeModelTag = (content: string) => {
+    if (!content) return '';
+    return content.replace(/<model=[^>]+>/g, '').trim();
+};
+
 // 加载对话历史消息（使用 HTTP）
 const loadConversationHistory = async (conversationId: number) => {
     isLoading.value = true;
@@ -1034,7 +1041,7 @@ const loadConversationHistory = async (conversationId: number) => {
                 }
 
                 const cleanContent = msg.content
-                    ? msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, "").trim()
+                    ? removeModelTag(msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, "").trim())
                     : "";
 
                 return {
@@ -1042,6 +1049,7 @@ const loadConversationHistory = async (conversationId: number) => {
                     conversationID: msg.conversation_id,
                     role: msg.role,
                     content: cleanContent,
+                    rawContent: msg.content || '',
                     base64: msg.base64,
                     reasoningContent,
                     reasoningTime,
@@ -1113,7 +1121,10 @@ onMounted(async () => {
     try {
         const modelsResponse = await getModelsList();
         if (modelsResponse.data.models) {
-            models.value = modelsResponse.data.models;
+            models.value = modelsResponse.data.models.map((model: any) => ({
+                id: model.id || model.ID,
+                name: model.name || model.Name,
+            }));
         }
     } catch (error) {
         console.error("[onMounted] 获取模型列表失败:", error);

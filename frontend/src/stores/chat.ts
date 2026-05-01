@@ -7,6 +7,7 @@ export interface Message {
   conversationID: number;
   role: 'user' | 'assistant';
   content: string;
+  rawContent?: string;
   base64?: string; // 用于存储图片的base64数据
   reasoningContent?: string; // 推理内容
   reasoningTime?: number; // 推理时间
