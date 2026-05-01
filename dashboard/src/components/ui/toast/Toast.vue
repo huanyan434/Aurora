@@ -83,17 +83,18 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
   padding: var(--toast-padding);
   border-radius: var(--toast-radius);
   box-shadow: var(--toast-shadow);
-  backdrop-filter: blur(12px);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
 }
 
 .toast--success {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.25);
+  background: #ecfdf5;
+  border-color: #bbf7d0;
 }
 
 .toast--error {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.25);
+  background: #fef2f2;
+  border-color: #fecaca;
 }
 
 /* ==================== 图标 ==================== */
@@ -183,13 +184,13 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 
 /* ==================== 深色模式 ==================== */
 .dark .toast-card {
-  background: rgba(255, 255, 255, 0.24);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: #1f2937;
+  border-color: #374151;
 }
 
 .dark .toast-card.toast--success {
-  background: rgba(34, 197, 94, 0.24);
-  border-color: rgba(34, 197, 94, 0.3);
+  background: #064e3b;
+  border-color: #166534;
 }
 
 .dark .toast-card.toast--success .toast-icon {
@@ -201,8 +202,8 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 }
 
 .dark .toast-card.toast--error {
-  background: rgba(239, 68, 68, 0.24);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: #7f1d1d;
+  border-color: #991b1b;
 }
 
 .dark .toast-card.toast--error .toast-icon {

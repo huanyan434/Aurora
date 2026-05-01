@@ -89,22 +89,23 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
   padding: var(--toast-padding);
   border-radius: var(--toast-radius);
   box-shadow: var(--toast-shadow);
-  backdrop-filter: blur(12px);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
 }
 
 .toast--success {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.25);
+  background: #ecfdf5;
+  border-color: #bbf7d0;
 }
 
 .toast--error {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.25);
+  background: #fef2f2;
+  border-color: #fecaca;
 }
 
 .toast--info {
-  background: rgba(245, 240, 230, 0.95);
-  border-color: rgba(210, 200, 185, 0.3);
+  background: #f8f3ea;
+  border-color: #d6c9b7;
 }
 
 /* ==================== 图标 ==================== */
@@ -134,7 +135,7 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
   font-weight: 500;
   line-height: 1.4;
   letter-spacing: 0;
-  color: rgba(255, 255, 255, 0.9);
+  color: #111111;
 }
 
 .toast-card.toast--success .toast-text {
@@ -202,13 +203,13 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 
 /* ==================== 深色模式 ==================== */
 .dark .toast-card {
-  background: rgba(255, 255, 255, 0.24);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: #1f2937;
+  border-color: #374151;
 }
 
 .dark .toast-card.toast--success {
-  background: rgba(34, 197, 94, 0.24);
-  border-color: rgba(34, 197, 94, 0.3);
+  background: #064e3b;
+  border-color: #166534;
 }
 
 .dark .toast-card.toast--success .toast-icon {
@@ -220,8 +221,8 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 }
 
 .dark .toast-card.toast--error {
-  background: rgba(239, 68, 68, 0.24);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: #7f1d1d;
+  border-color: #991b1b;
 }
 
 .dark .toast-card.toast--error .toast-icon {
@@ -233,8 +234,8 @@ const getToastVariantClass = (variant?: Toast['variant']): string => {
 }
 
 .dark .toast-card.toast--info {
-  background: rgba(245, 240, 230, 0.15);
-  border-color: rgba(210, 200, 185, 0.25);
+  background: #3f3426;
+  border-color: #6b5a3d;
 }
 
 .dark .toast-card.toast--info .toast-icon {
