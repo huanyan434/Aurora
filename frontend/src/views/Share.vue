@@ -1,12 +1,10 @@
 <template>
   <div class="share-page">
-    <div class="share-card">
-      <div class="share-header">
-        <p class="share-badge">Aurora 分享</p>
-        <h1 class="share-title">分享对话</h1>
-        <p class="share-subtitle">通过公开链接查看分享的消息内容。</p>
-      </div>
+    <div class="share-header">
+      <p class="share-badge">Aurora 分享</p>
+    </div>
 
+    <div class="share-content-scroll">
       <div v-if="loading" class="share-state">加载中...</div>
       <div v-else-if="error" class="share-state share-state-error">{{ error }}</div>
       <div v-else-if="messages.length === 0" class="share-state">暂无可显示的分享内容。</div>
@@ -19,7 +17,9 @@
         >
           <div class="share-message-meta" :class="message.role === 'user' ? 'share-message-meta-user' : ''">
             <span v-if="message.role === 'user'" class="share-role">{{ message.username || '用户' }}</span>
-            <span v-else-if="message.modelName" class="share-role">{{ message.modelName }}</span>
+            <span v-else-if="extractModelName(message.rawContent || message.content)" class="share-role">
+              {{ extractModelName(message.rawContent || message.content) }}
+            </span>
             <span class="share-time">{{ formatTime(message.createdAt) }}</span>
           </div>
 
@@ -55,14 +55,15 @@
                 </div>
               </div>
 
-              <DsMarkdown
-                v-else
-                :content="message.content"
-                :interval="0"
-                :show-cursor="false"
-                :disable-typing="true"
-                cursor="circle"
-              />
+              <div v-else>
+                <DsMarkdown
+                  :content="cleanModelContent(message.rawContent || message.content)"
+                  :interval="0"
+                  :show-cursor="false"
+                  :disable-typing="true"
+                  cursor="circle"
+                />
+              </div>
             </div>
 
             <Avatar v-if="message.role === 'user'" class="share-user-avatar share-user-avatar-beside-bubble">
@@ -159,18 +160,37 @@ const formatTime = (time: string) => {
   });
 };
 
-const normalizeMessage = (message: Partial<SharedMessage>): SharedMessage => {
+const extractModelName = (content: string) => {
+  if (!content) return '';
+
+  const modelMatch = content.match(/<model=([^>]+)>/);
+  if (modelMatch && modelMatch[1]) {
+    return modelMatch[1];
+  }
+
+  return '';
+};
+
+const cleanModelContent = (content: string) => {
+  if (!content) return '';
+  return content.replace(/<model=[^>]+>/g, '').trim();
+};
+
+const normalizeMessage = (message: Partial<SharedMessage>) => {
+  const rawContent = String(message.rawContent ?? message.content ?? '');
+  const cleanedContent = cleanModelContent(rawContent);
+
   return {
     id: Number(message.id ?? 0),
     conversationID: Number(message.conversationID ?? 0),
     role: (message.role ?? 'assistant') as 'user' | 'assistant',
-    content: String(message.content ?? ''),
+    content: cleanedContent,
+    rawContent,
     base64: message.base64 ?? '',
     reasoningContent: message.reasoningContent ?? '',
     createdAt: String(message.createdAt ?? ''),
     username: message.username ?? '',
     avatar: message.avatar ?? '',
-    modelName: message.modelName ?? '',
   };
 };
 
@@ -207,23 +227,21 @@ onMounted(() => {
 
 <style scoped>
 .share-page {
-  min-height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
-  padding: 32px 16px;
-}
-
-.share-card {
-  max-width: 960px;
-  margin: 0 auto;
-  border-radius: 24px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.08);
+  padding: 32px;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
 .share-header {
-  padding: 32px 32px 20px;
+  flex-shrink: 0;
+  width: max(80%, calc(100dvw - 20rem));
+  max-width: 800px;
+  padding-bottom: 20px;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -238,18 +256,14 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.share-title {
-  margin-top: 16px;
-  font-size: 32px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: #111827;
-}
-
-.share-subtitle {
-  margin-top: 8px;
-  font-size: 15px;
-  color: #6b7280;
+.share-content-scroll {
+  flex: 1;
+  min-height: 0;
+  width: max(100%, calc(100dvw - 20rem));
+  max-width: 800px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 24px;
 }
 
 .share-state {
@@ -267,7 +281,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 24px 20px 32px;
+  padding: 0;
+  width: 100%;
 }
 
 .share-message-row {
@@ -379,10 +394,6 @@ onMounted(() => {
 
   .share-header {
     padding: 24px 20px 16px;
-  }
-
-  .share-title {
-    font-size: 24px;
   }
 
   .share-messages {

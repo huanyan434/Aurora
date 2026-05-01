@@ -402,6 +402,7 @@ export const tts = async (data: TtsRequest) => {
 export interface SharedMessage {
   id: number
   content: string
+  rawContent?: string
   role: 'user' | 'assistant'
   conversationID: number
   createdAt: string
