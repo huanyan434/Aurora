@@ -294,8 +294,9 @@ func sendWSResponse(conn *websocket.Conn, respType string, data interface{}) {
 func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	fmt.Printf("[积分检查][WS] userID=%d model=%s reasoning=%v points=%d isMember=%v memberLevel=%s\n", user.ID, req.Model, req.Reasoning, user.Points, user.IsMember, user.MemberLevel)
 
-	// 积分检查和扣除
+	// 积分检查（仅校验，不立即扣除）
 	config := utils.GetConfig()
+	plannedPointsDeducted := 0
 	pointsDeducted := 0
 	matchedModel := false
 	for _, m := range config.Models {
@@ -307,29 +308,20 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 				if user.IsMember {
 					switch user.MemberLevel {
 					case "VIP":
-						pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points/2)) * 1.5))
-						fmt.Printf("[积分检查][WS] 计划扣费=%d (VIP 推理)\n", pointsDeducted)
-						if user.Points < pointsDeducted {
+						plannedPointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points/2)) * 1.5))
+						fmt.Printf("[积分检查][WS] 计划扣费=%d (VIP 推理)\n", plannedPointsDeducted)
+						if user.Points < plannedPointsDeducted {
 							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 							return
 						}
-						if err := utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型"); err != nil {
-							sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
-							return
-						}
 					case "SVIP":
-						// SVIP 免费
-						pointsDeducted = 0
+						plannedPointsDeducted = 0
 					}
 				} else {
-					pointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points)) * 1.5))
-					fmt.Printf("[积分检查][WS] 计划扣费=%d (普通用户推理)\n", pointsDeducted)
-					if user.Points < pointsDeducted {
+					plannedPointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points)) * 1.5))
+					fmt.Printf("[积分检查][WS] 计划扣费=%d (普通用户推理)\n", plannedPointsDeducted)
+					if user.Points < plannedPointsDeducted {
 						sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
-						return
-					}
-					if err := utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型"); err != nil {
-						sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
 						return
 					}
 				}
@@ -338,29 +330,20 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 				if user.IsMember {
 					switch user.MemberLevel {
 					case "VIP":
-						pointsDeducted = int(math.Ceil(float64(m.Points / 2)))
-						fmt.Printf("[积分检查][WS] 计划扣费=%d (VIP 普通)\n", pointsDeducted)
-						if user.Points < pointsDeducted {
+						plannedPointsDeducted = int(math.Ceil(float64(m.Points / 2)))
+						fmt.Printf("[积分检查][WS] 计划扣费=%d (VIP 普通)\n", plannedPointsDeducted)
+						if user.Points < plannedPointsDeducted {
 							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
 							return
 						}
-						if err := utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型"); err != nil {
-							sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
-							return
-						}
 					case "SVIP":
-						// SVIP 免费
-						pointsDeducted = 0
+						plannedPointsDeducted = 0
 					}
 				} else {
-					pointsDeducted = m.Points
-					fmt.Printf("[积分检查][WS] 计划扣费=%d (普通用户普通)\n", pointsDeducted)
-					if user.Points < pointsDeducted {
+					plannedPointsDeducted = m.Points
+					fmt.Printf("[积分检查][WS] 计划扣费=%d (普通用户普通)\n", plannedPointsDeducted)
+					if user.Points < plannedPointsDeducted {
 						sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
-						return
-					}
-					if err := utils.AddPoints(user.ID, -pointsDeducted, "使用大语言模型"); err != nil {
-						sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
 						return
 					}
 				}
@@ -373,18 +356,21 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	}
 
 	// 调用 AI 生成
+	generationFailed := false
 	resp := utils.ThreadOpenai(req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.Prompt, req.Base64, req.Reasoning)
 	for response := range resp {
 		var msg MSG
 		var parsedResponse utils.Response
 		err := json.Unmarshal([]byte(response), &parsedResponse)
 		if err != nil {
+			generationFailed = true
 			msg = MSG{Success: false, Error: err.Error()}
 			sendWSResponse(conn, "generate_response", msg)
 			continue
 		}
 
 		if parsedResponse.Error != "" {
+			generationFailed = true
 			msg = MSG{Success: false, Error: parsedResponse.Error}
 			sendWSResponse(conn, "generate_response", msg)
 			continue
@@ -423,6 +409,18 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			ConversationID:     req.ConversationID,
 			MessageAssistantID: req.MessageAssistantID,
 		})
+	}
+
+	if !generationFailed && finalContent != "" && plannedPointsDeducted > 0 {
+		if err := utils.AddPoints(user.ID, -plannedPointsDeducted, "使用大语言模型"); err != nil {
+			fmt.Printf("[积分检查][WS] 最终扣费失败 userID=%d points=%d err=%v\n", user.ID, plannedPointsDeducted, err)
+			sendWSResponse(conn, "generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+			return
+		}
+		pointsDeducted = plannedPointsDeducted
+		fmt.Printf("[积分检查][WS] 最终扣费成功 userID=%d points=%d\n", user.ID, pointsDeducted)
+	} else {
+		fmt.Printf("[积分检查][WS] 本次不扣费 userID=%d generationFailed=%v finalContentLen=%d plannedPoints=%d\n", user.ID, generationFailed, len(finalContent), plannedPointsDeducted)
 	}
 
 	// 生成结束，发送结束信号
