@@ -1075,17 +1075,9 @@ func messagesListHandler(c *gin.Context) {
 		return
 	}
 
-	Messages, err := json.Marshal(messages)
-	if err != nil {
-		c.JSON(400, gin.H{
-			"success": false,
-			"error":   err,
-		})
-		return
-	}
 	c.JSON(200, gin.H{
 		"success":  true,
-		"messages": string(Messages),
+		"messages": messages,
 	})
 }
 

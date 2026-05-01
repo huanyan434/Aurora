@@ -19,7 +19,7 @@
 
                         <!-- 图片附件 -->
                         <div v-if="message.base64" class="mt-2">
-                            <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-full h-auto rounded"
+                            <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded"
                                 @error="handleImageError" />
                         </div>
                     </div>
@@ -495,7 +495,7 @@ const renderUserContent = (content: string) => {
             // 检查是否已经是完整的 data:image URL
             if (trimmedContent.startsWith("data:image/")) {
                 // 如果是完整的 data URL，直接使用
-                return `<img src="${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
+                return `<img src="${trimmedContent}" alt="嵌入图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
             }
             // 否则检查是否为纯 base64 字符串
             else {
@@ -524,7 +524,7 @@ const renderUserContent = (content: string) => {
                         imageType = "tiff";
                     }
 
-                    return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-full h-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
+                    return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
                 } else {
                     // 如果不是有效的 base64，返回空字符串（移除标签）
                     console.warn(
@@ -1044,9 +1044,11 @@ const loadConversationHistory = async (conversationId: number) => {
             conversationID: conversationId,
         });
         if (response.data.success) {
-            let parsedMessages = [];
+            let parsedMessages: any[] = [];
             try {
-                parsedMessages = JSON.parse(response.data.messages);
+                parsedMessages = Array.isArray(response.data.messages)
+                    ? response.data.messages
+                    : JSON.parse(response.data.messages);
             } catch (parseError) {
                 console.error("解析消息失败:", parseError);
                 parsedMessages = [];

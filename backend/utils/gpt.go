@@ -101,6 +101,115 @@ func generateConversationTitleByAI(ctx context.Context, model string, userMessag
 	return title
 }
 
+func stripBase64Block(content string) string {
+	start := strings.Index(content, "<base64>")
+	end := strings.Index(content, "</base64>")
+	if start == -1 || end == -1 || end < start {
+		return strings.TrimSpace(content)
+	}
+	cleaned := content[:start] + content[end+len("</base64>"):]
+	return strings.TrimSpace(cleaned)
+}
+
+func extractBase64Block(content string) string {
+	start := strings.Index(content, "<base64>")
+	end := strings.Index(content, "</base64>")
+	if start == -1 || end == -1 || end < start {
+		return ""
+	}
+	return strings.TrimSpace(content[start+len("<base64>") : end])
+}
+
+func buildVisualSummaryPrompt(prompt string) string {
+	prompt = strings.TrimSpace(prompt)
+	if prompt == "" {
+		return "请用简洁准确的中文总结这张图片的内容，保留关键信息、场景、人物、文字和可见细节，便于后续对话模型继续回答。"
+	}
+	return "请先用简洁准确的中文总结这张图片的内容，保留关键信息、场景、人物、文字和可见细节，并结合用户需求给出可直接供后续对话使用的图片理解摘要。用户问题：" + prompt
+}
+
+func getModelImageCapability(model string) int {
+	for _, m := range GetConfig().Models {
+		if m.ID == model {
+			return m.Image
+		}
+	}
+	return 0
+}
+
+func getDefaultVisualModel() string {
+	config := GetConfig()
+	if strings.TrimSpace(config.DefaultVisualModel) != "" {
+		return strings.TrimSpace(config.DefaultVisualModel)
+	}
+	return strings.TrimSpace(config.DefaultDialogNamingModel)
+}
+
+func summarizeImageWithModel(ctx context.Context, model string, prompt string, base64Image string) (string, error) {
+	config := GetConfig()
+	c := openai.DefaultConfig(config.APIKey)
+	c.BaseURL = config.API
+	client := openai.NewClientWithConfig(c)
+
+	messages := []openai.ChatCompletionMessage{
+		{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: "你是图片理解助手。请根据图片内容输出中文摘要，只输出可供后续对话模型直接使用的结果，不要输出多余解释。",
+		},
+		{
+			Role: openai.ChatMessageRoleUser,
+			MultiContent: []openai.ChatMessagePart{
+				{
+					Type: openai.ChatMessagePartTypeText,
+					Text: buildVisualSummaryPrompt(prompt),
+				},
+				{
+					Type: openai.ChatMessagePartTypeImageURL,
+					ImageURL: &openai.ChatMessageImageURL{URL: base64Image},
+				},
+			},
+		},
+	}
+
+	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{Model: model, Messages: messages})
+	if err != nil {
+		return "", err
+	}
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf("图片识别结果为空")
+	}
+	return strings.TrimSpace(resp.Choices[0].Message.Content), nil
+}
+
+func prepareVisualPrompt(ctx context.Context, model string, prompt string, base64Image string) (string, string, error) {
+	if strings.TrimSpace(base64Image) == "" {
+		return prompt, "", nil
+	}
+
+	capability := getModelImageCapability(model)
+	if capability == 1 || capability == 3 {
+		return prompt, base64Image, nil
+	}
+
+	visualModel := getDefaultVisualModel()
+	if visualModel == "" {
+		return prompt, "", fmt.Errorf("未配置可用的视觉模型")
+	}
+
+	summary, err := summarizeImageWithModel(ctx, visualModel, prompt, base64Image)
+	if err != nil {
+		return prompt, "", fmt.Errorf("图片识别失败: %w", err)
+	}
+
+	prompt = strings.TrimSpace(prompt)
+	if prompt == "" {
+		prompt = summary
+	} else {
+		prompt = prompt + "\n\n图片内容摘要：" + summary
+	}
+	return prompt, "", nil
+}
+
 // --- 核心功能：并发处理 OpenAI 请求 ---
 
 // ThreadOpenai 使用并发处理 OpenAI 请求，返回一个通道以实现类似 Python yield 的功能
@@ -156,13 +265,26 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 		historyMessages = []messageFormat{} // 如果加载失败，使用空列表
 	}
 
+	preparedPrompt, preparedBase64, err := prepareVisualPrompt(context.Background(), model, prompt, base64)
+	if err != nil {
+		jsonResp, _ := json.Marshal(Response{Success: false, Error: err.Error()})
+		resp <- string(jsonResp)
+		close(resp)
+		return resp
+	}
+
+	rawBase64 := base64
+	if rawBase64 == "" {
+		rawBase64 = extractBase64Block(prompt)
+	}
+
 	// 添加当前用户消息
 	userMessage := messageFormat{
 		ID:             messageUserID,
 		ConversationID: conversationID,
 		Role:           "user",
 		Content:        prompt,
-		Base64:         base64,
+		Base64:         rawBase64,
 		CreatedAt:      time.Now().Format("2006-01-02T15:04:05Z07:00"),
 	}
 	historyMessages = append(historyMessages, userMessage)
@@ -198,11 +320,16 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 						isFirstRound := len(historyMessages) == 1 && historyMessages[0].Role == "user"
 
 						// 添加 AI 回复到消息列表（使用前端传来的 messageAssistantID）
+						aiContentText := aiContent.Content
+						if strings.TrimSpace(aiContentText) == "" {
+							aiContentText = "当前内容为空，请重新生成。"
+						}
+
 						aiMessage := messageFormat{
 							ID:               messageAssistantID,
 							ConversationID:   conversationID,
 							Role:             "assistant",
-							Content:          "<model=" + model + ">" + aiContent.Content,
+							Content:          "<model=" + model + ">" + aiContentText,
 							ReasoningContent: aiContent.ReasoningContent,
 							CreatedAt:        time.Now().Format("2006-01-02T15:04:05Z07:00"),
 						}
@@ -239,7 +366,7 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 				ConversationIDMessageIDsMutex.Unlock()
 			}()
 
-			Openai(ctx, conversationID, messageUserID, messageAssistantID, model, prompt, base64, reasoning, resp)
+			Openai(ctx, conversationID, messageUserID, messageAssistantID, model, preparedPrompt, preparedBase64, reasoning, resp)
 			return nil
 		})
 
@@ -323,20 +450,36 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		return
 	}
 
+	originalBase64 := extractBase64Block(prompt)
+	if originalBase64 == "" {
+		originalBase64 = base64Image
+	}
+	preparedPrompt := stripBase64Block(prompt)
+	preparedBase64 := originalBase64
+	if originalBase64 != "" && !strings.Contains(prompt, "<base64>") {
+		prompt = strings.TrimSpace(prompt) + "<base64>" + originalBase64 + "</base64>"
+	}
+	if strings.TrimSpace(preparedBase64) != "" {
+		capability := getModelImageCapability(model)
+		if capability != 1 && capability != 3 {
+			preparedBase64 = ""
+		}
+	}
+
 	// 添加当前用户消息
-	if base64Image != "" {
+	if preparedBase64 != "" {
 		// 带图片的消息
 		messages = append(messages, openai.ChatCompletionMessage{
 			Role: openai.ChatMessageRoleUser,
 			MultiContent: []openai.ChatMessagePart{
 				{
 					Type: openai.ChatMessagePartTypeText,
-					Text: prompt,
+					Text: preparedPrompt,
 				},
 				{
 					Type: openai.ChatMessagePartTypeImageURL,
 					ImageURL: &openai.ChatMessageImageURL{
-						URL: base64Image,
+						URL: preparedBase64,
 					},
 				},
 			},
@@ -345,7 +488,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		// 纯文本消息
 		messages = append(messages, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleUser,
-			Content: prompt,
+			Content: preparedPrompt,
 		})
 	}
 

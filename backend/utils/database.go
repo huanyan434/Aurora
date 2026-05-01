@@ -641,6 +641,7 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 			Role:             msg.Role,
 			ConversationID:   conversationID,
 			ReasoningContent: msg.ReasoningContent,
+			Base64:           msg.Base64,
 		}
 		if err := db.Create(&message).Error; err != nil {
 			return err
