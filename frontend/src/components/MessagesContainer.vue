@@ -1426,6 +1426,10 @@ onUnmounted(() => {
     color: #ffffff;
 }
 
+.dark .message-time-user-hidden {
+    color: #0f0f0f;
+}
+
 .message-time-user-visible {
     color: #9ca3af;
 }
@@ -1443,6 +1447,10 @@ onUnmounted(() => {
     font-weight: 600;
     color: #374151;
     letter-spacing: 0;
+}
+
+.dark .share-model-role {
+    color: #cbd5e1;
 }
 
 .message-action-icon {
