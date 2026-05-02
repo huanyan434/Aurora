@@ -373,7 +373,16 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 					if err != nil {
 						fmt.Printf("加载历史消息失败：%v\n", err)
 					} else {
-						isFirstRound := len(historyMessages) == 1 && historyMessages[0].Role == "user"
+						var hasUserMessage bool
+						var hasAssistantMessage bool
+						for _, msg := range historyMessages {
+							if msg.Role == "user" {
+								hasUserMessage = true
+							}
+							if msg.Role == "assistant" {
+								hasAssistantMessage = true
+							}
+						}
 
 						// 添加 AI 回复到消息列表（使用前端传来的 messageAssistantID）
 						aiContentText := aiContent.Content
@@ -394,7 +403,7 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 						// 保存整个对话历史到数据库
 						if err := SaveConversationHistoryFormat2(conversationID, historyMessages); err != nil {
 							fmt.Printf("保存对话历史失败：%v\n", err)
-						} else if isFirstRound {
+						} else if hasUserMessage && hasAssistantMessage {
 							titleModel := GetConfig().DefaultDialogNamingModel
 							title := generateConversationTitleByAI(ctx, titleModel, historyMessages[0].Content, aiContent.Content)
 							if err := UpdateConversationTitleIfDefault(conversationID, title); err != nil {
