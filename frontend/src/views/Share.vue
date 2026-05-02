@@ -265,7 +265,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  background: #ffffff;
   padding: 32px;
   box-sizing: border-box;
   overflow: hidden;
