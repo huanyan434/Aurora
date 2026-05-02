@@ -408,6 +408,7 @@ export interface SharedMessage {
   createdAt: string
   reasoningContent: string
   base64: string
+  error: string
   username: string
   avatar: string
   modelName: string

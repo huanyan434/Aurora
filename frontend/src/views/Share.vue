@@ -17,6 +17,9 @@
         >
           <div class="share-message-meta" :class="message.role === 'user' ? 'share-message-meta-user' : ''">
             <span v-if="message.role === 'user'" class="share-role">{{ message.username || '用户' }}</span>
+            <span v-else-if="message.modelName" class="share-role">
+              {{ message.modelName }}
+            </span>
             <span v-else-if="extractModelName(message.rawContent || message.content)" class="share-role">
               {{ extractModelName(message.rawContent || message.content) }}
             </span>
@@ -56,7 +59,21 @@
               </div>
 
               <div v-else>
+                <div v-if="message.error" class="share-error">
+                  {{ message.error }}
+                </div>
+
+                <div v-if="message.base64" class="share-image-wrapper">
+                  <img
+                    :src="getImageSrc(message.base64)"
+                    alt="分享图片"
+                    class="share-image"
+                    @error="handleImageError"
+                  />
+                </div>
+
                 <DsMarkdown
+                  v-if="cleanModelContent(message.rawContent || message.content)"
                   :content="cleanModelContent(message.rawContent || message.content)"
                   :interval="0"
                   :show-cursor="false"
@@ -80,7 +97,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { loadShareMessages, type SharedMessage } from '@/api/chat';
+import { getModelsList, loadShareMessages, type SharedMessage } from '@/api/chat';
 import DsMarkdown from '@/components/DsMarkdown.vue';
 import ReasoningContent from '@/components/ReasoningContent.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -89,6 +106,7 @@ const route = useRoute();
 const loading = ref(true);
 const error = ref('');
 const messages = ref<SharedMessage[]>([]);
+const models = ref<any[]>([]);
 
 const normalizeAvatar = (avatar: string) => {
   if (!avatar) return '';
@@ -165,7 +183,9 @@ const extractModelName = (content: string) => {
 
   const modelMatch = content.match(/<model=([^>]+)>/);
   if (modelMatch && modelMatch[1]) {
-    return modelMatch[1];
+    const modelId = modelMatch[1];
+    const modelInfo = models.value.find((model) => model.id === modelId);
+    return modelInfo ? modelInfo.name : modelId;
   }
 
   return '';
@@ -187,11 +207,23 @@ const normalizeMessage = (message: Partial<SharedMessage>) => {
     content: cleanedContent,
     rawContent,
     base64: message.base64 ?? '',
+    error: message.error ?? '',
     reasoningContent: message.reasoningContent ?? '',
     createdAt: String(message.createdAt ?? ''),
     username: message.username ?? '',
     avatar: message.avatar ?? '',
+    modelName: message.modelName ?? '',
   };
+};
+
+const loadModels = async () => {
+  try {
+    const response = await getModelsList();
+    models.value = response.data.models || [];
+  } catch (err) {
+    console.error('加载模型列表失败:', err);
+    models.value = [];
+  }
 };
 
 const loadData = async () => {
@@ -221,7 +253,9 @@ const loadData = async () => {
 };
 
 onMounted(() => {
-  loadData();
+  loadModels().finally(() => {
+    loadData();
+  });
 });
 </script>
 
@@ -368,6 +402,14 @@ onMounted(() => {
   color: #6b7280;
 }
 
+.share-error {
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.75;
+  color: #dc2626;
+}
+
 .share-user-content {
   color: #1f2937;
   word-break: break-word;
@@ -379,7 +421,10 @@ onMounted(() => {
 }
 
 .share-image {
-  max-width: 100%;
+  max-width: 10rem;
+  max-height: 10rem;
+  width: auto;
+  height: auto;
   border-radius: 16px;
 }
 
