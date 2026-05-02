@@ -22,7 +22,7 @@ const loadingLogo = '/icon.svg'
   height: 36px;
   display: block;
   transform-origin: center;
-  animation: loading-logo-rotate 3s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+  animation: loading-logo-rotate 2s cubic-bezier(0.42, 0, 0.58, 1) infinite;
   will-change: transform;
 }
 
@@ -30,14 +30,8 @@ const loadingLogo = '/icon.svg'
   0% {
     transform: rotate(0deg) scale(1);
   }
-  25% {
-    transform: rotate(90deg) scale(0.86);
-  }
   50% {
     transform: rotate(180deg) scale(0.72);
-  }
-  75% {
-    transform: rotate(270deg) scale(0.86);
   }
   100% {
     transform: rotate(360deg) scale(1);
