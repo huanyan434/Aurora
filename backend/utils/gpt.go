@@ -544,7 +544,7 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 		return nil, fmt.Errorf("序列化生图请求失败: %v", err)
 	}
 	fmt.Printf("[image_api] generate request url=%s model=%s prompt_len=%d n=%d size=%s format=%s quality=%s\n", strings.TrimRight(config.ImageAPI, "/")+"/images/generations", payload.Model, len(payload.Prompt), payload.N, payload.Size, payload.Format, payload.Quality)
-	fmt.Printf("[image_api] generate request body=%s\n", string(body))
+	fmt.Printf("[image_api] generate request body_len=%d\n", len(body))
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(config.ImageAPI, "/")+"/images/generations", bytes.NewReader(body))
 	if err != nil {
@@ -573,7 +573,7 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 		return nil, fmt.Errorf("读取生图响应失败: %v", err)
 	}
 	fmt.Printf("[image_api] generate response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
-	fmt.Printf("[image_api] generate response body=%s\n", string(responseBody))
+	fmt.Printf("[image_api] generate response body_len=%d\n", len(responseBody))
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		fmt.Printf("[image_api] generate response error body=%s\n", strings.TrimSpace(string(responseBody)))
@@ -704,7 +704,7 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", writer.FormDataContentType())
-	fmt.Printf("[image_api] edit request url=%s model=%s prompt_len=%d images=%d mask_len=%d n=%d size=%s quality=%s background=%s\n", strings.TrimRight(config.ImageAPI, "/")+"/images/edits", model, len(strings.TrimSpace(req.Prompt)), len(req.Images), len(strings.TrimSpace(req.Mask)), req.N, strings.TrimSpace(req.Size), strings.TrimSpace(req.Quality), strings.TrimSpace(req.Background))
+	fmt.Printf("[image_api] edit request body_len=%d\n", body.Len())
 	imageAPIKey := strings.TrimSpace(config.ImageAPIKey)
 	if imageAPIKey == "" {
 		imageAPIKey = strings.TrimSpace(config.APIKey)
@@ -725,7 +725,7 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 		return nil, fmt.Errorf("读取图片编辑响应失败: %v", err)
 	}
 	fmt.Printf("[image_api] edit response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
-	fmt.Printf("[image_api] edit response body=%s\n", string(responseBody))
+	fmt.Printf("[image_api] edit response body_len=%d\n", len(responseBody))
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("图片编辑接口返回异常状态(%d): %s", response.StatusCode, strings.TrimSpace(string(responseBody)))
 	}
@@ -779,7 +779,7 @@ func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams 
 	}
 
 	reqParams.Messages = messages
-	newStream, err := client.CreateChatCompletionStream(ctx, *reqParams)
+	_, err = client.CreateChatCompletionStream(ctx, *reqParams)
 	if err != nil {
 		jsonResp, _ := json.Marshal(Response{
 			Success: false,
@@ -789,10 +789,7 @@ func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams 
 		return messages, nil, err
 	}
 
-	jsonResp, _ := json.Marshal(Response{Success: true, Content: searchResult, PointsDeducted: 1, PointsDeductReason: "使用联网搜索工具"})
-	resp <- string(jsonResp)
-
-	return messages, newStream, nil
+	return messages, nil, nil
 }
 
 func executeImageGenerateTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, model string, prompt string, size string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
@@ -849,17 +846,7 @@ func executeImageGenerateTool(client *openai.Client, ctx context.Context, reqPar
 		stream.Close()
 	}
 
-	reqParams.Messages = messages
-	newStream, err := client.CreateChatCompletionStream(ctx, *reqParams)
-	if err != nil {
-		jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("重新创建流失败: %v", err)})
-		resp <- string(jsonResp)
-		return messages, nil, err
-	}
-
-	jsonResp, _ := json.Marshal(Response{Success: true, Content: prompt, Base64: imageDataURL})
-	resp <- string(jsonResp)
-	return messages, newStream, nil
+	return messages, nil, nil
 }
 
 func executeImageEditTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, prompt string, sourceImage string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
@@ -918,17 +905,7 @@ func executeImageEditTool(client *openai.Client, ctx context.Context, reqParams 
 		stream.Close()
 	}
 
-	reqParams.Messages = messages
-	newStream, err := client.CreateChatCompletionStream(ctx, *reqParams)
-	if err != nil {
-		jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("重新创建流失败: %v", err)})
-		resp <- string(jsonResp)
-		return messages, nil, err
-	}
-
-	jsonResp, _ := json.Marshal(Response{Success: true, Content: prompt, Base64: imageDataURL})
-	resp <- string(jsonResp)
-	return messages, newStream, nil
+	return messages, nil, nil
 }
 
 // Openai 调用 OpenAI API 并流式返回结果，同时更新消息内容缓存
@@ -1151,9 +1128,13 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 	// 流式工具调用参数缓冲
 	toolCallArgumentsBuffer := make(map[string]*toolCallBufferItem)
+	toolCompleted := false
 
 	// 流式读取响应
 	for {
+		if toolCompleted {
+			return
+		}
 		select {
 		case <-ctx.Done():
 			return
@@ -1219,6 +1200,8 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							if execErr != nil {
 								return
 							}
+							toolCompleted = true
+							return
 						case "image_generate":
 							var params struct {
 								Prompt  string `json:"prompt"`
@@ -1235,6 +1218,8 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							if execErr != nil {
 								return
 							}
+							toolCompleted = true
+							return
 						case "image_edit":
 							var params struct {
 								Prompt  string `json:"prompt"`
@@ -1265,6 +1250,8 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							if execErr != nil {
 								return
 							}
+							toolCompleted = true
+							return
 						}
 						continue
 					}
