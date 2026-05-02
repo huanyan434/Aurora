@@ -1167,8 +1167,10 @@ const setupGlobalGenerateHandler = () => {
             console.error("服务器返回错误:", data.error);
             if (state.messageAssistantId) {
                 chatStore.updateMessage(state.messageAssistantId, {
-                    content: data.error || "生成失败",
+                    content: '',
                     rawContent: data.error || "生成失败",
+                    base64: undefined,
+                    error: data.error || "生成失败",
                     isStreaming: false,
                 });
             }
