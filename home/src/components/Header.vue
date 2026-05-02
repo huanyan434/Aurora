@@ -11,7 +11,7 @@
       <!-- Logo -->
       <RouterLink to="/" class="header-brand">
         <svg class="w-8 h-8" aria-hidden="true">
-          <use href="/icons.svg#social-icon" />
+          <use href="/icon.svg" />
         </svg>
         <span class="text-lg font-semibold text-[var(--color-text-primary)]">Aurora</span>
       </RouterLink>

@@ -6,7 +6,7 @@
         <div class="footer-brand-column">
           <div class="footer-brand">
             <svg class="footer-logo" aria-hidden="true">
-              <use href="/icons.svg#social-icon" />
+              <use href="/icon.svg" />
             </svg>
             <span class="footer-brand-name">Aurora</span>
           </div>
