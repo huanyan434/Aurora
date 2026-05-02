@@ -734,11 +734,7 @@ func SaveAssistantImageErrorMessage(conversationID int64, messageAssistantID int
 }
 
 func SaveAssistantImageMessage(conversationID int64, messageAssistantID int64, model string, prompt string, base64 string) error {
-	content := strings.TrimSpace(prompt)
-	if content == "" {
-		content = "[图片生成结果]"
-	}
-	content = "<model=" + model + ">" + content
+	content := "<model=" + model + ">"
 
 	message := Message{
 		ID:             messageAssistantID,

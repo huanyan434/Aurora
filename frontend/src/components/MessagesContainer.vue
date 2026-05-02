@@ -42,6 +42,12 @@
                             :reasoning-time="message.reasoningTime || 0" :is-streaming="message.isStreaming || false"
                             :disable-typing="message.disableTyping || false" />
 
+                        <!-- 图片附件 -->
+                        <div v-if="message.base64" class="mt-2">
+                            <img :src="getImageSrc(message.base64)" alt="助手返回的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700"
+                                @error="handleImageError" />
+                        </div>
+
                         <!-- 回复内容 - 根据 isHistory 字段选择组件 -->
                         <div v-if="message.isHistory">
                             <DsMarkdown :content="message.content" :interval="0" :show-cursor="false"

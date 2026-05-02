@@ -531,7 +531,7 @@ func handleWSTTS(conn *websocket.Conn, user utils.User, prompt string) {
 }
 
 func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
-	fmt.Printf("[image_ws] generate start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s prompt_len=%d base64_len=%d size=%s format=%s quality=%s n=%d\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, len(strings.TrimSpace(req.Prompt)), len(strings.TrimSpace(req.Base64)), req.Size, req.Format, req.Quality, req.N)
+	fmt.Printf("[image_ws] generate start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model)
 	plannedPointsDeducted, ok := ensureUserPoints(conn, user, req.Model, false, "image_generate_error")
 	if !ok {
 		return
@@ -598,7 +598,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest)
 
 	sendWSResponse(conn, "generate_response", MSG{
 		Success:            true,
-		Content:            req.Prompt,
+		Content:            "",
 		Base64:             imageBase64,
 		ConversationID:     req.ConversationID,
 		MessageAssistantID: req.MessageAssistantID,
@@ -611,7 +611,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest)
 }
 
 func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
-	fmt.Printf("[image_ws] edit start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s prompt_len=%d base64_len=%d imageMessageID=%d mask_len=%d size=%s quality=%s n=%d\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, len(strings.TrimSpace(req.Prompt)), len(strings.TrimSpace(req.Base64)), req.ImageMessageID, len(strings.TrimSpace(req.MaskBase64)), req.Size, req.Quality, req.N)
+	fmt.Printf("[image_ws] edit start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s imageMessageID=%d\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.ImageMessageID)
 	plannedPointsDeducted, ok := ensureUserPoints(conn, user, req.Model, false, "image_edit_error")
 	if !ok {
 		return
@@ -698,7 +698,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 
 	sendWSResponse(conn, "generate_response", MSG{
 		Success:            true,
-		Content:            req.Prompt,
+		Content:            "",
 		Base64:             imageBase64,
 		ConversationID:     req.ConversationID,
 		MessageAssistantID: req.MessageAssistantID,
