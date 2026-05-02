@@ -291,8 +291,9 @@ type WSRequest struct {
 	Base64             string `json:"base64"`
 	Reasoning          bool   `json:"reasoning"`
 	MessageID          int64  `json:"messageID"`
-	ImageMessageID     int64  `json:"imageMessageID"`
 	TargetMessageID    int64  `json:"targetMessageID"`
+	ImageMessageID     int64  `json:"imageMessageID"`
+	RegenerateMode     string `json:"regenerateMode"`
 	MaskBase64         string `json:"maskBase64"`
 	Size               string `json:"size"`
 	Format             string `json:"format"`
@@ -376,24 +377,36 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 
 	var targetMessage utils.Message
 	if err := utils.GetDB().Table("messages").Where("id = ? AND conversation_id = ?", req.TargetMessageID, req.ConversationID).First(&targetMessage).Error; err != nil {
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID})
+		if err := utils.SaveAssistantErrorMessage(req.ConversationID, req.TargetMessageID, req.Model, err.Error()); err != nil {
+			fmt.Printf("保存重生成错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: req.Model})
 		return
 	}
 
 	previousUser, err := utils.GetPreviousUserMessageBefore(req.ConversationID, req.TargetMessageID)
 	if err != nil {
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID})
+		if err := utils.SaveAssistantErrorMessage(req.ConversationID, req.TargetMessageID, req.Model, err.Error()); err != nil {
+			fmt.Printf("保存重生成错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: req.Model})
 		return
 	}
 
 	deleteIDs, err := utils.GetMessageIDsAfterConversationMessage(req.ConversationID, req.TargetMessageID)
 	if err != nil {
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID})
+		if err := utils.SaveAssistantErrorMessage(req.ConversationID, req.TargetMessageID, req.Model, err.Error()); err != nil {
+			fmt.Printf("保存重生成错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: req.Model})
 		return
 	}
 
 	if err := utils.DeleteMessagesByIDs(deleteIDs); err != nil {
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID})
+		if err := utils.SaveAssistantErrorMessage(req.ConversationID, req.TargetMessageID, req.Model, err.Error()); err != nil {
+			fmt.Printf("保存重生成错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: req.Model})
 		return
 	}
 
@@ -417,27 +430,19 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		model = req.Model
 	}
 
-	if strings.TrimSpace(base64) != "" && req.Type == "regenerate" {
-		// 保持图片重生成走 image_generate 的语义
-		if messageAssistantID == 0 {
-			messageAssistantID = req.TargetMessageID
-		}
+	if req.RegenerateMode == "image" {
 		handleWSImageGenerate(conn, user, WSRequest{
 			ConversationID:     req.ConversationID,
 			MessageUserID:      messageUserID,
 			MessageAssistantID: messageAssistantID,
 			Prompt:             prompt,
 			Model:              model,
-			Base64:             base64,
+			Base64:             "",
 			Size:               req.Size,
 			Quality:            req.Quality,
 			N:                  req.N,
 		})
 		return
-	}
-
-	if messageAssistantID == 0 {
-		messageAssistantID = req.TargetMessageID
 	}
 
 	handleWSGenerate(conn, user, WSRequest{

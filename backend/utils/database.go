@@ -714,6 +714,25 @@ func SaveUserImageMessage(conversationID int64, messageUserID int64, prompt stri
 	return nil
 }
 
+func SaveAssistantErrorMessage(conversationID int64, messageAssistantID int64, model string, errMsg string) error {
+	content := "<model=" + model + ">"
+
+	message := Message{
+		ID:             messageAssistantID,
+		Content:        content,
+		Role:           "assistant",
+		ConversationID: conversationID,
+		Error:          strings.TrimSpace(errMsg),
+	}
+	err := GetDB().Create(&message).Error
+	if err != nil {
+		fmt.Printf("[db] 保存助手错误消息失败 conversationID=%d messageAssistantID=%d err=%v\n", conversationID, messageAssistantID, err)
+		return err
+	}
+	fmt.Printf("[db] 保存助手错误消息成功 conversationID=%d messageAssistantID=%d model=%s error_len=%d\n", conversationID, messageAssistantID, model, len(strings.TrimSpace(errMsg)))
+	return nil
+}
+
 func SaveAssistantImageErrorMessage(conversationID int64, messageAssistantID int64, model string, prompt string, errMsg string) error {
 	content := "<model=" + model + ">"
 

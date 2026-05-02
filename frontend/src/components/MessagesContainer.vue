@@ -336,10 +336,16 @@ const isMessageInProgress = (message: Message) => {
 };
 
 
+const isImageModel = (modelName: string | undefined) => {
+    if (!modelName) return false;
+    const normalized = modelName.toLowerCase();
+    return normalized.includes('gpt-image') || normalized.includes('image');
+};
+
 const isImageGenerationPlaceholder = (message: Message) => {
     return message.role === 'assistant'
         && Boolean(message.isStreaming)
-        && message.messageKind === 'image'
+        && (message.messageKind === 'image' || isImageModel(message.modelName))
         && !message.content
         && !message.base64
         && !message.error;
@@ -826,8 +832,11 @@ const handleRegenerateMessage = async (messageId: number | undefined) => {
     }
 
     const messageAssistantId = messageId;
-    const model = extractModelName(targetMessage.rawContent || targetMessage.content) || chatStore.selectedModel;
-    const base64 = previousUserMessage.base64 || '';
+    const modelId = targetMessage.modelName || extractModelName(targetMessage.rawContent || targetMessage.content) || chatStore.selectedModel;
+    const modelDisplayName = chatStore.models.find((model) => model.id === modelId)?.name || modelId;
+    const isImageRegeneration = isImageModel(modelId) || Boolean(targetMessage.base64) || targetMessage.messageKind === 'image';
+    const model = modelId;
+    const base64 = '';
 
     chatStore.updateMessage(messageAssistantId, {
         content: '',
@@ -835,6 +844,8 @@ const handleRegenerateMessage = async (messageId: number | undefined) => {
         reasoningContent: '',
         reasoningTime: 0,
         base64: undefined,
+        modelName: modelDisplayName,
+        messageKind: isImageRegeneration ? 'image' : 'text',
         error: undefined,
         isStreaming: true,
         isHistory: false,
@@ -851,6 +862,7 @@ const handleRegenerateMessage = async (messageId: number | undefined) => {
         conversationID: conversationId,
         messageAssistantID: messageAssistantId,
         targetMessageID: messageId,
+        regenerateMode: isImageRegeneration ? 'image' : 'chat',
         model,
         base64,
     });
