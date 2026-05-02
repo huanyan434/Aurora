@@ -512,7 +512,7 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 		return nil, fmt.Errorf("序列化生图请求失败: %v", err)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(config.API, "/")+"/images/generations", bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(config.ImageAPI, "/")+"/images/generations", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("创建生图请求失败: %v", err)
 	}
@@ -656,7 +656,7 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 		return nil, fmt.Errorf("关闭 multipart writer 失败: %v", err)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(config.API, "/")+"/images/edits", &body)
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(config.ImageAPI, "/")+"/images/edits", &body)
 	if err != nil {
 		return nil, fmt.Errorf("创建编辑请求失败: %v", err)
 	}
@@ -769,7 +769,7 @@ func executeImageGenerateTool(client *openai.Client, ctx context.Context, reqPar
 	imageDataURL := "data:image/png;base64," + imageBase64
 
 	toolArguments := fmt.Sprintf(`{"prompt":%q,"size":%q,"quality":%q}`, prompt, size, quality)
-	toolResult := fmt.Sprintf(`{"success":true,"model":"%s","prompt":%q,"base64":"%s"}`,
+	toolResult := fmt.Sprintf(`{"success":true,"model":"%s","prompt":%q,"base64":%q}`,
 		model,
 		prompt,
 		imageDataURL,
@@ -838,7 +838,7 @@ func executeImageEditTool(client *openai.Client, ctx context.Context, reqParams 
 	imageDataURL := "data:image/png;base64," + imageBase64
 
 	toolArguments := fmt.Sprintf(`{"prompt":%q,"quality":%q}`, prompt, quality)
-	toolResult := fmt.Sprintf(`{"success":true,"prompt":%q,"base64":"%s"}`,
+	toolResult := fmt.Sprintf(`{"success":true,"prompt":%q,"base64":%q}`,
 		prompt,
 		imageDataURL,
 	)
@@ -1254,7 +1254,31 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 									return
 								}
 							case "image_generate":
-								fallbackPrompt := strings.TrimSpace(stripBase64Block(prompt))
+								var params struct {
+									Prompt  string `json:"prompt"`
+									Size    string `json:"size"`
+									Quality string `json:"quality"`
+								}
+								arguments := item.Arguments
+								if err := json.Unmarshal([]byte(arguments), &params); err != nil {
+									fmt.Printf("解析 image_generate 参数失败: %v\n", err)
+								}
+
+								fallbackPrompt := strings.TrimSpace(params.Prompt)
+								if fallbackPrompt == "" {
+									fallbackPrompt = strings.TrimSpace(stripBase64Block(prompt))
+								}
+								if fallbackPrompt == "" {
+									fallbackPrompt = strings.TrimSpace(prompt)
+								}
+								fallbackSize := strings.TrimSpace(params.Size)
+								if fallbackSize == "" {
+									fallbackSize = "1024x1024"
+								}
+								fallbackQuality := strings.TrimSpace(params.Quality)
+								if fallbackQuality == "" {
+									fallbackQuality = "auto"
+								}
 								fmt.Printf("[tool_call_fallback] tool=%s id=%s prompt=%q\n", item.Name, toolCallID, fallbackPrompt)
 
 								var execErr error
@@ -1264,12 +1288,26 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 									Function: openai.FunctionCall{
 										Name: "image_generate",
 									},
-								}, model, fallbackPrompt, "1024x1024", "auto", resp)
+								}, model, fallbackPrompt, fallbackSize, fallbackQuality, resp)
 								if execErr != nil {
+									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("图片生成工具执行失败: %v", execErr)})
+									resp <- string(jsonResp)
 									return
 								}
 							case "image_edit":
-								fallbackPrompt := strings.TrimSpace(stripBase64Block(prompt))
+								var params struct {
+									Prompt  string `json:"prompt"`
+									Quality string `json:"quality"`
+								}
+								arguments := item.Arguments
+								if err := json.Unmarshal([]byte(arguments), &params); err != nil {
+									fmt.Printf("解析 image_edit 参数失败: %v\n", err)
+								}
+
+								fallbackPrompt := strings.TrimSpace(params.Prompt)
+								if fallbackPrompt == "" {
+									fallbackPrompt = strings.TrimSpace(stripBase64Block(prompt))
+								}
 								historyMessages, historyErr := LoadConversationHistoryFormat2(conversationID)
 								if historyErr != nil {
 									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("加载图片编辑历史失败: %v", historyErr)})
@@ -1294,6 +1332,8 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 									},
 								}, fallbackPrompt, sourceImage, "auto", resp)
 								if execErr != nil {
+									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("图片编辑工具执行失败: %v", execErr)})
+									resp <- string(jsonResp)
 									return
 								}
 							default:

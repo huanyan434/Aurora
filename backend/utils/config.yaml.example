@@ -1,7 +1,8 @@
 # API 配置
 api: "https://yunwu.ai/v1"
 apiKey: "sk-***"
-imageApiKey: "sk-image-***"
+imageApi: "https://superapi.buzz/v1"
+imageApiKey: "sk-***"
 modelTTS: "gpt-4o-audio-preview"
 modelSTT: "gpt-4o-transcribe"
 defaultDialogNamingModel: "deepseek-ai/DeepSeek-V3.1-Terminus"
