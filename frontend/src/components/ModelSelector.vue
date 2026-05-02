@@ -35,6 +35,7 @@
               <div class="model-name">{{ model.name || '未知模型' }}</div>
               <div class="model-features">
                 <span v-if="model.reasoning" class="feature-tag reasoning-tag">推理</span>
+                <span v-if="isImageGenerationModel(model)" class="feature-tag image-generation-tag">绘图</span>
                 <span v-if="model.image === 1 || model.image === 3" class="feature-tag image-tag">识图</span>
                 <span class="feature-tag points-tag">{{ model.points }}积分/次</span>
               </div>
@@ -47,11 +48,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useChatStore } from '@/stores/chat';
 
 const chatStore = useChatStore();
 const isOpen = ref(false);
+
+const isImageGenerationModel = (model: { image?: number }) => {
+  return model.image === 2 || model.image === 3;
+};
 
 // 选中的模型名称
 const selectedModelName = computed(() => {
@@ -107,7 +112,6 @@ onMounted(async () => {
   }
 });
 
-import { onUnmounted } from 'vue';
 </script>
 
 <style scoped>
@@ -312,6 +316,16 @@ import { onUnmounted } from 'vue';
 .dark .image-tag {
   background-color: #065f46; /* dark:bg-green-900 */
   color: #a7f3d0; /* dark:text-green-200 */
+}
+
+.image-generation-tag {
+  background-color: rgba(236, 72, 153, 0.12);
+  color: #db2777;
+}
+
+.dark .image-generation-tag {
+  background-color: rgba(236, 72, 153, 0.18);
+  color: #f9a8d4;
 }
 
 .points-tag {
