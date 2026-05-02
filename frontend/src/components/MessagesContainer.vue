@@ -70,7 +70,14 @@
                                 :on-end="() => handleStreamMessageEnd(message.id)" />
                         </div>
 
-                        <!-- 加载占位符 -->
+                        <!-- 图片生成占位符 -->
+                        <div v-else-if="message.isStreaming && isImageGenerationPlaceholder(message)"
+                            class="image-generation-placeholder">
+                            <div class="image-generation-placeholder__shine"></div>
+                            <span>图片创作中……预计耗时 2-5 分钟</span>
+                        </div>
+
+                        <!-- 普通加载占位符 -->
                         <div v-else-if="message.isStreaming" class="inline-flex items-center space-x-1">
                             <div class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
                                 style="animation-duration: 0.6s"></div>
@@ -321,6 +328,15 @@ const isMessageInProgress = (message: Message) => {
     }
 
     return Boolean(message.isStreaming || typingStates.value.get(message.id || -1)?.isTyping);
+};
+
+const isImageGenerationPlaceholder = (message: Message) => {
+    return message.role === 'assistant'
+        && Boolean(message.isStreaming)
+        && Boolean(message.modelName)
+        && !message.content
+        && !message.base64
+        && !message.error;
 };
 
 const displayedMessages = computed(() => {
@@ -1410,16 +1426,61 @@ onUnmounted(() => {
     gap: 0.75rem;
 }
 
-.share-link-box {
-    word-break: break-all;
+.image-generation-placeholder {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
     border-radius: 0.75rem;
-    border: 1px solid #e5e7eb;
-    background-color: #f9fafb;
-    color: #111827;
-    padding: 0.875rem 1rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    color: #334155;
     font-size: 0.875rem;
     line-height: 1.5;
+    white-space: nowrap;
 }
+
+.dark .image-generation-placeholder {
+    background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+    border-color: rgba(148, 163, 184, 0.18);
+    color: #cbd5e1;
+}
+
+.image-generation-placeholder__shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0) 30%,
+            rgba(255, 255, 255, 0.55) 50%,
+            rgba(255, 255, 255, 0) 70%,
+            transparent 100%);
+    transform: translateX(-120%);
+    animation: image-placeholder-shine 1.8s linear infinite;
+    pointer-events: none;
+}
+
+.dark .image-generation-placeholder__shine {
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0) 35%,
+            rgba(255, 255, 255, 0.18) 50%,
+            rgba(255, 255, 255, 0) 65%,
+            transparent 100%);
+}
+
+@keyframes image-placeholder-shine {
+    0% {
+        transform: translateX(-120%);
+    }
+
+    100% {
+        transform: translateX(120%);
+    }
+}
+
 
 .dark .share-link-box {
     border-color: #374151;
