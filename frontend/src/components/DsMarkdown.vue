@@ -73,6 +73,7 @@ withDefaults(defineProps<{
 /* 深色模式适配 */
 .dark .ds-markdown {
   color: #e5e7eb;
+  background: transparent;
 }
 
 .dark .ds-markdown :deep(pre) {
