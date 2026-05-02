@@ -55,6 +55,8 @@ import {
 } from '@/components/ui/dialog';
 
 const ANNOUNCEMENT_STORAGE_KEY = 'aurora-announcement-dismissed';
+const ANNOUNCEMENT_SNOOZE_KEY = 'aurora-announcement-snooze-until';
+const ANNOUNCEMENT_SNOOZE_DURATION = 30 * 60 * 1000;
 
 const route = useRoute();
 const open = ref(false);
@@ -84,13 +86,27 @@ const getDismissedVersion = () => {
   return window.localStorage.getItem(ANNOUNCEMENT_STORAGE_KEY) || '';
 };
 
+const getSnoozeUntil = () => {
+  if (typeof window === 'undefined') {
+    return 0;
+  }
+
+  const raw = window.localStorage.getItem(ANNOUNCEMENT_SNOOZE_KEY);
+  const until = Number(raw || '0');
+  return Number.isFinite(until) ? until : 0;
+};
+
+const isInSnoozeWindow = () => {
+  return Date.now() < getSnoozeUntil();
+};
+
 const updateOpenState = () => {
   if (!isVisible.value) {
     open.value = false;
     return;
   }
 
-  open.value = getDismissedVersion() !== announcement.value.version;
+  open.value = getDismissedVersion() !== announcement.value.version && !isInSnoozeWindow();
 };
 
 const loadAnnouncement = async () => {
@@ -122,8 +138,13 @@ const loadAnnouncement = async () => {
 };
 
 const dismissAnnouncement = (persist: boolean) => {
-  if (persist && typeof window !== 'undefined' && announcement.value.version) {
-    window.localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, announcement.value.version);
+  if (typeof window !== 'undefined' && announcement.value.version) {
+    if (persist) {
+      window.localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, announcement.value.version);
+      window.localStorage.removeItem(ANNOUNCEMENT_SNOOZE_KEY);
+    } else {
+      window.localStorage.setItem(ANNOUNCEMENT_SNOOZE_KEY, String(Date.now() + ANNOUNCEMENT_SNOOZE_DURATION));
+    }
   }
   open.value = false;
 };
