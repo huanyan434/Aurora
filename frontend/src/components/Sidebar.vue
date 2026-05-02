@@ -62,6 +62,9 @@ const handleConversationSelected = () => {
     if (sidebarHeaderRef.value) {
         sidebarHeaderRef.value.closeSearch();
     }
+    if (!sidebarStore.collapsed) {
+        sidebarStore.setSidebarCollapsed(true);
+    }
 };
 </script>
 
