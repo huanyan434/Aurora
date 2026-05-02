@@ -428,6 +428,11 @@ func buildFallbackSearchQuery(reasoning string, prompt string) string {
 	return query
 }
 
+func buildCurrentTimeSystemPrompt() string {
+	now := time.Now()
+	return fmt.Sprintf("当前时间是：%04d年%02d月%02d日 %02d:%02d。请基于这个时间理解和回答用户与日期、时间、今天、昨天、明天、本周等相关的问题。", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+}
+
 func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, query string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -536,6 +541,11 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		resp <- string(jsonResp)
 		return
 	}
+
+	messages = append([]openai.ChatCompletionMessage{{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: buildCurrentTimeSystemPrompt(),
+	}}, messages...)
 
 	originalBase64 := extractBase64Block(prompt)
 	if originalBase64 == "" {
