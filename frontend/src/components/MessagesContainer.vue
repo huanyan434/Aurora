@@ -253,7 +253,8 @@ const renderedHistoryCount = ref(0);
 const textHistoryCount = ref(0);
 const imageHistoryCount = ref(0);
 const emptyHistoryCount = ref(0);
-const historyCompletedIds = ref(new Set<number>());
+const expectedHistoryIds = ref<Set<number>>(new Set());
+const historyCompletedIds = ref<Set<number>>(new Set());
 const historyRenderFinalizeScheduled = ref(false);
 const lastHistoryLogSignature = ref('');
 
@@ -377,20 +378,23 @@ const isImageGenerationPlaceholder = (message: Message) => {
         && !message.error;
 };
 
+const resetHistoryRenderState = () => {
+    renderedHistoryCount.value = 0;
+    historyCompletedIds.value = new Set<number>();
+    historyRenderFinalizeScheduled.value = false;
+};
+
 const displayedMessages = computed(() => {
     const convId = currentConversationId.value;
     if (isNaN(convId)) return [];
     const messages = chatStore.getMessagesByConversationId(convId) || [];
     // 更新总历史消息数
     const historyMessages = messages.filter((message) => message.role === 'assistant' && message.isHistory);
+    expectedHistoryIds.value = new Set(historyMessages.filter((message) => Boolean(message.id)).map((message) => message.id as number));
     textHistoryCount.value = historyMessages.filter((message) => !message.error && !message.base64).length;
     imageHistoryCount.value = historyMessages.filter((message) => Boolean(message.base64)).length;
     emptyHistoryCount.value = historyMessages.filter((message) => Boolean(message.error) || (!message.base64 && !message.content)).length;
     totalHistoryCount.value = textHistoryCount.value + imageHistoryCount.value;
-    renderedHistoryCount.value = 0;
-    historyCompletedIds.value = new Set<number>();
-
-    historyRenderFinalizeScheduled.value = false;
 
     const historyLogSignature = `${convId}:${historyMessages.map((message) => `${message.id || 'null'}:${message.messageKind || 'unknown'}:${message.base64 ? 'base64' : 'no-base64'}:${message.error ? 'error' : 'ok'}`).join('|')}`;
     if (lastHistoryLogSignature.value !== historyLogSignature) {
@@ -449,6 +453,12 @@ const finalizeAssistantRendering = async () => {
     followBottomPhase.value = 'idle';
 };
 
+watch(currentConversationId, () => {
+    resetHistoryRenderState();
+    markdownEndedIds.value = new Set<number>();
+    renderedHistoryCount.value = 0;
+}, { immediate: true });
+
 watch(hasActiveAssistantRendering, (active) => {
     if (active) {
         followBottomPhase.value = 'following';
@@ -459,6 +469,7 @@ watch(hasActiveAssistantRendering, (active) => {
 
     void finalizeAssistantRendering();
 }, { immediate: true });
+
 
 
 /**
@@ -487,7 +498,8 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
         messageId,
         total: totalHistoryCount.value,
         completed: renderedHistoryCount.value,
-        remaining: Math.max(totalHistoryCount.value - renderedHistoryCount.value, 0),
+        expectedTotal: expectedHistoryIds.value.size,
+        remaining: Math.max(expectedHistoryIds.value.size - renderedHistoryCount.value, 0),
         historyCompletedIds: Array.from(historyCompletedIds.value),
     });
 
@@ -499,7 +511,7 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
     renderedHistoryCount.value++;
 
     // 检查是否所有历史消息都渲染完成
-    if (renderedHistoryCount.value >= totalHistoryCount.value && totalHistoryCount.value > 0) {
+    if (renderedHistoryCount.value >= expectedHistoryIds.value.size && expectedHistoryIds.value.size > 0) {
         historyRenderFinalizeScheduled.value = true;
         console.log('[history-render] 启动稳定检测', {
             total: totalHistoryCount.value,
