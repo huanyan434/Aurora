@@ -89,7 +89,7 @@ const startLoadingFallbackTimer = () => {
       messagesReady.value = true;
     }
     loadingTimer = undefined;
-  }, 5000);
+  }, 9700);
 };
 
 const focusInputArea = async () => {

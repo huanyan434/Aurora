@@ -780,6 +780,9 @@ func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams 
 		return messages, nil, err
 	}
 
+	jsonResp, _ := json.Marshal(Response{Success: true, Content: searchResult, PointsDeducted: 1, PointsDeductReason: "使用联网搜索工具"})
+	resp <- string(jsonResp)
+
 	return messages, newStream, nil
 }
 
@@ -1511,11 +1514,13 @@ func ClearMessageContent(messageAssistantID int64) {
 
 // Response OpenAI API 响应结构
 type Response struct {
-	Success          bool   `json:"success"`
-	Content          string `json:"content"`
-	ReasoningContent string `json:"reasoningContent"`
-	Error            string `json:"error"`
-	Base64           string `json:"base64,omitempty"`
+	Success             bool   `json:"success"`
+	Content             string `json:"content"`
+	ReasoningContent    string `json:"reasoningContent"`
+	Error               string `json:"error"`
+	Base64              string `json:"base64,omitempty"`
+	PointsDeducted      int    `json:"pointsDeducted,omitempty"`
+	PointsDeductReason  string `json:"pointsDeductReason,omitempty"`
 }
 
 // ParseThinkBlock 解析推理内容，返回推理时间和推理内容

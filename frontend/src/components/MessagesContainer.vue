@@ -1138,7 +1138,11 @@ const setupGlobalGenerateHandler = () => {
 
         // 显示积分扣除提示
         if (data.pointsDeducted && data.pointsDeducted > 0) {
-            toastInfo(`使用对话模型扣除 ${data.pointsDeducted} 积分`, 5000);
+            if (data.pointsDeductReason) {
+                toastInfo(`${data.pointsDeductReason}，扣除 ${data.pointsDeducted} 积分`, 5000);
+            } else {
+                toastInfo(`使用对话模型扣除 ${data.pointsDeducted} 积分`, 5000);
+            }
         }
 
         // 重置该对话的状态

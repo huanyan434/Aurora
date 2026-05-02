@@ -43,16 +43,18 @@ func ChatInit(r *gin.Engine) {
 }
 
 type MSG struct {
-	Success            bool   `json:"success" default:"false"`
-	Error              string `json:"error" default:""`
-	ReasoningContent   string `json:"reasoningContent" default:""`
-	ReasoningTime      int    `json:"reasoningTime" default:""`
-	Content            string `json:"content" default:""`
-	Base64             string `json:"base64,omitempty"`
-	ConversationID     int64  `json:"conversationID"`
-	MessageAssistantID int64  `json:"messageAssistantID"`
-	IsCached           bool   `json:"isCached" default:"false"`      // 是否是缓存内容
-	IsUserMessage      bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
+	Success             bool   `json:"success" default:"false"`
+	Error               string `json:"error" default:""`
+	ReasoningContent    string `json:"reasoningContent" default:""`
+	ReasoningTime       int    `json:"reasoningTime" default:""`
+	Content             string `json:"content" default:""`
+	Base64              string `json:"base64,omitempty"`
+	ConversationID      int64  `json:"conversationID"`
+	MessageAssistantID  int64  `json:"messageAssistantID"`
+	IsCached            bool   `json:"isCached" default:"false"`      // 是否是缓存内容
+	IsUserMessage       bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
+	PointsDeducted      int    `json:"pointsDeducted,omitempty"`
+	PointsDeductReason  string `json:"pointsDeductReason,omitempty"`
 }
 
 // WebSocket 响应消息
@@ -527,12 +529,18 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		fmt.Printf("[积分检查][WS] 本次不扣费 userID=%d generationFailed=%v finalContentLen=%d plannedPoints=%d\n", user.ID, generationFailed, len(finalContent), plannedPointsDeducted)
 	}
 
+	pointsDeductReason := ""
+	if pointsDeducted > 0 {
+		pointsDeductReason = "使用大语言模型"
+	}
+
 	// 生成结束，发送结束信号
 	fmt.Printf("[generate_end] sending end conversationID=%d messageAssistantID=%d finalContentLen=%d pointsDeducted=%d\n", req.ConversationID, req.MessageAssistantID, len(finalContent), pointsDeducted)
 	sendWSResponse(conn, "generate_end", gin.H{
 		"conversationID":     req.ConversationID,
 		"messageAssistantID": req.MessageAssistantID,
 		"pointsDeducted":     pointsDeducted,
+		"pointsDeductReason": pointsDeductReason,
 	})
 }
 
@@ -708,6 +716,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest)
 		"conversationID":     req.ConversationID,
 		"messageAssistantID": req.MessageAssistantID,
 		"pointsDeducted":     plannedPointsDeducted,
+		"pointsDeductReason": "使用图像创作工具",
 	})
 }
 
@@ -808,6 +817,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		"conversationID":     req.ConversationID,
 		"messageAssistantID": req.MessageAssistantID,
 		"pointsDeducted":     plannedPointsDeducted,
+		"pointsDeductReason": "使用图像创作工具",
 	})
 }
 
