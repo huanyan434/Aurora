@@ -131,9 +131,9 @@ const buildAssistantPlaceholder = (conversationId: number, messageAssistantId: n
   createdAt: new Date().toISOString(),
   isStreaming: true,
   disableTyping: false,
+  messageKind: isDedicatedImageModel.value ? 'image' : 'text',
 });
 
-// 判断是否可以发送消息
 const canSendMessage = computed(() => {
   return (inputMessage.value.trim() || attachment.value) && !isGenerating.value;
 });

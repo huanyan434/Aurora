@@ -346,7 +346,7 @@ const shouldAutoCompleteHistoryMessage = (message: Message) => {
 const isImageGenerationPlaceholder = (message: Message) => {
     return message.role === 'assistant'
         && Boolean(message.isStreaming)
-        && Boolean(message.modelName)
+        && message.messageKind === 'image'
         && !message.content
         && !message.base64
         && !message.error;
@@ -1094,7 +1094,7 @@ const setupGlobalGenerateHandler = () => {
                 rawContent: state.accumulatedContent,
                 reasoningContent: state.accumulatedReasoningContent,
                 reasoningTime: state.lastReasoningTime,
-                modelName: data.modelName || undefined,
+                messageKind: data.messageKind || undefined,
                 error: undefined,
                 isStreaming: true,
             });
@@ -1304,7 +1304,7 @@ const loadConversationHistory = async (conversationId: number) => {
                     role: msg.role,
                     content: cleanContent,
                     rawContent: msg.content || '',
-                    modelName: msg.model_name || msg.modelName || '',
+                    messageKind: msg.message_kind || msg.messageKind || undefined,
                     error: msg.error || '',
                     reasoningContent,
                     reasoningTime,
@@ -1455,18 +1455,18 @@ onUnmounted(() => {
     gap: 0.5rem;
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
-    background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    color: #334155;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.22);
+    color: var(--color-primary);
     font-size: 0.875rem;
     line-height: 1.5;
     white-space: nowrap;
 }
 
 .dark .image-generation-placeholder {
-    background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
-    border-color: rgba(148, 163, 184, 0.18);
-    color: #cbd5e1;
+    background: rgba(59, 130, 246, 0.16);
+    border-color: rgba(96, 165, 250, 0.28);
+    color: #93c5fd;
 }
 
 .image-generation-placeholder__shine {
