@@ -164,7 +164,7 @@ func summarizeImageWithModel(ctx context.Context, model string, prompt string, b
 					Text: buildVisualSummaryPrompt(prompt),
 				},
 				{
-					Type: openai.ChatMessagePartTypeImageURL,
+					Type:     openai.ChatMessagePartTypeImageURL,
 					ImageURL: &openai.ChatMessageImageURL{URL: base64Image},
 				},
 			},
@@ -428,6 +428,55 @@ func buildFallbackSearchQuery(reasoning string, prompt string) string {
 	return query
 }
 
+func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, query string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		query = "请根据上下文搜索相关信息"
+	}
+
+	arguments := fmt.Sprintf(`{"query":%q}`, query)
+	fmt.Printf("[tool_call] search start query=%q\n", query)
+	searchResult, err := SimpleSearch(query)
+	if err != nil {
+		searchResult = fmt.Sprintf("搜索失败: %v", err)
+	}
+	fmt.Printf("[tool_call] search done query=%q result_len=%d err=%v\n", query, len(searchResult), err)
+
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role: openai.ChatMessageRoleAssistant,
+		ToolCalls: []openai.ToolCall{{
+			ID:   toolCall.ID,
+			Type: openai.ToolTypeFunction,
+			Function: openai.FunctionCall{
+				Name:      "web_search",
+				Arguments: arguments,
+			},
+		}},
+	})
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:       openai.ChatMessageRoleTool,
+		Content:    searchResult,
+		ToolCallID: toolCall.ID,
+	})
+
+	if stream != nil {
+		stream.Close()
+	}
+
+	reqParams.Messages = messages
+	newStream, err := client.CreateChatCompletionStream(ctx, *reqParams)
+	if err != nil {
+		jsonResp, _ := json.Marshal(Response{
+			Success: false,
+			Error:   fmt.Sprintf("重新创建流失败: %v", err),
+		})
+		resp <- string(jsonResp)
+		return messages, nil, err
+	}
+
+	return messages, newStream, nil
+}
+
 // Openai 调用 OpenAI API 并流式返回结果，同时更新消息内容缓存
 func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64Image string, reasoning bool, resp chan string) {
 	config := GetConfig()
@@ -609,30 +658,8 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 			if len(response.Choices) > 0 {
 				delta := response.Choices[0].Delta
 				finishReason := response.Choices[0].FinishReason
-				if finishReason != "" {
-					fmt.Printf("[stream] finish_reason=%s conversationID=%d messageAssistantID=%d\n", finishReason, conversationID, messageAssistantID)
-					if finishReason == "tool_calls" {
-						fmt.Printf("[stream] tool_calls finished but pending_buffers=%d buffers=%v\n", len(toolCallArgumentsBuffer), toolCallArgumentsBuffer)
 
-						for toolCallID, bufferedArguments := range toolCallArgumentsBuffer {
-							if strings.TrimSpace(bufferedArguments) != "" {
-								continue
-							}
-
-							MessageContentCacheMutex.RLock()
-							reasoningText := ""
-							if cachedContent, exists := MessageContentCache[messageAssistantID]; exists {
-								reasoningText = cachedContent.ReasoningContent
-							}
-							MessageContentCacheMutex.RUnlock()
-
-							fallbackQuery := buildFallbackSearchQuery(reasoningText, prompt)
-							fmt.Printf("[tool_call_fallback] id=%s query=%q\n", toolCallID, fallbackQuery)
-						}
-					}
-				}
-
-				// 处理工具调用
+				// 先处理工具调用，避免 reasoning 模型在同一帧携带 finish_reason=tool_calls 时缓冲区尚未写入
 				if len(delta.ToolCalls) > 0 {
 					for _, toolCall := range delta.ToolCalls {
 						if toolCall.Function.Name == "web_search" {
@@ -653,47 +680,61 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 								continue
 							}
 
-							// 执行搜索
-							fmt.Printf("[tool_call] search start query=%q\n", params.Query)
-							searchResult, err := SimpleSearch(params.Query)
-							if err != nil {
-								searchResult = fmt.Sprintf("搜索失败: %v", err)
+							query := strings.TrimSpace(params.Query)
+							if query == "" {
+								MessageContentCacheMutex.RLock()
+								reasoningText := ""
+								if cachedContent, exists := MessageContentCache[messageAssistantID]; exists {
+									reasoningText = cachedContent.ReasoningContent
+								}
+								MessageContentCacheMutex.RUnlock()
+								query = buildFallbackSearchQuery(reasoningText, prompt)
+								fmt.Printf("[tool_call] empty query fallback id=%s query=%q\n", toolCall.ID, query)
 							}
-							fmt.Printf("[tool_call] search done query=%q result_len=%d err=%v\n", params.Query, len(searchResult), err)
 
-							// 将工具调用和结果添加到消息历史
-							messages = append(messages, openai.ChatCompletionMessage{
-								Role:      openai.ChatMessageRoleAssistant,
-								ToolCalls: []openai.ToolCall{{
-									ID:   toolCall.ID,
-									Type: toolCall.Type,
-									Function: openai.FunctionCall{
-										Name:      toolCall.Function.Name,
-										Arguments: arguments,
-									},
-								}},
-							})
-							messages = append(messages, openai.ChatCompletionMessage{
-								Role:       openai.ChatMessageRoleTool,
-								Content:    searchResult,
-								ToolCallID: toolCall.ID,
-							})
-
-							// 关闭当前流
-							stream.Close()
-
-							// 重新创建请求，包含工具调用结果
-							reqParams.Messages = messages
-							stream, err = client.CreateChatCompletionStream(ctx, reqParams)
-							if err != nil {
-								jsonResp, _ := json.Marshal(Response{
-									Success: false,
-									Error:   fmt.Sprintf("重新创建流失败: %v", err),
-								})
-								resp <- string(jsonResp)
+							var execErr error
+							messages, stream, execErr = executeWebSearchTool(client, ctx, &reqParams, stream, messages, toolCall, query, resp)
+							if execErr != nil {
 								return
 							}
 							continue
+						}
+					}
+				}
+
+				if finishReason != "" {
+					fmt.Printf("[stream] finish_reason=%s conversationID=%d messageAssistantID=%d\n", finishReason, conversationID, messageAssistantID)
+					if finishReason == "tool_calls" {
+						fmt.Printf("[stream] tool_calls finished but pending_buffers=%d buffers=%v\n", len(toolCallArgumentsBuffer), toolCallArgumentsBuffer)
+
+						for toolCallID, bufferedArguments := range toolCallArgumentsBuffer {
+							if strings.TrimSpace(bufferedArguments) != "" {
+								continue
+							}
+
+							MessageContentCacheMutex.RLock()
+							reasoningText := ""
+							if cachedContent, exists := MessageContentCache[messageAssistantID]; exists {
+								reasoningText = cachedContent.ReasoningContent
+							}
+							MessageContentCacheMutex.RUnlock()
+
+							fallbackQuery := buildFallbackSearchQuery(reasoningText, prompt)
+							fmt.Printf("[tool_call_fallback] id=%s query=%q\n", toolCallID, fallbackQuery)
+
+							var execErr error
+							messages, stream, execErr = executeWebSearchTool(client, ctx, &reqParams, stream, messages, openai.ToolCall{
+								ID:   toolCallID,
+								Type: openai.ToolTypeFunction,
+								Function: openai.FunctionCall{
+									Name: "web_search",
+								},
+							}, fallbackQuery, resp)
+							if execErr != nil {
+								return
+							}
+							delete(toolCallArgumentsBuffer, toolCallID)
+							break
 						}
 					}
 				}

@@ -385,7 +385,6 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			ConversationID:     req.ConversationID,
 			MessageAssistantID: req.MessageAssistantID,
 		}
-		fmt.Printf("[generate_response] conversationID=%d messageAssistantID=%d content_len=%d reasoning_len=%d\n", req.ConversationID, req.MessageAssistantID, len(msg.Content), len(msg.ReasoningContent))
 		sendWSResponse(conn, "generate_response", msg)
 
 		// 更新缓存内容已在 gpt.go 的 Openai 函数中完成，此处不再重复更新
