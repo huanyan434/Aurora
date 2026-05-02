@@ -329,13 +329,13 @@ onMounted(async () => {
 }
 
 .points-tag {
-  background-color: #ffface;
-  color: #636363;
+  background-color: #eef2ff;
+  color: #4b5563;
 }
 
 .dark .points-tag {
-  background-color: #636363;
-  color: #ffface;
+  background-color: rgba(75, 85, 99, 0.24);
+  color: #d1d5db;
 }
 
 /* 下拉菜单过渡动画 */
