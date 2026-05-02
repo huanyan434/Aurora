@@ -1170,6 +1170,7 @@ const setupGlobalGenerateHandler = () => {
                     content: '',
                     rawContent: data.error || "生成失败",
                     base64: undefined,
+                    modelName: data.modelName || chatStore.selectedModel || '',
                     error: data.error || "生成失败",
                     isStreaming: false,
                 });
