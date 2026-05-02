@@ -54,7 +54,7 @@ type MSG struct {
 	IsCached            bool   `json:"isCached" default:"false"`      // 是否是缓存内容
 	IsUserMessage       bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
 	PointsDeducted      int    `json:"pointsDeducted,omitempty"`
-	PointsDeductReason  string `json:"pointsDeductReason,omitempty"`
+	ModelName           string `json:"modelName,omitempty"`
 }
 
 // WebSocket 响应消息
@@ -514,6 +514,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			Content:            "当前内容为空，请重新生成。",
 			ConversationID:     req.ConversationID,
 			MessageAssistantID: req.MessageAssistantID,
+			ModelName:          req.Model,
 		})
 	}
 
@@ -541,6 +542,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		"messageAssistantID": req.MessageAssistantID,
 		"pointsDeducted":     pointsDeducted,
 		"pointsDeductReason": pointsDeductReason,
+		"modelName":          req.Model,
 	})
 }
 
@@ -711,6 +713,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest)
 		Base64:             imageBase64,
 		ConversationID:     req.ConversationID,
 		MessageAssistantID: req.MessageAssistantID,
+		ModelName:          req.Model,
 	})
 	sendWSResponse(conn, "generate_end", gin.H{
 		"conversationID":     req.ConversationID,
@@ -812,6 +815,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		Base64:             imageBase64,
 		ConversationID:     req.ConversationID,
 		MessageAssistantID: req.MessageAssistantID,
+		ModelName:          req.Model,
 	})
 	sendWSResponse(conn, "generate_end", gin.H{
 		"conversationID":     req.ConversationID,
