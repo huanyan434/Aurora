@@ -524,12 +524,31 @@ func LoadConversationHistory(conversationID int64) ([]openai.ChatCompletionMessa
 				Content:          msg.Content,
 				ReasoningContent: msg.ReasoningContent,
 			})
-		} else {
-			chatMessages = append(chatMessages, openai.ChatCompletionMessage{
-				Role:    msg.Role,
-				Content: msg.Content,
-			})
+			continue
 		}
+
+		cleanContent := stripBase64Block(msg.Content)
+		if strings.TrimSpace(msg.Base64) != "" {
+			chatMessages = append(chatMessages, openai.ChatCompletionMessage{
+				Role: openai.ChatMessageRoleUser,
+				MultiContent: []openai.ChatMessagePart{
+					{
+						Type: openai.ChatMessagePartTypeText,
+						Text: cleanContent,
+					},
+					{
+						Type:     openai.ChatMessagePartTypeImageURL,
+						ImageURL: &openai.ChatMessageImageURL{URL: msg.Base64},
+					},
+				},
+			})
+			continue
+		}
+
+		chatMessages = append(chatMessages, openai.ChatCompletionMessage{
+			Role:    msg.Role,
+			Content: cleanContent,
+		})
 	}
 
 	return chatMessages, nil
@@ -660,6 +679,42 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 	// 这里不再基于本地规则自动覆盖标题。
 
 	return nil
+}
+
+func GetMessageBase64ByID(messageID int64) (string, error) {
+	var message Message
+	result := GetDB().Where("id = ?", messageID).First(&message)
+	if result.Error != nil {
+		return "", result.Error
+	}
+	if strings.TrimSpace(message.Base64) == "" {
+		return "", fmt.Errorf("指定消息不包含图片")
+	}
+	return message.Base64, nil
+}
+
+func SaveAssistantImageMessage(conversationID int64, messageAssistantID int64, model string, prompt string, base64 string) error {
+	historyMessages, err := LoadConversationHistoryFormat2(conversationID)
+	if err != nil {
+		return err
+	}
+
+	content := strings.TrimSpace(prompt)
+	if content == "" {
+		content = "[图片生成结果]"
+	}
+	content = "<model=" + model + ">" + content
+
+	historyMessages = append(historyMessages, messageFormat{
+		ID:             messageAssistantID,
+		ConversationID: conversationID,
+		Role:           "assistant",
+		Content:        content,
+		Base64:         base64,
+		CreatedAt:      time.Now().Format("2006-01-02T15:04:05Z07:00"),
+	})
+
+	return SaveConversationHistoryFormat2(conversationID, historyMessages)
 }
 
 func UpdateConversationTitleIfDefault(conversationID int64, title string) error {

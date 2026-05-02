@@ -11,6 +11,7 @@ import (
 type Config struct {
 	API                      string `yaml:"api"`
 	APIKey                   string `yaml:"apiKey"`
+	ImageAPIKey              string `yaml:"imageApiKey"`
 	ModelTTS                 string `yaml:"modelTTS"`
 	ModelSTT                 string `yaml:"modelSTT"`
 	DefaultDialogNamingModel string `yaml:"defaultDialogNamingModel"`

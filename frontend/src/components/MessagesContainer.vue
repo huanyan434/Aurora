@@ -978,6 +978,7 @@ const setupGlobalGenerateHandler = () => {
                 rawContent: state.accumulatedContent,
                 reasoningContent: state.accumulatedReasoningContent,
                 reasoningTime: state.lastReasoningTime,
+                base64: data.base64 || undefined,
                 isStreaming: true,
             });
 

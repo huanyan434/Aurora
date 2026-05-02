@@ -1,11 +1,15 @@
 package utils
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,6 +39,35 @@ type MessageContent struct {
 	Content          string
 	ReasoningTime    int
 	Completed        bool // 是否已完成
+}
+
+type ImageGenerateRequest struct {
+	Model   string `json:"model"`
+	Prompt  string `json:"prompt"`
+	N       int    `json:"n"`
+	Size    string `json:"size,omitempty"`
+	Format  string `json:"format,omitempty"`
+	Quality string `json:"quality,omitempty"`
+}
+
+type ImageEditRequest struct {
+	Model      string   `json:"model"`
+	Prompt     string   `json:"prompt"`
+	Images     []string `json:"images"`
+	Mask       string   `json:"mask,omitempty"`
+	N          int      `json:"n,omitempty"`
+	Size       string   `json:"size,omitempty"`
+	Quality    string   `json:"quality,omitempty"`
+	Background string   `json:"background,omitempty"`
+}
+
+type ImageGenerateResponse struct {
+	Created int64 `json:"created"`
+	Data    []struct {
+		URL           string `json:"url"`
+		B64JSON       string `json:"b64_json"`
+		RevisedPrompt string `json:"revised_prompt"`
+	} `json:"data"`
 }
 
 // 全局线程 ID 列表和相关管理结构
@@ -390,10 +423,23 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 	return resp
 }
 
-func appendToolCallArguments(buffer map[string]string, toolCallID string, argumentsChunk string) (string, bool) {
-	buffer[toolCallID] += argumentsChunk
-	arguments := buffer[toolCallID]
-	fmt.Printf("[tool_call] toolCallID=%s chunk_len=%d total_len=%d valid_json=%v\n", toolCallID, len(argumentsChunk), len(arguments), json.Valid([]byte(arguments)))
+type toolCallBufferItem struct {
+	Name      string
+	Arguments string
+}
+
+func appendToolCallArguments(buffer map[string]*toolCallBufferItem, toolCallID string, toolName string, argumentsChunk string) (string, bool) {
+	item, exists := buffer[toolCallID]
+	if !exists {
+		item = &toolCallBufferItem{}
+		buffer[toolCallID] = item
+	}
+	if strings.TrimSpace(toolName) != "" {
+		item.Name = toolName
+	}
+	item.Arguments += argumentsChunk
+	arguments := item.Arguments
+	fmt.Printf("[tool_call] toolCallID=%s tool=%s chunk_len=%d total_len=%d valid_json=%v\n", toolCallID, item.Name, len(argumentsChunk), len(arguments), json.Valid([]byte(arguments)))
 	if !json.Valid([]byte(arguments)) {
 		return "", false
 	}
@@ -431,6 +477,221 @@ func buildFallbackSearchQuery(reasoning string, prompt string) string {
 func buildCurrentTimeSystemPrompt() string {
 	now := time.Now()
 	return fmt.Sprintf("当前时间是：%04d年%02d月%02d日 %02d:%02d。请基于这个时间理解和回答用户与日期、时间、今天、昨天、明天、本周等相关的问题。", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+}
+
+func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerateResponse, error) {
+	config := GetConfig()
+	model := strings.TrimSpace(req.Model)
+	if model == "" {
+		model = "gpt-image-2"
+	}
+
+	payload := ImageGenerateRequest{
+		Model:   model,
+		Prompt:  strings.TrimSpace(req.Prompt),
+		N:       req.N,
+		Size:    strings.TrimSpace(req.Size),
+		Format:  strings.TrimSpace(req.Format),
+		Quality: strings.TrimSpace(req.Quality),
+	}
+	if payload.Prompt == "" {
+		return nil, fmt.Errorf("prompt 不能为空")
+	}
+	if payload.N <= 0 {
+		payload.N = 1
+	}
+	if payload.Size == "" {
+		payload.Size = "1024x1024"
+	}
+	if payload.Quality == "" {
+		payload.Quality = "auto"
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("序列化生图请求失败: %v", err)
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(config.API, "/")+"/images/generations", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("创建生图请求失败: %v", err)
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
+	imageAPIKey := strings.TrimSpace(config.ImageAPIKey)
+	if imageAPIKey == "" {
+		imageAPIKey = strings.TrimSpace(config.APIKey)
+	}
+	if imageAPIKey != "" {
+		request.Header.Set("Authorization", "Bearer "+imageAPIKey)
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("调用生图接口失败: %v", err)
+	}
+	defer response.Body.Close()
+
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取生图响应失败: %v", err)
+	}
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("生图接口返回异常状态(%d): %s", response.StatusCode, strings.TrimSpace(string(responseBody)))
+	}
+
+	var imageResp ImageGenerateResponse
+	if err := json.Unmarshal(responseBody, &imageResp); err != nil {
+		return nil, fmt.Errorf("解析生图响应失败: %v", err)
+	}
+	if len(imageResp.Data) == 0 {
+		return nil, fmt.Errorf("生图结果为空")
+	}
+	return &imageResp, nil
+}
+
+func decodeDataURLBase64(data string) ([]byte, string, error) {
+	trimmed := strings.TrimSpace(data)
+	if trimmed == "" {
+		return nil, "", fmt.Errorf("图片内容为空")
+	}
+
+	mimeType := "image/png"
+	base64Payload := trimmed
+	if strings.HasPrefix(trimmed, "data:") {
+		parts := strings.SplitN(trimmed, ",", 2)
+		if len(parts) != 2 {
+			return nil, "", fmt.Errorf("无效的 data url")
+		}
+		header := parts[0]
+		base64Payload = parts[1]
+		if strings.HasPrefix(header, "data:") {
+			mimePart := strings.TrimPrefix(header, "data:")
+			mimePart = strings.TrimSuffix(mimePart, ";base64")
+			if mimePart != "" {
+				mimeType = mimePart
+			}
+		}
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(base64Payload)
+	if err != nil {
+		return nil, "", fmt.Errorf("base64 解码失败: %v", err)
+	}
+	return decoded, mimeType, nil
+}
+
+func fileExtensionFromMimeType(mimeType string) string {
+	switch strings.ToLower(strings.TrimSpace(mimeType)) {
+	case "image/png":
+		return ".png"
+	case "image/webp":
+		return ".webp"
+	case "image/jpeg", "image/jpg":
+		return ".jpg"
+	default:
+		return ".png"
+	}
+}
+
+func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateResponse, error) {
+	config := GetConfig()
+	model := strings.TrimSpace(req.Model)
+	if model == "" {
+		model = "gpt-image-2"
+	}
+	if strings.TrimSpace(req.Prompt) == "" {
+		return nil, fmt.Errorf("prompt 不能为空")
+	}
+	if len(req.Images) == 0 {
+		return nil, fmt.Errorf("至少需要一张待编辑图片")
+	}
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for index, imageData := range req.Images {
+		decoded, mimeType, err := decodeDataURLBase64(imageData)
+		if err != nil {
+			return nil, fmt.Errorf("解析第 %d 张图片失败: %v", index+1, err)
+		}
+		fieldWriter, err := writer.CreateFormFile("image", fmt.Sprintf("image_%d%s", index+1, fileExtensionFromMimeType(mimeType)))
+		if err != nil {
+			return nil, fmt.Errorf("创建图片字段失败: %v", err)
+		}
+		if _, err := fieldWriter.Write(decoded); err != nil {
+			return nil, fmt.Errorf("写入图片字段失败: %v", err)
+		}
+	}
+
+	if strings.TrimSpace(req.Mask) != "" {
+		decoded, _, err := decodeDataURLBase64(req.Mask)
+		if err != nil {
+			return nil, fmt.Errorf("解析 mask 失败: %v", err)
+		}
+		fieldWriter, err := writer.CreateFormFile("mask", "mask.png")
+		if err != nil {
+			return nil, fmt.Errorf("创建 mask 字段失败: %v", err)
+		}
+		if _, err := fieldWriter.Write(decoded); err != nil {
+			return nil, fmt.Errorf("写入 mask 字段失败: %v", err)
+		}
+	}
+
+	_ = writer.WriteField("prompt", strings.TrimSpace(req.Prompt))
+	_ = writer.WriteField("model", model)
+	if req.N > 0 {
+		_ = writer.WriteField("n", strconv.Itoa(req.N))
+	}
+	if strings.TrimSpace(req.Quality) != "" {
+		_ = writer.WriteField("quality", strings.TrimSpace(req.Quality))
+	}
+	if strings.TrimSpace(req.Size) != "" {
+		_ = writer.WriteField("size", strings.TrimSpace(req.Size))
+	}
+	if strings.TrimSpace(req.Background) != "" {
+		_ = writer.WriteField("background", strings.TrimSpace(req.Background))
+	}
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("关闭 multipart writer 失败: %v", err)
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(config.API, "/")+"/images/edits", &body)
+	if err != nil {
+		return nil, fmt.Errorf("创建编辑请求失败: %v", err)
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	imageAPIKey := strings.TrimSpace(config.ImageAPIKey)
+	if imageAPIKey == "" {
+		imageAPIKey = strings.TrimSpace(config.APIKey)
+	}
+	if imageAPIKey != "" {
+		request.Header.Set("Authorization", "Bearer "+imageAPIKey)
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("调用图片编辑接口失败: %v", err)
+	}
+	defer response.Body.Close()
+
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取图片编辑响应失败: %v", err)
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("图片编辑接口返回异常状态(%d): %s", response.StatusCode, strings.TrimSpace(string(responseBody)))
+	}
+
+	var imageResp ImageGenerateResponse
+	if err := json.Unmarshal(responseBody, &imageResp); err != nil {
+		return nil, fmt.Errorf("解析图片编辑响应失败: %v", err)
+	}
+	if len(imageResp.Data) == 0 {
+		return nil, fmt.Errorf("图片编辑结果为空")
+	}
+	return &imageResp, nil
 }
 
 func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, query string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
@@ -482,6 +743,140 @@ func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams 
 	return messages, newStream, nil
 }
 
+func executeImageGenerateTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, model string, prompt string, size string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
+	prompt = strings.TrimSpace(prompt)
+	if prompt == "" {
+		return messages, stream, fmt.Errorf("image_generate prompt 不能为空")
+	}
+
+	imageResp, err := GenerateImage(ctx, ImageGenerateRequest{
+		Model:   "gpt-image-2",
+		Prompt:  prompt,
+		N:       1,
+		Size:    strings.TrimSpace(size),
+		Quality: strings.TrimSpace(quality),
+	})
+	if err != nil {
+		jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("图片生成失败: %v", err)})
+		resp <- string(jsonResp)
+		return messages, stream, err
+	}
+
+	imageBase64 := strings.TrimSpace(imageResp.Data[0].B64JSON)
+	if imageBase64 == "" {
+		return messages, stream, fmt.Errorf("图片生成结果为空")
+	}
+	imageDataURL := "data:image/png;base64," + imageBase64
+
+	toolArguments := fmt.Sprintf(`{"prompt":%q,"size":%q,"quality":%q}`, prompt, size, quality)
+	toolResult := fmt.Sprintf(`{"success":true,"model":"%s","prompt":%q,"base64":"%s"}`,
+		model,
+		prompt,
+		imageDataURL,
+	)
+
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role: openai.ChatMessageRoleAssistant,
+		ToolCalls: []openai.ToolCall{{
+			ID:   toolCall.ID,
+			Type: openai.ToolTypeFunction,
+			Function: openai.FunctionCall{
+				Name:      "image_generate",
+				Arguments: toolArguments,
+			},
+		}},
+	})
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:       openai.ChatMessageRoleTool,
+		Content:    toolResult,
+		ToolCallID: toolCall.ID,
+	})
+
+	if stream != nil {
+		stream.Close()
+	}
+
+	reqParams.Messages = messages
+	newStream, err := client.CreateChatCompletionStream(ctx, *reqParams)
+	if err != nil {
+		jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("重新创建流失败: %v", err)})
+		resp <- string(jsonResp)
+		return messages, nil, err
+	}
+
+	jsonResp, _ := json.Marshal(Response{Success: true, Content: prompt, Base64: imageDataURL})
+	resp <- string(jsonResp)
+	return messages, newStream, nil
+}
+
+func executeImageEditTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, prompt string, sourceImage string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
+	prompt = strings.TrimSpace(prompt)
+	if prompt == "" {
+		return messages, stream, fmt.Errorf("image_edit prompt 不能为空")
+	}
+	if strings.TrimSpace(sourceImage) == "" {
+		return messages, stream, fmt.Errorf("image_edit 缺少源图片")
+	}
+
+	imageResp, err := EditImage(ctx, ImageEditRequest{
+		Model:   "gpt-image-2",
+		Prompt:  prompt,
+		Images:  []string{sourceImage},
+		N:       1,
+		Quality: strings.TrimSpace(quality),
+	})
+	if err != nil {
+		jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("图片编辑失败: %v", err)})
+		resp <- string(jsonResp)
+		return messages, stream, err
+	}
+
+	imageBase64 := strings.TrimSpace(imageResp.Data[0].B64JSON)
+	if imageBase64 == "" {
+		return messages, stream, fmt.Errorf("图片编辑结果为空")
+	}
+	imageDataURL := "data:image/png;base64," + imageBase64
+
+	toolArguments := fmt.Sprintf(`{"prompt":%q,"quality":%q}`, prompt, quality)
+	toolResult := fmt.Sprintf(`{"success":true,"prompt":%q,"base64":"%s"}`,
+		prompt,
+		imageDataURL,
+	)
+
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role: openai.ChatMessageRoleAssistant,
+		ToolCalls: []openai.ToolCall{{
+			ID:   toolCall.ID,
+			Type: openai.ToolTypeFunction,
+			Function: openai.FunctionCall{
+				Name:      "image_edit",
+				Arguments: toolArguments,
+			},
+		}},
+	})
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:       openai.ChatMessageRoleTool,
+		Content:    toolResult,
+		ToolCallID: toolCall.ID,
+	})
+
+	if stream != nil {
+		stream.Close()
+	}
+
+	reqParams.Messages = messages
+	newStream, err := client.CreateChatCompletionStream(ctx, *reqParams)
+	if err != nil {
+		jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("重新创建流失败: %v", err)})
+		resp <- string(jsonResp)
+		return messages, nil, err
+	}
+
+	jsonResp, _ := json.Marshal(Response{Success: true, Content: prompt, Base64: imageDataURL})
+	resp <- string(jsonResp)
+	return messages, newStream, nil
+}
+
 // Openai 调用 OpenAI API 并流式返回结果，同时更新消息内容缓存
 func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64Image string, reasoning bool, resp chan string) {
 	config := GetConfig()
@@ -494,6 +889,17 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 	// 启动超时检测 goroutine
 	timeoutCtx, cancelTimeout := context.WithCancel(ctx)
 	defer cancelTimeout()
+
+	markModelResponded := func(reason string) {
+		contentMutex.Lock()
+		defer contentMutex.Unlock()
+		if hasReceivedContent {
+			return
+		}
+		hasReceivedContent = true
+		cancelTimeout()
+		fmt.Printf("[超时检测] conversationID=%d, 首次收到模型响应(%s)，取消超时检测\n", conversationID, reason)
+	}
 
 	go func() {
 		select {
@@ -509,7 +915,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 				// 发送超时错误消息
 				jsonResp, _ := json.Marshal(Response{
 					Success: false,
-					Error:   "AI服务器响应超时，请稍后重试",
+					Error:   "响应超时，请稍后重试",
 				})
 				select {
 				case resp <- string(jsonResp):
@@ -599,7 +1005,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		}
 	}
 
-	// 如果支持工具，添加联网搜索工具
+	// 如果支持工具，添加工具
 	if supportsTools {
 		tools = []openai.Tool{
 			{
@@ -616,6 +1022,52 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							},
 						},
 						"required": []string{"query"},
+					},
+				},
+			},
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "image_generate",
+					Description: "根据用户描述生成图片。当用户明确要求画图、生图、生成海报、插画、配图、封面图时使用。",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"prompt": map[string]interface{}{
+								"type":        "string",
+								"description": "图片生成提示词",
+							},
+							"size": map[string]interface{}{
+								"type":        "string",
+								"description": "图片尺寸，例如 1024x1024",
+							},
+							"quality": map[string]interface{}{
+								"type":        "string",
+								"description": "图片质量，例如 auto / high",
+							},
+						},
+						"required": []string{"prompt"},
+					},
+				},
+			},
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "image_edit",
+					Description: "根据当前对话里最近一张用户图片进行编辑。当用户要求改图、重绘、换背景、修图、局部调整时使用。",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"prompt": map[string]interface{}{
+								"type":        "string",
+								"description": "图片编辑提示词",
+							},
+							"quality": map[string]interface{}{
+								"type":        "string",
+								"description": "图片质量，例如 auto / high",
+							},
+						},
+						"required": []string{"prompt"},
 					},
 				},
 			},
@@ -644,7 +1096,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 	defer stream.Close()
 
 	// 流式工具调用参数缓冲
-	toolCallArgumentsBuffer := make(map[string]string)
+	toolCallArgumentsBuffer := make(map[string]*toolCallBufferItem)
 
 	// 流式读取响应
 	for {
@@ -671,17 +1123,23 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 				// 先处理工具调用，避免 reasoning 模型在同一帧携带 finish_reason=tool_calls 时缓冲区尚未写入
 				if len(delta.ToolCalls) > 0 {
+					markModelResponded("tool_calls")
 					for _, toolCall := range delta.ToolCalls {
-						if toolCall.Function.Name == "web_search" {
-							fmt.Printf("[tool_call] received name=%s id=%s raw_chunk=%q\n", toolCall.Function.Name, toolCall.ID, toolCall.Function.Arguments)
-							arguments, ok := appendToolCallArguments(toolCallArgumentsBuffer, toolCall.ID, toolCall.Function.Arguments)
-							if !ok {
-								continue
-							}
+						toolName := toolCall.Function.Name
+						if toolName != "web_search" && toolName != "image_generate" && toolName != "image_edit" {
+							continue
+						}
 
-							fmt.Printf("[tool_call] complete id=%s arguments=%s\n", toolCall.ID, arguments)
+						fmt.Printf("[tool_call] received name=%s id=%s raw_chunk=%q\n", toolName, toolCall.ID, toolCall.Function.Arguments)
+						arguments, ok := appendToolCallArguments(toolCallArgumentsBuffer, toolCall.ID, toolName, toolCall.Function.Arguments)
+						if !ok {
+							continue
+						}
 
-							// 解析搜索参数
+						fmt.Printf("[tool_call] complete id=%s arguments=%s\n", toolCall.ID, arguments)
+
+						switch toolName {
+						case "web_search":
 							var params struct {
 								Query string `json:"query"`
 							}
@@ -707,41 +1165,139 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							if execErr != nil {
 								return
 							}
-							continue
+						case "image_generate":
+							var params struct {
+								Prompt  string `json:"prompt"`
+								Size    string `json:"size"`
+								Quality string `json:"quality"`
+							}
+							if err := json.Unmarshal([]byte(arguments), &params); err != nil {
+								fmt.Printf("解析 image_generate 参数失败: %v\n", err)
+								continue
+							}
+
+							var execErr error
+							messages, stream, execErr = executeImageGenerateTool(client, ctx, &reqParams, stream, messages, toolCall, model, params.Prompt, params.Size, params.Quality, resp)
+							if execErr != nil {
+								return
+							}
+						case "image_edit":
+							var params struct {
+								Prompt  string `json:"prompt"`
+								Quality string `json:"quality"`
+							}
+							if err := json.Unmarshal([]byte(arguments), &params); err != nil {
+								fmt.Printf("解析 image_edit 参数失败: %v\n", err)
+								continue
+							}
+
+							historyMessages, historyErr := LoadConversationHistoryFormat2(conversationID)
+							if historyErr != nil {
+								jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("加载图片编辑历史失败: %v", historyErr)})
+								resp <- string(jsonResp)
+								return
+							}
+
+							sourceImage := ""
+							for i := len(historyMessages) - 1; i >= 0; i-- {
+								if historyMessages[i].Role == "user" && strings.TrimSpace(historyMessages[i].Base64) != "" {
+									sourceImage = historyMessages[i].Base64
+									break
+								}
+							}
+
+							var execErr error
+							messages, stream, execErr = executeImageEditTool(client, ctx, &reqParams, stream, messages, toolCall, params.Prompt, sourceImage, params.Quality, resp)
+							if execErr != nil {
+								return
+							}
 						}
+						continue
 					}
 				}
 
 				if finishReason != "" {
 					fmt.Printf("[stream] finish_reason=%s conversationID=%d messageAssistantID=%d\n", finishReason, conversationID, messageAssistantID)
 					if finishReason == "tool_calls" {
+						markModelResponded("finish_reason_tool_calls")
 						fmt.Printf("[stream] tool_calls finished but pending_buffers=%d buffers=%v\n", len(toolCallArgumentsBuffer), toolCallArgumentsBuffer)
 
-						for toolCallID, bufferedArguments := range toolCallArgumentsBuffer {
-							if strings.TrimSpace(bufferedArguments) != "" {
+						for toolCallID, item := range toolCallArgumentsBuffer {
+							if item == nil {
+								continue
+							}
+							if strings.TrimSpace(item.Arguments) != "" {
 								continue
 							}
 
-							MessageContentCacheMutex.RLock()
-							reasoningText := ""
-							if cachedContent, exists := MessageContentCache[messageAssistantID]; exists {
-								reasoningText = cachedContent.ReasoningContent
-							}
-							MessageContentCacheMutex.RUnlock()
+							switch item.Name {
+							case "web_search":
+								MessageContentCacheMutex.RLock()
+								reasoningText := ""
+								if cachedContent, exists := MessageContentCache[messageAssistantID]; exists {
+									reasoningText = cachedContent.ReasoningContent
+								}
+								MessageContentCacheMutex.RUnlock()
 
-							fallbackQuery := buildFallbackSearchQuery(reasoningText, prompt)
-							fmt.Printf("[tool_call_fallback] id=%s query=%q\n", toolCallID, fallbackQuery)
+								fallbackQuery := buildFallbackSearchQuery(reasoningText, prompt)
+								fmt.Printf("[tool_call_fallback] tool=%s id=%s query=%q\n", item.Name, toolCallID, fallbackQuery)
 
-							var execErr error
-							messages, stream, execErr = executeWebSearchTool(client, ctx, &reqParams, stream, messages, openai.ToolCall{
-								ID:   toolCallID,
-								Type: openai.ToolTypeFunction,
-								Function: openai.FunctionCall{
-									Name: "web_search",
-								},
-							}, fallbackQuery, resp)
-							if execErr != nil {
-								return
+								var execErr error
+								messages, stream, execErr = executeWebSearchTool(client, ctx, &reqParams, stream, messages, openai.ToolCall{
+									ID:   toolCallID,
+									Type: openai.ToolTypeFunction,
+									Function: openai.FunctionCall{
+										Name: "web_search",
+									},
+								}, fallbackQuery, resp)
+								if execErr != nil {
+									return
+								}
+							case "image_generate":
+								fallbackPrompt := strings.TrimSpace(stripBase64Block(prompt))
+								fmt.Printf("[tool_call_fallback] tool=%s id=%s prompt=%q\n", item.Name, toolCallID, fallbackPrompt)
+
+								var execErr error
+								messages, stream, execErr = executeImageGenerateTool(client, ctx, &reqParams, stream, messages, openai.ToolCall{
+									ID:   toolCallID,
+									Type: openai.ToolTypeFunction,
+									Function: openai.FunctionCall{
+										Name: "image_generate",
+									},
+								}, model, fallbackPrompt, "1024x1024", "auto", resp)
+								if execErr != nil {
+									return
+								}
+							case "image_edit":
+								fallbackPrompt := strings.TrimSpace(stripBase64Block(prompt))
+								historyMessages, historyErr := LoadConversationHistoryFormat2(conversationID)
+								if historyErr != nil {
+									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("加载图片编辑历史失败: %v", historyErr)})
+									resp <- string(jsonResp)
+									return
+								}
+								sourceImage := ""
+								for i := len(historyMessages) - 1; i >= 0; i-- {
+									if historyMessages[i].Role == "user" && strings.TrimSpace(historyMessages[i].Base64) != "" {
+										sourceImage = historyMessages[i].Base64
+										break
+									}
+								}
+								fmt.Printf("[tool_call_fallback] tool=%s id=%s prompt=%q hasSource=%v\n", item.Name, toolCallID, fallbackPrompt, strings.TrimSpace(sourceImage) != "")
+
+								var execErr error
+								messages, stream, execErr = executeImageEditTool(client, ctx, &reqParams, stream, messages, openai.ToolCall{
+									ID:   toolCallID,
+									Type: openai.ToolTypeFunction,
+									Function: openai.FunctionCall{
+										Name: "image_edit",
+									},
+								}, fallbackPrompt, sourceImage, "auto", resp)
+								if execErr != nil {
+									return
+								}
+							default:
+								fmt.Printf("[tool_call_fallback] skip unknown tool id=%s name=%s\n", toolCallID, item.Name)
 							}
 							delete(toolCallArgumentsBuffer, toolCallID)
 							break
@@ -751,14 +1307,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 				// 更新缓存：推理内容
 				if delta.ReasoningContent != "" {
-					// 标记已收到内容，取消超时检测
-					contentMutex.Lock()
-					if !hasReceivedContent {
-						hasReceivedContent = true
-						cancelTimeout()
-						fmt.Printf("[超时检测] conversationID=%d, 已收到AI回复，取消超时检测\n", conversationID)
-					}
-					contentMutex.Unlock()
+					markModelResponded("reasoning_content")
 
 					MessageContentCacheMutex.Lock()
 					if content, exists := MessageContentCache[messageAssistantID]; exists {
@@ -777,14 +1326,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 				// 更新缓存：普通内容
 				if delta.Content != "" {
-					// 标记已收到内容，取消超时检测
-					contentMutex.Lock()
-					if !hasReceivedContent {
-						hasReceivedContent = true
-						cancelTimeout()
-						fmt.Printf("[超时检测] conversationID=%d, 已收到AI回复，取消超时检测\n", conversationID)
-					}
-					contentMutex.Unlock()
+					markModelResponded("content")
 
 					contentDelta := delta.Content
 					MessageContentCacheMutex.Lock()
@@ -891,6 +1433,7 @@ type Response struct {
 	Content          string `json:"content"`
 	ReasoningContent string `json:"reasoningContent"`
 	Error            string `json:"error"`
+	Base64           string `json:"base64,omitempty"`
 }
 
 // ParseThinkBlock 解析推理内容，返回推理时间和推理内容

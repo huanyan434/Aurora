@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -47,6 +48,7 @@ type MSG struct {
 	ReasoningContent   string `json:"reasoningContent" default:""`
 	ReasoningTime      int    `json:"reasoningTime" default:""`
 	Content            string `json:"content" default:""`
+	Base64             string `json:"base64,omitempty"`
 	ConversationID     int64  `json:"conversationID"`
 	MessageAssistantID int64  `json:"messageAssistantID"`
 	IsCached           bool   `json:"isCached" default:"false"`      // 是否是缓存内容
@@ -262,6 +264,10 @@ func wsHandler(c *gin.Context) {
 			handleWSTTS(conn, userInfo, req.Prompt)
 		case "stt":
 			handleWSSTT(conn, userInfo, req.Base64)
+		case "image_generate":
+			handleWSImageGenerate(conn, userInfo, req)
+		case "image_edit":
+			handleWSImageEdit(conn, userInfo, req)
 		case "resume_check":
 			handleWSResumeCheck(conn, userInfo.ID, req.ConversationID)
 		default:
@@ -281,6 +287,12 @@ type WSRequest struct {
 	Base64             string `json:"base64"`
 	Reasoning          bool   `json:"reasoning"`
 	MessageID          int64  `json:"messageID"`
+	ImageMessageID     int64  `json:"imageMessageID"`
+	MaskBase64         string `json:"maskBase64"`
+	Size               string `json:"size"`
+	Format             string `json:"format"`
+	Quality            string `json:"quality"`
+	N                  int    `json:"n"`
 }
 
 // 发送 WebSocket 响应
@@ -290,69 +302,61 @@ func sendWSResponse(conn *websocket.Conn, respType string, data interface{}) {
 	conn.WriteMessage(websocket.TextMessage, jsonData)
 }
 
+func calculatePlannedPoints(user utils.User, modelID string, reasoning bool) (int, bool) {
+	config := utils.GetConfig()
+	for _, m := range config.Models {
+		if m.ID != modelID {
+			continue
+		}
+
+		if reasoning && m.Reasoning != modelID {
+			if user.IsMember {
+				switch user.MemberLevel {
+				case "VIP":
+					return int(math.Ceil(math.Ceil(float64(m.Points/2)) * 1.5)), true
+				case "SVIP":
+					return 0, true
+				}
+			}
+			return int(math.Ceil(math.Ceil(float64(m.Points)) * 1.5)), true
+		}
+
+		if user.IsMember {
+			switch user.MemberLevel {
+			case "VIP":
+				return int(math.Ceil(float64(m.Points / 2))), true
+			case "SVIP":
+				return 0, true
+			}
+		}
+		return m.Points, true
+	}
+	return 0, false
+}
+
+func ensureUserPoints(conn *websocket.Conn, user utils.User, modelID string, reasoning bool, errorType string) (int, bool) {
+	plannedPoints, matched := calculatePlannedPoints(user, modelID, reasoning)
+	if !matched {
+		sendWSResponse(conn, errorType, gin.H{"error": "未找到对应模型配置"})
+		return 0, false
+	}
+	if user.Points < plannedPoints {
+		sendWSResponse(conn, errorType, gin.H{"error": "积分不足"})
+		return 0, false
+	}
+	return plannedPoints, true
+}
+
 // WebSocket: 生成 AI 回复
 func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	fmt.Printf("[积分检查][WS] userID=%d model=%s reasoning=%v points=%d isMember=%v memberLevel=%s\n", user.ID, req.Model, req.Reasoning, user.Points, user.IsMember, user.MemberLevel)
 
 	// 积分检查（仅校验，不立即扣除）
-	config := utils.GetConfig()
-	plannedPointsDeducted := 0
+	plannedPointsDeducted, matchedModel := ensureUserPoints(conn, user, req.Model, req.Reasoning, "generate_error")
 	pointsDeducted := 0
-	matchedModel := false
-	for _, m := range config.Models {
-		if m.ID == req.Model {
-			matchedModel = true
-			fmt.Printf("[积分检查][WS] 匹配模型 id=%s name=%s points=%d reasoning=%v\n", m.ID, m.Name, m.Points, m.Reasoning)
-			if req.Reasoning && m.Reasoning != req.Model {
-				// 推理模式，积分消耗为1.5倍
-				if user.IsMember {
-					switch user.MemberLevel {
-					case "VIP":
-						plannedPointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points/2)) * 1.5))
-						fmt.Printf("[积分检查][WS] 计划扣费=%d (VIP 推理)\n", plannedPointsDeducted)
-						if user.Points < plannedPointsDeducted {
-							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
-							return
-						}
-					case "SVIP":
-						plannedPointsDeducted = 0
-					}
-				} else {
-					plannedPointsDeducted = int(math.Ceil(math.Ceil(float64(m.Points)) * 1.5))
-					fmt.Printf("[积分检查][WS] 计划扣费=%d (普通用户推理)\n", plannedPointsDeducted)
-					if user.Points < plannedPointsDeducted {
-						sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
-						return
-					}
-				}
-			} else {
-				// 普通模式
-				if user.IsMember {
-					switch user.MemberLevel {
-					case "VIP":
-						plannedPointsDeducted = int(math.Ceil(float64(m.Points / 2)))
-						fmt.Printf("[积分检查][WS] 计划扣费=%d (VIP 普通)\n", plannedPointsDeducted)
-						if user.Points < plannedPointsDeducted {
-							sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
-							return
-						}
-					case "SVIP":
-						plannedPointsDeducted = 0
-					}
-				} else {
-					plannedPointsDeducted = m.Points
-					fmt.Printf("[积分检查][WS] 计划扣费=%d (普通用户普通)\n", plannedPointsDeducted)
-					if user.Points < plannedPointsDeducted {
-						sendWSResponse(conn, "generate_error", gin.H{"error": "积分不足"})
-						return
-					}
-				}
-			}
-			break
-		}
-	}
 	if !matchedModel {
 		fmt.Printf("[积分检查][WS] 未匹配到模型，req.Model=%s\n", req.Model)
+		return
 	}
 
 	// 调用 AI 生成
@@ -524,6 +528,129 @@ func handleWSTTS(conn *websocket.Conn, user utils.User, prompt string) {
 	}
 	data := utils.TTS(prompt)
 	sendWSResponse(conn, "tts_response", gin.H{"data": data})
+}
+
+func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
+	plannedPointsDeducted, ok := ensureUserPoints(conn, user, req.Model, false, "image_generate_error")
+	if !ok {
+		return
+	}
+	if strings.TrimSpace(req.Prompt) == "" {
+		sendWSResponse(conn, "image_generate_error", gin.H{"error": "prompt 不能为空"})
+		return
+	}
+
+	resp, err := utils.GenerateImage(context.Background(), utils.ImageGenerateRequest{
+		Model:   req.Model,
+		Prompt:  req.Prompt,
+		N:       req.N,
+		Size:    req.Size,
+		Format:  req.Format,
+		Quality: req.Quality,
+	})
+	if err != nil {
+		sendWSResponse(conn, "image_generate_error", gin.H{"error": err.Error()})
+		return
+	}
+
+	imageBase64 := strings.TrimSpace(resp.Data[0].B64JSON)
+	if imageBase64 == "" {
+		sendWSResponse(conn, "image_generate_error", gin.H{"error": "生图结果缺少 base64 数据"})
+		return
+	}
+	imageBase64 = "data:image/png;base64," + imageBase64
+
+	if err := utils.SaveAssistantImageMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, imageBase64); err != nil {
+		sendWSResponse(conn, "image_generate_error", gin.H{"error": "保存图片消息失败: " + err.Error()})
+		return
+	}
+
+	if plannedPointsDeducted > 0 {
+		if err := utils.AddPoints(user.ID, -plannedPointsDeducted, "使用生图模型"); err != nil {
+			sendWSResponse(conn, "image_generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+			return
+		}
+	}
+
+	sendWSResponse(conn, "generate_response", MSG{
+		Success:            true,
+		Content:            req.Prompt,
+		Base64:             imageBase64,
+		ConversationID:     req.ConversationID,
+		MessageAssistantID: req.MessageAssistantID,
+	})
+	sendWSResponse(conn, "generate_end", gin.H{
+		"conversationID":     req.ConversationID,
+		"messageAssistantID": req.MessageAssistantID,
+		"pointsDeducted":     plannedPointsDeducted,
+	})
+}
+
+func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
+	plannedPointsDeducted, ok := ensureUserPoints(conn, user, req.Model, false, "image_edit_error")
+	if !ok {
+		return
+	}
+	if strings.TrimSpace(req.Prompt) == "" {
+		sendWSResponse(conn, "image_edit_error", gin.H{"error": "prompt 不能为空"})
+		return
+	}
+	if req.ImageMessageID <= 0 {
+		sendWSResponse(conn, "image_edit_error", gin.H{"error": "缺少待编辑图片 messageID"})
+		return
+	}
+
+	sourceBase64, err := utils.GetMessageBase64ByID(req.ImageMessageID)
+	if err != nil {
+		sendWSResponse(conn, "image_edit_error", gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := utils.EditImage(context.Background(), utils.ImageEditRequest{
+		Model:   req.Model,
+		Prompt:  req.Prompt,
+		Images:  []string{sourceBase64},
+		Mask:    req.MaskBase64,
+		N:       req.N,
+		Size:    req.Size,
+		Quality: req.Quality,
+	})
+	if err != nil {
+		sendWSResponse(conn, "image_edit_error", gin.H{"error": err.Error()})
+		return
+	}
+
+	imageBase64 := strings.TrimSpace(resp.Data[0].B64JSON)
+	if imageBase64 == "" {
+		sendWSResponse(conn, "image_edit_error", gin.H{"error": "图片编辑结果缺少 base64 数据"})
+		return
+	}
+	imageBase64 = "data:image/png;base64," + imageBase64
+
+	if err := utils.SaveAssistantImageMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, imageBase64); err != nil {
+		sendWSResponse(conn, "image_edit_error", gin.H{"error": "保存图片消息失败: " + err.Error()})
+		return
+	}
+
+	if plannedPointsDeducted > 0 {
+		if err := utils.AddPoints(user.ID, -plannedPointsDeducted, "使用图片编辑模型"); err != nil {
+			sendWSResponse(conn, "image_edit_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+			return
+		}
+	}
+
+	sendWSResponse(conn, "generate_response", MSG{
+		Success:            true,
+		Content:            req.Prompt,
+		Base64:             imageBase64,
+		ConversationID:     req.ConversationID,
+		MessageAssistantID: req.MessageAssistantID,
+	})
+	sendWSResponse(conn, "generate_end", gin.H{
+		"conversationID":     req.ConversationID,
+		"messageAssistantID": req.MessageAssistantID,
+		"pointsDeducted":     plannedPointsDeducted,
+	})
 }
 
 // WebSocket: STT

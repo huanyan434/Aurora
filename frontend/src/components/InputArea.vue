@@ -56,7 +56,7 @@ import { Paperclip, Lightbulb, Square, Send, X } from 'lucide-vue-next';
 import { useChatStore } from '@/stores/chat';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { newConversation, wsManager } from '@/api/chat';
-import type { Model } from '@/stores/chat';
+import type { Message, Model } from '@/stores/chat';
 
 // 响应式数据
 const inputMessage = ref('');
@@ -105,6 +105,32 @@ const isReasoningDisabled = computed(() => {
     isReasoning.value = false;
   }
   return true;
+});
+
+const currentModel = computed(() => chatStore.models.find(model => model.id === chatStore.selectedModel));
+const isDedicatedImageModel = computed(() => {
+  const imageCapability = currentModel.value?.image;
+  const toolCapability = currentModel.value?.tool ?? 0;
+  return (imageCapability === 2 || imageCapability === 3) && toolCapability === 0;
+});
+
+const buildUserMessage = (conversationId: number, messageUserId: number, content: string, base64: string): Message => ({
+  id: messageUserId,
+  role: 'user',
+  content,
+  base64,
+  conversationID: conversationId,
+  createdAt: new Date().toISOString(),
+});
+
+const buildAssistantPlaceholder = (conversationId: number, messageAssistantId: number): Message => ({
+  id: messageAssistantId,
+  role: 'assistant',
+  content: '',
+  conversationID: conversationId,
+  createdAt: new Date().toISOString(),
+  isStreaming: true,
+  disableTyping: false,
 });
 
 // 判断是否可以发送消息
@@ -232,30 +258,13 @@ const handleSendMessage = async () => {
     attachment.value = '';
 
     // 添加用户消息到聊天记录
-    chatStore.addMessage(conversationId, {
-      id: messageUserId,
-      role: 'user',
-      content: userMessage.content,
-      base64: userMessage.base64,
-      conversationID: conversationId,
-      createdAt: new Date().toISOString()
-    });
+    chatStore.addMessage(conversationId, buildUserMessage(conversationId, messageUserId, userMessage.content, userMessage.base64));
 
-    // 添加占位助手消息，带有加载占位符
-    chatStore.addMessage(conversationId, {
-      id: messageAssistantId,
-      role: 'assistant',
-      content: '',
-      conversationID: conversationId,
-      createdAt: new Date().toISOString(),
-      isStreaming: true, // 立即设置为流式传输状态
-      disableTyping: false, // 流式消息需要打字效果
-    });
+    // 添加占位助手消息
+    chatStore.addMessage(conversationId, buildAssistantPlaceholder(conversationId, messageAssistantId));
 
     // 发送新消息后强制滚动到底部
-    // 需要等待 DOM 更新后再滚动
     await nextTick();
-    // 通过事件通知上层强制滚动，并传递本次发送的对话和消息 ID
     window.dispatchEvent(new CustomEvent('force-scroll-to-bottom', {
       detail: {
         conversationID: conversationId,
@@ -263,8 +272,24 @@ const handleSendMessage = async () => {
       },
     }));
 
-    // 通过 WebSocket 发送生成请求
-    wsManager.send({
+    if (isDedicatedImageModel.value) {
+      await wsManager.send({
+        type: 'image_generate',
+        conversationID: conversationId,
+        messageUserID: messageUserId,
+        messageAssistantID: messageAssistantId,
+        prompt: requestData.prompt,
+        model: requestData.model,
+        base64: requestData.base64,
+        size: '1024x1024',
+        quality: 'auto',
+        n: 1,
+      });
+      return;
+    }
+
+    // 通过 WebSocket 发送普通对话生成请求
+    await wsManager.send({
       type: 'generate',
       conversationID: conversationId,
       messageUserID: messageUserId,
