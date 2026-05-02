@@ -5,7 +5,9 @@
         <!-- 品牌信息 -->
         <div class="footer-brand-column">
           <div class="footer-brand">
-            <img src="@/assets/icon.svg" alt="Aurora" class="footer-logo" />
+            <svg class="footer-logo" aria-hidden="true">
+              <use href="/icons.svg#social-icon" />
+            </svg>
             <span class="footer-brand-name">Aurora</span>
           </div>
           <p class="footer-description">

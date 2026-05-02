@@ -10,7 +10,9 @@
     <div class="container-wide h-[72px] flex items-center justify-between">
       <!-- Logo -->
       <RouterLink to="/" class="header-brand">
-        <img src="@/assets/icon.svg" alt="Aurora" class="w-8 h-8" />
+        <svg class="w-8 h-8" aria-hidden="true">
+          <use href="/icons.svg#social-icon" />
+        </svg>
         <span class="text-lg font-semibold text-[var(--color-text-primary)]">Aurora</span>
       </RouterLink>
 
