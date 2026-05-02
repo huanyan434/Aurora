@@ -81,7 +81,7 @@
       </div>
       <DialogFooter>
         <Button variant="outline" @click="cancelRenameConversation">取消</Button>
-        <Button @click="confirmRenameConversation">确认</Button>
+        <Button @click="confirmRenameConversation" class="rename-confirm-btn">确认</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
@@ -686,6 +686,15 @@ defineExpose({
 
 .rename-input {
   grid-column: span 4 / span 4; /* col-span-4 */
+}
+
+.rename-confirm-btn {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.rename-confirm-btn:hover {
+  background-color: var(--color-primary-hover);
 }
 
 .delete-dialog-content {
