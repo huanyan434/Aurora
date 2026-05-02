@@ -28,8 +28,13 @@
 
                     <!-- 助手消息 -->
                     <div v-else>
-                        <!-- 模型名称显示 -->
-                        <div v-if="extractModelName(message.rawContent || message.content)"
+                        <div v-if="message.modelName"
+                            class="mb-2 share-model-role">
+                            <span>{{ message.modelName }}</span>
+                            <span v-if="hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1"
+                                class="message-time message-time-inline">{{ formatTime(message.createdAt) }}</span>
+                        </div>
+                        <div v-else-if="extractModelName(message.rawContent || message.content)"
                             class="mb-2 share-model-role">
                             <span>{{ extractModelName(message.rawContent || message.content) }}</span>
                             <span v-if="hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1"
@@ -1052,7 +1057,7 @@ const setupGlobalGenerateHandler = () => {
                 rawContent: state.accumulatedContent,
                 reasoningContent: state.accumulatedReasoningContent,
                 reasoningTime: state.lastReasoningTime,
-                base64: data.base64 || undefined,
+                modelName: data.modelName || undefined,
                 error: undefined,
                 isStreaming: true,
             });
@@ -1262,7 +1267,7 @@ const loadConversationHistory = async (conversationId: number) => {
                     role: msg.role,
                     content: cleanContent,
                     rawContent: msg.content || '',
-                    base64: msg.base64,
+                    modelName: msg.model_name || msg.modelName || '',
                     error: msg.error || '',
                     reasoningContent,
                     reasoningTime,
