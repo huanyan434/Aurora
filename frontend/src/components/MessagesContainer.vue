@@ -45,7 +45,7 @@
                         </div>
                         <!-- 流式消息使用 DsMarkdownCMD -->
                         <div v-else-if="message.content || !message.isStreaming">
-                            <DsMarkdownCMD :content="message.content" :interval="15" :show-cursor="message.isStreaming"
+                            <DsMarkdownCMD :key="`stream-${message.id}-${message.createdAt}`" :content="message.content" :interval="15" :show-cursor="message.isStreaming"
                                 cursor="circle" :on-typed-char="(data) => handleTypedChar(message.id, data)"
                                 :on-end="() => handleStreamMessageEnd(message.id)" />
                         </div>
@@ -468,7 +468,7 @@ const handleStreamMessageEnd = (messageId: number | undefined) => {
 
     const state = getTypingState(messageId);
     const message = displayedMessages.value.find(msg => msg.id === messageId);
-    if (!message || message.isStreaming) return;
+    if (!message) return;
 
     console.log('[handleStreamMessageEnd] 打字结束，消息 ID:', messageId);
     state.typedContent = state.expectedContent;
@@ -1025,6 +1025,35 @@ const setupGlobalGenerateHandler = () => {
             chatStore.updateMessage(state.messageAssistantId, {
                 isStreaming: false,
             });
+
+            const typingState = getTypingState(state.messageAssistantId);
+            const finalExpectedContent = removeModelTag(state.accumulatedContent);
+            typingState.expectedContent = finalExpectedContent;
+
+            if (typingState.typedContent === finalExpectedContent) {
+                typingState.isTyping = false;
+                markdownEndedIds.value.add(state.messageAssistantId);
+                chatStore.setIsTyping(false);
+                chatStore.setIsGenerating(false);
+                console.log('[generate_end] 打字内容已完成，直接收尾');
+            } else {
+                // 兜底：如果前端打字组件没有再触发 onEnd，但消息内容已经完全稳定，延迟再检查一次
+                window.setTimeout(() => {
+                    const latestMessage = displayedMessages.value.find(msg => msg.id === state.messageAssistantId);
+                    const latestTypingState = getTypingState(state.messageAssistantId!);
+                    const latestExpectedContent = removeModelTag(latestMessage?.content || state.accumulatedContent);
+                    if (!latestMessage || latestMessage.isStreaming) {
+                        return;
+                    }
+                    if (latestTypingState.typedContent === latestExpectedContent) {
+                        latestTypingState.isTyping = false;
+                        markdownEndedIds.value.add(state.messageAssistantId!);
+                        chatStore.setIsTyping(false);
+                        chatStore.setIsGenerating(false);
+                        console.log('[generate_end] 延迟兜底收尾成功');
+                    }
+                }, 200);
+            }
 
             console.log('[generate_end] 已设置 isStreaming = false，等待打字完成回调');
         }

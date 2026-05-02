@@ -27,6 +27,15 @@ export default function DsMarkdownCMDWrapper(props: DsMarkdownCMDWrapperProps) {
   const cmdRef = useRef<any>(null)
   const prevContentRef = useRef<string>('')
   const isInitializedRef = useRef<boolean>(false)
+  const prevAnswerTypeRef = useRef<'answer' | 'thinking'>(answerType)
+
+  useEffect(() => {
+    if (prevAnswerTypeRef.current !== answerType) {
+      prevContentRef.current = ''
+      isInitializedRef.current = false
+      prevAnswerTypeRef.current = answerType
+    }
+  }, [answerType])
 
   // 当内容变化时，使用 push 方法追加新内容
   useEffect(() => {
