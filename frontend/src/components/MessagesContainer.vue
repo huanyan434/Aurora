@@ -568,9 +568,36 @@ const getShareableMessages = (messages: Message[], targetMessageId: number) => {
         return [];
     }
 
-    return messages
-        .slice(0, targetIndex + 1)
-        .filter((message) => typeof message.id === 'number' && !message.isStreaming);
+    const targetMessage = messages[targetIndex];
+    if (!targetMessage || typeof targetMessage.id !== 'number' || targetMessage.isStreaming) {
+        return [];
+    }
+
+    const sharePair: Message[] = [];
+
+    if (targetMessage.role === 'user') {
+        sharePair.push(targetMessage);
+
+        const nextAssistantMessage = messages
+            .slice(targetIndex + 1)
+            .find((message) => message.role === 'assistant' && typeof message.id === 'number' && !message.isStreaming);
+
+        if (nextAssistantMessage) {
+            sharePair.push(nextAssistantMessage);
+        }
+    } else if (targetMessage.role === 'assistant') {
+        const previousUserMessage = [...messages.slice(0, targetIndex)]
+            .reverse()
+            .find((message) => message.role === 'user' && typeof message.id === 'number' && !message.isStreaming);
+
+        if (previousUserMessage) {
+            sharePair.push(previousUserMessage);
+        }
+
+        sharePair.push(targetMessage);
+    }
+
+    return sharePair;
 };
 
 const copyText = async (text: string) => {
