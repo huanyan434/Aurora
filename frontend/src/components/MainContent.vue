@@ -48,7 +48,6 @@ const route = useRoute();
 const homeInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
 const chatInputAreaRef = ref<InstanceType<typeof InputArea> | null>(null);
 const messagesReady = ref(false);
-const loadingStartTime = ref(0);
 let loadingTimer: number | undefined;
 
 // 定义 emit
@@ -75,8 +74,23 @@ const handleMessagesRenderComplete = (value: boolean) => {
     return;
   }
   messagesReady.value = true;
+  if (loadingTimer !== undefined) {
+    window.clearTimeout(loadingTimer);
+    loadingTimer = undefined;
+  }
 };
 
+const startLoadingFallbackTimer = () => {
+  if (loadingTimer !== undefined) {
+    window.clearTimeout(loadingTimer);
+  }
+  loadingTimer = window.setTimeout(() => {
+    if (!messagesReady.value) {
+      messagesReady.value = true;
+    }
+    loadingTimer = undefined;
+  }, 5000);
+};
 
 const focusInputArea = async () => {
   if (isHomeRoute.value) {
@@ -108,11 +122,11 @@ watch(
 
     if (path !== prevPath && path.startsWith('/c/')) {
       messagesReady.value = false;
-      loadingStartTime.value = Date.now();
       if (loadingTimer !== undefined) {
         window.clearTimeout(loadingTimer);
         loadingTimer = undefined;
       }
+      startLoadingFallbackTimer();
     }
   },
   { immediate: true },

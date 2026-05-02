@@ -98,6 +98,7 @@ type Message struct {
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 	ReasoningContent string    `gorm:"column:reasoning_content;type:mediumtext"`
 	Base64           string    `gorm:"column:base64;type:mediumtext"`
+	Error            string    `gorm:"column:error;type:mediumtext"`
 }
 
 type SharedMessage struct {
@@ -561,6 +562,7 @@ type messageFormat struct {
 	Content          string `json:"content"`
 	Base64           string `json:"base64,omitempty"`
 	ReasoningContent string `json:"reasoning_content,omitempty"`
+	Error            string `json:"error,omitempty"`
 	CreatedAt        string `json:"created_at"`
 }
 
@@ -581,6 +583,7 @@ func LoadConversationHistoryFormat2(conversationID int64) ([]messageFormat, erro
 			Content:          msg.Content,
 			Base64:           msg.Base64,
 			ReasoningContent: msg.ReasoningContent,
+			Error:            msg.Error,
 			CreatedAt:        msg.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
@@ -661,6 +664,7 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 			ConversationID:   conversationID,
 			ReasoningContent: msg.ReasoningContent,
 			Base64:           msg.Base64,
+			Error:            msg.Error,
 		}
 		if err := db.Create(&message).Error; err != nil {
 			return err
@@ -693,28 +697,63 @@ func GetMessageBase64ByID(messageID int64) (string, error) {
 	return message.Base64, nil
 }
 
-func SaveAssistantImageMessage(conversationID int64, messageAssistantID int64, model string, prompt string, base64 string) error {
-	historyMessages, err := LoadConversationHistoryFormat2(conversationID)
+func SaveUserImageMessage(conversationID int64, messageUserID int64, prompt string, base64 string) error {
+	message := Message{
+		ID:             messageUserID,
+		Content:        strings.TrimSpace(prompt),
+		Role:           "user",
+		ConversationID: conversationID,
+		Base64:         base64,
+	}
+	err := GetDB().Create(&message).Error
 	if err != nil {
+		fmt.Printf("[image_db] 保存用户消息失败 conversationID=%d messageUserID=%d err=%v\n", conversationID, messageUserID, err)
 		return err
 	}
+	fmt.Printf("[image_db] 保存用户消息成功 conversationID=%d messageUserID=%d prompt_len=%d base64_len=%d\n", conversationID, messageUserID, len(strings.TrimSpace(prompt)), len(strings.TrimSpace(base64)))
+	return nil
+}
 
+func SaveAssistantImageErrorMessage(conversationID int64, messageAssistantID int64, model string, prompt string, errMsg string) error {
+	content := "<model=" + model + ">"
+
+	message := Message{
+		ID:             messageAssistantID,
+		Content:        content,
+		Role:           "assistant",
+		ConversationID: conversationID,
+		Error:          strings.TrimSpace(errMsg),
+	}
+	err := GetDB().Create(&message).Error
+	if err != nil {
+		fmt.Printf("[image_db] 保存图片错误消息失败 conversationID=%d messageAssistantID=%d err=%v\n", conversationID, messageAssistantID, err)
+		return err
+	}
+	fmt.Printf("[image_db] 保存图片错误消息成功 conversationID=%d messageAssistantID=%d model=%s prompt_len=%d error_len=%d\n", conversationID, messageAssistantID, model, len(strings.TrimSpace(prompt)), len(strings.TrimSpace(errMsg)))
+	return nil
+}
+
+func SaveAssistantImageMessage(conversationID int64, messageAssistantID int64, model string, prompt string, base64 string) error {
 	content := strings.TrimSpace(prompt)
 	if content == "" {
 		content = "[图片生成结果]"
 	}
 	content = "<model=" + model + ">" + content
 
-	historyMessages = append(historyMessages, messageFormat{
+	message := Message{
 		ID:             messageAssistantID,
-		ConversationID: conversationID,
-		Role:           "assistant",
 		Content:        content,
+		Role:           "assistant",
+		ConversationID: conversationID,
 		Base64:         base64,
-		CreatedAt:      time.Now().Format("2006-01-02T15:04:05Z07:00"),
-	})
-
-	return SaveConversationHistoryFormat2(conversationID, historyMessages)
+	}
+	err := GetDB().Create(&message).Error
+	if err != nil {
+		fmt.Printf("[image_db] 保存图片消息失败 conversationID=%d messageAssistantID=%d err=%v\n", conversationID, messageAssistantID, err)
+		return err
+	}
+	fmt.Printf("[image_db] 保存图片消息成功 conversationID=%d messageAssistantID=%d model=%s prompt_len=%d base64_len=%d\n", conversationID, messageAssistantID, model, len(strings.TrimSpace(prompt)), len(strings.TrimSpace(base64)))
+	return nil
 }
 
 func UpdateConversationTitleIfDefault(conversationID int64, title string) error {

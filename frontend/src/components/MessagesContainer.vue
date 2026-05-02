@@ -32,6 +32,11 @@
                             {{ extractModelName(message.rawContent || message.content) }}
                         </div>
 
+                        <!-- 错误内容 -->
+                        <div v-if="message.error" class="whitespace-pre-wrap text-sm leading-6 text-red-600 dark:text-red-400">
+                            {{ message.error }}
+                        </div>
+
                         <!-- 推理内容 -->
                         <ReasoningContent v-if="message.reasoningContent" :content="message.reasoningContent"
                             :reasoning-time="message.reasoningTime || 0" :is-streaming="message.isStreaming || false"
@@ -979,6 +984,7 @@ const setupGlobalGenerateHandler = () => {
                 reasoningContent: state.accumulatedReasoningContent,
                 reasoningTime: state.lastReasoningTime,
                 base64: data.base64 || undefined,
+                error: undefined,
                 isStreaming: true,
             });
 
@@ -992,12 +998,15 @@ const setupGlobalGenerateHandler = () => {
             }
         } else {
             console.error("服务器返回错误:", data.error);
-            toastError(data.error || "生成失败", 15000); // 15 秒
-            // 生成失败时，移除占位消息
             if (state.messageAssistantId) {
-                chatStore.removeMessage(state.messageAssistantId);
+                chatStore.updateMessage(state.messageAssistantId, {
+                    content: data.error || "生成失败",
+                    rawContent: data.error || "生成失败",
+                    isStreaming: false,
+                });
             }
             chatStore.setIsGenerating(false);
+            chatStore.setIsTyping(false);
         }
     };
 
@@ -1166,6 +1175,7 @@ const loadConversationHistory = async (conversationId: number) => {
                     content: cleanContent,
                     rawContent: msg.content || '',
                     base64: msg.base64,
+                    error: msg.error || '',
                     reasoningContent,
                     reasoningTime,
                     createdAt: msg.created_at,

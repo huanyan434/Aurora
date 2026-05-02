@@ -9,6 +9,7 @@ export interface Message {
   content: string;
   rawContent?: string;
   base64?: string; // 用于存储图片的base64数据
+  error?: string; // 用于存储后端错误信息
   reasoningContent?: string; // 推理内容
   reasoningTime?: number; // 推理时间
   isStreaming?: boolean; // 是否正在流式传输

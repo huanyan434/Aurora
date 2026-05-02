@@ -531,12 +531,21 @@ func handleWSTTS(conn *websocket.Conn, user utils.User, prompt string) {
 }
 
 func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
+	fmt.Printf("[image_ws] generate start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s prompt_len=%d base64_len=%d size=%s format=%s quality=%s n=%d\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, len(strings.TrimSpace(req.Prompt)), len(strings.TrimSpace(req.Base64)), req.Size, req.Format, req.Quality, req.N)
 	plannedPointsDeducted, ok := ensureUserPoints(conn, user, req.Model, false, "image_generate_error")
 	if !ok {
 		return
 	}
+	if err := utils.SaveUserImageMessage(req.ConversationID, req.MessageUserID, req.Prompt, req.Base64); err != nil {
+		fmt.Printf("保存图片用户消息失败: %v\n", err)
+	}
 	if strings.TrimSpace(req.Prompt) == "" {
-		sendWSResponse(conn, "image_generate_error", gin.H{"error": "prompt 不能为空"})
+		errMsg := "prompt 不能为空"
+		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 
@@ -549,25 +558,40 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest)
 		Quality: req.Quality,
 	})
 	if err != nil {
-		sendWSResponse(conn, "image_generate_error", gin.H{"error": err.Error()})
+		fmt.Printf("[image_ws] generate upstream error conversationID=%d messageAssistantID=%d err=%v\n", req.ConversationID, req.MessageAssistantID, err)
+		if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, err.Error()); saveErr != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 
 	imageBase64 := strings.TrimSpace(resp.Data[0].B64JSON)
 	if imageBase64 == "" {
-		sendWSResponse(conn, "image_generate_error", gin.H{"error": "生图结果缺少 base64 数据"})
+		errMsg := "生图结果缺少 base64 数据"
+		if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); saveErr != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 	imageBase64 = "data:image/png;base64," + imageBase64
 
 	if err := utils.SaveAssistantImageMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, imageBase64); err != nil {
-		sendWSResponse(conn, "image_generate_error", gin.H{"error": "保存图片消息失败: " + err.Error()})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: "保存图片消息失败: " + err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 
 	if plannedPointsDeducted > 0 {
 		if err := utils.AddPoints(user.ID, -plannedPointsDeducted, "使用生图模型"); err != nil {
-			sendWSResponse(conn, "image_generate_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+			if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, "扣除积分失败: "+err.Error()); saveErr != nil {
+				fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
+			}
+			sendWSResponse(conn, "generate_response", MSG{Success: false, Error: "扣除积分失败: " + err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+			sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 			return
 		}
 	}
@@ -587,22 +611,40 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest)
 }
 
 func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
+	fmt.Printf("[image_ws] edit start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s prompt_len=%d base64_len=%d imageMessageID=%d mask_len=%d size=%s quality=%s n=%d\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, len(strings.TrimSpace(req.Prompt)), len(strings.TrimSpace(req.Base64)), req.ImageMessageID, len(strings.TrimSpace(req.MaskBase64)), req.Size, req.Quality, req.N)
 	plannedPointsDeducted, ok := ensureUserPoints(conn, user, req.Model, false, "image_edit_error")
 	if !ok {
 		return
 	}
+	if err := utils.SaveUserImageMessage(req.ConversationID, req.MessageUserID, req.Prompt, req.Base64); err != nil {
+		fmt.Printf("保存图片用户消息失败: %v\n", err)
+	}
 	if strings.TrimSpace(req.Prompt) == "" {
-		sendWSResponse(conn, "image_edit_error", gin.H{"error": "prompt 不能为空"})
+		errMsg := "prompt 不能为空"
+		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 	if req.ImageMessageID <= 0 {
-		sendWSResponse(conn, "image_edit_error", gin.H{"error": "缺少待编辑图片 messageID"})
+		errMsg := "缺少待编辑图片 messageID"
+		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 
 	sourceBase64, err := utils.GetMessageBase64ByID(req.ImageMessageID)
 	if err != nil {
-		sendWSResponse(conn, "image_edit_error", gin.H{"error": err.Error()})
+		if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, err.Error()); saveErr != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 
@@ -616,25 +658,40 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		Quality: req.Quality,
 	})
 	if err != nil {
-		sendWSResponse(conn, "image_edit_error", gin.H{"error": err.Error()})
+		fmt.Printf("[image_ws] edit upstream error conversationID=%d messageAssistantID=%d err=%v\n", req.ConversationID, req.MessageAssistantID, err)
+		if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, err.Error()); saveErr != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 
 	imageBase64 := strings.TrimSpace(resp.Data[0].B64JSON)
 	if imageBase64 == "" {
-		sendWSResponse(conn, "image_edit_error", gin.H{"error": "图片编辑结果缺少 base64 数据"})
+		errMsg := "图片编辑结果缺少 base64 数据"
+		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 	imageBase64 = "data:image/png;base64," + imageBase64
 
 	if err := utils.SaveAssistantImageMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, imageBase64); err != nil {
-		sendWSResponse(conn, "image_edit_error", gin.H{"error": "保存图片消息失败: " + err.Error()})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: "保存图片消息失败: " + err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
 
 	if plannedPointsDeducted > 0 {
 		if err := utils.AddPoints(user.ID, -plannedPointsDeducted, "使用图片编辑模型"); err != nil {
-			sendWSResponse(conn, "image_edit_error", gin.H{"error": "扣除积分失败: " + err.Error()})
+			if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, "扣除积分失败: "+err.Error()); saveErr != nil {
+				fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
+			}
+			sendWSResponse(conn, "generate_response", MSG{Success: false, Error: "扣除积分失败: " + err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID})
+			sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 			return
 		}
 	}

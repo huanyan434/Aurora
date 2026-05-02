@@ -63,7 +63,11 @@ type ImageEditRequest struct {
 
 type ImageGenerateResponse struct {
 	Created int64 `json:"created"`
-	Data    []struct {
+	Error   *struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	} `json:"error,omitempty"`
+	Data []struct {
 		URL           string `json:"url"`
 		B64JSON       string `json:"b64_json"`
 		RevisedPrompt string `json:"revised_prompt"`
@@ -345,6 +349,16 @@ func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID 
 				MessageContentCacheMutex.RUnlock()
 
 				if aiContent != nil {
+					// 图片模型的消息已由 WS 图片处理器单独落库，避免在这里再次全量重写导致错位
+					if getModelImageCapability(model) == 2 {
+						MessageContentCacheMutex.Lock()
+						delete(MessageContentCache, messageAssistantID)
+						MessageContentCacheMutex.Unlock()
+						ConversationIDMessageIDsMutex.Lock()
+						delete(ConversationIDMessageIDs, conversationID)
+						ConversationIDMessageIDsMutex.Unlock()
+						return
+					}
 					// 从数据库加载历史消息（包含刚才保存的用户消息）
 					historyMessages, err := LoadConversationHistoryFormat2(conversationID)
 					if err != nil {
@@ -511,6 +525,8 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 	if err != nil {
 		return nil, fmt.Errorf("序列化生图请求失败: %v", err)
 	}
+	fmt.Printf("[image_api] generate request url=%s model=%s prompt_len=%d n=%d size=%s format=%s quality=%s\n", strings.TrimRight(config.ImageAPI, "/")+"/images/generations", payload.Model, len(payload.Prompt), payload.N, payload.Size, payload.Format, payload.Quality)
+	fmt.Printf("[image_api] generate request body=%s\n", string(body))
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(config.ImageAPI, "/")+"/images/generations", bytes.NewReader(body))
 	if err != nil {
@@ -528,22 +544,30 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
+		fmt.Printf("[image_api] generate request failed err=%v\n", err)
 		return nil, fmt.Errorf("调用生图接口失败: %v", err)
 	}
 	defer response.Body.Close()
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
+		fmt.Printf("[image_api] generate read body failed status=%d err=%v\n", response.StatusCode, err)
 		return nil, fmt.Errorf("读取生图响应失败: %v", err)
 	}
+	fmt.Printf("[image_api] generate response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
+	fmt.Printf("[image_api] generate response body=%s\n", string(responseBody))
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		fmt.Printf("[image_api] generate response error body=%s\n", strings.TrimSpace(string(responseBody)))
 		return nil, fmt.Errorf("生图接口返回异常状态(%d): %s", response.StatusCode, strings.TrimSpace(string(responseBody)))
 	}
 
 	var imageResp ImageGenerateResponse
 	if err := json.Unmarshal(responseBody, &imageResp); err != nil {
 		return nil, fmt.Errorf("解析生图响应失败: %v", err)
+	}
+	if imageResp.Error != nil && strings.TrimSpace(imageResp.Error.Message) != "" {
+		return nil, fmt.Errorf("生图接口错误: %s", strings.TrimSpace(imageResp.Error.Message))
 	}
 	if len(imageResp.Data) == 0 {
 		return nil, fmt.Errorf("生图结果为空")
@@ -662,6 +686,7 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", writer.FormDataContentType())
+	fmt.Printf("[image_api] edit request url=%s model=%s prompt_len=%d images=%d mask_len=%d n=%d size=%s quality=%s background=%s\n", strings.TrimRight(config.ImageAPI, "/")+"/images/edits", model, len(strings.TrimSpace(req.Prompt)), len(req.Images), len(strings.TrimSpace(req.Mask)), req.N, strings.TrimSpace(req.Size), strings.TrimSpace(req.Quality), strings.TrimSpace(req.Background))
 	imageAPIKey := strings.TrimSpace(config.ImageAPIKey)
 	if imageAPIKey == "" {
 		imageAPIKey = strings.TrimSpace(config.APIKey)
@@ -678,8 +703,11 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
+		fmt.Printf("[image_api] edit read body failed status=%d err=%v\n", response.StatusCode, err)
 		return nil, fmt.Errorf("读取图片编辑响应失败: %v", err)
 	}
+	fmt.Printf("[image_api] edit response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
+	fmt.Printf("[image_api] edit response body=%s\n", string(responseBody))
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("图片编辑接口返回异常状态(%d): %s", response.StatusCode, strings.TrimSpace(string(responseBody)))
 	}
@@ -687,6 +715,9 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 	var imageResp ImageGenerateResponse
 	if err := json.Unmarshal(responseBody, &imageResp); err != nil {
 		return nil, fmt.Errorf("解析图片编辑响应失败: %v", err)
+	}
+	if imageResp.Error != nil && strings.TrimSpace(imageResp.Error.Message) != "" {
+		return nil, fmt.Errorf("图片编辑接口错误: %s", strings.TrimSpace(imageResp.Error.Message))
 	}
 	if len(imageResp.Data) == 0 {
 		return nil, fmt.Errorf("图片编辑结果为空")
@@ -748,9 +779,10 @@ func executeImageGenerateTool(client *openai.Client, ctx context.Context, reqPar
 	if prompt == "" {
 		return messages, stream, fmt.Errorf("image_generate prompt 不能为空")
 	}
+	fmt.Printf("[tool_call] image_generate start model=%s prompt=%q size=%s quality=%s\n", model, prompt, strings.TrimSpace(size), strings.TrimSpace(quality))
 
 	imageResp, err := GenerateImage(ctx, ImageGenerateRequest{
-		Model:   "gpt-image-2",
+		Model:   "gpt-image-1.5",
 		Prompt:  prompt,
 		N:       1,
 		Size:    strings.TrimSpace(size),
@@ -817,9 +849,10 @@ func executeImageEditTool(client *openai.Client, ctx context.Context, reqParams 
 	if strings.TrimSpace(sourceImage) == "" {
 		return messages, stream, fmt.Errorf("image_edit 缺少源图片")
 	}
+	fmt.Printf("[tool_call] image_edit start prompt=%q quality=%s source_len=%d\n", prompt, strings.TrimSpace(quality), len(strings.TrimSpace(sourceImage)))
 
 	imageResp, err := EditImage(ctx, ImageEditRequest{
-		Model:   "gpt-image-2",
+		Model:   "gpt-image-1.5",
 		Prompt:  prompt,
 		Images:  []string{sourceImage},
 		N:       1,
