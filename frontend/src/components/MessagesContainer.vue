@@ -94,6 +94,10 @@
                         <Share2 class="message-action-icon" />
                     </button>
 
+                    <button v-if="message.role === 'assistant'" @click="handleRegenerateMessage(message.id)" class="copy-btn">
+                        <RefreshCcw class="message-action-icon" />
+                    </button>
+
                     <button v-if="message.role === 'user'" @click="openDeleteDialog(message.id)" class="delete-btn">
                         <Trash2 class="message-action-icon" />
                     </button>
@@ -174,7 +178,7 @@ import type { Message } from '@/stores/chat';
 import ReasoningContent from "./ReasoningContent.vue";
 import DsMarkdown from "./DsMarkdown.vue";
 import DsMarkdownCMD from "./DsMarkdownCMD.vue";
-import { Copy, Share2, Trash2 } from 'lucide-vue-next';
+import { Copy, Share2, Trash2, RefreshCcw } from 'lucide-vue-next';
 import { toastSuccess, toastError, toastInfo } from "@/components/ui/toast/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -588,7 +592,7 @@ const getShareableMessages = (messages: Message[], targetMessageId: number) => {
         return [];
     }
 
-    const targetMessage = messages[targetIndex];
+    const targetMessage = messages[targetIndex]!;
     if (!targetMessage || typeof targetMessage.id !== 'number' || targetMessage.isStreaming) {
         return [];
     }
@@ -704,7 +708,57 @@ const handleShareMessage = async () => {
     }
 };
 
-// 复制消息内容到剪贴板
+const handleRegenerateMessage = async (messageId: number | undefined) => {
+    if (messageId === undefined) return;
+
+    const conversationId = currentConversationId.value;
+    if (isNaN(conversationId)) return;
+
+    const messages = chatStore.getMessagesByConversationId(conversationId) || [];
+    const targetIndex = messages.findIndex(msg => msg.id === messageId);
+    if (targetIndex === -1) {
+        toastError('未找到要重新生成的消息');
+        return;
+    }
+
+    const targetMessage = messages[targetIndex]!;
+    const previousUserMessage = [...messages.slice(0, targetIndex)].reverse().find(msg => msg.role === 'user');
+    if (!previousUserMessage) {
+        toastError('未找到对应的用户消息');
+        return;
+    }
+
+    const messageAssistantId = messageId;
+    const model = extractModelName(targetMessage.rawContent || targetMessage.content) || chatStore.selectedModel;
+    const base64 = previousUserMessage.base64 || '';
+
+    chatStore.updateMessage(messageAssistantId, {
+        content: '',
+        rawContent: '',
+        reasoningContent: '',
+        reasoningTime: 0,
+        base64: undefined,
+        error: undefined,
+        isStreaming: true,
+        isHistory: false,
+    });
+
+    const state = getWsGenerateState(conversationId);
+    state.messageAssistantId = messageAssistantId;
+    state.accumulatedContent = '';
+    state.accumulatedReasoningContent = '';
+    state.lastReasoningTime = 0;
+
+    await wsManager.send({
+        type: 'regenerate',
+        conversationID: conversationId,
+        messageAssistantID: messageAssistantId,
+        targetMessageID: messageId,
+        model,
+        base64,
+    });
+};
+
 const copyMessage = async (content: string) => {
     try {
         // 在复制之前移除 <model=xxx> 标签

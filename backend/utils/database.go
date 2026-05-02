@@ -1356,6 +1356,70 @@ func SearchOrder(orderId string) (bool, error) {
 	return true, nil
 }
 
+func DeleteMessagesByIDs(messageIDs []int64) error {
+	db := GetDB()
+	if len(messageIDs) == 0 {
+		return nil
+	}
+	return db.Table("messages").Where("id IN ?", messageIDs).Delete(&Message{}).Error
+}
+
+func GetMessageIDsAfterConversationMessage(conversationID int64, messageID int64) ([]int64, error) {
+	db := GetDB()
+	var target Message
+	if err := db.Table("messages").Where("id = ? AND conversation_id = ?", messageID, conversationID).First(&target).Error; err != nil {
+		return nil, err
+	}
+
+	var messages []Message
+	if err := db.Table("messages").Where("conversation_id = ?", conversationID).Order("created_at ASC, id ASC").Find(&messages).Error; err != nil {
+		return nil, err
+	}
+
+	deleteIDs := make([]int64, 0)
+	found := false
+	for _, msg := range messages {
+		if found {
+			deleteIDs = append(deleteIDs, msg.ID)
+			continue
+		}
+		if msg.ID == target.ID {
+			found = true
+			deleteIDs = append(deleteIDs, msg.ID)
+		}
+	}
+	return deleteIDs, nil
+}
+
+func GetPreviousUserMessageBefore(conversationID int64, messageID int64) (*Message, error) {
+	db := GetDB()
+	var target Message
+	if err := db.Table("messages").Where("id = ? AND conversation_id = ?", messageID, conversationID).First(&target).Error; err != nil {
+		return nil, err
+	}
+
+	var messages []Message
+	if err := db.Table("messages").Where("conversation_id = ?", conversationID).Order("created_at ASC, id ASC").Find(&messages).Error; err != nil {
+		return nil, err
+	}
+
+	var previousUser *Message
+	for _, msg := range messages {
+		if msg.ID == target.ID {
+			break
+		}
+		if msg.Role == "user" {
+			copyMsg := msg
+			previousUser = &copyMsg
+		}
+	}
+
+	if previousUser == nil {
+		return nil, fmt.Errorf("未找到对应的用户消息")
+	}
+	return previousUser, nil
+}
+
 func DeleteMessage(messageID int64) {
 	db := GetDB()
 	var message Message

@@ -251,6 +251,15 @@ func prepareVisualPrompt(ctx context.Context, model string, prompt string, base6
 
 // ThreadOpenai 使用并发处理 OpenAI 请求，返回一个通道以实现类似 Python yield 的功能
 func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64 string, reasoning bool) <-chan string {
+	historyMessages, err := LoadConversationHistoryFormat2(conversationID)
+	if err != nil {
+		fmt.Printf("加载历史消息失败：%v\n", err)
+		historyMessages = []messageFormat{}
+	}
+	return threadOpenaiWithHistory(conversationID, messageUserID, messageAssistantID, model, prompt, base64, reasoning, historyMessages)
+}
+
+func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64 string, reasoning bool, historyMessages []messageFormat) <-chan string {
 	threadID := strconv.FormatInt(conversationID, 10)
 
 	// 1. 检查线程是否已存在

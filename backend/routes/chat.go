@@ -246,6 +246,8 @@ func wsHandler(c *gin.Context) {
 		switch req.Type {
 		case "generate":
 			handleWSGenerate(conn, userInfo, req)
+		case "regenerate":
+			handleWSRegenerate(conn, userInfo, req)
 		case "stop":
 			handleWSStop(conn, req.ConversationID)
 		case "thread_list":
@@ -288,6 +290,7 @@ type WSRequest struct {
 	Reasoning          bool   `json:"reasoning"`
 	MessageID          int64  `json:"messageID"`
 	ImageMessageID     int64  `json:"imageMessageID"`
+	TargetMessageID    int64  `json:"targetMessageID"`
 	MaskBase64         string `json:"maskBase64"`
 	Size               string `json:"size"`
 	Format             string `json:"format"`
@@ -347,7 +350,105 @@ func ensureUserPoints(conn *websocket.Conn, user utils.User, modelID string, rea
 	return plannedPoints, true
 }
 
+func extractModelFromMessageContent(content string) string {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return ""
+	}
+	if !strings.HasPrefix(content, "<model=") {
+		return ""
+	}
+	end := strings.Index(content, ">")
+	if end <= 7 {
+		return ""
+	}
+	return strings.TrimSpace(content[7:end])
+}
+
 // WebSocket: 生成 AI 回复
+func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
+	if req.TargetMessageID <= 0 {
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: "缺少待重生成的消息 ID", ConversationID: req.ConversationID})
+		return
+	}
+
+	var targetMessage utils.Message
+	if err := utils.GetDB().Table("messages").Where("id = ? AND conversation_id = ?", req.TargetMessageID, req.ConversationID).First(&targetMessage).Error; err != nil {
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID})
+		return
+	}
+
+	previousUser, err := utils.GetPreviousUserMessageBefore(req.ConversationID, req.TargetMessageID)
+	if err != nil {
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID})
+		return
+	}
+
+	deleteIDs, err := utils.GetMessageIDsAfterConversationMessage(req.ConversationID, req.TargetMessageID)
+	if err != nil {
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID})
+		return
+	}
+
+	if err := utils.DeleteMessagesByIDs(deleteIDs); err != nil {
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID})
+		return
+	}
+
+	messageUserID := previousUser.ID
+	messageAssistantID := req.MessageAssistantID
+	if messageUserID == 0 || messageAssistantID == 0 {
+		messageUserID = req.MessageUserID
+		if messageUserID == 0 {
+			messageUserID = req.TargetMessageID
+		}
+		if messageAssistantID == 0 {
+			messageAssistantID = req.TargetMessageID
+		}
+	}
+
+	prompt := previousUser.Content
+	base64 := previousUser.Base64
+	reasoning := false
+	model := extractModelFromMessageContent(targetMessage.Content)
+	if model == "" {
+		model = req.Model
+	}
+
+	if strings.TrimSpace(base64) != "" && req.Type == "regenerate" {
+		// 保持图片重生成走 image_generate 的语义
+		if messageAssistantID == 0 {
+			messageAssistantID = req.TargetMessageID
+		}
+		handleWSImageGenerate(conn, user, WSRequest{
+			ConversationID:     req.ConversationID,
+			MessageUserID:      messageUserID,
+			MessageAssistantID: messageAssistantID,
+			Prompt:             prompt,
+			Model:              model,
+			Base64:             base64,
+			Size:               req.Size,
+			Quality:            req.Quality,
+			N:                  req.N,
+		})
+		return
+	}
+
+	if messageAssistantID == 0 {
+		messageAssistantID = req.TargetMessageID
+	}
+
+	handleWSGenerate(conn, user, WSRequest{
+		ConversationID:     req.ConversationID,
+		MessageUserID:      messageUserID,
+		MessageAssistantID: messageAssistantID,
+		Prompt:             prompt,
+		Model:              model,
+		Base64:             base64,
+		Reasoning:          reasoning,
+	})
+}
+
 func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	fmt.Printf("[积分检查][WS] userID=%d model=%s reasoning=%v points=%d isMember=%v memberLevel=%s\n", user.ID, req.Model, req.Reasoning, user.Points, user.IsMember, user.MemberLevel)
 
