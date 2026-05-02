@@ -5,13 +5,15 @@
             <div v-for="(message, index) in displayedMessages" :key="message.id || index" class="flex flex-col"
                 :class="message.role === 'user' ? 'items-end' : 'items-start'"
                 @mouseenter="hoveredMessageId = message.id || null" @mouseleave="hoveredMessageId = null">
+                <div v-if="message.role === 'user'" class="message-meta-row message-meta-row-user">
+                    <span :class="['message-time', hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1 ? 'message-time-user-visible' : 'message-time-user-hidden']">{{ formatTime(message.createdAt) }}</span>
+                </div>
                 <div :class="[
                     'rounded-lg px-4 py-3',
                     message.role === 'user'
                         ? 'bg-gray-100 dark:bg-user-msg-bg user-message'
                         : 'assistant-message',
                 ]">
-                    <!-- 用户消息 -->
                     <div v-if="message.role === 'user'">
                         <!-- 文本内容 -->
                         <div v-if="message.content" class="text-gray-800 dark:text-gray-200"
@@ -28,8 +30,10 @@
                     <div v-else>
                         <!-- 模型名称显示 -->
                         <div v-if="extractModelName(message.rawContent || message.content)"
-                            class="mb-2 text-sm text-gray-500 dark:text-gray-300">
-                            {{ extractModelName(message.rawContent || message.content) }}
+                            class="mb-2 share-model-role">
+                            <span>{{ extractModelName(message.rawContent || message.content) }}</span>
+                            <span v-if="hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1"
+                                class="message-time message-time-inline">{{ formatTime(message.createdAt) }}</span>
                         </div>
 
                         <!-- 错误内容 -->
@@ -45,7 +49,7 @@
                         <!-- 图片附件 -->
                         <div v-if="message.base64" class="mt-2">
                             <img :src="getImageSrc(message.base64)" alt="助手返回的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700"
-                                @error="handleImageError" />
+                                @load="() => message.isHistory && handleHistoryMessageEnd(message.id)" @error="handleImageError" />
                         </div>
 
                         <!-- 回复内容 - 根据 isHistory 字段选择组件 -->
@@ -223,6 +227,7 @@ const emit = defineEmits<{
 emit("render-complete", false);
 const totalHistoryCount = ref(0);
 const renderedHistoryCount = ref(0);
+const historyCompletedIds = ref(new Set<number>());
 
 /**
  * 滚动消息区域到底部
@@ -316,6 +321,8 @@ const displayedMessages = computed(() => {
     // 更新总历史消息数
     const historyMessages = messages.filter((message) => message.role === 'assistant' && message.isHistory);
     totalHistoryCount.value = historyMessages.length;
+    renderedHistoryCount.value = 0;
+    historyCompletedIds.value = new Set<number>();
 
     // 为每条消息添加 markdownEnded 状态
     return messages.map(msg => ({
@@ -365,7 +372,9 @@ watch(hasActiveAssistantRendering, (active) => {
  */
 const handleHistoryMessageEnd = (messageId: number | undefined) => {
     if (messageId === undefined) return;
+    if (historyCompletedIds.value.has(messageId)) return;
 
+    historyCompletedIds.value.add(messageId);
     markdownEndedIds.value.add(messageId);
     renderedHistoryCount.value++;
 
@@ -1131,6 +1140,21 @@ const extractModelName = (content: string) => {
     return null;
 };
 
+const formatTime = (time: string) => {
+    const date = new Date(time);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
 const removeModelTag = (content: string) => {
     if (!content) return '';
     return content.replace(/<model=[^>]+>/g, '').trim();
@@ -1371,13 +1395,54 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     color: #6b7280;
     /* text-gray-500 */
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.message-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.message-meta-row-user {
+    justify-content: flex-end;
+}
+
+.message-time {
+    font-size: 12px;
+    font-weight: 400;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+.message-time-user-hidden {
+    color: #ffffff;
+}
+
+.message-time-user-visible {
+    color: #9ca3af;
+}
+
+.dark .message-time-user-visible {
+    color: #9ca3af;
+}
+
+.message-time-inline {
+    margin-left: 8px;
+}
+
+.share-model-role {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    letter-spacing: 0;
 }
 
 .message-action-icon {
