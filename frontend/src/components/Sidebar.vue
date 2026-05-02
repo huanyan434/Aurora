@@ -62,7 +62,7 @@ const handleConversationSelected = () => {
     if (sidebarHeaderRef.value) {
         sidebarHeaderRef.value.closeSearch();
     }
-    if (!sidebarStore.collapsed) {
+    if (!sidebarStore.collapsed && window.innerWidth < 1135) {
         sidebarStore.setSidebarCollapsed(true);
     }
 };
