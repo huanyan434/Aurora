@@ -54,7 +54,7 @@
                         <!-- 图片附件 -->
                         <div v-if="message.base64" class="mt-2">
                             <img :src="getImageSrc(message.base64)" alt="助手返回的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700"
-                                @load="() => message.isHistory && handleHistoryMessageEnd(message.id)" @error="handleImageError" />
+                                @load="() => handleHistoryImageLoad(message.id)" @error="handleImageError" />
                         </div>
 
                         <!-- 回复内容 - 根据 isHistory 字段选择组件 -->
@@ -243,7 +243,12 @@ const emit = defineEmits<{
 emit("render-complete", false);
 const totalHistoryCount = ref(0);
 const renderedHistoryCount = ref(0);
+const textHistoryCount = ref(0);
+const imageHistoryCount = ref(0);
+const emptyHistoryCount = ref(0);
 const historyCompletedIds = ref(new Set<number>());
+const historyRenderFinalizeScheduled = ref(false);
+const lastHistoryLogSignature = ref('');
 
 /**
  * 滚动消息区域到底部
@@ -330,18 +335,6 @@ const isMessageInProgress = (message: Message) => {
     return Boolean(message.isStreaming || typingStates.value.get(message.id || -1)?.isTyping);
 };
 
-const shouldAutoCompleteHistoryMessage = (message: Message) => {
-    if (message.role !== 'assistant') {
-        return false;
-    }
-
-    if (!message.isHistory) {
-        return false;
-    }
-
-    // 错误消息或纯图片消息没有可靠的 onEnd，直接视为已完成，避免历史渲染卡住
-    return Boolean(message.error) || (Boolean(message.base64) && !message.content);
-};
 
 const isImageGenerationPlaceholder = (message: Message) => {
     return message.role === 'assistant'
@@ -358,12 +351,37 @@ const displayedMessages = computed(() => {
     const messages = chatStore.getMessagesByConversationId(convId) || [];
     // 更新总历史消息数
     const historyMessages = messages.filter((message) => message.role === 'assistant' && message.isHistory);
-    totalHistoryCount.value = historyMessages.length;
+    textHistoryCount.value = historyMessages.filter((message) => !message.error && !message.base64).length;
+    imageHistoryCount.value = historyMessages.filter((message) => Boolean(message.base64)).length;
+    emptyHistoryCount.value = historyMessages.filter((message) => Boolean(message.error) || (!message.base64 && !message.content)).length;
+    totalHistoryCount.value = textHistoryCount.value + imageHistoryCount.value;
     renderedHistoryCount.value = 0;
     historyCompletedIds.value = new Set<number>();
 
+    historyRenderFinalizeScheduled.value = false;
+
+    const historyLogSignature = `${convId}:${historyMessages.map((message) => `${message.id || 'null'}:${message.messageKind || 'unknown'}:${message.base64 ? 'base64' : 'no-base64'}:${message.error ? 'error' : 'ok'}`).join('|')}`;
+    if (lastHistoryLogSignature.value !== historyLogSignature) {
+        lastHistoryLogSignature.value = historyLogSignature;
+        console.log('[history-render] 初始化', {
+            conversationId: convId,
+            textTotal: textHistoryCount.value,
+            imageTotal: imageHistoryCount.value,
+            emptyTotal: emptyHistoryCount.value,
+            messages: historyMessages.map((message) => ({
+                id: message.id,
+                role: message.role,
+                isHistory: message.isHistory,
+                kind: message.messageKind || 'unknown',
+                hasBase64: Boolean(message.base64),
+                hasError: Boolean(message.error),
+                contentLength: message.content ? message.content.length : 0,
+            })),
+        });
+    }
+
     historyMessages.forEach((message) => {
-        if (shouldAutoCompleteHistoryMessage(message) && message.id) {
+        if ((Boolean(message.error) || (!message.base64 && !message.content)) && message.id && !historyCompletedIds.value.has(message.id)) {
             historyCompletedIds.value.add(message.id);
             markdownEndedIds.value.add(message.id);
             renderedHistoryCount.value++;
@@ -416,8 +434,32 @@ watch(hasActiveAssistantRendering, (active) => {
  * 历史消息渲染完成后强制滚动到底部
  * @param messageId 消息 ID
  */
+const handleHistoryImageLoad = (messageId: number | undefined) => {
+    if (messageId === undefined) return;
+    console.log('[history-render] 图片 load', {
+        messageId,
+        hasHistory: true,
+    });
+    handleHistoryMessageEnd(messageId);
+};
+
+/**
+ * 处理历史消息的 onEnd 回调
+ * 历史消息渲染完成后强制滚动到底部
+ * @param messageId 消息 ID
+ */
 const handleHistoryMessageEnd = (messageId: number | undefined) => {
     if (messageId === undefined) return;
+
+    console.log('[history-render] 回调进入', {
+        messageId,
+        total: totalHistoryCount.value,
+        completed: renderedHistoryCount.value,
+        remaining: Math.max(totalHistoryCount.value - renderedHistoryCount.value, 0),
+        historyCompletedIds: Array.from(historyCompletedIds.value),
+    });
+
+    if (historyRenderFinalizeScheduled.value) return;
     if (historyCompletedIds.value.has(messageId)) return;
 
     historyCompletedIds.value.add(messageId);
@@ -426,6 +468,13 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
 
     // 检查是否所有历史消息都渲染完成
     if (renderedHistoryCount.value >= totalHistoryCount.value && totalHistoryCount.value > 0) {
+        historyRenderFinalizeScheduled.value = true;
+        console.log('[history-render] 启动稳定检测', {
+            total: totalHistoryCount.value,
+            completed: renderedHistoryCount.value,
+            remaining: 0,
+        });
+
         // 使用 nextTick + 双 RAF 确保 DOM 渲染稳定
         nextTick().then(() => {
             let lastHeight = 0;
@@ -445,6 +494,12 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
             const checkStable = () => {
                 checkCount++;
                 const currentHeight = containerRef.value?.scrollHeight || 0;
+                console.log('[history-render] 稳定检测帧', {
+                    checkCount,
+                    currentHeight,
+                    lastHeight,
+                    stableFrames,
+                });
                 if (currentHeight === lastHeight) {
                     stableFrames++;
                     if (stableFrames >= 2) {
@@ -1095,6 +1150,7 @@ const setupGlobalGenerateHandler = () => {
                 reasoningContent: state.accumulatedReasoningContent,
                 reasoningTime: state.lastReasoningTime,
                 messageKind: data.messageKind || undefined,
+                base64: data.base64 || undefined,
                 error: undefined,
                 isStreaming: true,
             });
@@ -1304,6 +1360,7 @@ const loadConversationHistory = async (conversationId: number) => {
                     role: msg.role,
                     content: cleanContent,
                     rawContent: msg.content || '',
+                    base64: msg.base64,
                     messageKind: msg.message_kind || msg.messageKind || undefined,
                     error: msg.error || '',
                     reasoningContent,
