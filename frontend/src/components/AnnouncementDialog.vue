@@ -28,8 +28,8 @@
       </div>
 
       <DialogFooter class="announcement-dialog-footer">
-        <Button variant="outline" class="announcement-dialog-secondary" @click="handleDismissToday">
-          今日不再提示
+        <Button variant="outline" class="announcement-dialog-secondary" @click="handleDismissForever">
+          不再显示
         </Button>
         <Button class="announcement-dialog-primary" @click="handleConfirm">
           我知道了
@@ -121,24 +121,24 @@ const loadAnnouncement = async () => {
   }
 };
 
-const dismissAnnouncement = () => {
-  if (typeof window !== 'undefined' && announcement.value.version) {
+const dismissAnnouncement = (persist: boolean) => {
+  if (persist && typeof window !== 'undefined' && announcement.value.version) {
     window.localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, announcement.value.version);
   }
   open.value = false;
 };
 
 const handleConfirm = () => {
-  dismissAnnouncement();
+  dismissAnnouncement(false);
 };
 
-const handleDismissToday = () => {
-  dismissAnnouncement();
+const handleDismissForever = () => {
+  dismissAnnouncement(true);
 };
 
 const handleOpenChange = (nextOpen: boolean) => {
   if (!nextOpen) {
-    dismissAnnouncement();
+    open.value = false;
     return;
   }
 
