@@ -21,8 +21,8 @@
 
                         <!-- 图片附件 -->
                         <div v-if="message.base64" class="mt-2">
-                            <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded"
-                                @error="handleImageError" />
+                            <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded cursor-pointer"
+                                @click="openImagePreview(message.base64)" @error="handleImageError" />
                         </div>
                     </div>
 
@@ -53,8 +53,8 @@
 
                         <!-- 图片附件 -->
                         <div v-if="message.base64" class="mt-2">
-                            <img :src="getImageSrc(message.base64)" alt="助手返回的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700"
-                                @load="() => handleHistoryImageLoad(message.id)" @error="handleImageError" />
+                            <img :src="getImageSrc(message.base64)" alt="助手返回的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700 cursor-pointer"
+                                @click="openImagePreview(message.base64)" @load="() => handleHistoryImageLoad(message.id)" @error="handleImageError" />
                         </div>
 
                         <!-- 回复内容 - 根据 isHistory 字段选择组件 -->
@@ -114,6 +114,13 @@
                         <Trash2 class="message-action-icon" />
                     </button>
                 </div>
+            </div>
+
+            <div v-if="isImagePreviewOpen" class="image-preview-overlay" @click="handlePreviewMaskClick">
+                <button class="image-preview-close" @click="closeImagePreview" aria-label="关闭图片预览">
+                    <X class="image-preview-close-icon" />
+                </button>
+                <img :src="previewImageSrc" alt="图片预览" class="image-preview-image" />
             </div>
 
             <!-- 分享链接对话框 -->
@@ -190,7 +197,7 @@ import type { Message } from '@/stores/chat';
 import ReasoningContent from "./ReasoningContent.vue";
 import DsMarkdown from "./DsMarkdown.vue";
 import DsMarkdownCMD from "./DsMarkdownCMD.vue";
-import { Copy, Share2, Trash2, RefreshCcw } from 'lucide-vue-next';
+import { Copy, Share2, Trash2, RefreshCcw, X } from 'lucide-vue-next';
 import { toastSuccess, toastError, toastInfo } from "@/components/ui/toast/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -335,6 +342,25 @@ const isMessageInProgress = (message: Message) => {
     return Boolean(message.isStreaming || typingStates.value.get(message.id || -1)?.isTyping);
 };
 
+
+const previewImageSrc = ref('');
+const isImagePreviewOpen = ref(false);
+
+const openImagePreview = (src: string) => {
+    previewImageSrc.value = getImageSrc(src);
+    isImagePreviewOpen.value = true;
+};
+
+const closeImagePreview = () => {
+    isImagePreviewOpen.value = false;
+    previewImageSrc.value = '';
+};
+
+const handlePreviewMaskClick = (event: MouseEvent) => {
+    if (event.target === event.currentTarget) {
+        closeImagePreview();
+    }
+};
 
 const isImageModel = (modelName: string | undefined) => {
     if (!modelName) return false;
@@ -1579,6 +1605,55 @@ onUnmounted(() => {
     border-color: #374151;
     background-color: #111827;
     color: #f3f4f6;
+}
+
+.image-preview-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(4px);
+    padding: 24px;
+}
+
+.image-preview-image {
+    max-width: min(92vw, 1200px);
+    max-height: 88vh;
+    width: auto;
+    height: auto;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    object-fit: contain;
+}
+
+.image-preview-close {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 1201;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #111827;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.image-preview-close:hover {
+    transform: scale(1.05);
+    background: #ffffff;
+}
+
+.image-preview-close-icon {
+    width: 20px;
+    height: 20px;
 }
 
 .share-dialog-placeholder {
