@@ -330,6 +330,19 @@ const isMessageInProgress = (message: Message) => {
     return Boolean(message.isStreaming || typingStates.value.get(message.id || -1)?.isTyping);
 };
 
+const shouldAutoCompleteHistoryMessage = (message: Message) => {
+    if (message.role !== 'assistant') {
+        return false;
+    }
+
+    if (!message.isHistory) {
+        return false;
+    }
+
+    // 错误消息或纯图片消息没有可靠的 onEnd，直接视为已完成，避免历史渲染卡住
+    return Boolean(message.error) || (Boolean(message.base64) && !message.content);
+};
+
 const isImageGenerationPlaceholder = (message: Message) => {
     return message.role === 'assistant'
         && Boolean(message.isStreaming)
@@ -348,6 +361,14 @@ const displayedMessages = computed(() => {
     totalHistoryCount.value = historyMessages.length;
     renderedHistoryCount.value = 0;
     historyCompletedIds.value = new Set<number>();
+
+    historyMessages.forEach((message) => {
+        if (shouldAutoCompleteHistoryMessage(message) && message.id) {
+            historyCompletedIds.value.add(message.id);
+            markdownEndedIds.value.add(message.id);
+            renderedHistoryCount.value++;
+        }
+    });
 
     // 为每条消息添加 markdownEnded 状态
     return messages.map(msg => ({
