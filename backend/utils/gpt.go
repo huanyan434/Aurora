@@ -569,11 +569,11 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		fmt.Printf("[image_api] generate read body failed status=%d err=%v\n", response.StatusCode, err)
+		fmt.Printf("[image_api] generate read body failed status=%d content_length=%d err=%v\n", response.StatusCode, response.ContentLength, err)
 		return nil, fmt.Errorf("读取生图响应失败: %v", err)
 	}
 	fmt.Printf("[image_api] generate response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
-	fmt.Printf("[image_api] generate response body_len=%d\n", len(responseBody))
+	fmt.Printf("[image_api] generate response body=%s\n", string(responseBody))
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		fmt.Printf("[image_api] generate response error body=%s\n", strings.TrimSpace(string(responseBody)))
@@ -721,11 +721,11 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		fmt.Printf("[image_api] edit read body failed status=%d err=%v\n", response.StatusCode, err)
+		fmt.Printf("[image_api] edit read body failed status=%d content_length=%d err=%v\n", response.StatusCode, response.ContentLength, err)
 		return nil, fmt.Errorf("读取图片编辑响应失败: %v", err)
 	}
 	fmt.Printf("[image_api] edit response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
-	fmt.Printf("[image_api] edit response body_len=%d\n", len(responseBody))
+	fmt.Printf("[image_api] edit response body=%s\n", string(responseBody))
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("图片编辑接口返回异常状态(%d): %s", response.StatusCode, strings.TrimSpace(string(responseBody)))
 	}
@@ -792,7 +792,7 @@ func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams 
 	return messages, nil, nil
 }
 
-func executeImageGenerateTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, model string, prompt string, size string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
+func executeImageGenerateTool(_ *openai.Client, ctx context.Context, _ *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, model string, prompt string, size string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
 		return messages, stream, fmt.Errorf("image_generate prompt 不能为空")
@@ -849,7 +849,7 @@ func executeImageGenerateTool(client *openai.Client, ctx context.Context, reqPar
 	return messages, nil, nil
 }
 
-func executeImageEditTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, prompt string, sourceImage string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
+func executeImageEditTool(_ *openai.Client, ctx context.Context, _ *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, prompt string, sourceImage string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
 		return messages, stream, fmt.Errorf("image_edit prompt 不能为空")
@@ -1510,13 +1510,13 @@ func ClearMessageContent(messageAssistantID int64) {
 
 // Response OpenAI API 响应结构
 type Response struct {
-	Success             bool   `json:"success"`
-	Content             string `json:"content"`
-	ReasoningContent    string `json:"reasoningContent"`
-	Error               string `json:"error"`
-	Base64              string `json:"base64,omitempty"`
-	PointsDeducted      int    `json:"pointsDeducted,omitempty"`
-	PointsDeductReason  string `json:"pointsDeductReason,omitempty"`
+	Success            bool   `json:"success"`
+	Content            string `json:"content"`
+	ReasoningContent   string `json:"reasoningContent"`
+	Error              string `json:"error"`
+	Base64             string `json:"base64,omitempty"`
+	PointsDeducted     int    `json:"pointsDeducted,omitempty"`
+	PointsDeductReason string `json:"pointsDeductReason,omitempty"`
 }
 
 // ParseThinkBlock 解析推理内容，返回推理时间和推理内容
