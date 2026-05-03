@@ -270,7 +270,7 @@ func wsHandler(c *gin.Context) {
 		case "stt":
 			handleWSSTT(conn, userInfo, req.Base64)
 		case "image_generate":
-			handleWSImageGenerate(conn, userInfo, req)
+			handleWSImageGenerate(conn, userInfo, req, true) // 新生成图片时需要保存用户消息
 		case "image_edit":
 			handleWSImageEdit(conn, userInfo, req)
 		case "resume_check":
@@ -446,7 +446,7 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			Size:               req.Size,
 			Quality:            req.Quality,
 			N:                  req.N,
-		})
+		}, false) // 重新生成时不需要保存用户消息
 		return
 	}
 
@@ -658,29 +658,29 @@ func handleWSTTS(conn *websocket.Conn, user utils.User, prompt string) {
 	sendWSResponse(conn, "tts_response", gin.H{"data": data})
 }
 
-func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
-	fmt.Printf("[image_ws] generate start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model)
-	
+func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest, saveUserMessage bool) {
+	fmt.Printf("[image_ws] generate start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s saveUserMessage=%v\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, saveUserMessage)
+
 	// 检查图片尺寸权限
 	size := strings.TrimSpace(req.Size)
 	if size == "" {
 		size = "1024x1024"
 	}
-	
+
 	// 定义不同会员等级可以使用的图片尺寸
 	validSizes := map[string][]string{
 		"free": {"1024x1024", "1536x1024", "1024x1536"},
 		"VIP":  {"1024x1024", "1536x1024", "1024x1536", "2048x2048", "2048x1152"},
 		"SVIP": {"1024x1024", "1536x1024", "1024x1536", "2048x2048", "2048x1152", "3840x2160", "2160x3840"},
 	}
-	
+
 	// 获取用户等级对应的可用尺寸
 	userLevel := "free"
 	if user.IsMember {
 		userLevel = user.MemberLevel
 	}
 	allowedSizes := validSizes[userLevel]
-	
+
 	// 检查请求的尺寸是否在允许范围内
 	isAllowed := false
 	for _, allowedSize := range allowedSizes {
@@ -689,7 +689,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest)
 			break
 		}
 	}
-	
+
 	if !isAllowed {
 		errMsg := fmt.Sprintf("当前会员等级 (%s) 不支持该图片尺寸: %s", userLevel, size)
 		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
@@ -699,15 +699,20 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest)
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
-	
+
 	// 积分检查
 	plannedPointsDeducted, ok := ensureUserPoints(conn, user, req.Model, false, "image_generate_error")
 	if !ok {
 		return
 	}
-	if err := utils.SaveUserImageMessage(req.ConversationID, req.MessageUserID, req.Prompt, req.Base64); err != nil {
-		fmt.Printf("保存图片用户消息失败: %v\n", err)
+	
+	// 只有在需要时才保存用户消息
+	if saveUserMessage {
+		if err := utils.SaveUserImageMessage(req.ConversationID, req.MessageUserID, req.Prompt, req.Base64); err != nil {
+			fmt.Printf("保存图片用户消息失败: %v\n", err)
+		}
 	}
+	
 	if strings.TrimSpace(req.Prompt) == "" {
 		errMsg := "prompt 不能为空"
 		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
@@ -787,6 +792,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 	if !ok {
 		return
 	}
+	// 图片编辑时需要保存用户消息
 	if err := utils.SaveUserImageMessage(req.ConversationID, req.MessageUserID, req.Prompt, req.Base64); err != nil {
 		fmt.Printf("保存图片用户消息失败: %v\n", err)
 	}

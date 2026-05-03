@@ -705,8 +705,15 @@ func SaveUserImageMessage(conversationID int64, messageUserID int64, prompt stri
 		ConversationID: conversationID,
 		Base64:         base64,
 	}
+	
+	// 尝试创建消息，如果主键冲突则返回错误
 	err := GetDB().Create(&message).Error
 	if err != nil {
+		// 检查是否是主键冲突错误
+		if strings.Contains(err.Error(), "Duplicate entry") && strings.Contains(err.Error(), "PRIMARY") {
+			fmt.Printf("[image_db] 主键冲突，消息ID已存在 conversationID=%d messageUserID=%d err=%v\n", conversationID, messageUserID, err)
+			return fmt.Errorf("message ID already exists: %d", messageUserID)
+		}
 		fmt.Printf("[image_db] 保存用户消息失败 conversationID=%d messageUserID=%d err=%v\n", conversationID, messageUserID, err)
 		return err
 	}
