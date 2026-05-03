@@ -562,7 +562,10 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 		request.Header.Set("Authorization", "Bearer "+imageAPIKey)
 	}
 
-	response, err := http.DefaultClient.Do(request)
+	client := &http.Client{
+		Timeout: 360 * time.Second,
+	}
+	response, err := client.Do(request)
 	if err != nil {
 		fmt.Printf("[image_api] generate request failed err=%v\n", err)
 		return nil, fmt.Errorf("调用生图接口失败: %v", err)
@@ -715,7 +718,10 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 		request.Header.Set("Authorization", "Bearer "+imageAPIKey)
 	}
 
-	response, err := http.DefaultClient.Do(request)
+	client := &http.Client{
+		Timeout: 360 * time.Second,
+	}
+	response, err := client.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("调用图片编辑接口失败: %v", err)
 	}
