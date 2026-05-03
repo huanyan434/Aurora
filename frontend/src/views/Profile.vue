@@ -169,7 +169,7 @@
                 </div>
                 <div class="plan-header">
                   <span class="plan-name">月VIP</span>
-                  <span class="plan-price">￥5.00</span>
+                  <span class="plan-price">￥10.00</span>
                 </div>
                 <ul class="plan-features">
                   <li>VIP使用模型半价（积分）</li>
@@ -189,7 +189,7 @@
                 </div>
                 <div class="plan-header">
                   <span class="plan-name">季VIP</span>
-                  <span class="plan-price">￥15.00</span>
+                  <span class="plan-price">￥30.00</span>
                 </div>
                 <ul class="plan-features">
                   <li>VIP使用模型半价（积分）</li>
@@ -204,14 +204,14 @@
 
               <div class="pricing-plan pricing-plan-featured">
                 <div class="plan-topline">
-                  <span class="plan-badge plan-badge-featured">推荐</span>
+                  <span class="plan-badge plan-badge-vip">VIP</span>
                   <span class="plan-duration">年卡</span>
                 </div>
                 <div class="plan-header">
                   <span class="plan-name">年VIP</span>
                   <div class="plan-price-container">
-                    <span class="plan-original-price">￥60.00</span>
-                    <span class="plan-price">￥55.00</span>
+                    <span class="plan-original-price">￥120.00</span>
+                    <span class="plan-price">￥108.00</span>
                   </div>
                 </div>
                 <ul class="plan-features">
@@ -227,12 +227,12 @@
 
               <div class="pricing-plan">
                 <div class="plan-topline">
-                  <span class="plan-badge plan-badge-svip">SVIP</span>
+                  <span class="plan-badge plan-badge-featured">推荐</span>
                   <span class="plan-duration">月卡</span>
                 </div>
                 <div class="plan-header">
                   <span class="plan-name">月SVIP</span>
-                  <span class="plan-price">￥10.00</span>
+                  <span class="plan-price">￥20.00</span>
                 </div>
                 <ul class="plan-features">
                   <li>SVIP使用模型免费</li>
@@ -253,8 +253,7 @@
                 <div class="plan-header">
                   <span class="plan-name">季SVIP</span>
                   <div class="plan-price-container">
-                    <span class="plan-original-price">￥30.00</span>
-                    <span class="plan-price">￥25.00</span>
+                    <span class="plan-price">￥60.00</span>
                   </div>
                 </div>
                 <ul class="plan-features">
@@ -276,8 +275,8 @@
                 <div class="plan-header">
                   <span class="plan-name">年SVIP</span>
                   <div class="plan-price-container">
-                    <span class="plan-original-price">￥120.00</span>
-                    <span class="plan-price">￥108.00</span>
+                    <span class="plan-original-price">￥240.00</span>
+                    <span class="plan-price">￥216.00</span>
                   </div>
                 </div>
                 <ul class="plan-features">
