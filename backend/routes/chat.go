@@ -55,6 +55,7 @@ type MSG struct {
 	IsUserMessage       bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
 	PointsDeducted      int    `json:"pointsDeducted,omitempty"`
 	ModelName           string `json:"modelName,omitempty"`
+	StreamSource        string `json:"streamSource,omitempty"`
 }
 
 // WebSocket 响应消息
@@ -496,6 +497,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			Content:            parsedResponse.Content,
 			ConversationID:     req.ConversationID,
 			MessageAssistantID: req.MessageAssistantID,
+			StreamSource:       "live",
 		}
 		sendWSResponse(conn, "generate_response", msg)
 
@@ -847,157 +849,151 @@ func handleWSSTT(conn *websocket.Conn, user utils.User, base64 string) {
 func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int64) {
 	fmt.Printf("[续流检查] 用户 ID=%d, 对话 ID=%d\n", userID, conversationID)
 
-	// 检查 MessageContentCache 中所有属于当前用户的消息（不管 Completed 状态）
+	utils.ResumeCheckRegistryMutex.Lock()
+	if lastAt, exists := utils.ResumeCheckRegistry[conversationID]; exists && time.Since(lastAt) < 3*time.Second {
+		utils.ResumeCheckRegistryMutex.Unlock()
+		sendWSResponse(conn, "resume_status", gin.H{
+			"status":  "streaming",
+			"message": "续流已接管，忽略重复刷新",
+		})
+		return
+	}
+	utils.ResumeCheckRegistry[conversationID] = time.Now()
+	utils.ResumeCheckRegistryMutex.Unlock()
+
+	threadID := strconv.FormatInt(conversationID, 10)
+	utils.ThreadMutex.RLock()
+	_, threadExists := utils.ThreadRegistry[threadID]
+	utils.ThreadMutex.RUnlock()
+
+	if !threadExists {
+		sendWSResponse(conn, "resume_status", gin.H{
+			"status":  "completed",
+			"message": "没有进行中的对话",
+		})
+		return
+	}
+
 	utils.MessageContentCacheMutex.RLock()
-	var pendingMessages []gin.H
+	type resumeMessage struct {
+		messageAssistantID int64
+		content           *utils.MessageContent
+	}
+	var pendingMessages []resumeMessage
 	cacheCount := 0
 	for messageAssistantID, content := range utils.MessageContentCache {
+		if content == nil || content.Completed {
+			continue
+		}
 		cacheCount++
 		fmt.Printf("[续流检查] 缓存消息 ID=%d, Completed=%v, 内容长度=%d\n",
 			messageAssistantID, content.Completed, len(content.Content))
 
-		// 检查这个消息是否属于当前用户
-		// 方法 1：查询数据库
 		_, msgUserID, err := utils.GetMessageWithUser(messageAssistantID)
 		if err != nil {
-			// 方法 2：检查 ConversationIDMessageIDs 映射（运行时动态创建）
 			utils.ConversationIDMessageIDsMutex.RLock()
-			found := false
 			for convID, convMsgID := range utils.ConversationIDMessageIDs {
-				if convMsgID.MessageAssistantID == messageAssistantID {
-					// 通过这个对话 ID 查询用户 ID
-					var conv utils.Conversation
-					if err2 := utils.GetDB().Table("conversations").Where("id = ?", convID).First(&conv).Error; err2 == nil {
-						msgUserID = conv.UserID
-						found = true
-						fmt.Printf("[续流检查] 从 ConversationIDMessageIDs 找到消息，用户 ID=%d\n", msgUserID)
-						break
-					}
+				if convMsgID.MessageAssistantID != messageAssistantID {
+					continue
+				}
+				var conv utils.Conversation
+				if err2 := utils.GetDB().Table("conversations").Where("id = ?", convID).First(&conv).Error; err2 == nil {
+					msgUserID = conv.UserID
+					err = nil
+					break
 				}
 			}
 			utils.ConversationIDMessageIDsMutex.RUnlock()
-
-			if !found {
+			if err != nil {
 				fmt.Printf("[续流检查] 无法确定消息归属：%v\n", err)
 				continue
 			}
 		}
 
-		fmt.Printf("[续流检查] 消息用户 ID=%d, 当前用户 ID=%d, 匹配=%v\n",
-			msgUserID, userID, msgUserID == userID)
-
 		if msgUserID == userID {
-			pendingMessages = append(pendingMessages, gin.H{
-				"messageAssistantID": messageAssistantID,
-				"content":            content,
+			pendingMessages = append(pendingMessages, resumeMessage{
+				messageAssistantID: messageAssistantID,
+				content:           content,
 			})
 		}
 	}
 	utils.MessageContentCacheMutex.RUnlock()
 
-	fmt.Printf("[续流检查] 缓存总数=%d, 匹配的消息数=%d\n", cacheCount, len(pendingMessages))
+	fmt.Printf("[续流检查] 缓存总数=%d, 匹配的消息数=%d, threadExists=%v\n", cacheCount, len(pendingMessages), threadExists)
 
 	if len(pendingMessages) == 0 {
-		// 没有缓存消息
-		fmt.Printf("[续流检查] 没有缓存消息\n")
 		sendWSResponse(conn, "resume_status", gin.H{
-			"status":  "completed",
-			"message": "没有进行中的对话",
+			"status":  "streaming",
+			"message": "生成正在进行中，但暂无可续传缓存",
 		})
 		return
 	}
-
-	// 筛选出未完成的消息
-	var uncompletedMessages []map[string]interface{}
+	hasRenderableContent := false
 	for _, msg := range pendingMessages {
-		content := msg["content"].(*utils.MessageContent)
-		if !content.Completed {
-			uncompletedMessages = append(uncompletedMessages, msg)
-		}
-	}
-
-	// 如果没有未完成的消息
-	if len(uncompletedMessages) == 0 {
-		fmt.Printf("[续流检查] 所有消息已完成，不发送缓存内容\n")
-		sendWSResponse(conn, "resume_status", gin.H{
-			"status":  "completed",
-			"message": "没有进行中的对话",
-		})
-		return
-	}
-
-	// 检查是否有内容可以发送
-	hasContent := false
-	for _, msg := range uncompletedMessages {
-		content := msg["content"].(*utils.MessageContent)
-		if content.Content != "" || content.ReasoningContent != "" {
-			hasContent = true
+		if msg.content != nil && (msg.content.ReasoningContent != "" || msg.content.Content != "") {
+			hasRenderableContent = true
 			break
 		}
 	}
 
-	if hasContent {
-		// 有缓存内容，发送续流通知
-		fmt.Printf("[续流检查] 发现 %d 条未完成的缓存消息，发送续流\n", len(uncompletedMessages))
+	if hasRenderableContent {
+		// 先声明进入续流状态，让前端先创建占位消息，再回放缓存内容
 		sendWSResponse(conn, "resume_status", gin.H{
 			"status":  "resuming",
 			"message": "检测到缓存的对话内容，正在续流...",
 		})
 
-		// 发送缓存内容
-		for _, msg := range uncompletedMessages {
-			content := msg["content"].(*utils.MessageContent)
-
-			// 发送缓存的推理内容（如果有）
+		for _, msg := range pendingMessages {
+			content := msg.content
+			if content == nil {
+				continue
+			}
+			if content != nil {
+				content.ResumeMode = true
+			}
 			if content.ReasoningContent != "" {
 				sendWSResponse(conn, "generate_response", MSG{
-					Success:          true,
-					ReasoningContent: content.ReasoningContent,
-					Content:          "",
-					ReasoningTime:    content.ReasoningTime,
-					IsCached:         true,
+					Success:            true,
+					ReasoningContent:   content.ReasoningContent,
+					ReasoningTime:      content.ReasoningTime,
+					ConversationID:     conversationID,
+					MessageAssistantID: msg.messageAssistantID,
+					IsCached:           true,
+					StreamSource:       "resume",
 				})
 				time.Sleep(50 * time.Millisecond)
 			}
-			// 发送缓存的正文内容
 			if content.Content != "" {
 				sendWSResponse(conn, "generate_response", MSG{
-					Success:          true,
-					ReasoningContent: "",
-					Content:          content.Content,
-					ReasoningTime:    0,
-					IsCached:         true,
+					Success:            true,
+					Content:            content.Content,
+					ConversationID:     conversationID,
+					MessageAssistantID: msg.messageAssistantID,
+					IsCached:           true,
+					StreamSource:       "resume",
 				})
 				time.Sleep(50 * time.Millisecond)
 			}
 		}
-
-		// 发送完缓存内容后，直接返回，不再检查线程状态
+		sendWSResponse(conn, "resume_status", gin.H{
+			"status":  "streaming",
+			"message": "缓存内容已发送，继续接收后续内容",
+		})
 		return
-	} else {
-		// 没有缓存内容，但生成正在进行
-		fmt.Printf("[续流检查] 生成正在进行中，但暂无缓存内容\n")
-
-		// 检查线程是否还在运行
-		threadID := strconv.FormatInt(conversationID, 10)
-		utils.ThreadMutex.RLock()
-		_, threadExists := utils.ThreadRegistry[threadID]
-		utils.ThreadMutex.RUnlock()
-
-		if threadExists {
-			// 生成还在进行中
-			sendWSResponse(conn, "resume_status", gin.H{
-				"status":  "streaming",
-				"message": "生成正在进行中，将继续接收后续内容",
-			})
-		} else {
-			// 生成已完成
-			sendWSResponse(conn, "resume_status", gin.H{
-				"status":  "completed",
-				"message": "没有进行中的对话",
-			})
-		}
 	}
+
+	if threadExists {
+		sendWSResponse(conn, "resume_status", gin.H{
+			"status":  "streaming",
+			"message": "生成正在进行中，将继续接收后续内容",
+		})
+		return
+	}
+
+	sendWSResponse(conn, "resume_status", gin.H{
+		"status":  "completed",
+		"message": "没有进行中的对话",
+	})
 }
 
 // @Summary 生成 AI 回复
@@ -1153,6 +1149,7 @@ func generateHandler(c *gin.Context) {
 			Content:            parsedResponse.Content,
 			ConversationID:     req.ConversationID,
 			MessageAssistantID: req.MessageAssistantID,
+			StreamSource:       "live",
 		}
 
 		jsonData, _ := json.Marshal(msg)

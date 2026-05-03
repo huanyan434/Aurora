@@ -240,6 +240,7 @@ interface TypingState {
     expectedContent: string;  // 预期要打印的完整内容（从后端流式接收）
     typedContent: string;     // 已经打印的内容（从 onTypedChar 回调获取）
     isTyping: boolean;        // 是否正在打字
+    finalized: boolean;       // 是否已经完成最终收尾
 }
 const typingStates = ref<Map<number, TypingState>>(new Map());
 
@@ -255,6 +256,8 @@ const imageHistoryCount = ref(0);
 const emptyHistoryCount = ref(0);
 const expectedHistoryIds = ref<Set<number>>(new Set());
 const historyCompletedIds = ref<Set<number>>(new Set());
+const historyWaitingForResumeComplete = ref(false);
+const resumeRequestFinished = ref(false);
 const historyRenderFinalizeScheduled = ref(false);
 const lastHistoryLogSignature = ref('');
 
@@ -431,44 +434,71 @@ const displayedMessages = computed(() => {
     }));
 });
 
-const hasActiveAssistantRendering = computed(() => {
-    return displayedMessages.value.some((message) => isMessageInProgress(message as Message));
-});
-
-const finalizeAssistantRendering = async () => {
-    await scrollMessagesAreaToBottom(true);
-
-    await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                const container = containerRef.value;
-                if (container) {
-                    container.scrollTop = container.scrollHeight;
-                }
-                resolve();
-            });
-        });
-    });
-
-    followBottomPhase.value = 'idle';
-};
-
 watch(currentConversationId, () => {
     resetHistoryRenderState();
     markdownEndedIds.value = new Set<number>();
     renderedHistoryCount.value = 0;
 }, { immediate: true });
 
-watch(hasActiveAssistantRendering, (active) => {
-    if (active) {
-        followBottomPhase.value = 'following';
-        runFollowBottomLoop();
-        void scrollMessagesAreaToBottom();
-        return;
-    }
+watch(() => chatStore.isGenerating, (isGenerating) => {
+    if (!isGenerating && historyWaitingForResumeComplete.value && renderedHistoryCount.value >= expectedHistoryIds.value.size && expectedHistoryIds.value.size > 0) {
+        historyWaitingForResumeComplete.value = false;
+        historyRenderFinalizeScheduled.value = true;
+        console.log('[history-render] resume 完成，启动最终稳定检测');
+        nextTick().then(() => {
+            let lastHeight = 0;
+            let stableFrames = 0;
+            let checkCount = 0;
 
-    void finalizeAssistantRendering();
-}, { immediate: true });
+            const timeoutId = setTimeout(() => {
+                if (containerRef.value) {
+                    containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                }
+                emit('render-complete', true);
+                console.log('emit 超时');
+            }, 10000);
+
+            const checkStable = () => {
+                checkCount++;
+                const currentHeight = containerRef.value?.scrollHeight || 0;
+                console.log('[history-render] 稳定检测帧', {
+                    checkCount,
+                    currentHeight,
+                    lastHeight,
+                    stableFrames,
+                });
+                if (currentHeight === lastHeight) {
+                    stableFrames++;
+                    if (stableFrames >= 2) {
+                        clearTimeout(timeoutId);
+                        if (containerRef.value) {
+                            containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                        }
+                        emit('render-complete', true);
+                        console.log('emit: complete');
+                        return;
+                    }
+                } else {
+                    stableFrames = 0;
+                    lastHeight = currentHeight;
+                }
+
+                if (checkCount > 100) {
+                    clearTimeout(timeoutId);
+                    if (containerRef.value) {
+                        containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                    }
+                    emit('render-complete', true);
+                    console.log('emit 循环');
+                    return;
+                }
+
+                requestAnimationFrame(checkStable);
+            };
+            requestAnimationFrame(checkStable);
+        });
+    }
+});
 
 
 
@@ -512,6 +542,10 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
 
     // 检查是否所有历史消息都渲染完成
     if (renderedHistoryCount.value >= expectedHistoryIds.value.size && expectedHistoryIds.value.size > 0) {
+        if (historyWaitingForResumeComplete.value) {
+            console.log('[history-render] 等待 resume 消息渲染完成后再 emit render-complete');
+            return;
+        }
         historyRenderFinalizeScheduled.value = true;
         console.log('[history-render] 启动稳定检测', {
             total: totalHistoryCount.value,
@@ -592,6 +626,7 @@ const getTypingState = (messageId: number): TypingState => {
             expectedContent: '',
             typedContent: '',
             isTyping: false,
+            finalized: false,
         });
     }
     return typingStates.value.get(messageId)!;
@@ -604,6 +639,7 @@ const handleTypedChar = (messageId: number | undefined, data?: any) => {
     if (messageId === undefined) return;
 
     const state = getTypingState(messageId);
+    if (state.finalized) return;
 
     // 更新已打字内容
     if (data && data.content !== undefined) {
@@ -619,6 +655,7 @@ const handleTypedChar = (messageId: number | undefined, data?: any) => {
     if (state.typedContent === state.expectedContent && !message.isStreaming) {
         console.log('[handleTypedChar] 打字完成，消息 ID:', messageId);
         state.isTyping = false;
+        state.finalized = true;
         markdownEndedIds.value.add(messageId);
         chatStore.setIsTyping(false);
         chatStore.setIsGenerating(false);
@@ -632,13 +669,20 @@ const handleStreamMessageEnd = (messageId: number | undefined) => {
     if (messageId === undefined) return;
 
     const state = getTypingState(messageId);
+    if (state.finalized) return;
     const message = displayedMessages.value.find(msg => msg.id === messageId);
     if (!message) return;
 
     console.log('[handleStreamMessageEnd] 打字结束，消息 ID:', messageId);
     state.typedContent = state.expectedContent;
     state.isTyping = false;
+    state.finalized = true;
     markdownEndedIds.value.add(messageId);
+    if (currentResumeRenderedCallback && message.isStreaming === false) {
+        const resumeCallback = currentResumeRenderedCallback;
+        currentResumeRenderedCallback = null;
+        resumeCallback();
+    }
     chatStore.setIsTyping(false);
     chatStore.setIsGenerating(false);
 };
@@ -1068,6 +1112,7 @@ const wsGenerateStates = new Map<number, {
     accumulatedContent: string;
     accumulatedReasoningContent: string;
     lastReasoningTime: number;
+    lastStreamSignature: string;
 }>();
 
 // 获取当前对话的生成状态
@@ -1078,6 +1123,7 @@ const getWsGenerateState = (conversationId: number) => {
             accumulatedContent: "",
             accumulatedReasoningContent: "",
             lastReasoningTime: 0,
+            lastStreamSignature: "",
         });
     }
     return wsGenerateStates.get(conversationId)!;
@@ -1088,6 +1134,8 @@ let currentGenerateHandler: ((data: any) => void) | null = null;
 let currentGenerateEndHandler: ((data: any) => void) | null = null;
 let currentConnectedHandler: (() => void) | null = null;
 let currentResumeStatusHandler: ((data: any) => void) | null = null;
+let currentResumeRenderedCallback: (() => void) | null = null;
+
 
 // 全局生成响应处理器 - 处理 InputArea 发送的生成请求的响应
 const setupGlobalGenerateHandler = () => {
@@ -1098,47 +1146,103 @@ const setupGlobalGenerateHandler = () => {
         const convId = currentConversationId.value;
         if (isNaN(convId)) return;
 
-        // 只在 resuming 状态时创建占位消息
+        const state = getWsGenerateState(convId);
+        const messages = chatStore.getMessagesByConversationId(convId);
+        const lastMessage = messages[messages.length - 1];
+        const lastAssistantMessage = [...messages].reverse().find(msg => msg.role === 'assistant');
+
         if (data.status === 'resuming') {
-            // 检查是否已经有流式消息
-            const messages = chatStore.getMessagesByConversationId(convId);
             const hasStreamingMessage = messages.some(msg => msg.role === 'assistant' && msg.isStreaming);
-
+            const resumeMessageId = data.messageAssistantID || state.messageAssistantId || Date.now();
             if (!hasStreamingMessage) {
-                // 创建续流占位消息
-                console.log('[续流] 创建占位消息');
-                const tempMessage = {
-                    id: Date.now(), // 临时 ID
-                    role: 'assistant' as const,
-                    content: '',
-                    rawContent: '',
-                    reasoningContent: '',
-                    reasoningTime: 0,
-                    conversationID: convId,
-                    createdAt: new Date().toISOString(),
-                    isStreaming: true,
-                    isHistory: false, // 续流消息不是历史消息，使用 DsMarkdownCMD
-                };
-                chatStore.addMessage(convId, tempMessage);
+                const existingMessage = chatStore.getMessagesByConversationId(convId).find(msg => msg.id === resumeMessageId && msg.role === 'assistant');
+                if (!existingMessage) {
+                    console.log('[续流] 创建占位消息', {
+                        tempMessageId: resumeMessageId,
+                        hasLastAssistantMessage: Boolean(lastAssistantMessage),
+                        hasLastMessage: Boolean(lastMessage),
+                    });
 
-                // 更新状态中的 messageAssistantId
-                const state = getWsGenerateState(convId);
-                state.messageAssistantId = tempMessage.id;
+                    const tempMessage = {
+                        id: resumeMessageId,
+                        role: 'assistant' as const,
+                        content: '',
+                        rawContent: '',
+                        reasoningContent: '',
+                        reasoningTime: 0,
+                        conversationID: convId,
+                        createdAt: new Date().toISOString(),
+                        isStreaming: true,
+                        isHistory: false,
+                        disableTyping: false,
+                        messageKind: 'text' as const,
+                    };
+                    chatStore.addMessage(convId, tempMessage);
+                    void scrollMessagesAreaToBottom(true);
+                }
 
-                // 初始化打字状态
-                const typingState = getTypingState(tempMessage.id);
+                state.messageAssistantId = resumeMessageId;
+                state.accumulatedContent = '';
+                state.accumulatedReasoningContent = '';
+                state.lastReasoningTime = 0;
+
+                const typingState = getTypingState(resumeMessageId);
                 typingState.expectedContent = '';
                 typingState.typedContent = '';
-                typingState.isTyping = true;
+                typingState.isTyping = false;
 
-                // 设置全局状态
+                currentResumeRenderedCallback = () => {
+                    historyWaitingForResumeComplete.value = false;
+                    resumeRequestFinished.value = true;
+                    if (renderedHistoryCount.value >= expectedHistoryIds.value.size && expectedHistoryIds.value.size > 0) {
+                        historyRenderFinalizeScheduled.value = true;
+                        console.log('[history-render] resume 消息渲染完成，启动最终稳定检测');
+                    }
+                };
+
                 chatStore.setIsGenerating(true);
-                chatStore.setIsTyping(true);
-
-                console.log('[续流] 占位消息已创建，ID:', tempMessage.id);
+                chatStore.setIsTyping(false);
             }
+            return;
         }
-        // streaming 状态不需要创建占位消息，只是表示生成正在进行
+
+        if (data.status === 'streaming') {
+            const fallbackId = data.messageAssistantID
+                || state.messageAssistantId
+                || lastAssistantMessage?.id
+                || Date.now();
+
+            if (!state.messageAssistantId) {
+                state.messageAssistantId = fallbackId;
+            }
+
+            const existingMessage = chatStore.getMessagesByConversationId(convId).find(msg => msg.id === fallbackId && msg.role === 'assistant');
+            if (!existingMessage) {
+                const placeholderSource = lastMessage?.role === 'assistant' ? lastMessage : null;
+                chatStore.addMessage(convId, {
+                    id: fallbackId,
+                    role: 'assistant',
+                    content: placeholderSource?.content || '',
+                    rawContent: placeholderSource?.rawContent || '',
+                    reasoningContent: placeholderSource?.reasoningContent || '',
+                    reasoningTime: placeholderSource?.reasoningTime || 0,
+                    conversationID: convId,
+                    createdAt: placeholderSource?.createdAt || new Date().toISOString(),
+                    isStreaming: true,
+                    isHistory: false,
+                    disableTyping: false,
+                    messageKind: placeholderSource?.messageKind || 'text',
+                });
+            }
+            chatStore.setIsTyping(true);
+            chatStore.setIsGenerating(false);
+            return;
+        }
+
+        if (data.status === 'completed') {
+            chatStore.setIsGenerating(false);
+            chatStore.setIsTyping(false);
+        }
     };
 
     // 保存处理器引用并注册
@@ -1159,16 +1263,31 @@ const setupGlobalGenerateHandler = () => {
         if (data.messageAssistantID && !state.messageAssistantId) {
             state.messageAssistantId = data.messageAssistantID;
         }
-        if (data.isCached && !state.messageAssistantId) {
-            const messages = chatStore.getMessagesByConversationId(convId);
-            const lastAssistantMessage = messages.reverse().find(msg => msg.role === 'assistant' && msg.isStreaming);
-            if (lastAssistantMessage && lastAssistantMessage.id) {
-                state.messageAssistantId = lastAssistantMessage.id;
-                console.log('[缓存消息] 找到续流占位消息，ID:', lastAssistantMessage.id);
-            } else {
-                console.warn('[缓存消息] 未找到续流占位消息，忽略');
+        if (data.isCached) {
+            const fallbackId = data.messageAssistantID || state.messageAssistantId;
+            if (!fallbackId) {
+                console.warn('[缓存消息] 缺少 messageAssistantID，忽略');
                 return;
             }
+            state.messageAssistantId = fallbackId;
+            const existingMessage = chatStore.getMessagesByConversationId(convId).find(msg => msg.id === fallbackId && msg.role === 'assistant');
+            if (!existingMessage) {
+                chatStore.addMessage(convId, {
+                    id: fallbackId,
+                    role: 'assistant',
+                    content: '',
+                    rawContent: '',
+                    reasoningContent: '',
+                    reasoningTime: 0,
+                    conversationID: convId,
+                    createdAt: new Date().toISOString(),
+                    isStreaming: true,
+                    isHistory: false,
+                    disableTyping: false,
+                    messageKind: 'text',
+                });
+            }
+            console.log('[缓存消息] 找到续流占位消息，ID:', fallbackId);
         }
 
         if (!state.messageAssistantId) {
@@ -1186,6 +1305,20 @@ const setupGlobalGenerateHandler = () => {
         }
 
         if (data.success) {
+            const streamSource = data.streamSource || (data.isCached ? 'resume' : 'live');
+            const chunkSignature = [
+                String(state.messageAssistantId),
+                streamSource,
+                data.reasoningContent || '',
+                data.content || '',
+                String(data.reasoningTime ?? ''),
+            ].join('|');
+            if (state.lastStreamSignature === chunkSignature) {
+                console.log('[generate_response] 跳过重复增量', chunkSignature);
+                return;
+            }
+            state.lastStreamSignature = chunkSignature;
+
             // 累加内容（缓存消息和流式消息处理方式相同）
             state.accumulatedContent += data.content || "";
             state.accumulatedReasoningContent += data.reasoningContent || "";
@@ -1248,43 +1381,48 @@ const setupGlobalGenerateHandler = () => {
 
         console.log('[generate_end] 消息 ID:', state.messageAssistantId);
 
-        // 设置消息为非流式状态（但不设置 isGenerating = false）
-        // 由打字完成回调统一收尾，避免实际已打完却被固定超时误判
-        if (state.messageAssistantId) {
+        if (data.streamSource === 'resume') {
+            if (state.messageAssistantId) {
+                const currentMessage = displayedMessages.value.find(msg => msg.id === state.messageAssistantId);
+                const currentModelName = currentMessage?.modelName || extractModelName(currentMessage?.rawContent || currentMessage?.content || state.accumulatedContent) || undefined;
+                const finalCreatedAt = currentMessage?.createdAt || new Date().toISOString();
+                chatStore.updateMessage(state.messageAssistantId, {
+                    content: removeModelTag(state.accumulatedContent || currentMessage?.content || ''),
+                    rawContent: state.accumulatedContent || currentMessage?.rawContent || '',
+                    reasoningContent: state.accumulatedReasoningContent || currentMessage?.reasoningContent || '',
+                    reasoningTime: state.lastReasoningTime || currentMessage?.reasoningTime || 0,
+                    isStreaming: false,
+                    modelName: currentModelName,
+                    createdAt: finalCreatedAt,
+                });
+                handleStreamMessageEnd(state.messageAssistantId);
+            }
+            historyWaitingForResumeComplete.value = false;
+            chatStore.setIsTyping(false);
+            chatStore.setIsGenerating(false);
+        } else if (state.messageAssistantId) {
+            const currentMessage = displayedMessages.value.find(msg => msg.id === state.messageAssistantId);
+            const currentModelName = currentMessage?.modelName || extractModelName(currentMessage?.rawContent || currentMessage?.content || state.accumulatedContent) || undefined;
+            const finalCreatedAt = currentMessage?.createdAt || new Date().toISOString();
             chatStore.updateMessage(state.messageAssistantId, {
                 isStreaming: false,
+                modelName: currentModelName,
+                createdAt: finalCreatedAt,
             });
 
             const typingState = getTypingState(state.messageAssistantId);
-            const finalExpectedContent = removeModelTag(state.accumulatedContent);
-            typingState.expectedContent = finalExpectedContent;
-
-            if (typingState.typedContent === finalExpectedContent) {
+            if (typingState.finalized) {
+                console.log('[generate_end] 已完成最终收尾，跳过重复处理');
+            } else {
+                const finalExpectedContent = removeModelTag(state.accumulatedContent);
+                typingState.expectedContent = finalExpectedContent;
                 typingState.isTyping = false;
+                typingState.finalized = true;
                 markdownEndedIds.value.add(state.messageAssistantId);
                 chatStore.setIsTyping(false);
                 chatStore.setIsGenerating(false);
-                console.log('[generate_end] 打字内容已完成，直接收尾');
-            } else {
-                // 兜底：如果前端打字组件没有再触发 onEnd，但消息内容已经完全稳定，延迟再检查一次
-                window.setTimeout(() => {
-                    const latestMessage = displayedMessages.value.find(msg => msg.id === state.messageAssistantId);
-                    const latestTypingState = getTypingState(state.messageAssistantId!);
-                    const latestExpectedContent = removeModelTag(latestMessage?.content || state.accumulatedContent);
-                    if (!latestMessage || latestMessage.isStreaming) {
-                        return;
-                    }
-                    if (latestTypingState.typedContent === latestExpectedContent) {
-                        latestTypingState.isTyping = false;
-                        markdownEndedIds.value.add(state.messageAssistantId!);
-                        chatStore.setIsTyping(false);
-                        chatStore.setIsGenerating(false);
-                        console.log('[generate_end] 延迟兜底收尾成功');
-                    }
-                }, 200);
+                console.log('[generate_end] 已收尾完成');
             }
-
-            console.log('[generate_end] 已设置 isStreaming = false，等待打字完成回调');
         }
 
         // 显示积分扣除提示
@@ -1296,12 +1434,13 @@ const setupGlobalGenerateHandler = () => {
             }
         }
 
-        // 重置该对话的状态
+        // 重置该对话的流式状态，避免收尾后的残留状态影响后续展示
         wsGenerateStates.set(conversationId, {
             messageAssistantId: null,
             accumulatedContent: "",
             accumulatedReasoningContent: "",
             lastReasoningTime: 0,
+            lastStreamSignature: "",
         });
     };
 
@@ -1780,8 +1919,8 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     color: #6b7280;
     /* text-gray-500 */
     border-radius: 50%;

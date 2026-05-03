@@ -37,6 +37,9 @@ type ConversationIDMessageID struct {
 type MessageContent struct {
 	ReasoningContent string
 	Content          string
+	ReasoningChunks   []string
+	ContentChunks     []string
+	ResumeMode       bool
 	ReasoningTime    int
 	Completed        bool // 是否已完成
 }
@@ -90,6 +93,10 @@ var (
 	// 缓存每个消息的完整内容，用于断点续传
 	MessageContentCache      = make(map[int64]*MessageContent)
 	MessageContentCacheMutex sync.RWMutex
+
+	// 记录 conversation 的续流接管状态，避免重复刷新时重复回放同一批缓存
+	ResumeCheckRegistry      = make(map[int64]time.Time)
+	ResumeCheckRegistryMutex sync.Mutex
 )
 
 // 初始化队列
@@ -344,14 +351,7 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 		err := TaskQueue.QueueTask(func(ctx context.Context) error {
 			// 确保在函数退出时清理资源
 			defer func() {
-				// 标记消息内容为已完成
-				MessageContentCacheMutex.Lock()
-				if content, exists := MessageContentCache[messageAssistantID]; exists {
-					content.Completed = true
-				}
-				MessageContentCacheMutex.Unlock()
-
-				// 生成完成后，只保存AI消息到数据库（用户消息已经保存过了）
+				// 生成完成后，只保存 AI 消息到数据库（用户消息已经保存过了）
 				// 从缓存中获取完整的 AI 回复内容
 				MessageContentCacheMutex.RLock()
 				aiContent := MessageContentCache[messageAssistantID]
@@ -385,9 +385,11 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 						}
 
 						// 添加 AI 回复到消息列表（使用前端传来的 messageAssistantID）
-						aiContentText := aiContent.Content
-						if strings.TrimSpace(aiContentText) == "" {
-							aiContentText = "当前内容为空，请重新生成。"
+						aiContentText := ""
+						aiReasoningText := ""
+						if aiContent != nil {
+							aiContentText = strings.TrimSpace(aiContent.Content)
+							aiReasoningText = aiContent.ReasoningContent
 						}
 
 						aiMessage := messageFormat{
@@ -395,7 +397,7 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 							ConversationID:   conversationID,
 							Role:             "assistant",
 							Content:          "<model=" + model + ">" + aiContentText,
-							ReasoningContent: aiContent.ReasoningContent,
+							ReasoningContent: aiReasoningText,
 							CreatedAt:        time.Now().Format("2006-01-02T15:04:05Z07:00"),
 						}
 						historyMessages = append(historyMessages, aiMessage)
@@ -413,14 +415,14 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 					}
 				}
 
-				// 延迟清理缓存，给续流检查留出时间（5分钟后清理）
-				go func() {
-					time.Sleep(5 * time.Minute)
-					MessageContentCacheMutex.Lock()
-					delete(MessageContentCache, messageAssistantID)
-					MessageContentCacheMutex.Unlock()
-					fmt.Printf("[清理缓存] messageAssistantID=%d\n", messageAssistantID)
-				}()
+				// 完成落库后立即清理缓存，避免已结束消息再次触发续流
+				MessageContentCacheMutex.Lock()
+				delete(MessageContentCache, messageAssistantID)
+				MessageContentCacheMutex.Unlock()
+
+				ResumeCheckRegistryMutex.Lock()
+				delete(ResumeCheckRegistry, conversationID)
+				ResumeCheckRegistryMutex.Unlock()
 
 				close(resp)
 				ThreadMutex.Lock()
@@ -911,8 +913,9 @@ func executeImageEditTool(_ *openai.Client, ctx context.Context, _ *openai.ChatC
 // Openai 调用 OpenAI API 并流式返回结果，同时更新消息内容缓存
 func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64Image string, reasoning bool, resp chan string) {
 	config := GetConfig()
-
-	// 记录开始时间，用于空窗期超时检测
+	// 记录本次流的最终快照，避免收尾时依赖可能已被清理的全局缓存
+	finalReasoningContent := ""
+	finalContent := ""
 	startTime := time.Now()
 	hasReceivedContent := false
 	var contentMutex sync.Mutex
@@ -1124,11 +1127,26 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		resp <- string(jsonResp)
 		return
 	}
-	defer stream.Close()
-
 	// 流式工具调用参数缓冲
 	toolCallArgumentsBuffer := make(map[string]*toolCallBufferItem)
 	toolCompleted := false
+
+	defer func() {
+		if toolCompleted {
+			return
+		}
+		MessageContentCacheMutex.Lock()
+		if content, exists := MessageContentCache[messageAssistantID]; exists {
+			content.Completed = true
+		}
+		MessageContentCacheMutex.Unlock()
+
+		endResp, _ := json.Marshal(Response{
+			Success: true,
+			Content: "",
+		})
+		resp <- string(endResp)
+	}()
 
 	// 流式读取响应
 	for {
@@ -1393,8 +1411,13 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 					MessageContentCacheMutex.Lock()
 					if content, exists := MessageContentCache[messageAssistantID]; exists {
 						content.ReasoningContent += delta.ReasoningContent
+						if content.ResumeMode {
+							content.ReasoningChunks = append(content.ReasoningChunks, delta.ReasoningContent)
+						}
 					}
 					MessageContentCacheMutex.Unlock()
+
+					finalReasoningContent += delta.ReasoningContent
 
 					jsonResp, _ := json.Marshal(Response{
 						Success:          true,
@@ -1416,8 +1439,13 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							contentDelta = "<model=" + model + ">" + contentDelta
 						}
 						content.Content += delta.Content
+						if content.ResumeMode {
+							content.ContentChunks = append(content.ContentChunks, contentDelta)
+						}
 					}
 					MessageContentCacheMutex.Unlock()
+
+					finalContent += delta.Content
 
 					// 写入响应通道（JSON 格式）
 					jsonResp, _ := json.Marshal(Response{
