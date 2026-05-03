@@ -12,6 +12,7 @@ import { initToast } from '@/components/ui/toast/use-toast'
 
 // 导入设置 store
 import { useSettingsStore } from '@/stores/settings'
+import { useChatStore } from '@/stores/chat'
 
 // 覆盖 ds-markdown 深色模式背景
 const dsMarkdownDarkStyle = document.createElement('style')
@@ -39,6 +40,10 @@ if (darkModeSetting) {
 } else {
   document.documentElement.classList.remove('dark')
 }
+
+// 加载模型参数
+const chatStore = useChatStore(pinia)
+chatStore.loadModelParameters()
 
 app.mount('#app')
 

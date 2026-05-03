@@ -24,29 +24,29 @@
         </DialogDescription>
       </DialogHeader>
       <div class="settings-content">
-        <!-- 温度 -->
-        <div class="setting-item">
+        <!-- 温度 (仅非生图模型) -->
+        <div v-if="!isImageModel" class="setting-item">
           <Label for="temperature">Temperature (0.0 - 2.0)</Label>
           <Input id="temperature" v-model="settings.temperature" type="number" step="0.1" min="0" max="2" />
           <p class="setting-description">控制输出的随机性。值越高，输出越随机。</p>
         </div>
 
-        <!-- Top P -->
-        <div class="setting-item">
+        <!-- Top P (仅非生图模型) -->
+        <div v-if="!isImageModel" class="setting-item">
           <Label for="topP">Top P (0.0 - 1.0)</Label>
           <Input id="topP" v-model="settings.topP" type="number" step="0.1" min="0" max="1" />
           <p class="setting-description">控制核采样。值越低，输出越确定。</p>
         </div>
 
-        <!-- Frequency Penalty -->
-        <div class="setting-item">
+        <!-- Frequency Penalty (仅非生图模型) -->
+        <div v-if="!isImageModel" class="setting-item">
           <Label for="frequencyPenalty">Frequency Penalty (-2.0 - 2.0)</Label>
           <Input id="frequencyPenalty" v-model="settings.frequencyPenalty" type="number" step="0.1" min="-2" max="2" />
           <p class="setting-description">减少重复词汇的使用。</p>
         </div>
 
-        <!-- Presence Penalty -->
-        <div class="setting-item">
+        <!-- Presence Penalty (仅非生图模型) -->
+        <div v-if="!isImageModel" class="setting-item">
           <Label for="presencePenalty">Presence Penalty (-2.0 - 2.0)</Label>
           <Input id="presencePenalty" v-model="settings.presencePenalty" type="number" step="0.1" min="-2" max="2" />
           <p class="setting-description">鼓励模型讨论新话题。</p>
@@ -55,29 +55,29 @@
         <!-- Size (仅生图模型) -->
         <div v-if="isImageModel" class="setting-item">
           <Label for="size">图片尺寸</Label>
-          <select id="size" v-model="settings.size">
-            <option value="1024x1024">1024x1024</option>
-            <option value="1536x1024">1536x1024</option>
-            <option value="1024x1536">1024x1536</option>
-            <option value="2048x2048" v-if="isSVIP || isVIP">2048x2048</option>
-            <option value="2048x1152" v-if="isSVIP || isVIP">2048x1152</option>
-            <option value="3840x2160" v-if="isSVIP">3840x2160</option>
-            <option value="2160x3840" v-if="isSVIP">2160x3840</option>
-            <option value="auto">Auto</option>
-          </select>
+          <Select v-model="settings.size">
+            <SelectTrigger class="select-trigger">
+              <SelectValue placeholder="选择图片尺寸" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="sizeOption in availableSizes" :key="sizeOption.value" :value="sizeOption.value">
+                {{ sizeOption.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
           <p class="setting-description">选择生成图片的尺寸。</p>
         </div>
       </div>
       <DialogFooter>
         <Button variant="outline" @click="closeSettings">取消</Button>
-        <Button @click="saveSettings">保存</Button>
+        <Button @click="saveSettings" class="primary-button">保存</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -89,12 +89,21 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Settings, PanelLeftOpen } from 'lucide-vue-next';
 import { useSidebarStore } from '@/stores/sidebar';
 import { useUserStore } from '@/stores/user';
 import ModelSelector from './ModelSelector.vue';
 import { useChatStore } from '@/stores/chat';
 import { toastError } from '@/components/ui/toast/use-toast';
+
+defineEmits(['openSettings']);
 
 const sidebarStore = useSidebarStore();
 const chatStore = useChatStore();
@@ -114,6 +123,8 @@ const settings = ref({
 
 // 打开 Settings 弹窗
 const openSettings = () => {
+  // 每次打开时，从 store 加载最新的设置
+  settings.value = { ...chatStore.modelParameters };
   isSettingsOpen.value = true;
 };
 
@@ -222,6 +233,51 @@ const isVIP = computed(() => {
 const isSVIP = computed(() => {
   return userStore.userInfo.memberLevel === 'SVIP';
 });
+
+// 计算属性：可用的图片尺寸选项
+const availableSizes = computed(() => {
+  if (isSVIP.value) {
+    return [
+      { value: '1024x1024', label: '1024x1024' },
+      { value: '1536x1024', label: '1536x1024' },
+      { value: '1024x1536', label: '1024x1536' },
+      { value: '2048x2048', label: '2048x2048' },
+      { value: '2048x1152', label: '2048x1152' },
+      { value: '3840x2160', label: '3840x2160 (4K)' },
+      { value: '2160x3840', label: '2160x3840 (4K)' },
+      { value: 'auto', label: 'Auto' }
+    ];
+  } else if (isVIP.value) {
+    return [
+      { value: '1024x1024', label: '1024x1024' },
+      { value: '1536x1024', label: '1536x1024' },
+      { value: '1024x1536', label: '1024x1536' },
+      { value: '2048x2048', label: '2048x2048' },
+      { value: '2048x1152', label: '2048x1152' },
+      { value: 'auto', label: 'Auto' }
+    ];
+  } else {
+    return [
+      { value: '1024x1024', label: '1024x1024' },
+      { value: '1536x1024', label: '1536x1024' },
+      { value: '1024x1536', label: '1024x1536' },
+      { value: 'auto', label: 'Auto' }
+    ];
+  }
+});
+
+// 监听用户权限变化，如果用户不再有权限使用当前尺寸，则重置为默认尺寸
+watch([isVIP, isSVIP], () => {
+  if (isSettingsOpen.value && isImageModel.value) {
+    const currentSize = settings.value.size;
+    const isValidSize = availableSizes.value.some(size => size.value === currentSize);
+    
+    if (!isValidSize) {
+      // 重置为默认尺寸
+      settings.value.size = '1024x1024';
+    }
+  }
+});
 </script>
 
 <style scoped>
@@ -317,5 +373,20 @@ const isSVIP = computed(() => {
 
 .dark .setting-description {
   color: #9CA3AF;
+}
+
+/* Primary button styles */
+.primary-button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+}
+
+.primary-button:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.select-trigger {
+  width: 100%;
 }
 </style>

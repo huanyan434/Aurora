@@ -92,7 +92,7 @@ export const useChatStore = defineStore('chat', {
     currentModel: (state) => {
       return state.models.find(model => model.id === state.selectedModel);
     },
-    
+
     sortedModels: (state) => {
       return [...state.models].sort((a, b) => {
         // 确保name属性存在再进行比较
@@ -101,7 +101,7 @@ export const useChatStore = defineStore('chat', {
         return nameA.localeCompare(nameB, 'zh-CN');
       });
     },
-    
+
     sortedConversations: (state) => {
       return [...state.conversations]
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -116,7 +116,7 @@ export const useChatStore = defineStore('chat', {
     getIsGenerating: (state) => {
       return state.isGenerating;
     },
-    
+
     // 获取当前是否正在打字
     getIsTyping: (state) => {
       return state.isTyping;
@@ -141,6 +141,36 @@ export const useChatStore = defineStore('chat', {
       size: string;
     }) {
       this.modelParameters = params;
+      // 保存到 localStorage
+      localStorage.setItem('modelParameters', JSON.stringify(params));
+    },
+    
+    // 从 localStorage 加载模型参数
+    loadModelParameters() {
+      const savedParams = localStorage.getItem('modelParameters');
+      if (savedParams) {
+        try {
+          const parsedParams = JSON.parse(savedParams);
+          // 验证参数格式
+          if (typeof parsedParams === 'object' && parsedParams !== null) {
+            // 确保所有必需的字段都存在
+            const defaultParams = {
+              temperature: 1.0,
+              topP: 1.0,
+              frequencyPenalty: 0.0,
+              presencePenalty: 0.0,
+              size: '1024x1024'
+            };
+            
+            this.modelParameters = {
+              ...defaultParams,
+              ...parsedParams
+            };
+          }
+        } catch (e) {
+          console.error('解析保存的模型参数失败:', e);
+        }
+      }
     },
     async fetchModels() {
       try {
