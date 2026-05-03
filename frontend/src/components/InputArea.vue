@@ -244,7 +244,12 @@ const handleSendMessage = async () => {
       prompt: inputMessage.value,
       model: chatStore.selectedModel,
       base64: attachment.value,
-      reasoning: isReasoning.value
+      reasoning: isReasoning.value,
+      // 添加模型参数
+      temperature: chatStore.modelParameters.temperature,
+      topP: chatStore.modelParameters.topP,
+      frequencyPenalty: chatStore.modelParameters.frequencyPenalty,
+      presencePenalty: chatStore.modelParameters.presencePenalty
     };
 
     // 保存用户消息到临时变量
@@ -281,7 +286,7 @@ const handleSendMessage = async () => {
         prompt: requestData.prompt,
         model: requestData.model,
         base64: requestData.base64,
-        size: '1024x1024',
+        size: chatStore.modelParameters.size,
         quality: 'auto',
         n: 1,
       });
@@ -297,7 +302,11 @@ const handleSendMessage = async () => {
       prompt: requestData.prompt,
       model: requestData.model,
       base64: requestData.base64,
-      reasoning: requestData.reasoning
+      reasoning: requestData.reasoning,
+      temperature: requestData.temperature,
+      topP: requestData.topP,
+      frequencyPenalty: requestData.frequencyPenalty,
+      presencePenalty: requestData.presencePenalty
     });
 
   } catch (error) {

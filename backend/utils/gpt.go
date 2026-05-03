@@ -41,6 +41,14 @@ type ThreadInfo struct {
 	Resp   chan string
 }
 
+type ModelParameters struct {
+	Temperature      *float32 `json:"temperature,omitempty"`
+	TopP             *float32 `json:"top_p,omitempty"`
+	FrequencyPenalty *float32 `json:"frequency_penalty,omitempty"`
+	PresencePenalty  *float32 `json:"presence_penalty,omitempty"`
+	Size             string   `json:"size,omitempty"`
+}
+
 type ConversationIDMessageID struct {
 	MessageUserID      int64 `json:"messageUserID"`
 	MessageAssistantID int64 `json:"messageAssistantID"`
@@ -270,7 +278,7 @@ func prepareVisualPrompt(ctx context.Context, model string, prompt string, base6
 // --- 核心功能：并发处理 OpenAI 请求 ---
 
 // ThreadOpenai 使用并发处理 OpenAI 请求，返回一个通道以实现类似 Python yield 的功能
-func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64 string, reasoning bool) <-chan string {
+func ThreadOpenai(conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64 string, reasoning bool, params ModelParameters) <-chan string {
 	historyMessages, err := LoadConversationHistoryFormat2(conversationID)
 	if err != nil {
 		fmt.Printf("加载历史消息失败：%v\n", err)
@@ -446,7 +454,7 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 				ConversationIDMessageIDsMutex.Unlock()
 			}()
 
-			Openai(ctx, conversationID, messageUserID, messageAssistantID, model, preparedPrompt, preparedBase64, reasoning, resp)
+			Openai(ctx, conversationID, messageUserID, messageAssistantID, model, preparedPrompt, preparedBase64, reasoning, ModelParameters{}, resp)
 			return nil
 		})
 
@@ -958,7 +966,7 @@ func executeImageEditTool(_ *openai.Client, ctx context.Context, _ *openai.ChatC
 }
 
 // Openai 调用 OpenAI API 并流式返回结果，同时更新消息内容缓存
-func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64Image string, reasoning bool, resp chan string) {
+func Openai(ctx context.Context, conversationID int64, messageUserID int64, messageAssistantID int64, model string, prompt string, base64Image string, reasoning bool, params ModelParameters, resp chan string) {
 	config := GetConfig()
 	// 记录本次流的最终快照，避免收尾时依赖可能已被清理的全局缓存
 	finalReasoningContent := ""
@@ -1161,6 +1169,21 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		Messages: messages,
 		Stream:   true,
 	}
+	
+	// 设置模型参数
+	if params.Temperature != nil {
+		reqParams.Temperature = *params.Temperature
+	}
+	if params.TopP != nil {
+		reqParams.TopP = *params.TopP
+	}
+	if params.FrequencyPenalty != nil {
+		reqParams.FrequencyPenalty = *params.FrequencyPenalty
+	}
+	if params.PresencePenalty != nil {
+		reqParams.PresencePenalty = *params.PresencePenalty
+	}
+
 	if supportsTools {
 		reqParams.Tools = tools
 	}

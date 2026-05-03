@@ -73,6 +73,19 @@ export const useChatStore = defineStore('chat', {
     messages: {} as Record<number, Message[]>,
     isGenerating: false, // 是否正在生成AI回复
     isTyping: false, // 是否正在打字（用于控制停止/发送按钮）
+    modelParameters: {
+      temperature: 1.0,
+      topP: 1.0,
+      frequencyPenalty: 0.0,
+      presencePenalty: 0.0,
+      size: '1024x1024'
+    } as {
+      temperature: number;
+      topP: number;
+      frequencyPenalty: number;
+      presencePenalty: number;
+      size: string;
+    }
   }),
   
   getters: {
@@ -119,6 +132,15 @@ export const useChatStore = defineStore('chat', {
     setIsTyping(isTyping: boolean) {
       console.log('[chatStore] setIsTyping 调用:', isTyping);
       this.isTyping = isTyping;
+    },
+    setModelParameters(params: {
+      temperature: number;
+      topP: number;
+      frequencyPenalty: number;
+      presencePenalty: number;
+      size: string;
+    }) {
+      this.modelParameters = params;
     },
     async fetchModels() {
       try {

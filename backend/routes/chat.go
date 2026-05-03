@@ -283,23 +283,27 @@ func wsHandler(c *gin.Context) {
 
 // WebSocket 请求结构
 type WSRequest struct {
-	Type               string `json:"type"`
-	ConversationID     int64  `json:"conversationID"`
-	MessageUserID      int64  `json:"messageUserID"`
-	MessageAssistantID int64  `json:"messageAssistantID"`
-	Prompt             string `json:"prompt"`
-	Model              string `json:"model"`
-	Base64             string `json:"base64"`
-	Reasoning          bool   `json:"reasoning"`
-	MessageID          int64  `json:"messageID"`
-	TargetMessageID    int64  `json:"targetMessageID"`
-	ImageMessageID     int64  `json:"imageMessageID"`
-	RegenerateMode     string `json:"regenerateMode"`
-	MaskBase64         string `json:"maskBase64"`
-	Size               string `json:"size"`
-	Format             string `json:"format"`
-	Quality            string `json:"quality"`
-	N                  int    `json:"n"`
+	Type               string  `json:"type"`
+	ConversationID     int64   `json:"conversationID"`
+	MessageUserID      int64   `json:"messageUserID"`
+	MessageAssistantID int64   `json:"messageAssistantID"`
+	Prompt             string  `json:"prompt"`
+	Model              string  `json:"model"`
+	Base64             string  `json:"base64"`
+	Reasoning          bool    `json:"reasoning"`
+	MessageID          int64   `json:"messageID"`
+	TargetMessageID    int64   `json:"targetMessageID"`
+	ImageMessageID     int64   `json:"imageMessageID"`
+	RegenerateMode     string  `json:"regenerateMode"`
+	MaskBase64         string  `json:"maskBase64"`
+	Size               string  `json:"size"`
+	Format             string  `json:"format"`
+	Quality            string  `json:"quality"`
+	N                  int     `json:"n"`
+	Temperature        *float32 `json:"temperature,omitempty"`
+	TopP               *float32 `json:"top_p,omitempty"`
+	FrequencyPenalty   *float32 `json:"frequency_penalty,omitempty"`
+	PresencePenalty    *float32 `json:"presence_penalty,omitempty"`
 }
 
 // 发送 WebSocket 响应
@@ -469,8 +473,14 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	}
 
 	// 调用 AI 生成
+	params := utils.ModelParameters{
+		Temperature:      req.Temperature,
+		TopP:             req.TopP,
+		FrequencyPenalty: req.FrequencyPenalty,
+		PresencePenalty:  req.PresencePenalty,
+	}
 	generationFailed := false
-	resp := utils.ThreadOpenai(req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.Prompt, req.Base64, req.Reasoning)
+	resp := utils.ThreadOpenai(req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.Prompt, req.Base64, req.Reasoning, params)
 	for response := range resp {
 		var msg MSG
 		var parsedResponse utils.Response
@@ -650,6 +660,47 @@ func handleWSTTS(conn *websocket.Conn, user utils.User, prompt string) {
 
 func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	fmt.Printf("[image_ws] generate start userID=%d conversationID=%d messageUserID=%d messageAssistantID=%d model=%s\n", user.ID, req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model)
+	
+	// 检查图片尺寸权限
+	size := strings.TrimSpace(req.Size)
+	if size == "" {
+		size = "1024x1024"
+	}
+	
+	// 定义不同会员等级可以使用的图片尺寸
+	validSizes := map[string][]string{
+		"free": {"1024x1024", "1536x1024", "1024x1536"},
+		"VIP":  {"1024x1024", "1536x1024", "1024x1536", "2048x2048", "2048x1152"},
+		"SVIP": {"1024x1024", "1536x1024", "1024x1536", "2048x2048", "2048x1152", "3840x2160", "2160x3840"},
+	}
+	
+	// 获取用户等级对应的可用尺寸
+	userLevel := "free"
+	if user.IsMember {
+		userLevel = user.MemberLevel
+	}
+	allowedSizes := validSizes[userLevel]
+	
+	// 检查请求的尺寸是否在允许范围内
+	isAllowed := false
+	for _, allowedSize := range allowedSizes {
+		if size == allowedSize {
+			isAllowed = true
+			break
+		}
+	}
+	
+	if !isAllowed {
+		errMsg := fmt.Sprintf("当前会员等级 (%s) 不支持该图片尺寸: %s", userLevel, size)
+		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
+			fmt.Printf("保存图片错误消息失败: %v\n", err)
+		}
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
+		return
+	}
+	
+	// 积分检查
 	plannedPointsDeducted, ok := ensureUserPoints(conn, user, req.Model, false, "image_generate_error")
 	if !ok {
 		return
@@ -1145,7 +1196,13 @@ func generateHandler(c *gin.Context) {
 		}
 	}
 
-	resp := utils.ThreadOpenai(req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.Prompt, req.Base64, req.Reasoning)
+	params := utils.ModelParameters{
+		Temperature:      req.Temperature,
+		TopP:             req.TopP,
+		FrequencyPenalty: req.FrequencyPenalty,
+		PresencePenalty:  req.PresencePenalty,
+	}
+	resp := utils.ThreadOpenai(req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.Prompt, req.Base64, req.Reasoning, params)
 	for response := range resp {
 		var msg MSG
 		var parsedResponse utils.Response
@@ -1685,13 +1742,17 @@ func sttHandler(c *gin.Context) {
 
 // 请求和响应结构体定义
 type generateRequest struct {
-	ConversationID     int64  `json:"conversationID" example:"1234567890"`
-	MessageUserID      int64  `json:"messageUserID" example:"1234567891"`
-	MessageAssistantID int64  `json:"messageAssistantID" example:"1234567892"`
-	Prompt             string `json:"prompt" example:"你好，帮我写一个 Hello World 程序"`
-	Model              string `json:"model" example:"gpt-3.5-turbo"`
-	Base64             string `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
-	Reasoning          bool   `json:"reasoning" example:"false"`
+	ConversationID     int64   `json:"conversationID" example:"1234567890"`
+	MessageUserID      int64   `json:"messageUserID" example:"1234567891"`
+	MessageAssistantID int64   `json:"messageAssistantID" example:"1234567892"`
+	Prompt             string  `json:"prompt" example:"你好，帮我写一个 Hello World 程序"`
+	Model              string  `json:"model" example:"gpt-3.5-turbo"`
+	Base64             string  `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
+	Reasoning          bool    `json:"reasoning" example:"false"`
+	Temperature        *float32 `json:"temperature,omitempty"`
+	TopP               *float32 `json:"top_p,omitempty"`
+	FrequencyPenalty   *float32 `json:"frequency_penalty,omitempty"`
+	PresencePenalty    *float32 `json:"presence_penalty,omitempty"`
 }
 
 type generateResponseSuccess struct {
