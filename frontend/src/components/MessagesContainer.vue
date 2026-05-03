@@ -302,9 +302,8 @@ const runFollowBottomLoop = () => {
 
         const distanceToBottom = currentScrollHeight - currentScrollTop - clientHeight;
         const heightIncreased = currentScrollHeight > lastScrollHeight.value;
-        const scrollTopIncreased = currentScrollTop > lastScrollTop.value;
 
-        if ((heightIncreased || scrollTopIncreased) && distanceToBottom <= 150) {
+        if (heightIncreased && distanceToBottom < 100) {
             container.scrollTop = currentScrollHeight;
         }
 
