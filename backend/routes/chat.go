@@ -385,7 +385,7 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if err := utils.SaveAssistantErrorMessage(req.ConversationID, req.TargetMessageID, req.Model, err.Error()); err != nil {
 			fmt.Printf("保存重生成错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: utils.GetModelName(req.Model)})
 		return
 	}
 
@@ -394,7 +394,7 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if err := utils.SaveAssistantErrorMessage(req.ConversationID, req.TargetMessageID, req.Model, err.Error()); err != nil {
 			fmt.Printf("保存重生成错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: utils.GetModelName(req.Model)})
 		return
 	}
 
@@ -403,7 +403,7 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if err := utils.SaveAssistantErrorMessage(req.ConversationID, req.TargetMessageID, req.Model, err.Error()); err != nil {
 			fmt.Printf("保存重生成错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: utils.GetModelName(req.Model)})
 		return
 	}
 
@@ -411,7 +411,7 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if err := utils.SaveAssistantErrorMessage(req.ConversationID, req.TargetMessageID, req.Model, err.Error()); err != nil {
 			fmt.Printf("保存重生成错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.TargetMessageID, ModelName: utils.GetModelName(req.Model)})
 		return
 	}
 
@@ -531,7 +531,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 			Content:            "当前内容为空，请重新生成。",
 			ConversationID:     req.ConversationID,
 			MessageAssistantID: req.MessageAssistantID,
-			ModelName:          req.Model,
+			ModelName:          utils.GetModelName(req.Model),
 		})
 	}
 
@@ -695,7 +695,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest,
 		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -718,7 +718,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest,
 		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -736,7 +736,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest,
 		if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, err.Error()); saveErr != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -747,7 +747,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest,
 		if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); saveErr != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -776,7 +776,7 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest,
 		Base64:             imageBase64,
 		ConversationID:     req.ConversationID,
 		MessageAssistantID: req.MessageAssistantID,
-		ModelName:          req.Model,
+		ModelName:          utils.GetModelName(req.Model),
 	})
 	sendWSResponse(conn, "generate_end", gin.H{
 		"conversationID":     req.ConversationID,
@@ -801,7 +801,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -810,7 +810,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -820,7 +820,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, err.Error()); saveErr != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -839,7 +839,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if saveErr := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, err.Error()); saveErr != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", saveErr)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: err.Error(), ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -850,7 +850,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
 			fmt.Printf("保存图片错误消息失败: %v\n", err)
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: req.Model})
+		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
 		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
 		return
 	}
@@ -879,7 +879,7 @@ func handleWSImageEdit(conn *websocket.Conn, user utils.User, req WSRequest) {
 		Base64:             imageBase64,
 		ConversationID:     req.ConversationID,
 		MessageAssistantID: req.MessageAssistantID,
-		ModelName:          req.Model,
+		ModelName:          utils.GetModelName(req.Model),
 	})
 	sendWSResponse(conn, "generate_end", gin.H{
 		"conversationID":     req.ConversationID,

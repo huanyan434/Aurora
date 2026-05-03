@@ -80,6 +80,17 @@ func GetConfig() *Config {
 	return AppConfig
 }
 
+// GetModelName 根据模型ID获取模型名称
+func GetModelName(modelID string) string {
+	config := GetConfig()
+	for _, model := range config.Models {
+		if model.ID == modelID {
+			return model.Name
+		}
+	}
+	return modelID // 如果找不到对应的名称，返回ID作为后备
+}
+
 // GetDSN 生成数据库连接字符串
 func (c *Config) GetDSN() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
