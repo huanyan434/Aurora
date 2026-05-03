@@ -559,7 +559,7 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		"messageAssistantID": req.MessageAssistantID,
 		"pointsDeducted":     pointsDeducted,
 		"pointsDeductReason": pointsDeductReason,
-		"modelName":          req.Model,
+		"modelName":          utils.GetModelName(req.Model),
 	})
 }
 
