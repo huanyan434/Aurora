@@ -20,9 +20,22 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-// --- 全局线程管理 ---
+// ImageToolResultCache 存储图片工具调用的结果，用于续流回放
+var (
+	ImageToolResultCache      = make(map[string]*ImageToolResult)
+	ImageToolResultCacheMutex sync.RWMutex
+)
 
-// ThreadInfo 存储线程相关的全部信息
+type ImageToolResult struct {
+	ToolName         string    `json:"toolName"`
+	ToolID           string    `json:"toolID"`
+	Model            string    `json:"model"`
+	Prompt           string    `json:"prompt"`
+	Base64Data       string    `json:"base64Data"`
+	CreatedAt        time.Time `json:"createdAt"`
+	ConversationID   int64     `json:"conversationID"`
+	MessageAssistantID int64   `json:"messageAssistantID"`
+}
 type ThreadInfo struct {
 	Cancel context.CancelFunc
 	Resp   chan string
@@ -800,7 +813,7 @@ func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams 
 	return messages, nil, nil
 }
 
-func executeImageGenerateTool(_ *openai.Client, ctx context.Context, _ *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, model string, prompt string, size string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
+func executeImageGenerateTool(_ *openai.Client, ctx context.Context, _ *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, model string, prompt string, size string, quality string, resp chan string, conversationID int64, messageAssistantID int64) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
 		return messages, stream, fmt.Errorf("image_generate prompt 不能为空")
@@ -833,6 +846,20 @@ func executeImageGenerateTool(_ *openai.Client, ctx context.Context, _ *openai.C
 		imageDataURL,
 	)
 
+	// 缓存图片工具调用结果，用于续流回放
+	ImageToolResultCacheMutex.Lock()
+	ImageToolResultCache[toolCall.ID] = &ImageToolResult{
+		ToolName:         "image_generate",
+		ToolID:           toolCall.ID,
+		Model:            model,
+		Prompt:           prompt,
+		Base64Data:       imageDataURL,
+		CreatedAt:        time.Now(),
+		ConversationID:   conversationID,
+		MessageAssistantID: messageAssistantID,
+	}
+	ImageToolResultCacheMutex.Unlock()
+
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role: openai.ChatMessageRoleAssistant,
 		ToolCalls: []openai.ToolCall{{
@@ -857,7 +884,7 @@ func executeImageGenerateTool(_ *openai.Client, ctx context.Context, _ *openai.C
 	return messages, nil, nil
 }
 
-func executeImageEditTool(_ *openai.Client, ctx context.Context, _ *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, prompt string, sourceImage string, quality string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
+func executeImageEditTool(_ *openai.Client, ctx context.Context, _ *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, prompt string, sourceImage string, quality string, resp chan string, conversationID int64, messageAssistantID int64) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
 		return messages, stream, fmt.Errorf("image_edit prompt 不能为空")
@@ -891,6 +918,20 @@ func executeImageEditTool(_ *openai.Client, ctx context.Context, _ *openai.ChatC
 		prompt,
 		imageDataURL,
 	)
+
+	// 缓存图片工具调用结果，用于续流回放
+	ImageToolResultCacheMutex.Lock()
+	ImageToolResultCache[toolCall.ID] = &ImageToolResult{
+		ToolName:         "image_edit",
+		ToolID:           toolCall.ID,
+		Model:            "gpt-image-1.5",
+		Prompt:           prompt,
+		Base64Data:       imageDataURL,
+		CreatedAt:        time.Now(),
+		ConversationID:   conversationID,
+		MessageAssistantID: messageAssistantID,
+	}
+	ImageToolResultCacheMutex.Unlock()
 
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role: openai.ChatMessageRoleAssistant,
@@ -1238,7 +1279,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							}
 
 							var execErr error
-							messages, stream, execErr = executeImageGenerateTool(client, ctx, &reqParams, stream, messages, toolCall, model, params.Prompt, params.Size, params.Quality, resp)
+							messages, stream, execErr = executeImageGenerateTool(client, ctx, &reqParams, stream, messages, toolCall, model, params.Prompt, params.Size, params.Quality, resp, conversationID, messageAssistantID)
 							if execErr != nil {
 								return
 							}
@@ -1270,7 +1311,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							}
 
 							var execErr error
-							messages, stream, execErr = executeImageEditTool(client, ctx, &reqParams, stream, messages, toolCall, params.Prompt, sourceImage, params.Quality, resp)
+							messages, stream, execErr = executeImageEditTool(client, ctx, &reqParams, stream, messages, toolCall, params.Prompt, sourceImage, params.Quality, resp, conversationID, messageAssistantID)
 							if execErr != nil {
 								return
 							}
@@ -1353,7 +1394,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 									Function: openai.FunctionCall{
 										Name: "image_generate",
 									},
-								}, model, fallbackPrompt, fallbackSize, fallbackQuality, resp)
+								}, model, fallbackPrompt, fallbackSize, fallbackQuality, resp, conversationID, messageAssistantID)
 								if execErr != nil {
 									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("图片生成工具执行失败: %v", execErr)})
 									resp <- string(jsonResp)
@@ -1395,7 +1436,7 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 									Function: openai.FunctionCall{
 										Name: "image_edit",
 									},
-								}, fallbackPrompt, sourceImage, "auto", resp)
+								}, fallbackPrompt, sourceImage, "auto", resp, conversationID, messageAssistantID)
 								if execErr != nil {
 									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("图片编辑工具执行失败: %v", execErr)})
 									resp <- string(jsonResp)

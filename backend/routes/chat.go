@@ -922,6 +922,47 @@ func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int6
 	fmt.Printf("[续流检查] 缓存总数=%d, 匹配的消息数=%d, threadExists=%v\n", cacheCount, len(pendingMessages), threadExists)
 
 	if len(pendingMessages) == 0 {
+		// 检查是否有缓存的图片工具调用结果
+		utils.ImageToolResultCacheMutex.RLock()
+		var imageToolResults []*utils.ImageToolResult
+		for _, result := range utils.ImageToolResultCache {
+			if result.ConversationID == conversationID {
+				imageToolResults = append(imageToolResults, result)
+			}
+		}
+		utils.ImageToolResultCacheMutex.RUnlock()
+
+		if len(imageToolResults) > 0 {
+			// 先声明进入续流状态
+			sendWSResponse(conn, "resume_status", gin.H{
+				"status":  "resuming",
+				"message": "检测到缓存的图片生成结果，正在续流...",
+			})
+
+			// 回放缓存的图片工具调用结果
+			for _, result := range imageToolResults {
+				fmt.Printf("[续流回放] 回放图片工具调用结果 toolID=%s\n", result.ToolID)
+				sendWSResponse(conn, "generate_response", gin.H{
+					"success":         true,
+					"content":         "",
+					"base64":          result.Base64Data,
+					"messageKind":     "image",
+					"conversationID":  result.ConversationID,
+					"messageAssistantID": result.MessageAssistantID,
+					"isCached":        true,
+					"isUserMessage":   false,
+					"streamSource":    "resume",
+				})
+			}
+
+			// 发送结束信号
+			sendWSResponse(conn, "resume_status", gin.H{
+				"status":  "completed",
+				"message": "图片生成结果已发送",
+			})
+			return
+		}
+
 		sendWSResponse(conn, "resume_status", gin.H{
 			"status":  "streaming",
 			"message": "生成正在进行中，但暂无可续传缓存",
