@@ -30,7 +30,6 @@
             </td>
             <td>
               <div :class="['points-change', record.amount > 0 ? 'points-increase' : 'points-decrease']">
-                <span class="points-arrow">{{ record.amount > 0 ? '⬆️' : '⬇️' }}</span>
                 <span class="points-value">{{ record.amount > 0 ? '+' : '' }}{{ record.amount.toLocaleString() }}</span>
               </div>
             </td>
@@ -236,10 +235,6 @@ onMounted(() => {
 
 .points-decrease {
   color: var(--danger-color);
-}
-
-.points-arrow {
-  font-size: 14px;
 }
 
 .points-value {

@@ -1650,7 +1650,7 @@ func HashPasswordBcrypt(password string) (string, error) {
 }
 
 // UpdateUserByID 根据 ID 更新用户信息
-func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string, memberSince string, memberUntil string) error {
+func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string, memberSince string, memberUntil string, adminID int64) error {
 	db := GetDB()
 
 	// 使用事务
@@ -1669,6 +1669,16 @@ func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string,
 		return fmt.Errorf("用户不存在")
 	}
 
+	// 获取管理员信息
+	var admin *Admin
+	if adminID > 0 {
+		var err error
+		admin, err = GetAdminByID(adminID)
+		if err != nil {
+			fmt.Printf("警告：无法获取管理员信息 adminID=%d err=%v\n", adminID, err)
+		}
+	}
+
 	// 更新积分（如果提供了新值）
 	if points != user.Points {
 		// 积分溢出检查 - 严格检查
@@ -1684,10 +1694,18 @@ func UpdateUserByID(userID int64, points int, isMember bool, memberLevel string,
 		// 记录积分变动
 		pointsDiff := points - user.Points
 		reason := "管理员手动调整"
-		if pointsDiff > 0 {
-			reason = "管理员增加积分"
-		} else if pointsDiff < 0 {
-			reason = "管理员扣除积分"
+		if admin != nil {
+			if pointsDiff > 0 {
+				reason = fmt.Sprintf("管理员 %s 增加积分", admin.Username)
+			} else if pointsDiff < 0 {
+				reason = fmt.Sprintf("管理员 %s 扣除积分", admin.Username)
+			}
+		} else {
+			if pointsDiff > 0 {
+				reason = "管理员增加积分"
+			} else if pointsDiff < 0 {
+				reason = "管理员扣除积分"
+			}
 		}
 
 		// 更新用户积分
@@ -1904,6 +1922,16 @@ func UpdateAdmin(adminID int64, username string, password string, level int) err
 	admin.Level = level
 
 	return DB.Save(&admin).Error
+}
+
+// GetAdminByID 根据ID获取管理员信息
+func GetAdminByID(adminID int64) (*Admin, error) {
+	var admin Admin
+	result := DB.Where("id = ?", adminID).First(&admin)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &admin, nil
 }
 
 // DeleteAdmin 删除管理员

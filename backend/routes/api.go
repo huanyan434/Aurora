@@ -894,7 +894,7 @@ func dashboardUpdateUserHandler(c *gin.Context) {
 		return
 	}
 
-	// 获取管理员权限等级
+	// 获取管理员权限等级和ID
 	session := sessions.Default(c)
 	adminLevel := session.Get("admin_level")
 	if adminLevel == nil {
@@ -905,6 +905,12 @@ func dashboardUpdateUserHandler(c *gin.Context) {
 		return
 	}
 	level := adminLevel.(int)
+	
+	// 获取管理员ID
+	adminID := int64(0)
+	if adminIDVal := session.Get("admin_id"); adminIDVal != nil {
+		adminID = adminIDVal.(int64)
+	}
 
 	// 权限检查：2级不能修改会员，3级不能修改积分
 	if level >= 2 && (req.IsMember || req.MemberLevel != "" || req.MemberSince != "" || req.MemberUntil != "") {
@@ -923,7 +929,7 @@ func dashboardUpdateUserHandler(c *gin.Context) {
 	}
 
 	// 更新用户信息
-	err := utils.UpdateUserByID(req.UserID, req.Points, req.IsMember, req.MemberLevel, req.MemberSince, req.MemberUntil)
+	err := utils.UpdateUserByID(req.UserID, req.Points, req.IsMember, req.MemberLevel, req.MemberSince, req.MemberUntil, adminID)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"success": false,
