@@ -1318,6 +1318,14 @@ const setupGlobalGenerateHandler = () => {
             }
             state.lastStreamSignature = chunkSignature;
 
+            const hasRenderableContent = Boolean((data.content && data.content.trim()) || (data.reasoningContent && data.reasoningContent.trim()) || data.base64);
+            if (!hasRenderableContent) {
+                if (data.content === '' && !data.reasoningContent && !data.base64) {
+                    console.log('[generate_response] 忽略空增量');
+                    return;
+                }
+            }
+
             // 累加内容（缓存消息和流式消息处理方式相同）
             state.accumulatedContent += data.content || "";
             state.accumulatedReasoningContent += data.reasoningContent || "";

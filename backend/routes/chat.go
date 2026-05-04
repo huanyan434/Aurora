@@ -517,12 +517,14 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	// 如果已经生成完成但最终内容为空，先补发兜底消息
 	utils.MessageContentCacheMutex.RLock()
 	finalContent := ""
+	hasAnyContent := false
 	if cachedContent, exists := utils.MessageContentCache[req.MessageAssistantID]; exists {
 		finalContent = strings.TrimSpace(cachedContent.Content)
+		hasAnyContent = strings.TrimSpace(cachedContent.Content) != "" || strings.TrimSpace(cachedContent.ReasoningContent) != ""
 	}
 	utils.MessageContentCacheMutex.RUnlock()
 
-	if finalContent == "" {
+	if finalContent == "" && !hasAnyContent {
 		fmt.Printf("[generate_end] empty final content, sending fallback conversationID=%d messageAssistantID=%d\n", req.ConversationID, req.MessageAssistantID)
 		sendWSResponse(conn, "generate_response", MSG{
 			Success:            true,
