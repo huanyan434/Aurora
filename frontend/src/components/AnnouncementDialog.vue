@@ -28,10 +28,10 @@
       </div>
 
       <DialogFooter class="announcement-dialog-footer">
-        <Button variant="outline" class="announcement-dialog-secondary" @click="handleDismissForever">
+        <Button variant="outline" class="announcement-dialog-secondary" @click="handleDismissUntilNextAnnouncement">
           不再显示
         </Button>
-        <Button class="announcement-dialog-primary" @click="handleConfirm">
+        <Button class="announcement-dialog-primary" @click="handleDismissToday">
           我知道了
         </Button>
       </DialogFooter>
@@ -56,7 +56,6 @@ import {
 
 const ANNOUNCEMENT_STORAGE_KEY = 'aurora-announcement-dismissed';
 const ANNOUNCEMENT_SNOOZE_KEY = 'aurora-announcement-snooze-until';
-const ANNOUNCEMENT_SNOOZE_DURATION = 30 * 60 * 1000;
 
 const route = useRoute();
 const open = ref(false);
@@ -137,24 +136,28 @@ const loadAnnouncement = async () => {
   }
 };
 
-const dismissAnnouncement = (persist: boolean) => {
-  if (typeof window !== 'undefined' && announcement.value.version) {
-    if (persist) {
-      window.localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, announcement.value.version);
-      window.localStorage.removeItem(ANNOUNCEMENT_SNOOZE_KEY);
-    } else {
-      window.localStorage.setItem(ANNOUNCEMENT_SNOOZE_KEY, String(Date.now() + ANNOUNCEMENT_SNOOZE_DURATION));
-    }
+const getTodaySnoozeUntil = () => {
+  const tomorrow = new Date();
+  tomorrow.setHours(24, 0, 0, 0);
+  return tomorrow.getTime();
+};
+
+const handleDismissToday = () => {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(ANNOUNCEMENT_SNOOZE_KEY, String(getTodaySnoozeUntil()));
+    window.localStorage.removeItem(ANNOUNCEMENT_STORAGE_KEY);
   }
+
   open.value = false;
 };
 
-const handleConfirm = () => {
-  dismissAnnouncement(false);
-};
+const handleDismissUntilNextAnnouncement = () => {
+  if (typeof window !== 'undefined' && announcement.value.version) {
+    window.localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, announcement.value.version);
+    window.localStorage.removeItem(ANNOUNCEMENT_SNOOZE_KEY);
+  }
 
-const handleDismissForever = () => {
-  dismissAnnouncement(true);
+  open.value = false;
 };
 
 const handleOpenChange = (nextOpen: boolean) => {
