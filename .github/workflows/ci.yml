@@ -15,10 +15,10 @@ jobs:
         working-directory: ./backend
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.26.1'
         cache-dependency-path: backend/go.sum
@@ -29,7 +29,7 @@ jobs:
         go build -v -o aurora-backend main.go
 
     - name: Upload Backend Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: aurora-backend
         path: backend/aurora-backend
@@ -43,10 +43,10 @@ jobs:
         working-directory: ./frontend
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '23'
 
@@ -63,7 +63,7 @@ jobs:
       run: pnpm build
 
     - name: Upload Frontend Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: dist
         path: frontend/dist
@@ -77,10 +77,10 @@ jobs:
         working-directory: ./home
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '23'
 
@@ -97,7 +97,7 @@ jobs:
       run: pnpm build
 
     - name: Upload Home Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: home
         path: home/dist
@@ -111,10 +111,10 @@ jobs:
         working-directory: ./dashboard
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '23'
 
@@ -131,7 +131,7 @@ jobs:
       run: pnpm build
 
     - name: Upload Dashboard Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: dashboard
         path: dashboard/dist
