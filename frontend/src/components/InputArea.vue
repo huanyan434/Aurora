@@ -320,6 +320,20 @@ const handleStopGeneration = () => {
   // 停止逻辑在 MessagesContainer 中处理
   // 这里只需要通知 store 即可
   chatStore.setIsTyping(false);
+  
+  // 发送停止生成请求到后端
+  const pathParts = route.path.split("/");
+  if (pathParts[1] === "c" && pathParts[2]) {
+    const conversationId = parseInt(pathParts[2]);
+    if (!isNaN(conversationId)) {
+      wsManager.send({
+        type: "stop",
+        data: {
+          conversationID: conversationId
+        }
+      });
+    }
+  }
 };
 
 // 切换推理模式
