@@ -378,60 +378,47 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 				aiContent := MessageContentCache[messageAssistantID]
 				MessageContentCacheMutex.RUnlock()
 
-				if aiContent != nil {
-					// 图片模型的消息已由 WS 图片处理器单独落库，避免在这里再次全量重写导致错位
-					if getModelImageCapability(model) == 2 {
-						MessageContentCacheMutex.Lock()
-						delete(MessageContentCache, messageAssistantID)
-						MessageContentCacheMutex.Unlock()
-						ConversationIDMessageIDsMutex.Lock()
-						delete(ConversationIDMessageIDs, conversationID)
-						ConversationIDMessageIDsMutex.Unlock()
-						return
+				// 从数据库加载历史消息（包含刚才保存的用户消息）
+				historyMessages, err := LoadConversationHistoryFormat2(conversationID)
+				if err != nil {
+					fmt.Printf("加载历史消息失败：%v\n", err)
+				} else {
+					var hasUserMessage bool
+					var hasAssistantMessage bool
+					for _, msg := range historyMessages {
+						if msg.Role == "user" {
+							hasUserMessage = true
+						}
+						if msg.Role == "assistant" {
+							hasAssistantMessage = true
+						}
 					}
-					// 从数据库加载历史消息（包含刚才保存的用户消息）
-					historyMessages, err := LoadConversationHistoryFormat2(conversationID)
-					if err != nil {
-						fmt.Printf("加载历史消息失败：%v\n", err)
-					} else {
-						var hasUserMessage bool
-						var hasAssistantMessage bool
-						for _, msg := range historyMessages {
-							if msg.Role == "user" {
-								hasUserMessage = true
-							}
-							if msg.Role == "assistant" {
-								hasAssistantMessage = true
-							}
-						}
 
-						// 添加 AI 回复到消息列表（使用前端传来的 messageAssistantID）
-						aiContentText := ""
-						aiReasoningText := ""
-						if aiContent != nil {
-							aiContentText = strings.TrimSpace(aiContent.Content)
-							aiReasoningText = aiContent.ReasoningContent
-						}
+					// 添加 AI 回复到消息列表（使用前端传来的 messageAssistantID）
+					aiContentText := ""
+					aiReasoningText := ""
+					// aiContent 已经在外层检查过不为 nil，这里可以直接使用
+					aiContentText = strings.TrimSpace(aiContent.Content)
+					aiReasoningText = aiContent.ReasoningContent
 
-						aiMessage := messageFormat{
-							ID:               messageAssistantID,
-							ConversationID:   conversationID,
-							Role:             "assistant",
-							Content:          "<model=" + model + ">" + aiContentText,
-							ReasoningContent: aiReasoningText,
-							CreatedAt:        time.Now().Format("2006-01-02T15:04:05Z07:00"),
-						}
-						historyMessages = append(historyMessages, aiMessage)
+					aiMessage := messageFormat{
+						ID:               messageAssistantID,
+						ConversationID:   conversationID,
+						Role:             "assistant",
+						Content:          "<model=" + model + ">" + aiContentText,
+						ReasoningContent: aiReasoningText,
+						CreatedAt:        time.Now().Format("2006-01-02T15:04:05Z07:00"),
+					}
+					historyMessages = append(historyMessages, aiMessage)
 
-						// 保存整个对话历史到数据库
-						if err := SaveConversationHistoryFormat2(conversationID, historyMessages); err != nil {
-							fmt.Printf("保存对话历史失败：%v\n", err)
-						} else if hasUserMessage && hasAssistantMessage {
-							titleModel := GetConfig().DefaultDialogNamingModel
-							title := generateConversationTitleByAI(ctx, titleModel, historyMessages[0].Content, aiContent.Content)
-							if err := UpdateConversationTitleIfDefault(conversationID, title); err != nil {
-								fmt.Printf("更新对话标题失败：%v\n", err)
-							}
+					// 保存整个对话历史到数据库
+					if err := SaveConversationHistoryFormat2(conversationID, historyMessages); err != nil {
+						fmt.Printf("保存对话历史失败：%v\n", err)
+					} else if hasUserMessage && hasAssistantMessage {
+						titleModel := GetConfig().DefaultDialogNamingModel
+						title := generateConversationTitleByAI(ctx, titleModel, historyMessages[0].Content, aiContent.Content)
+						if err := UpdateConversationTitleIfDefault(conversationID, title); err != nil {
+							fmt.Printf("更新对话标题失败：%v\n", err)
 						}
 					}
 				}
