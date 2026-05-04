@@ -586,7 +586,7 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 		return nil, fmt.Errorf("读取生图响应失败: %v", err)
 	}
 	fmt.Printf("[image_api] generate response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
-	fmt.Printf("[image_api] generate response body=%s\n", string(responseBody))
+	// fmt.Printf("[image_api] generate response body=%s\n", string(responseBody))
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		fmt.Printf("[image_api] generate response error body=%s\n", strings.TrimSpace(string(responseBody)))
@@ -604,6 +604,49 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 		return nil, fmt.Errorf("生图结果为空")
 	}
 	return &imageResp, nil
+}
+
+// StreamGenerateImage 流式生成图片，只需要最后一个base64结果
+func StreamGenerateImage(ctx context.Context, req ImageGenerateRequest, resp chan string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("[stream_image] panic recovered: %v\n", r)
+			jsonResp, _ := json.Marshal(Response{
+				Success: false,
+				Error:   fmt.Sprintf("生图服务内部错误: %v", r),
+			})
+			resp <- string(jsonResp)
+		}
+		close(resp)
+	}()
+
+	// 调用现有的 GenerateImage 函数
+	imageResp, err := GenerateImage(ctx, req)
+	if err != nil {
+		fmt.Printf("[stream_image] generate failed err=%v\n", err)
+		jsonResp, _ := json.Marshal(Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		resp <- string(jsonResp)
+		return
+	}
+
+	// 只需要最后一个 base64 结果
+	if len(imageResp.Data) > 0 {
+		lastImage := imageResp.Data[len(imageResp.Data)-1]
+		jsonResp, _ := json.Marshal(Response{
+			Success: true,
+			Base64:  lastImage.B64JSON,
+		})
+		resp <- string(jsonResp)
+	} else {
+		jsonResp, _ := json.Marshal(Response{
+			Success: false,
+			Error:   "生图结果为空",
+		})
+		resp <- string(jsonResp)
+	}
 }
 
 func decodeDataURLBase64(data string) ([]byte, string, error) {
@@ -757,6 +800,49 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 		return nil, fmt.Errorf("图片编辑结果为空")
 	}
 	return &imageResp, nil
+}
+
+// StreamEditImage 流式编辑图片，只需要最后一个base64结果
+func StreamEditImage(ctx context.Context, req ImageEditRequest, resp chan string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("[stream_edit] panic recovered: %v\n", r)
+			jsonResp, _ := json.Marshal(Response{
+				Success: false,
+				Error:   fmt.Sprintf("图片编辑服务内部错误: %v", r),
+			})
+			resp <- string(jsonResp)
+		}
+		close(resp)
+	}()
+
+	// 调用现有的 EditImage 函数
+	imageResp, err := EditImage(ctx, req)
+	if err != nil {
+		fmt.Printf("[stream_edit] edit failed err=%v\n", err)
+		jsonResp, _ := json.Marshal(Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		resp <- string(jsonResp)
+		return
+	}
+
+	// 只需要最后一个 base64 结果
+	if len(imageResp.Data) > 0 {
+		lastImage := imageResp.Data[len(imageResp.Data)-1]
+		jsonResp, _ := json.Marshal(Response{
+			Success: true,
+			Base64:  lastImage.B64JSON,
+		})
+		resp <- string(jsonResp)
+	} else {
+		jsonResp, _ := json.Marshal(Response{
+			Success: false,
+			Error:   "图片编辑结果为空",
+		})
+		resp <- string(jsonResp)
+	}
 }
 
 func executeWebSearchTool(client *openai.Client, ctx context.Context, reqParams *openai.ChatCompletionRequest, stream *openai.ChatCompletionStream, messages []openai.ChatCompletionMessage, toolCall openai.ToolCall, query string, resp chan string) ([]openai.ChatCompletionMessage, *openai.ChatCompletionStream, error) {
@@ -1288,9 +1374,68 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 								continue
 							}
 
-							var execErr error
-							messages, stream, execErr = executeImageGenerateTool(client, ctx, &reqParams, stream, messages, toolCall, model, params.Prompt, params.Size, params.Quality, resp, conversationID, messageAssistantID)
-							if execErr != nil {
+							// 使用流式版本的图片生成函数
+							imageReq := ImageGenerateRequest{
+								Model:   model,
+								Prompt:  params.Prompt,
+								Size:    params.Size,
+								Quality: params.Quality,
+								N:       1,
+								Format:  "b64_json",
+							}
+							
+							// 创建一个新的 channel 来接收流式结果
+							imageRespChan := make(chan string, 10)
+							
+							// 启动流式图片生成
+							go StreamGenerateImage(ctx, imageReq, imageRespChan)
+							
+							// 读取最终结果
+							var finalResult string
+							for result := range imageRespChan {
+								finalResult = result
+							}
+							
+							// 解析最终结果
+							var imageResult Response
+							if err := json.Unmarshal([]byte(finalResult), &imageResult); err != nil {
+								fmt.Printf("解析图片生成结果失败: %v\n", err)
+								jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("解析图片生成结果失败: %v", err)})
+								resp <- string(jsonResp)
+								return
+							}
+							
+							if imageResult.Success {
+								// 发送工具调用结果
+								jsonResp, _ := json.Marshal(Response{
+									Success: true,
+									Content: fmt.Sprintf("图片生成完成，base64长度: %d", len(imageResult.Base64)),
+									Base64:  imageResult.Base64,
+								})
+								resp <- string(jsonResp)
+								
+								// 更新消息历史
+								messages = append(messages, openai.ChatCompletionMessage{
+									Role:    openai.ChatMessageRoleAssistant,
+									Content: fmt.Sprintf("图片生成完成，base64长度: %d", len(imageResult.Base64)),
+								})
+								
+								// 缓存图片工具调用结果用于续流回放
+								ImageToolResultCacheMutex.Lock()
+								ImageToolResultCache[toolCall.ID] = &ImageToolResult{
+									ToolName:           "image_generate",
+									ToolID:             toolCall.ID,
+									Model:              model,
+									Prompt:             params.Prompt,
+									Base64Data:         imageResult.Base64,
+									CreatedAt:          time.Now(),
+									ConversationID:     conversationID,
+									MessageAssistantID: messageAssistantID,
+								}
+								ImageToolResultCacheMutex.Unlock()
+							} else {
+								jsonResp, _ := json.Marshal(Response{Success: false, Error: imageResult.Error})
+								resp <- string(jsonResp)
 								return
 							}
 							toolCompleted = true
@@ -1320,9 +1465,67 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 								}
 							}
 
-							var execErr error
-							messages, stream, execErr = executeImageEditTool(client, ctx, &reqParams, stream, messages, toolCall, params.Prompt, sourceImage, params.Quality, resp, conversationID, messageAssistantID)
-							if execErr != nil {
+							// 使用流式版本的图片编辑函数
+							imageReq := ImageEditRequest{
+								Model:   model,
+								Prompt:  params.Prompt,
+								Images:  []string{sourceImage},
+								Quality: params.Quality,
+								N:       1,
+							}
+							
+							// 创建一个新的 channel 来接收流式结果
+							imageRespChan := make(chan string, 10)
+							
+							// 启动流式图片编辑
+							go StreamEditImage(ctx, imageReq, imageRespChan)
+							
+							// 读取最终结果
+							var finalResult string
+							for result := range imageRespChan {
+								finalResult = result
+							}
+							
+							// 解析最终结果
+							var imageResult Response
+							if err := json.Unmarshal([]byte(finalResult), &imageResult); err != nil {
+								fmt.Printf("解析图片编辑结果失败: %v\n", err)
+								jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("解析图片编辑结果失败: %v", err)})
+								resp <- string(jsonResp)
+								return
+							}
+							
+							if imageResult.Success {
+								// 发送工具调用结果
+								jsonResp, _ := json.Marshal(Response{
+									Success: true,
+									Content: fmt.Sprintf("图片编辑完成，base64长度: %d", len(imageResult.Base64)),
+									Base64:  imageResult.Base64,
+								})
+								resp <- string(jsonResp)
+								
+								// 更新消息历史
+								messages = append(messages, openai.ChatCompletionMessage{
+									Role:    openai.ChatMessageRoleAssistant,
+									Content: fmt.Sprintf("图片编辑完成，base64长度: %d", len(imageResult.Base64)),
+								})
+								
+								// 缓存图片工具调用结果用于续流回放
+								ImageToolResultCacheMutex.Lock()
+								ImageToolResultCache[toolCall.ID] = &ImageToolResult{
+									ToolName:           "image_edit",
+									ToolID:             toolCall.ID,
+									Model:              model,
+									Prompt:             params.Prompt,
+									Base64Data:         imageResult.Base64,
+									CreatedAt:          time.Now(),
+									ConversationID:     conversationID,
+									MessageAssistantID: messageAssistantID,
+								}
+								ImageToolResultCacheMutex.Unlock()
+							} else {
+								jsonResp, _ := json.Marshal(Response{Success: false, Error: imageResult.Error})
+								resp <- string(jsonResp)
 								return
 							}
 							toolCompleted = true
@@ -1397,16 +1600,67 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 								}
 								fmt.Printf("[tool_call_fallback] tool=%s id=%s prompt=%q\n", item.Name, toolCallID, fallbackPrompt)
 
-								var execErr error
-								messages, stream, execErr = executeImageGenerateTool(client, ctx, &reqParams, stream, messages, openai.ToolCall{
-									ID:   toolCallID,
-									Type: openai.ToolTypeFunction,
-									Function: openai.FunctionCall{
-										Name: "image_generate",
-									},
-								}, model, fallbackPrompt, fallbackSize, fallbackQuality, resp, conversationID, messageAssistantID)
-								if execErr != nil {
-									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("图片生成工具执行失败: %v", execErr)})
+								// 使用流式版本的图片生成函数
+								imageReq := ImageGenerateRequest{
+									Model:   model,
+									Prompt:  fallbackPrompt,
+									Size:    fallbackSize,
+									Quality: fallbackQuality,
+									N:       1,
+									Format:  "b64_json",
+								}
+								
+								// 创建一个新的 channel 来接收流式结果
+								imageRespChan := make(chan string, 10)
+								
+								// 启动流式图片生成
+								go StreamGenerateImage(ctx, imageReq, imageRespChan)
+								
+								// 读取最终结果
+								var finalResult string
+								for result := range imageRespChan {
+									finalResult = result
+								}
+								
+								// 解析最终结果
+								var imageResult Response
+								if err := json.Unmarshal([]byte(finalResult), &imageResult); err != nil {
+									fmt.Printf("解析图片生成结果失败: %v\n", err)
+									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("解析图片生成结果失败: %v", err)})
+									resp <- string(jsonResp)
+									return
+								}
+								
+								if imageResult.Success {
+									// 发送工具调用结果
+									jsonResp, _ := json.Marshal(Response{
+										Success: true,
+										Content: fmt.Sprintf("图片生成完成，base64长度: %d", len(imageResult.Base64)),
+										Base64:  imageResult.Base64,
+									})
+									resp <- string(jsonResp)
+									
+									// 更新消息历史
+									messages = append(messages, openai.ChatCompletionMessage{
+										Role:    openai.ChatMessageRoleAssistant,
+										Content: fmt.Sprintf("图片生成完成，base64长度: %d", len(imageResult.Base64)),
+									})
+									
+									// 缓存图片工具调用结果用于续流回放
+									ImageToolResultCacheMutex.Lock()
+									ImageToolResultCache[toolCallID] = &ImageToolResult{
+										ToolName:           "image_generate",
+										ToolID:             toolCallID,
+										Model:              model,
+										Prompt:             fallbackPrompt,
+										Base64Data:         imageResult.Base64,
+										CreatedAt:          time.Now(),
+										ConversationID:     conversationID,
+										MessageAssistantID: messageAssistantID,
+									}
+									ImageToolResultCacheMutex.Unlock()
+								} else {
+									jsonResp, _ := json.Marshal(Response{Success: false, Error: imageResult.Error})
 									resp <- string(jsonResp)
 									return
 								}
@@ -1439,16 +1693,66 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 								}
 								fmt.Printf("[tool_call_fallback] tool=%s id=%s prompt=%q hasSource=%v\n", item.Name, toolCallID, fallbackPrompt, strings.TrimSpace(sourceImage) != "")
 
-								var execErr error
-								messages, stream, execErr = executeImageEditTool(client, ctx, &reqParams, stream, messages, openai.ToolCall{
-									ID:   toolCallID,
-									Type: openai.ToolTypeFunction,
-									Function: openai.FunctionCall{
-										Name: "image_edit",
-									},
-								}, fallbackPrompt, sourceImage, "auto", resp, conversationID, messageAssistantID)
-								if execErr != nil {
-									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("图片编辑工具执行失败: %v", execErr)})
+								// 使用流式版本的图片编辑函数
+								imageReq := ImageEditRequest{
+									Model:   model,
+									Prompt:  fallbackPrompt,
+									Images:  []string{sourceImage},
+									Quality: "auto",
+									N:       1,
+								}
+								
+								// 创建一个新的 channel 来接收流式结果
+								imageRespChan := make(chan string, 10)
+								
+								// 启动流式图片编辑
+								go StreamEditImage(ctx, imageReq, imageRespChan)
+								
+								// 读取最终结果
+								var finalResult string
+								for result := range imageRespChan {
+									finalResult = result
+								}
+								
+								// 解析最终结果
+								var imageResult Response
+								if err := json.Unmarshal([]byte(finalResult), &imageResult); err != nil {
+									fmt.Printf("解析图片编辑结果失败: %v\n", err)
+									jsonResp, _ := json.Marshal(Response{Success: false, Error: fmt.Sprintf("解析图片编辑结果失败: %v", err)})
+									resp <- string(jsonResp)
+									return
+								}
+								
+								if imageResult.Success {
+									// 发送工具调用结果
+									jsonResp, _ := json.Marshal(Response{
+										Success: true,
+										Content: fmt.Sprintf("图片编辑完成，base64长度: %d", len(imageResult.Base64)),
+										Base64:  imageResult.Base64,
+									})
+									resp <- string(jsonResp)
+									
+									// 更新消息历史
+									messages = append(messages, openai.ChatCompletionMessage{
+										Role:    openai.ChatMessageRoleAssistant,
+										Content: fmt.Sprintf("图片编辑完成，base64长度: %d", len(imageResult.Base64)),
+									})
+									
+									// 缓存图片工具调用结果用于续流回放
+									ImageToolResultCacheMutex.Lock()
+									ImageToolResultCache[toolCallID] = &ImageToolResult{
+										ToolName:           "image_edit",
+										ToolID:             toolCallID,
+										Model:              model,
+										Prompt:             fallbackPrompt,
+										Base64Data:         imageResult.Base64,
+										CreatedAt:          time.Now(),
+										ConversationID:     conversationID,
+										MessageAssistantID: messageAssistantID,
+									}
+									ImageToolResultCacheMutex.Unlock()
+								} else {
+									jsonResp, _ := json.Marshal(Response{Success: false, Error: imageResult.Error})
 									resp <- string(jsonResp)
 									return
 								}
