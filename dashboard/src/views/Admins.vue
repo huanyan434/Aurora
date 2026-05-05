@@ -367,6 +367,18 @@ tbody tr:hover {
   color: #dc2626;
 }
 
+.dialog-actions .delete-btn {
+  padding: 10px 20px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
 .delete-btn:hover {
   background: #fecaca;
 }
