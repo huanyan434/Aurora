@@ -72,6 +72,7 @@ type ImageGenerateRequest struct {
 	Size    string `json:"size,omitempty"`
 	Format  string `json:"format,omitempty"`
 	Quality string `json:"quality,omitempty"`
+	Stream  bool   `json:"stream,omitempty"`
 }
 
 type ImageEditRequest struct {
@@ -83,6 +84,7 @@ type ImageEditRequest struct {
 	Size       string   `json:"size,omitempty"`
 	Quality    string   `json:"quality,omitempty"`
 	Background string   `json:"background,omitempty"`
+	Stream     bool     `json:"stream,omitempty"`
 }
 
 type ImageGenerateResponse struct {
@@ -535,6 +537,7 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 		Size:    strings.TrimSpace(req.Size),
 		Format:  strings.TrimSpace(req.Format),
 		Quality: strings.TrimSpace(req.Quality),
+		Stream:  true,
 	}
 	if payload.Prompt == "" {
 		return nil, fmt.Errorf("prompt 不能为空")
@@ -738,6 +741,7 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 
 	_ = writer.WriteField("prompt", strings.TrimSpace(req.Prompt))
 	_ = writer.WriteField("model", model)
+	_ = writer.WriteField("stream", "true")
 	if req.N > 0 {
 		_ = writer.WriteField("n", strconv.Itoa(req.N))
 	}
@@ -902,7 +906,7 @@ func executeImageGenerateTool(_ *openai.Client, ctx context.Context, _ *openai.C
 	fmt.Printf("[tool_call] image_generate start model=%s prompt=%q size=%s quality=%s\n", model, prompt, strings.TrimSpace(size), strings.TrimSpace(quality))
 
 	imageResp, err := GenerateImage(ctx, ImageGenerateRequest{
-		Model:   "gpt-image-1.5",
+		Model:   "gpt-image-2",
 		Prompt:  prompt,
 		N:       1,
 		Size:    strings.TrimSpace(size),
@@ -976,7 +980,7 @@ func executeImageEditTool(_ *openai.Client, ctx context.Context, _ *openai.ChatC
 	fmt.Printf("[tool_call] image_edit start prompt=%q quality=%s source_len=%d\n", prompt, strings.TrimSpace(quality), len(strings.TrimSpace(sourceImage)))
 
 	imageResp, err := EditImage(ctx, ImageEditRequest{
-		Model:   "gpt-image-1.5",
+		Model:   "gpt-image-2",
 		Prompt:  prompt,
 		Images:  []string{sourceImage},
 		N:       1,
@@ -1005,7 +1009,7 @@ func executeImageEditTool(_ *openai.Client, ctx context.Context, _ *openai.ChatC
 	ImageToolResultCache[toolCall.ID] = &ImageToolResult{
 		ToolName:         "image_edit",
 		ToolID:           toolCall.ID,
-		Model:            "gpt-image-1.5",
+		Model:            "gpt-image-2",
 		Prompt:           prompt,
 		Base64Data:       imageDataURL,
 		CreatedAt:        time.Now(),
@@ -1375,8 +1379,14 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							}
 
 							// 使用流式版本的图片生成函数
+							// 如果当前模型不支持图片生成功能，则使用默认的生图模型
+							imageModel := model
+							if getModelImageCapability(model) < 2 {
+								imageModel = "gpt-image-2"
+							}
+							
 							imageReq := ImageGenerateRequest{
-								Model:   model,
+								Model:   imageModel,
 								Prompt:  params.Prompt,
 								Size:    params.Size,
 								Quality: params.Quality,
@@ -1466,8 +1476,14 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 							}
 
 							// 使用流式版本的图片编辑函数
+							// 如果当前模型不支持图片生成功能，则使用默认的生图模型
+							imageModel := model
+							if getModelImageCapability(model) < 2 {
+								imageModel = "gpt-image-2"
+							}
+							
 							imageReq := ImageEditRequest{
-								Model:   model,
+								Model:   imageModel,
 								Prompt:  params.Prompt,
 								Images:  []string{sourceImage},
 								Quality: params.Quality,
@@ -1601,8 +1617,14 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 								fmt.Printf("[tool_call_fallback] tool=%s id=%s prompt=%q\n", item.Name, toolCallID, fallbackPrompt)
 
 								// 使用流式版本的图片生成函数
+								// 如果当前模型不支持图片生成功能，则使用默认的生图模型
+								imageModel := model
+								if getModelImageCapability(model) < 2 {
+									imageModel = "gpt-image-2"
+								}
+								
 								imageReq := ImageGenerateRequest{
-									Model:   model,
+									Model:   imageModel,
 									Prompt:  fallbackPrompt,
 									Size:    fallbackSize,
 									Quality: fallbackQuality,
@@ -1694,8 +1716,14 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 								fmt.Printf("[tool_call_fallback] tool=%s id=%s prompt=%q hasSource=%v\n", item.Name, toolCallID, fallbackPrompt, strings.TrimSpace(sourceImage) != "")
 
 								// 使用流式版本的图片编辑函数
+								// 如果当前模型不支持图片生成功能，则使用默认的生图模型
+								imageModel := model
+								if getModelImageCapability(model) < 2 {
+									imageModel = "gpt-image-2"
+								}
+								
 								imageReq := ImageEditRequest{
-									Model:   model,
+									Model:   imageModel,
 									Prompt:  fallbackPrompt,
 									Images:  []string{sourceImage},
 									Quality: "auto",
