@@ -1048,9 +1048,7 @@ func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int6
 			if content == nil {
 				continue
 			}
-			if content != nil {
-				content.ResumeMode = true
-			}
+			content.ResumeMode = true
 			if content.ReasoningContent != "" {
 				sendWSResponse(conn, "generate_response", MSG{
 					Success:            true,
