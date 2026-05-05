@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -583,19 +584,39 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 	}
 	defer response.Body.Close()
 
+	// 打印响应头信息，便于调试
+	fmt.Printf("[image_api] generate response status=%d headers=%v\n", response.StatusCode, response.Header)
+
+	// 检查是否是流式响应
+	contentType := response.Header.Get("Content-Type")
+	isStream := strings.Contains(contentType, "text/event-stream")
+
+	if isStream {
+		// 处理流式响应
+		return handleStreamedImageResponse(response)
+	}
+
+	// 处理普通JSON响应
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
 		fmt.Printf("[image_api] generate read body failed status=%d content_length=%d err=%v\n", response.StatusCode, response.ContentLength, err)
 		return nil, fmt.Errorf("读取生图响应失败: %v", err)
 	}
 	fmt.Printf("[image_api] generate response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
-	// fmt.Printf("[image_api] generate response body=%s\n", string(responseBody))
+	
+	// 如果响应体很大，只打印前1000个字符
+	if len(responseBody) > 1000 {
+		fmt.Printf("[image_api] generate response body (first 1000 chars)=%s\n", string(responseBody[:1000]))
+	} else {
+		fmt.Printf("[image_api] generate response body=%s\n", string(responseBody))
+	}
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		fmt.Printf("[image_api] generate response error body=%s\n", strings.TrimSpace(string(responseBody)))
 		return nil, fmt.Errorf("生图接口返回异常状态(%d): %s", response.StatusCode, strings.TrimSpace(string(responseBody)))
 	}
 
+	// 解析JSON响应
 	var imageResp ImageGenerateResponse
 	if err := json.Unmarshal(responseBody, &imageResp); err != nil {
 		return nil, fmt.Errorf("解析生图响应失败: %v", err)
@@ -607,6 +628,87 @@ func GenerateImage(ctx context.Context, req ImageGenerateRequest) (*ImageGenerat
 		return nil, fmt.Errorf("生图结果为空")
 	}
 	return &imageResp, nil
+}
+
+// handleStreamedImageResponse 处理流式图片生成响应
+func handleStreamedImageResponse(response *http.Response) (*ImageGenerateResponse, error) {
+	fmt.Printf("[image_api] 开始处理流式响应\n")
+	
+	reader := response.Body
+	var lastImageData struct {
+		B64JSON string `json:"b64_json"`
+	}
+	var hasImageData bool
+	
+	// 使用bufio.Reader而不是bufio.Scanner来处理长行
+	bufReader := bufio.NewReader(reader)
+	
+	// 逐行读取响应
+	for {
+		line, err := bufReader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("读取流式响应失败: %v", err)
+		}
+		
+		line = strings.TrimSpace(line)
+		
+		// 跳过心跳包
+		if strings.HasPrefix(line, ":") {
+			continue
+		}
+		
+		// 处理事件行
+		if strings.HasPrefix(line, "event:") {
+			eventType := strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+			fmt.Printf("[image_api] 收到事件: %s\n", eventType)
+			continue
+		}
+		
+		// 处理数据行
+		if strings.HasPrefix(line, "data:") {
+			data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			
+			// 解析数据
+			var eventData map[string]interface{}
+			if err := json.Unmarshal([]byte(data), &eventData); err != nil {
+				fmt.Printf("[image_api] 解析事件数据失败: %v, data: %s\n", err, data)
+				continue
+			}
+			
+			// 检查是否包含图片数据
+			if b64JSON, ok := eventData["b64_json"].(string); ok && b64JSON != "" {
+				lastImageData.B64JSON = b64JSON
+				hasImageData = true
+				fmt.Printf("[image_api] 收到图片数据片段, base64长度: %d\n", len(b64JSON))
+			}
+			continue
+		}
+	}
+	
+	// 检查是否收到了图片数据
+	if !hasImageData {
+		return nil, fmt.Errorf("流式响应中未找到图片数据")
+	}
+	
+	// 构造响应
+	imageResp := &ImageGenerateResponse{
+		Created: time.Now().Unix(),
+		Data: []struct {
+			URL           string `json:"url"`
+			B64JSON       string `json:"b64_json"`
+			RevisedPrompt string `json:"revised_prompt"`
+		}{
+			{
+				B64JSON: lastImageData.B64JSON,
+			},
+		},
+	}
+	
+	fmt.Printf("[image_api] 流式响应处理完成, 最终base64长度: %d\n", len(lastImageData.B64JSON))
+	return imageResp, nil
 }
 
 // StreamGenerateImage 流式生成图片，只需要最后一个base64结果
