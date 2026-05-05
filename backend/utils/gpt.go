@@ -784,7 +784,7 @@ func EditImage(ctx context.Context, req ImageEditRequest) (*ImageGenerateRespons
 		return nil, fmt.Errorf("读取图片编辑响应失败: %v", err)
 	}
 	fmt.Printf("[image_api] edit response status=%d body_len=%d\n", response.StatusCode, len(responseBody))
-	fmt.Printf("[image_api] edit response body=%s\n", string(responseBody))
+	// fmt.Printf("[image_api] edit response body=%s\n", string(responseBody))
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("图片编辑接口返回异常状态(%d): %s", response.StatusCode, strings.TrimSpace(string(responseBody)))
 	}
