@@ -52,6 +52,7 @@ func ApiInit(r *gin.Engine) {
 		// 获取积分记录
 		api.GET("/points_records", pointsRecordsHandler)
 		api.GET("/announcement", announcementHandler)
+		api.GET("/notifications", notificationsHandler)
 
 		// Dashboard 管理面板接口
 		api.POST("/dashboard/login", dashboardLoginHandler)
@@ -68,6 +69,10 @@ func ApiInit(r *gin.Engine) {
 			dashboard.GET("/points_records", dashboardPointsRecordsHandler)
 			dashboard.GET("/announcement", dashboardAnnouncementHandler)
 			dashboard.POST("/announcement", dashboardUpsertAnnouncementHandler)
+			dashboard.GET("/notifications", dashboardNotificationsHandler)
+			dashboard.POST("/notifications", dashboardCreateNotificationHandler)
+			dashboard.PUT("/notifications/:id", dashboardUpdateNotificationHandler)
+			dashboard.DELETE("/notifications/:id", dashboardDeleteNotificationHandler)
 
 			// 管理员管理接口（仅0级可访问）
 			dashboard.GET("/admins", requireLevel0Middleware(), dashboardAdminsHandler)
@@ -790,10 +795,44 @@ func announcementHandler(c *gin.Context) {
 			"content":   announcement.Content,
 			"enabled":   announcement.Enabled,
 			"version":   announcement.Version,
-			"updatedAt": announcement.UpdatedAt.Format("2006-01-02 15:04:05"),
+			"updatedAt": announcement.UpdatedAt.Format(time.DateTime),
 		},
 	})
 }
+
+// @Summary 获取前台通知列表
+// @Description 获取前台展示用的通知列表
+// @Tags 用户
+// @Produce json
+// @Success 200 {object} map[string]interface{} "获取通知成功"
+// @Router /api/notifications [get]
+func notificationsHandler(c *gin.Context) {
+	notifications, err := utils.GetNotifications()
+	if err != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "获取通知失败: " + err.Error(),
+		})
+		return
+	}
+
+	items := make([]gin.H, 0, len(notifications))
+	for _, item := range notifications {
+		items = append(items, gin.H{
+			"id":        strconv.FormatInt(item.ID, 10),
+			"title":     item.Title,
+			"content":   item.Content,
+			"createdAt": item.CreatedAt.Format(time.DateTime),
+			"updatedAt": item.UpdatedAt.Format(time.DateTime),
+		})
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data":    items,
+	})
+}
+
 
 // @Summary Dashboard 登录
 // @Description 管理后台登录验证
@@ -1252,6 +1291,146 @@ func dashboardUpsertAnnouncementHandler(c *gin.Context) {
 	})
 }
 
+// @Summary 获取通知列表
+// @Description 获取 Dashboard 通知列表
+// @Tags Dashboard
+// @Produce json
+// @Success 200 {object} map[string]interface{} "获取通知列表成功"
+// @Router /api/dashboard/notifications [get]
+func dashboardNotificationsHandler(c *gin.Context) {
+	notifications, err := utils.GetNotifications()
+	if err != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "获取通知列表失败：" + err.Error(),
+		})
+		return
+	}
+
+	items := make([]gin.H, 0, len(notifications))
+	for _, item := range notifications {
+		items = append(items, gin.H{
+			"id":        strconv.FormatInt(item.ID, 10),
+			"title":     item.Title,
+			"content":   item.Content,
+			"createdAt": item.CreatedAt.Format("2006-01-02 15:04:05"),
+			"updatedAt": item.UpdatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data":    items,
+	})
+}
+
+// @Summary 新增通知
+// @Description 创建一条通知
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param request body dashboardNotificationRequest true "通知内容"
+// @Success 200 {object} map[string]interface{} "创建成功"
+// @Router /api/dashboard/notifications [post]
+func dashboardCreateNotificationHandler(c *gin.Context) {
+	var req dashboardNotificationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误：" + err.Error(),
+		})
+		return
+	}
+
+	notification, err := utils.CreateNotification(req.Title, req.Content)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "创建通知失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "创建通知成功",
+		"data": gin.H{
+			"id":        strconv.FormatInt(notification.ID, 10),
+			"title":     notification.Title,
+			"content":   notification.Content,
+			"createdAt": notification.CreatedAt.Format("2006-01-02 15:04:05"),
+			"updatedAt": notification.UpdatedAt.Format("2006-01-02 15:04:05"),
+		},
+	})
+}
+
+// @Summary 更新通知
+// @Description 更新指定通知
+// @Tags Dashboard
+// @Accept json
+// @Produce json
+// @Param id path string true "通知ID"
+// @Param request body dashboardNotificationRequest true "通知内容"
+// @Success 200 {object} map[string]interface{} "更新成功"
+// @Router /api/dashboard/notifications/{id} [put]
+func dashboardUpdateNotificationHandler(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{"success": false, "message": "通知ID无效"})
+		return
+	}
+
+	var req dashboardNotificationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"success": false,
+			"message": "参数错误：" + err.Error(),
+		})
+		return
+	}
+
+	if err := utils.UpdateNotification(id, req.Title, req.Content); err != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "更新通知失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "更新通知成功",
+	})
+}
+
+// @Summary 删除通知
+// @Description 删除指定通知
+// @Tags Dashboard
+// @Produce json
+// @Param id path string true "通知ID"
+// @Success 200 {object} map[string]interface{} "删除成功"
+// @Router /api/dashboard/notifications/{id} [delete]
+func dashboardDeleteNotificationHandler(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{"success": false, "message": "通知ID无效"})
+		return
+	}
+
+	if err := utils.DeleteNotification(id); err != nil {
+		c.JSON(500, gin.H{
+			"success": false,
+			"message": "删除通知失败：" + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "删除通知成功",
+	})
+}
+
 // Dashboard 响应结构体
 type dashboardOverviewResponseSuccess struct {
 	Success bool                   `json:"success" example:"true"`
@@ -1299,6 +1478,11 @@ type dashboardAnnouncementRequest struct {
 	Content string `json:"content"`
 	Enabled bool   `json:"enabled"`
 	Version string `json:"version"`
+}
+
+type dashboardNotificationRequest struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 // Dashboard 登录请求

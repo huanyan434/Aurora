@@ -155,9 +155,18 @@ export const getAnnouncement = async () => {
   }
 
   const responseData = await response.json()
-  return {
-    data: responseData
+  return responseData
+}
+
+export const getNotifications = async () => {
+  const response = await fetch('/api/notifications')
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
   }
+
+  const responseData = await response.json()
+  return responseData
 }
 
 export const getCurrentUser = async () => {

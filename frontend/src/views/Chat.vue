@@ -34,7 +34,7 @@
     </div>
 
     <!-- 公告弹窗：只在聊天页挂载，由内部控制可见性 -->
-    <AnnouncementDialog />
+    <AnnouncementTabs />
   </div>
 </template>
 
@@ -44,7 +44,7 @@ import { ref, onMounted } from "vue";
 import { useRouter } from 'vue-router';
 import Sidebar from "@/components/Sidebar.vue";
 import MainContent from "@/components/MainContent.vue";
-import AnnouncementDialog from "@/components/AnnouncementDialog.vue";
+import AnnouncementTabs from "@/components/AnnouncementTabs.vue";
 import { wsManager } from '@/api/chat';
 import { toastError } from '@/components/ui/toast/use-toast';
 

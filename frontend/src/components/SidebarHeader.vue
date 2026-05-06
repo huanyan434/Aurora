@@ -22,7 +22,7 @@
                         </DropdownMenuItem>
                         <DropdownMenuItem class="profile-menu-item" @click="openAnnouncementDialog">
                             <BellRing class="menu-item-icon" />
-                            <span>系统公告</span>
+                            <span>公告中心</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem class="logout-menu-item" @click="handleLogout">

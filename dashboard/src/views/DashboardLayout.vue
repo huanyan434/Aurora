@@ -63,7 +63,7 @@
 import { ref, computed, onMounted, onUnmounted, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { Database, UserRound, UserRoundKey, CircleUserRound, MessageCircleMore, Sparkle, UserStar, BellRing } from 'lucide-vue-next'
+import { Database, UserRound, UserRoundKey, CircleUserRound, MessageCircleMore, Sparkle, UserStar, BellRing, ListTree } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -88,7 +88,8 @@ const navItems = computed(() => {
     { path: '/dashboard/overview', name: '数据概览', icon: h(Database) },
     { path: '/dashboard/users', name: '用户管理', icon: h(UserRound) },
     { path: '/dashboard/points', name: '积分统计', icon: h(Sparkle) },
-    { path: '/dashboard/announcement', name: '公告管理', icon: h(BellRing) }
+    { path: '/dashboard/announcement', name: '系统公告', icon: h(BellRing) },
+    { path: '/dashboard/notifications', name: '通知', icon: h(ListTree) }
   ]
   // 仅0级管理员显示管理员管理
   if (userStore.currentUser?.adminLevel === 0) {

@@ -225,9 +225,23 @@ type Announcement struct {
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`
 }
 
+// Notification 通知模型
+type Notification struct {
+	ID        int64     `gorm:"column:id;type:bigint;primaryKey"`
+	Title     string    `gorm:"column:title;type:varchar(255);not null"`
+	Content   string    `gorm:"column:content;type:text;not null"`
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`
+}
+
 // TableName 指定Announcement结构体对应的表名
 func (Announcement) TableName() string {
 	return "announcements"
+}
+
+// TableName 指定Notification结构体对应的表名
+func (Notification) TableName() string {
+	return "notifications"
 }
 
 // SetPassword 设置用户密码
@@ -429,7 +443,7 @@ func InitDB() {
 	}
 	// 自动迁移表结构
 	// 如果表不存在则创建，如果存在但结构不匹配则修改表结构
-	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{}, &PointsRecord{}, &Admin{}, &Announcement{})
+	err = DB.AutoMigrate(&User{}, &Conversation{}, &Message{}, &VerifyCode{}, &SignRecord{}, &Share{}, &Order{}, &Log{}, &PointsRecord{}, &Admin{}, &Announcement{}, &Notification{})
 	if err != nil {
 		fmt.Println("自动迁移表结构失败：", err)
 		return
@@ -1957,6 +1971,61 @@ func GetLatestEnabledAnnouncement() (*Announcement, error) {
 		return nil, result.Error
 	}
 	return &announcement, nil
+}
+
+// CreateNotification 创建通知
+func CreateNotification(title, content string) (*Notification, error) {
+	notification := Notification{
+		Title:   title,
+		Content: content,
+	}
+	
+	// 生成雪花ID
+	id, err := GenerateSnowflakeId()
+	if err != nil {
+		return nil, err
+	}
+	notification.ID = id
+	
+	if err := DB.Create(&notification).Error; err != nil {
+		return nil, err
+	}
+	return &notification, nil
+}
+
+// GetNotifications 获取所有通知，按创建时间倒序排列
+func GetNotifications() ([]Notification, error) {
+	var notifications []Notification
+	result := DB.Order("created_at DESC").Find(&notifications)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return notifications, nil
+}
+
+// GetNotificationByID 根据ID获取通知
+func GetNotificationByID(id int64) (*Notification, error) {
+	var notification Notification
+	result := DB.Where("id = ?", id).First(&notification)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &notification, nil
+}
+
+// UpdateNotification 更新通知
+func UpdateNotification(id int64, title, content string) error {
+	result := DB.Model(&Notification{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"title":   title,
+		"content": content,
+	})
+	return result.Error
+}
+
+// DeleteNotification 删除通知
+func DeleteNotification(id int64) error {
+	result := DB.Where("id = ?", id).Delete(&Notification{})
+	return result.Error
 }
 
 // GetDashboardAnnouncement 获取管理后台公告配置

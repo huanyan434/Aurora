@@ -605,7 +605,6 @@ defineExpose({
 .menu-item-icon {
   width: 0.95rem;
   height: 0.95rem;
-  margin-right: 0.5rem;
   flex-shrink: 0;
 }
 

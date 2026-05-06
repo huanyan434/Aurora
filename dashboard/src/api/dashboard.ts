@@ -112,6 +112,31 @@ export interface UpdateAnnouncementRequest {
   version: string
 }
 
+export interface Notification {
+  id: string
+  title: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NotificationsResponse {
+  success: boolean
+  data: Notification[]
+  message?: string
+}
+
+export interface CreateNotificationRequest {
+  title: string
+  content: string
+}
+
+export interface NotificationOperationResponse {
+  success: boolean
+  message: string
+  data?: Notification
+}
+
 export const dashboardApi = {
   // 登录
   login: (data: LoginRequest) => api.post<LoginResponse>('/dashboard/login', data),
@@ -140,6 +165,18 @@ export const dashboardApi = {
 
   updateAnnouncement: (data: UpdateAnnouncementRequest) =>
     api.post<AnnouncementResponse>('/dashboard/announcement', data),
+
+  // 通知管理接口
+  getNotifications: () => api.get<NotificationsResponse>('/dashboard/notifications'),
+
+  createNotification: (data: CreateNotificationRequest) =>
+    api.post<NotificationOperationResponse>('/dashboard/notifications', data),
+
+  updateNotification: (id: string, data: CreateNotificationRequest) =>
+    api.put<NotificationOperationResponse>(`/dashboard/notifications/${id}`, data),
+
+  deleteNotification: (id: string) =>
+    api.delete<NotificationOperationResponse>(`/dashboard/notifications/${id}`),
 
   // 管理员管理接口
   getAdmins: () => api.get<AdminsResponse>('/dashboard/admins'),
