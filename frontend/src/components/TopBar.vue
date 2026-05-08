@@ -185,7 +185,7 @@ const validateSettings = () => {
         return false;
       }
     }
-    // VIP 可以使用前五个尺寸
+    // VIP 可以使用前六个尺寸
     else if (isVIP.value) {
       const validSizes = ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '1152x2048', '2048x1152'];
       if (!validSizes.includes(size)) {
@@ -242,8 +242,8 @@ const availableSizes = computed(() => {
       { value: '1536x1024', label: '1536x1024' },
       { value: '1024x1536', label: '1024x1536' },
       { value: '2048x2048', label: '2048x2048' },
-      { value: '1152x2048', label: '1152x2048' },
       { value: '2048x1152', label: '2048x1152' },
+      { value: '1152x2048', label: '1152x2048' },
       { value: '3840x2160', label: '3840x2160 (4K)' },
       { value: '2160x3840', label: '2160x3840 (4K)' }
     ];
@@ -253,6 +253,7 @@ const availableSizes = computed(() => {
       { value: '1536x1024', label: '1536x1024' },
       { value: '1024x1536', label: '1024x1536' },
       { value: '2048x2048', label: '2048x2048' },
+      { value: '2048x1152', label: '2048x1152' },
       { value: '1152x2048', label: '1152x2048' }
     ];
   } else {
