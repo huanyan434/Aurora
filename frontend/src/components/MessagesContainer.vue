@@ -918,6 +918,7 @@ const handleRegenerateMessage = async (messageId: number | undefined) => {
     const isImageRegeneration = isImageModel(modelId) || Boolean(targetMessage.base64) || targetMessage.messageKind === 'image';
     const model = modelId;
     const base64 = '';
+    const defaultSize = chatStore.modelParameters.size || '1024x1024';
 
     chatStore.updateMessage(messageAssistantId, {
         content: '',
@@ -946,6 +947,7 @@ const handleRegenerateMessage = async (messageId: number | undefined) => {
         regenerateMode: isImageRegeneration ? 'image' : 'chat',
         model,
         base64,
+        size: isImageRegeneration ? defaultSize : chatStore.modelParameters.size,
     });
 };
 

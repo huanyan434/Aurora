@@ -373,6 +373,34 @@ func extractModelFromMessageContent(content string) string {
 	return strings.TrimSpace(content[7:end])
 }
 
+func isValidGptImageSize(size string) bool {
+	parts := strings.Split(size, "x")
+	if len(parts) != 2 {
+		return false
+	}
+	width, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+	height, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err1 != nil || err2 != nil || width <= 0 || height <= 0 {
+		return false
+	}
+	if width > 3840 || height > 3840 {
+		return false
+	}
+	if width%16 != 0 || height%16 != 0 {
+		return false
+	}
+	longSide := width
+	shortSide := height
+	if shortSide > longSide {
+		longSide, shortSide = shortSide, longSide
+	}
+	if shortSide == 0 || float64(longSide)/float64(shortSide) > 3.0 {
+		return false
+	}
+	pixels := width * height
+	return pixels >= 655360 && pixels <= 8294400
+}
+
 // WebSocket: 生成 AI 回复
 func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	if req.TargetMessageID <= 0 {
@@ -669,37 +697,50 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest,
 		size = "1024x1024"
 	}
 
-	// 定义不同会员等级可以使用的图片尺寸
-	validSizes := map[string][]string{
-		"free": {"1024x1024", "1536x1024", "1024x1536"},
-		"VIP":  {"1024x1024", "1536x1024", "1024x1536", "2048x2048", "2048x1152"},
-		"SVIP": {"1024x1024", "1536x1024", "1024x1536", "2048x2048", "2048x1152", "3840x2160", "2160x3840"},
-	}
-
-	// 获取用户等级对应的可用尺寸
-	userLevel := "free"
-	if user.IsMember {
-		userLevel = user.MemberLevel
-	}
-	allowedSizes := validSizes[userLevel]
-
-	// 检查请求的尺寸是否在允许范围内
-	isAllowed := false
-	for _, allowedSize := range allowedSizes {
-		if size == allowedSize {
-			isAllowed = true
-			break
+	isGptImageModel := strings.EqualFold(strings.TrimSpace(req.Model), "gpt-image-2") || strings.EqualFold(strings.TrimSpace(req.Model), "gpt-image-1") || strings.Contains(strings.ToLower(strings.TrimSpace(req.Model)), "gpt-image")
+	if isGptImageModel {
+		if !isValidGptImageSize(size) {
+			errMsg := fmt.Sprintf("gpt-image 不支持该图片尺寸: %s", size)
+			if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
+				fmt.Printf("保存图片错误消息失败: %v\n", err)
+			}
+			sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
+			sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
+			return
 		}
-	}
-
-	if !isAllowed {
-		errMsg := fmt.Sprintf("当前会员等级 (%s) 不支持该图片尺寸: %s", userLevel, size)
-		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
-			fmt.Printf("保存图片错误消息失败: %v\n", err)
+	} else {
+		// 定义不同会员等级可以使用的图片尺寸
+		validSizes := map[string][]string{
+			"free": {"1024x1024", "1536x1024", "1024x1536"},
+			"VIP":  {"1024x1024", "1536x1024", "1024x1536", "2048x2048", "1152x2048", "2048x1152"},
+			"SVIP": {"1024x1024", "1536x1024", "1024x1536", "2048x2048", "1152x2048", "2048x1152", "3840x2160", "2160x3840"},
 		}
-		sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
-		sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
-		return
+
+		// 获取用户等级对应的可用尺寸
+		userLevel := "free"
+		if user.IsMember {
+			userLevel = user.MemberLevel
+		}
+		allowedSizes := validSizes[userLevel]
+
+		// 检查请求的尺寸是否在允许范围内
+		isAllowed := false
+		for _, allowedSize := range allowedSizes {
+			if size == allowedSize {
+				isAllowed = true
+				break
+			}
+		}
+
+		if !isAllowed {
+			errMsg := fmt.Sprintf("当前会员等级 (%s) 不支持该图片尺寸: %s", userLevel, size)
+			if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
+				fmt.Printf("保存图片错误消息失败: %v\n", err)
+			}
+			sendWSResponse(conn, "generate_response", MSG{Success: false, Error: errMsg, ConversationID: req.ConversationID, MessageAssistantID: req.MessageAssistantID, ModelName: utils.GetModelName(req.Model)})
+			sendWSResponse(conn, "generate_end", gin.H{"conversationID": req.ConversationID, "messageAssistantID": req.MessageAssistantID, "pointsDeducted": 0})
+			return
+		}
 	}
 
 	// 积分检查

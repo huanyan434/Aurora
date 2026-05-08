@@ -179,23 +179,23 @@ const validateSettings = () => {
     const size = s.size;
     // SVIP 可以使用所有尺寸
     if (isSVIP.value) {
-      const validSizes = ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '3840x2160', '2160x3840', 'auto'];
+      const validSizes = ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '1152x2048', '2048x1152', '3840x2160', '2160x3840'];
       if (!validSizes.includes(size)) {
         toastError('无效的图片尺寸');
         return false;
       }
-    } 
-    // VIP 可以使用 2K 尺寸
+    }
+    // VIP 可以使用前五个尺寸
     else if (isVIP.value) {
-      const validSizes = ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', 'auto'];
+      const validSizes = ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '1152x2048', '2048x1152'];
       if (!validSizes.includes(size)) {
-        toastError('VIP 用户只能使用 2K 及以下尺寸');
+        toastError('VIP 用户只能使用 2K 以内尺寸');
         return false;
       }
-    } 
+    }
     // 普通用户只能使用基础尺寸
     else {
-      const validSizes = ['1024x1024', '1536x1024', '1024x1536', 'auto'];
+      const validSizes = ['1024x1024', '1536x1024', '1024x1536'];
       if (!validSizes.includes(size)) {
         toastError('普通用户只能使用基础尺寸');
         return false;
@@ -242,10 +242,10 @@ const availableSizes = computed(() => {
       { value: '1536x1024', label: '1536x1024' },
       { value: '1024x1536', label: '1024x1536' },
       { value: '2048x2048', label: '2048x2048' },
+      { value: '1152x2048', label: '1152x2048' },
       { value: '2048x1152', label: '2048x1152' },
       { value: '3840x2160', label: '3840x2160 (4K)' },
-      { value: '2160x3840', label: '2160x3840 (4K)' },
-      { value: 'auto', label: 'Auto' }
+      { value: '2160x3840', label: '2160x3840 (4K)' }
     ];
   } else if (isVIP.value) {
     return [
@@ -253,15 +253,13 @@ const availableSizes = computed(() => {
       { value: '1536x1024', label: '1536x1024' },
       { value: '1024x1536', label: '1024x1536' },
       { value: '2048x2048', label: '2048x2048' },
-      { value: '2048x1152', label: '2048x1152' },
-      { value: 'auto', label: 'Auto' }
+      { value: '1152x2048', label: '1152x2048' }
     ];
   } else {
     return [
       { value: '1024x1024', label: '1024x1024' },
       { value: '1536x1024', label: '1536x1024' },
-      { value: '1024x1536', label: '1024x1536' },
-      { value: 'auto', label: 'Auto' }
+      { value: '1024x1536', label: '1024x1536' }
     ];
   }
 });
