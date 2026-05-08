@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="dialogOpen" @update:open="onOpenChange">
-    <DialogContent class="announcement-dialog-content" :class="{ 'announcement-dialog-content-visible': isVisible }">
+    <DialogContent class="announcement-dialog-content sm:max-w-[50dvw]" :class="{ 'announcement-dialog-content-visible': isVisible }">
       <DialogHeader class="announcement-dialog-header">
         <div class="announcement-dialog-badge">
           <BellRing class="announcement-dialog-badge-icon" />
