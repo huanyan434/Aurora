@@ -361,7 +361,7 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 		ConversationID: conversationID,
 		Role:           "user",
 		Content:        prompt,
-		Base64:         rawBase64,
+		ImagePath:      "",
 		CreatedAt:      time.Now().Format("2006-01-02T15:04:05Z07:00"),
 	}
 	historyMessages = append(historyMessages, userMessage)
@@ -1571,8 +1571,10 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 
 							sourceImage := ""
 							for i := len(historyMessages) - 1; i >= 0; i-- {
-								if historyMessages[i].Role == "user" && strings.TrimSpace(historyMessages[i].Base64) != "" {
-									sourceImage = historyMessages[i].Base64
+								if historyMessages[i].Role == "user" && strings.TrimSpace(historyMessages[i].ImagePath) != "" {
+									if sourceImageBase64, err := GetMessageBase64ByID(historyMessages[i].ID); err == nil {
+										sourceImage = sourceImageBase64
+									}
 									break
 								}
 							}
@@ -1810,8 +1812,10 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 								}
 								sourceImage := ""
 								for i := len(historyMessages) - 1; i >= 0; i-- {
-									if historyMessages[i].Role == "user" && strings.TrimSpace(historyMessages[i].Base64) != "" {
-										sourceImage = historyMessages[i].Base64
+									if historyMessages[i].Role == "user" && strings.TrimSpace(historyMessages[i].ImagePath) != "" {
+										if sourceImageBase64, err := GetMessageBase64ByID(historyMessages[i].ID); err == nil {
+											sourceImage = sourceImageBase64
+										}
 										break
 									}
 								}

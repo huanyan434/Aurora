@@ -74,7 +74,7 @@
                         <div v-else-if="message.isStreaming && isImageGenerationPlaceholder(message)"
                             class="image-generation-placeholder">
                             <div class="image-generation-placeholder__shine"></div>
-                            <span>图片创作中……预计耗时 2-5 分钟</span>
+                            <span>图片创作中，预计耗时 1-3 分钟</span>
                         </div>
 
                         <!-- 普通加载占位符 -->

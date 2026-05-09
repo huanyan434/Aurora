@@ -1,14 +1,19 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"math/rand"
+	"mime"
+	"net/http"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -21,6 +26,104 @@ import (
 )
 
 var DB *gorm.DB
+
+func getWebDAVBaseURL() string {
+	config := GetConfig()
+	return strings.TrimRight(strings.TrimSpace(config.WebDAV.BaseURL), "/")
+}
+
+func getWebDAVFileURL(relativePath string) string {
+	baseURL := getWebDAVBaseURL()
+	if baseURL == "" {
+		return ""
+	}
+	cleanPath := "/" + strings.TrimLeft(strings.TrimSpace(relativePath), "/")
+	return baseURL + cleanPath
+}
+
+func uploadImageToWebDAV(userID int64, conversationID int64, imageBase64 string) (string, error) {
+	decoded, mimeType, err := decodeDataURLBase64(imageBase64)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(mimeType) == "" {
+		mimeType = "image/png"
+	}
+
+	config := GetConfig()
+	rootPath := strings.TrimSpace(config.WebDAV.Path)
+	fileName := fmt.Sprintf("%d.png", conversationID)
+	relativePath := path.Join(rootPath, strconv.FormatInt(userID, 10), fileName)
+	if !strings.HasPrefix(relativePath, "/") {
+		relativePath = "/" + relativePath
+	}
+
+	request, err := http.NewRequest(http.MethodPut, getWebDAVFileURL(relativePath), bytes.NewReader(decoded))
+	if err != nil {
+		return "", err
+	}
+	request.Header.Set("Content-Type", mimeType)
+	if user := strings.TrimSpace(config.WebDAV.User); user != "" {
+		request.SetBasicAuth(user, strings.TrimSpace(config.WebDAV.Pass))
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		body, _ := io.ReadAll(response.Body)
+		return "", fmt.Errorf("webdav 上传失败: status=%s body=%s", response.Status, strings.TrimSpace(string(body)))
+	}
+
+	return relativePath, nil
+}
+
+func downloadImageFromWebDAV(relativePath string) (string, error) {
+	request, err := http.NewRequest(http.MethodGet, getWebDAVFileURL(relativePath), nil)
+	if err != nil {
+		return "", err
+	}
+	config := GetConfig()
+	if user := strings.TrimSpace(config.WebDAV.User); user != "" {
+		request.SetBasicAuth(user, strings.TrimSpace(config.WebDAV.Pass))
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		body, _ := io.ReadAll(response.Body)
+		return "", fmt.Errorf("webdav 下载失败: status=%s body=%s", response.Status, strings.TrimSpace(string(body)))
+	}
+
+	contentType := response.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = mime.TypeByExtension(path.Ext(relativePath))
+		if contentType == "" {
+			contentType = "image/png"
+		}
+	}
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	return "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(data), nil
+}
+
+func GetUserByConversationID(conversationID int64) (*User, error) {
+	var user User
+	result := GetDB().Table("users").Joins("JOIN conversations ON conversations.user_id = users.id").Where("conversations.id = ?", conversationID).First(&user)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &user, nil
+}
 
 // User 结构
 type User struct {
@@ -97,7 +200,7 @@ type Message struct {
 	ConversationID   int64     `gorm:"column:conversation_id;type:bigint;index"`
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 	ReasoningContent string    `gorm:"column:reasoning_content;type:mediumtext"`
-	Base64           string    `gorm:"column:base64;type:mediumtext"`
+	ImagePath        string    `gorm:"column:image_path;type:varchar(512)"`
 	Error            string    `gorm:"column:error;type:mediumtext"`
 }
 
@@ -108,7 +211,7 @@ type SharedMessage struct {
 	ConversationID   int64     `json:"conversationID"`
 	CreatedAt        time.Time `json:"createdAt"`
 	ReasoningContent string    `json:"reasoningContent"`
-	Base64           string    `json:"base64"`
+	ImagePath        string    `json:"imagePath"`
 	Username         string    `json:"username"`
 	Avatar           string    `json:"avatar"`
 	ModelName        string    `json:"modelName"`
@@ -541,23 +644,24 @@ func LoadConversationHistory(conversationID int64) ([]openai.ChatCompletionMessa
 			})
 			continue
 		}
-
 		cleanContent := stripBase64Block(msg.Content)
-		if strings.TrimSpace(msg.Base64) != "" {
-			chatMessages = append(chatMessages, openai.ChatCompletionMessage{
-				Role: openai.ChatMessageRoleUser,
-				MultiContent: []openai.ChatMessagePart{
-					{
-						Type: openai.ChatMessagePartTypeText,
-						Text: cleanContent,
+		if strings.TrimSpace(msg.ImagePath) != "" {
+			if imageBase64, err := downloadImageFromWebDAV(msg.ImagePath); err == nil {
+				chatMessages = append(chatMessages, openai.ChatCompletionMessage{
+					Role: openai.ChatMessageRoleUser,
+					MultiContent: []openai.ChatMessagePart{
+						{
+							Type: openai.ChatMessagePartTypeText,
+							Text: cleanContent,
+						},
+						{
+							Type:     openai.ChatMessagePartTypeImageURL,
+							ImageURL: &openai.ChatMessageImageURL{URL: imageBase64},
+						},
 					},
-					{
-						Type:     openai.ChatMessagePartTypeImageURL,
-						ImageURL: &openai.ChatMessageImageURL{URL: msg.Base64},
-					},
-				},
-			})
-			continue
+				})
+				continue
+			}
 		}
 
 		chatMessages = append(chatMessages, openai.ChatCompletionMessage{
@@ -574,7 +678,7 @@ type messageFormat struct {
 	ConversationID   int64  `json:"conversation_id"`
 	Role             string `json:"role"`
 	Content          string `json:"content"`
-	Base64           string `json:"base64,omitempty"`
+	ImagePath        string `json:"image_path,omitempty"`
 	ReasoningContent string `json:"reasoning_content,omitempty"`
 	Error            string `json:"error,omitempty"`
 	CreatedAt        string `json:"created_at"`
@@ -595,7 +699,7 @@ func LoadConversationHistoryFormat2(conversationID int64) ([]messageFormat, erro
 			ConversationID:   msg.ConversationID,
 			Role:             msg.Role,
 			Content:          msg.Content,
-			Base64:           msg.Base64,
+			ImagePath:        msg.ImagePath,
 			ReasoningContent: msg.ReasoningContent,
 			Error:            msg.Error,
 			CreatedAt:        msg.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
@@ -677,7 +781,7 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 			Role:             msg.Role,
 			ConversationID:   conversationID,
 			ReasoningContent: msg.ReasoningContent,
-			Base64:           msg.Base64,
+			ImagePath:        msg.ImagePath,
 			Error:            msg.Error,
 		}
 		if err := db.Create(&message).Error; err != nil {
@@ -705,23 +809,34 @@ func GetMessageBase64ByID(messageID int64) (string, error) {
 	if result.Error != nil {
 		return "", result.Error
 	}
-	if strings.TrimSpace(message.Base64) == "" {
+	if strings.TrimSpace(message.ImagePath) == "" {
 		return "", fmt.Errorf("指定消息不包含图片")
 	}
-	return message.Base64, nil
+	return downloadImageFromWebDAV(message.ImagePath)
 }
 
 func SaveUserImageMessage(conversationID int64, messageUserID int64, prompt string, base64 string) error {
+	userID := int64(0)
+	if user, err := GetUserByConversationID(conversationID); err == nil {
+		userID = user.ID
+	}
+	if userID == 0 {
+		return fmt.Errorf("无法获取对话所属用户")
+	}
+	imagePath, err := uploadImageToWebDAV(userID, conversationID, base64)
+	if err != nil {
+		return err
+	}
 	message := Message{
 		ID:             messageUserID,
 		Content:        strings.TrimSpace(prompt),
 		Role:           "user",
 		ConversationID: conversationID,
-		Base64:         base64,
+		ImagePath:      imagePath,
 	}
-	
+
 	// 尝试创建消息，如果主键冲突则返回错误
-	err := GetDB().Create(&message).Error
+	err = GetDB().Create(&message).Error
 	if err != nil {
 		// 检查是否是主键冲突错误
 		if strings.Contains(err.Error(), "Duplicate entry") && strings.Contains(err.Error(), "PRIMARY") {
@@ -774,6 +889,17 @@ func SaveAssistantImageErrorMessage(conversationID int64, messageAssistantID int
 }
 
 func SaveAssistantImageMessage(conversationID int64, messageAssistantID int64, model string, prompt string, base64 string) error {
+	userID := int64(0)
+	if user, err := GetUserByConversationID(conversationID); err == nil {
+		userID = user.ID
+	}
+	if userID == 0 {
+		return fmt.Errorf("无法获取对话所属用户")
+	}
+	imagePath, err := uploadImageToWebDAV(userID, conversationID, base64)
+	if err != nil {
+		return err
+	}
 	content := "<model=" + model + ">"
 
 	message := Message{
@@ -781,14 +907,14 @@ func SaveAssistantImageMessage(conversationID int64, messageAssistantID int64, m
 		Content:        content,
 		Role:           "assistant",
 		ConversationID: conversationID,
-		Base64:         base64,
+		ImagePath:      imagePath,
 	}
-	err := GetDB().Create(&message).Error
+	err = GetDB().Create(&message).Error
 	if err != nil {
 		fmt.Printf("[image_db] 保存图片消息失败 conversationID=%d messageAssistantID=%d err=%v\n", conversationID, messageAssistantID, err)
 		return err
 	}
-	fmt.Printf("[image_db] 保存图片消息成功 conversationID=%d messageAssistantID=%d model=%s prompt_len=%d base64_len=%d\n", conversationID, messageAssistantID, model, len(strings.TrimSpace(prompt)), len(strings.TrimSpace(base64)))
+	fmt.Printf("[image_db] 保存图片消息成功 conversationID=%d messageAssistantID=%d model=%s prompt_len=%d image_path=%s\n", conversationID, messageAssistantID, model, len(strings.TrimSpace(prompt)), imagePath)
 	return nil
 }
 
@@ -1344,7 +1470,7 @@ func LoadSharedMessagesByIDs(messageIDs []int64) ([]SharedMessage, error) {
 			ConversationID:   message.ConversationID,
 			CreatedAt:        message.CreatedAt,
 			ReasoningContent: message.ReasoningContent,
-			Base64:           message.Base64,
+			ImagePath:        message.ImagePath,
 			Username:         owner.Username,
 			Avatar:           owner.Avatar,
 			ModelName:        getModelNameFromContent(message.Content),

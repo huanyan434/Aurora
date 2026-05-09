@@ -42,10 +42,10 @@ func main() {
 	gob.Register(routes.CurrentUserSession{})
 	gob.Register(time.Time{})
 
-	// 数据库迁移 - 确保 base64 列存在
+	// 数据库迁移 - 确保 image_path 列存在
 	db := utils.GetDB()
-	if !db.Migrator().HasColumn(&utils.Message{}, "base64") {
-		db.Migrator().AddColumn(&utils.Message{}, "base64")
+	if !db.Migrator().HasColumn(&utils.Message{}, "image_path") {
+		db.Migrator().AddColumn(&utils.Message{}, "image_path")
 	}
 
 	routes.ChatInit(r)

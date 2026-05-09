@@ -46,6 +46,12 @@ type Config struct {
 	UserID       string `yaml:"userID"`
 	Token        string `yaml:"token"`
 	TavilyApiKey string `yaml:"tavilyApiKey"`
+	WebDAV struct {
+		BaseURL string `yaml:"baseURL"`
+		Path    string `yaml:"path"`
+		User    string `yaml:"user"`
+		Pass    string `yaml:"pass"`
+	} `yaml:"webdav"`
 }
 
 var AppConfig *Config

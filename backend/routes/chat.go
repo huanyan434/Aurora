@@ -456,7 +456,12 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	}
 
 	prompt := previousUser.Content
-	base64 := previousUser.Base64
+	base64 := ""
+	if strings.TrimSpace(previousUser.ImagePath) != "" {
+		if imageBase64, err := utils.GetMessageBase64ByID(previousUser.ID); err == nil {
+			base64 = imageBase64
+		}
+	}
 	reasoning := false
 	model := extractModelFromMessageContent(targetMessage.Content)
 	if model == "" {
@@ -1539,10 +1544,50 @@ func messagesListHandler(c *gin.Context) {
 		})
 		return
 	}
+	responseMessages := make([]struct {
+		ID               int64     `json:"id"`
+		ConversationID   int64     `json:"conversation_id"`
+		Role             string    `json:"role"`
+		Content          string    `json:"content"`
+		ImagePath        string    `json:"image_path,omitempty"`
+		Base64           string    `json:"base64,omitempty"`
+		ReasoningContent string    `json:"reasoning_content,omitempty"`
+		Error            string    `json:"error,omitempty"`
+		CreatedAt        string    `json:"created_at"`
+	}, 0, len(messages))
+	for _, message := range messages {
+		imageBase64 := ""
+		if strings.TrimSpace(message.ImagePath) != "" {
+			if data, err := utils.GetMessageBase64ByID(message.ID); err == nil {
+				imageBase64 = data
+			}
+		}
+		responseMessages = append(responseMessages, struct {
+			ID               int64     `json:"id"`
+			ConversationID   int64     `json:"conversation_id"`
+			Role             string    `json:"role"`
+			Content          string    `json:"content"`
+			ImagePath        string    `json:"image_path,omitempty"`
+			Base64           string    `json:"base64,omitempty"`
+			ReasoningContent string    `json:"reasoning_content,omitempty"`
+			Error            string    `json:"error,omitempty"`
+			CreatedAt        string    `json:"created_at"`
+		}{
+			ID:               message.ID,
+			ConversationID:   message.ConversationID,
+			Role:             message.Role,
+			Content:          message.Content,
+			ImagePath:        message.ImagePath,
+			Base64:           imageBase64,
+			ReasoningContent: message.ReasoningContent,
+			Error:            message.Error,
+			CreatedAt:        message.CreatedAt,
+		})
+	}
 
 	c.JSON(200, gin.H{
 		"success":  true,
-		"messages": messages,
+		"messages": responseMessages,
 	})
 }
 
@@ -1625,14 +1670,6 @@ func shareMessagesHandler(c *gin.Context) {
 
 }
 
-// @Summary 获取分享内容
-// @Description 根据分享 ID 获取分享的消息内容
-// @Tags Chat
-// @Produce json
-// @Param shareID path string true "分享 ID"
-// @Success 200 {object} loadShareMessagesResponseSuccess "获取分享内容成功"
-// @Failure 400 {object} loadShareMessagesResponseFailed "获取分享内容失败"
-// @Router /chat/{shareID} [get]
 func loadShareMessagesHandler(c *gin.Context) {
 	shareID := c.Param("shareID")
 	messageIDs, err := utils.LoadShareMessages(shareID)
@@ -1653,9 +1690,56 @@ func loadShareMessagesHandler(c *gin.Context) {
 		return
 	}
 
+	responseMessages := make([]struct {
+		ID               int64     `json:"id"`
+		Content          string    `json:"content"`
+		Role             string    `json:"role"`
+		ConversationID   int64     `json:"conversationID"`
+		CreatedAt        time.Time `json:"createdAt"`
+		ReasoningContent string    `json:"reasoningContent"`
+		ImagePath        string    `json:"imagePath"`
+		Base64           string    `json:"base64,omitempty"`
+		Username         string    `json:"username"`
+		Avatar           string    `json:"avatar"`
+		ModelName        string    `json:"modelName"`
+	}, 0, len(messages))
+	for _, message := range messages {
+		imageBase64 := ""
+		if strings.TrimSpace(message.ImagePath) != "" {
+			if data, err := utils.GetMessageBase64ByID(message.ID); err == nil {
+				imageBase64 = data
+			}
+		}
+		responseMessages = append(responseMessages, struct {
+			ID               int64     `json:"id"`
+			Content          string    `json:"content"`
+			Role             string    `json:"role"`
+			ConversationID   int64     `json:"conversationID"`
+			CreatedAt        time.Time `json:"createdAt"`
+			ReasoningContent string    `json:"reasoningContent"`
+			ImagePath        string    `json:"imagePath"`
+			Base64           string    `json:"base64,omitempty"`
+			Username         string    `json:"username"`
+			Avatar           string    `json:"avatar"`
+			ModelName        string    `json:"modelName"`
+		}{
+			ID:               message.ID,
+			Content:          message.Content,
+			Role:             message.Role,
+			ConversationID:   message.ConversationID,
+			CreatedAt:        message.CreatedAt,
+			ReasoningContent: message.ReasoningContent,
+			ImagePath:        message.ImagePath,
+			Base64:           imageBase64,
+			Username:         message.Username,
+			Avatar:           message.Avatar,
+			ModelName:        message.ModelName,
+		})
+	}
+
 	c.JSON(200, gin.H{
 		"success":  true,
-		"messages": messages,
+		"messages": responseMessages,
 	})
 }
 
