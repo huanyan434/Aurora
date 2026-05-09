@@ -90,6 +90,7 @@
                 </div>
 
                 <!-- 消息操作按钮 -->
+                <div v-if="message.role === 'user'" style="display:none" :ref="() => handleUserMessageEnd(message.id)"></div>
                 <div :class="[
                     'flex flex-row items-start mt-1 min-h-[24px] transition-opacity duration-150',
                     message.role === 'user' ? 'mr-2' : 'ml-2',
@@ -259,6 +260,7 @@ const historyCompletedIds = ref<Set<number>>(new Set());
 const historyWaitingForResumeComplete = ref(false);
 const resumeRequestFinished = ref(false);
 const historyRenderFinalizeScheduled = ref(false);
+const userMessageCompletedIds = ref<Set<number>>(new Set());
 const lastHistoryLogSignature = ref('');
 
 /**
@@ -393,6 +395,7 @@ const displayedMessages = computed(() => {
     // 更新总历史消息数
     const historyMessages = messages.filter((message) => message.role === 'assistant' && message.isHistory);
     expectedHistoryIds.value = new Set(historyMessages.filter((message) => Boolean(message.id)).map((message) => message.id as number));
+    totalHistoryCount.value = historyMessages.length;
     textHistoryCount.value = historyMessages.filter((message) => !message.error && !message.base64).length;
     imageHistoryCount.value = historyMessages.filter((message) => Boolean(message.base64)).length;
     emptyHistoryCount.value = historyMessages.filter((message) => Boolean(message.error) || (!message.base64 && !message.content)).length;
@@ -422,7 +425,7 @@ const displayedMessages = computed(() => {
         if ((Boolean(message.error) || (!message.base64 && !message.content)) && message.id && !historyCompletedIds.value.has(message.id)) {
             historyCompletedIds.value.add(message.id);
             markdownEndedIds.value.add(message.id);
-            renderedHistoryCount.value++;
+            renderedHistoryCount.value = historyMessages.length;
         }
     });
 
@@ -442,60 +445,7 @@ watch(currentConversationId, () => {
 watch(() => chatStore.isGenerating, (isGenerating) => {
     if (!isGenerating && historyWaitingForResumeComplete.value && renderedHistoryCount.value >= expectedHistoryIds.value.size && expectedHistoryIds.value.size > 0) {
         historyWaitingForResumeComplete.value = false;
-        historyRenderFinalizeScheduled.value = true;
-        console.log('[history-render] resume 完成，启动最终稳定检测');
-        nextTick().then(() => {
-            let lastHeight = 0;
-            let stableFrames = 0;
-            let checkCount = 0;
-
-            const timeoutId = setTimeout(() => {
-                if (containerRef.value) {
-                    containerRef.value.scrollTop = containerRef.value.scrollHeight;
-                }
-                emit('render-complete', true);
-                console.log('emit 超时');
-            }, 10000);
-
-            const checkStable = () => {
-                checkCount++;
-                const currentHeight = containerRef.value?.scrollHeight || 0;
-                console.log('[history-render] 稳定检测帧', {
-                    checkCount,
-                    currentHeight,
-                    lastHeight,
-                    stableFrames,
-                });
-                if (currentHeight === lastHeight) {
-                    stableFrames++;
-                    if (stableFrames >= 2) {
-                        clearTimeout(timeoutId);
-                        if (containerRef.value) {
-                            containerRef.value.scrollTop = containerRef.value.scrollHeight;
-                        }
-                        emit('render-complete', true);
-                        console.log('emit: complete');
-                        return;
-                    }
-                } else {
-                    stableFrames = 0;
-                    lastHeight = currentHeight;
-                }
-
-                if (checkCount > 100) {
-                    clearTimeout(timeoutId);
-                    if (containerRef.value) {
-                        containerRef.value.scrollTop = containerRef.value.scrollHeight;
-                    }
-                    emit('render-complete', true);
-                    console.log('emit 循环');
-                    return;
-                }
-
-                requestAnimationFrame(checkStable);
-            };
-            requestAnimationFrame(checkStable);
-        });
+        scheduleHistoryFinalize();
     }
 });
 
@@ -515,11 +465,92 @@ const handleHistoryImageLoad = (messageId: number | undefined) => {
     handleHistoryMessageEnd(messageId);
 };
 
+const handleUserMessageEnd = (messageId: number | undefined) => {
+    if (messageId === undefined) return;
+    if (userMessageCompletedIds.value.has(messageId)) return;
+    userMessageCompletedIds.value.add(messageId);
+    renderedHistoryCount.value++;
+    console.log('[history-render] 用户消息完成', {
+        messageId,
+        total: totalHistoryCount.value,
+        completed: renderedHistoryCount.value,
+    });
+    if (renderedHistoryCount.value >= totalHistoryCount.value && totalHistoryCount.value > 0) {
+        if (historyWaitingForResumeComplete.value) {
+            return;
+        }
+        scheduleHistoryFinalize();
+    }
+};
+
 /**
  * 处理历史消息的 onEnd 回调
  * 历史消息渲染完成后强制滚动到底部
  * @param messageId 消息 ID
  */
+const scheduleHistoryFinalize = () => {
+    if (historyRenderFinalizeScheduled.value) return;
+    historyRenderFinalizeScheduled.value = true;
+    console.log('[history-render] 启动稳定检测', {
+        total: totalHistoryCount.value,
+        completed: renderedHistoryCount.value,
+        remaining: Math.max(totalHistoryCount.value - renderedHistoryCount.value, 0),
+    });
+
+    nextTick().then(() => {
+        let lastHeight = 0;
+        let stableFrames = 0;
+        let checkCount = 0;
+
+        const timeoutId = setTimeout(() => {
+            if (containerRef.value) {
+                containerRef.value.scrollTop = containerRef.value.scrollHeight;
+            }
+            emit('render-complete', true);
+            console.log('emit 超时');
+        }, 10000);
+
+        const checkStable = () => {
+            checkCount++;
+            const currentHeight = containerRef.value?.scrollHeight || 0;
+            console.log('[history-render] 稳定检测帧', {
+                checkCount,
+                currentHeight,
+                lastHeight,
+                stableFrames,
+            });
+            if (currentHeight === lastHeight) {
+                stableFrames++;
+                if (stableFrames >= 2) {
+                    clearTimeout(timeoutId);
+                    if (containerRef.value) {
+                        containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                    }
+                    emit('render-complete', true);
+                    console.log('emit: complete');
+                    return;
+                }
+            } else {
+                stableFrames = 0;
+                lastHeight = currentHeight;
+            }
+
+            if (checkCount > 100) {
+                clearTimeout(timeoutId);
+                if (containerRef.value) {
+                    containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                }
+                emit('render-complete', true);
+                console.log('emit 循环');
+                return;
+            }
+
+            requestAnimationFrame(checkStable);
+        };
+        requestAnimationFrame(checkStable);
+    });
+};
+
 const handleHistoryMessageEnd = (messageId: number | undefined) => {
     if (messageId === undefined) return;
 
@@ -527,8 +558,8 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
         messageId,
         total: totalHistoryCount.value,
         completed: renderedHistoryCount.value,
-        expectedTotal: expectedHistoryIds.value.size,
-        remaining: Math.max(expectedHistoryIds.value.size - renderedHistoryCount.value, 0),
+        expectedTotal: totalHistoryCount.value,
+        remaining: Math.max(totalHistoryCount.value - renderedHistoryCount.value, 0),
         historyCompletedIds: Array.from(historyCompletedIds.value),
     });
 
@@ -540,78 +571,12 @@ const handleHistoryMessageEnd = (messageId: number | undefined) => {
     renderedHistoryCount.value++;
 
     // 检查是否所有历史消息都渲染完成
-    if (renderedHistoryCount.value >= expectedHistoryIds.value.size && expectedHistoryIds.value.size > 0) {
+    if (renderedHistoryCount.value >= totalHistoryCount.value && totalHistoryCount.value > 0) {
         if (historyWaitingForResumeComplete.value) {
             console.log('[history-render] 等待 resume 消息渲染完成后再 emit render-complete');
             return;
         }
-        historyRenderFinalizeScheduled.value = true;
-        console.log('[history-render] 启动稳定检测', {
-            total: totalHistoryCount.value,
-            completed: renderedHistoryCount.value,
-            remaining: 0,
-        });
-
-        // 使用 nextTick + 双 RAF 确保 DOM 渲染稳定
-        nextTick().then(() => {
-            let lastHeight = 0;
-            let stableFrames = 0;
-            let checkCount = 0;
-
-            // 兜底超时，防止 RAF 循环卡住
-            const timeoutId = setTimeout(() => {
-                // 滚动到底部
-                if (containerRef.value) {
-                    containerRef.value.scrollTop = containerRef.value.scrollHeight;
-                }
-                emit('render-complete', true);
-                console.log("emit 超时");
-            }, 10000); // 10秒兜底
-
-            const checkStable = () => {
-                checkCount++;
-                const currentHeight = containerRef.value?.scrollHeight || 0;
-                console.log('[history-render] 稳定检测帧', {
-                    checkCount,
-                    currentHeight,
-                    lastHeight,
-                    stableFrames,
-                });
-                if (currentHeight === lastHeight) {
-                    stableFrames++;
-                    if (stableFrames >= 2) {
-                        // 高度连续两帧稳定，认为渲染完成
-                        clearTimeout(timeoutId); // 清除兜底定时器
-                        // 滚动到底部
-                        if (containerRef.value) {
-                            containerRef.value.scrollTop = containerRef.value.scrollHeight;
-                        }
-                        emit('render-complete', true);
-                        console.log("emit: complete");
-                        return;
-                    }
-                } else {
-                    // 高度变化，重置计数
-                    stableFrames = 0;
-                    lastHeight = currentHeight;
-                }
-
-                // 防止无限循环
-                if (checkCount > 100) {
-                    clearTimeout(timeoutId);
-                    // 滚动到底部
-                    if (containerRef.value) {
-                        containerRef.value.scrollTop = containerRef.value.scrollHeight;
-                    }
-                    emit('render-complete', true);
-                    console.log("emit 循环");
-                    return;
-                }
-
-                requestAnimationFrame(checkStable);
-            };
-            requestAnimationFrame(checkStable);
-        });
+        scheduleHistoryFinalize();
     }
 };
 
@@ -1195,8 +1160,8 @@ const setupGlobalGenerateHandler = () => {
                 currentResumeRenderedCallback = () => {
                     historyWaitingForResumeComplete.value = false;
                     resumeRequestFinished.value = true;
-                    if (renderedHistoryCount.value >= expectedHistoryIds.value.size && expectedHistoryIds.value.size > 0) {
-                        historyRenderFinalizeScheduled.value = true;
+                    if (renderedHistoryCount.value >= totalHistoryCount.value && totalHistoryCount.value > 0) {
+                        scheduleHistoryFinalize();
                         console.log('[history-render] resume 消息渲染完成，启动最终稳定检测');
                     }
                 };
