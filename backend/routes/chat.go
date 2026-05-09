@@ -43,19 +43,19 @@ func ChatInit(r *gin.Engine) {
 }
 
 type MSG struct {
-	Success             bool   `json:"success" default:"false"`
-	Error               string `json:"error" default:""`
-	ReasoningContent    string `json:"reasoningContent" default:""`
-	ReasoningTime       int    `json:"reasoningTime" default:""`
-	Content             string `json:"content" default:""`
-	Base64              string `json:"base64,omitempty"`
-	ConversationID      int64  `json:"conversationID"`
-	MessageAssistantID  int64  `json:"messageAssistantID"`
-	IsCached            bool   `json:"isCached" default:"false"`      // 是否是缓存内容
-	IsUserMessage       bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
-	PointsDeducted      int    `json:"pointsDeducted,omitempty"`
-	ModelName           string `json:"modelName,omitempty"`
-	StreamSource        string `json:"streamSource,omitempty"`
+	Success            bool   `json:"success" default:"false"`
+	Error              string `json:"error" default:""`
+	ReasoningContent   string `json:"reasoningContent" default:""`
+	ReasoningTime      int    `json:"reasoningTime" default:""`
+	Content            string `json:"content" default:""`
+	Base64             string `json:"base64,omitempty"`
+	ConversationID     int64  `json:"conversationID"`
+	MessageAssistantID int64  `json:"messageAssistantID"`
+	IsCached           bool   `json:"isCached" default:"false"`      // 是否是缓存内容
+	IsUserMessage      bool   `json:"isUserMessage" default:"false"` // 是否为用户消息
+	PointsDeducted     int    `json:"pointsDeducted,omitempty"`
+	ModelName          string `json:"modelName,omitempty"`
+	StreamSource       string `json:"streamSource,omitempty"`
 }
 
 // WebSocket 响应消息
@@ -283,23 +283,23 @@ func wsHandler(c *gin.Context) {
 
 // WebSocket 请求结构
 type WSRequest struct {
-	Type               string  `json:"type"`
-	ConversationID     int64   `json:"conversationID"`
-	MessageUserID      int64   `json:"messageUserID"`
-	MessageAssistantID int64   `json:"messageAssistantID"`
-	Prompt             string  `json:"prompt"`
-	Model              string  `json:"model"`
-	Base64             string  `json:"base64"`
-	Reasoning          bool    `json:"reasoning"`
-	MessageID          int64   `json:"messageID"`
-	TargetMessageID    int64   `json:"targetMessageID"`
-	ImageMessageID     int64   `json:"imageMessageID"`
-	RegenerateMode     string  `json:"regenerateMode"`
-	MaskBase64         string  `json:"maskBase64"`
-	Size               string  `json:"size"`
-	Format             string  `json:"format"`
-	Quality            string  `json:"quality"`
-	N                  int     `json:"n"`
+	Type               string   `json:"type"`
+	ConversationID     int64    `json:"conversationID"`
+	MessageUserID      int64    `json:"messageUserID"`
+	MessageAssistantID int64    `json:"messageAssistantID"`
+	Prompt             string   `json:"prompt"`
+	Model              string   `json:"model"`
+	Base64             string   `json:"base64"`
+	Reasoning          bool     `json:"reasoning"`
+	MessageID          int64    `json:"messageID"`
+	TargetMessageID    int64    `json:"targetMessageID"`
+	ImageMessageID     int64    `json:"imageMessageID"`
+	RegenerateMode     string   `json:"regenerateMode"`
+	MaskBase64         string   `json:"maskBase64"`
+	Size               string   `json:"size"`
+	Format             string   `json:"format"`
+	Quality            string   `json:"quality"`
+	N                  int      `json:"n"`
 	Temperature        *float32 `json:"temperature,omitempty"`
 	TopP               *float32 `json:"top_p,omitempty"`
 	FrequencyPenalty   *float32 `json:"frequency_penalty,omitempty"`
@@ -356,21 +356,6 @@ func ensureUserPoints(conn *websocket.Conn, user utils.User, modelID string, rea
 		return 0, false
 	}
 	return plannedPoints, true
-}
-
-func extractModelFromMessageContent(content string) string {
-	content = strings.TrimSpace(content)
-	if content == "" {
-		return ""
-	}
-	if !strings.HasPrefix(content, "<model=") {
-		return ""
-	}
-	end := strings.Index(content, ">")
-	if end <= 7 {
-		return ""
-	}
-	return strings.TrimSpace(content[7:end])
 }
 
 func isValidGptImageSize(size string) bool {
@@ -463,7 +448,7 @@ func handleWSRegenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		}
 	}
 	reasoning := false
-	model := extractModelFromMessageContent(targetMessage.Content)
+	model := targetMessage.ModelID
 	if model == "" {
 		model = req.Model
 	}
@@ -550,14 +535,14 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 	// 如果已经生成完成但最终内容为空，先补发兜底消息
 	utils.MessageContentCacheMutex.RLock()
 	finalContent := ""
-	hasAnyContent := false
+	hasContentOrReasoning := false
 	if cachedContent, exists := utils.MessageContentCache[req.MessageAssistantID]; exists {
 		finalContent = strings.TrimSpace(cachedContent.Content)
-		hasAnyContent = strings.TrimSpace(cachedContent.Content) != "" || strings.TrimSpace(cachedContent.ReasoningContent) != ""
+		hasContentOrReasoning = strings.TrimSpace(cachedContent.Content) != "" || strings.TrimSpace(cachedContent.ReasoningContent) != ""
 	}
 	utils.MessageContentCacheMutex.RUnlock()
 
-	if finalContent == "" && !hasAnyContent {
+	if finalContent == "" && !hasContentOrReasoning {
 		fmt.Printf("[generate_end] empty final content, sending fallback conversationID=%d messageAssistantID=%d\n", req.ConversationID, req.MessageAssistantID)
 		sendWSResponse(conn, "generate_response", MSG{
 			Success:            true,
@@ -753,14 +738,14 @@ func handleWSImageGenerate(conn *websocket.Conn, user utils.User, req WSRequest,
 	if !ok {
 		return
 	}
-	
+
 	// 只有在需要时才保存用户消息
 	if saveUserMessage {
 		if err := utils.SaveUserImageMessage(req.ConversationID, req.MessageUserID, req.Prompt, req.Base64); err != nil {
 			fmt.Printf("保存图片用户消息失败: %v\n", err)
 		}
 	}
-	
+
 	if strings.TrimSpace(req.Prompt) == "" {
 		errMsg := "prompt 不能为空"
 		if err := utils.SaveAssistantImageErrorMessage(req.ConversationID, req.MessageAssistantID, req.Model, req.Prompt, errMsg); err != nil {
@@ -982,7 +967,7 @@ func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int6
 	utils.MessageContentCacheMutex.RLock()
 	type resumeMessage struct {
 		messageAssistantID int64
-		content           *utils.MessageContent
+		content            *utils.MessageContent
 	}
 	var pendingMessages []resumeMessage
 	cacheCount := 0
@@ -1018,7 +1003,7 @@ func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int6
 		if msgUserID == userID {
 			pendingMessages = append(pendingMessages, resumeMessage{
 				messageAssistantID: messageAssistantID,
-				content:           content,
+				content:            content,
 			})
 		}
 	}
@@ -1048,15 +1033,15 @@ func handleWSResumeCheck(conn *websocket.Conn, userID int64, conversationID int6
 			for _, result := range imageToolResults {
 				fmt.Printf("[续流回放] 回放图片工具调用结果 toolID=%s\n", result.ToolID)
 				sendWSResponse(conn, "generate_response", gin.H{
-					"success":         true,
-					"content":         "",
-					"base64":          result.Base64Data,
-					"messageKind":     "image",
-					"conversationID":  result.ConversationID,
+					"success":            true,
+					"content":            "",
+					"base64":             result.Base64Data,
+					"messageKind":        "image",
+					"conversationID":     result.ConversationID,
 					"messageAssistantID": result.MessageAssistantID,
-					"isCached":        true,
-					"isUserMessage":   false,
-					"streamSource":    "resume",
+					"isCached":           true,
+					"isUserMessage":      false,
+					"streamSource":       "resume",
 				})
 			}
 
@@ -1545,15 +1530,16 @@ func messagesListHandler(c *gin.Context) {
 		return
 	}
 	responseMessages := make([]struct {
-		ID               int64     `json:"id"`
-		ConversationID   int64     `json:"conversation_id"`
-		Role             string    `json:"role"`
-		Content          string    `json:"content"`
-		ImagePath        string    `json:"image_path,omitempty"`
-		Base64           string    `json:"base64,omitempty"`
-		ReasoningContent string    `json:"reasoning_content,omitempty"`
-		Error            string    `json:"error,omitempty"`
-		CreatedAt        string    `json:"created_at"`
+		ID               int64  `json:"id"`
+		ConversationID   int64  `json:"conversation_id"`
+		Role             string `json:"role"`
+		Content          string `json:"content"`
+		ModelID          string `json:"model_id,omitempty"`
+		ImagePath        string `json:"image_path,omitempty"`
+		Base64           string `json:"base64,omitempty"`
+		ReasoningContent string `json:"reasoning_content,omitempty"`
+		Error            string `json:"error,omitempty"`
+		CreatedAt        string `json:"created_at"`
 	}, 0, len(messages))
 	for _, message := range messages {
 		imageBase64 := ""
@@ -1563,20 +1549,22 @@ func messagesListHandler(c *gin.Context) {
 			}
 		}
 		responseMessages = append(responseMessages, struct {
-			ID               int64     `json:"id"`
-			ConversationID   int64     `json:"conversation_id"`
-			Role             string    `json:"role"`
-			Content          string    `json:"content"`
-			ImagePath        string    `json:"image_path,omitempty"`
-			Base64           string    `json:"base64,omitempty"`
-			ReasoningContent string    `json:"reasoning_content,omitempty"`
-			Error            string    `json:"error,omitempty"`
-			CreatedAt        string    `json:"created_at"`
+			ID               int64  `json:"id"`
+			ConversationID   int64  `json:"conversation_id"`
+			Role             string `json:"role"`
+			Content          string `json:"content"`
+			ModelID          string `json:"model_id,omitempty"`
+			ImagePath        string `json:"image_path,omitempty"`
+			Base64           string `json:"base64,omitempty"`
+			ReasoningContent string `json:"reasoning_content,omitempty"`
+			Error            string `json:"error,omitempty"`
+			CreatedAt        string `json:"created_at"`
 		}{
 			ID:               message.ID,
 			ConversationID:   message.ConversationID,
 			Role:             message.Role,
 			Content:          message.Content,
+			ModelID:          message.ModelID,
 			ImagePath:        message.ImagePath,
 			Base64:           imageBase64,
 			ReasoningContent: message.ReasoningContent,
@@ -1701,7 +1689,7 @@ func loadShareMessagesHandler(c *gin.Context) {
 		Base64           string    `json:"base64,omitempty"`
 		Username         string    `json:"username"`
 		Avatar           string    `json:"avatar"`
-		ModelName        string    `json:"modelName"`
+		ModelID          string    `json:"modelID"`
 	}, 0, len(messages))
 	for _, message := range messages {
 		imageBase64 := ""
@@ -1721,7 +1709,7 @@ func loadShareMessagesHandler(c *gin.Context) {
 			Base64           string    `json:"base64,omitempty"`
 			Username         string    `json:"username"`
 			Avatar           string    `json:"avatar"`
-			ModelName        string    `json:"modelName"`
+			ModelID          string    `json:"modelID"`
 		}{
 			ID:               message.ID,
 			Content:          message.Content,
@@ -1733,7 +1721,7 @@ func loadShareMessagesHandler(c *gin.Context) {
 			Base64:           imageBase64,
 			Username:         message.Username,
 			Avatar:           message.Avatar,
-			ModelName:        message.ModelName,
+			ModelID:          message.ModelID,
 		})
 	}
 
@@ -1873,13 +1861,13 @@ func sttHandler(c *gin.Context) {
 
 // 请求和响应结构体定义
 type generateRequest struct {
-	ConversationID     int64   `json:"conversationID" example:"1234567890"`
-	MessageUserID      int64   `json:"messageUserID" example:"1234567891"`
-	MessageAssistantID int64   `json:"messageAssistantID" example:"1234567892"`
-	Prompt             string  `json:"prompt" example:"你好，帮我写一个 Hello World 程序"`
-	Model              string  `json:"model" example:"gpt-3.5-turbo"`
-	Base64             string  `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
-	Reasoning          bool    `json:"reasoning" example:"false"`
+	ConversationID     int64    `json:"conversationID" example:"1234567890"`
+	MessageUserID      int64    `json:"messageUserID" example:"1234567891"`
+	MessageAssistantID int64    `json:"messageAssistantID" example:"1234567892"`
+	Prompt             string   `json:"prompt" example:"你好，帮我写一个 Hello World 程序"`
+	Model              string   `json:"model" example:"gpt-3.5-turbo"`
+	Base64             string   `json:"base64" example:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="`
+	Reasoning          bool     `json:"reasoning" example:"false"`
 	Temperature        *float32 `json:"temperature,omitempty"`
 	TopP               *float32 `json:"top_p,omitempty"`
 	FrequencyPenalty   *float32 `json:"frequency_penalty,omitempty"`

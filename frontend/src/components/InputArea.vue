@@ -121,6 +121,7 @@ const buildUserMessage = (conversationId: number, messageUserId: number, content
   base64,
   conversationID: conversationId,
   createdAt: new Date().toISOString(),
+  modelName: '',
 });
 
 const buildAssistantPlaceholder = (conversationId: number, messageAssistantId: number): Message => ({
@@ -132,6 +133,7 @@ const buildAssistantPlaceholder = (conversationId: number, messageAssistantId: n
   isStreaming: true,
   disableTyping: false,
   messageKind: isDedicatedImageModel.value ? 'image' : 'text',
+  modelName: '',
 });
 
 const canSendMessage = computed(() => {

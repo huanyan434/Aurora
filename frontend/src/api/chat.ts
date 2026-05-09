@@ -170,6 +170,7 @@ export interface Message {
   conversationID: number
   role: string
   content: string
+  modelName: string
   reasoningContent: string
   createdAt: string
 }

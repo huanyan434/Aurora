@@ -20,9 +20,6 @@
             <span v-else-if="message.modelName" class="share-role">
               {{ message.modelName }}
             </span>
-            <span v-else-if="extractModelName(message.rawContent || message.content)" class="share-role">
-              {{ extractModelName(message.rawContent || message.content) }}
-            </span>
             <span class="share-time">{{ formatTime(message.createdAt) }}</span>
           </div>
 
@@ -178,22 +175,9 @@ const formatTime = (time: string) => {
   });
 };
 
-const extractModelName = (content: string) => {
-  if (!content) return '';
-
-  const modelMatch = content.match(/<model=([^>]+)>/);
-  if (modelMatch && modelMatch[1]) {
-    const modelId = modelMatch[1];
-    const modelInfo = models.value.find((model) => model.id === modelId);
-    return modelInfo ? modelInfo.name : modelId;
-  }
-
-  return '';
-};
-
 const cleanModelContent = (content: string) => {
   if (!content) return '';
-  return content.replace(/<model=[^>]+>/g, '').trim();
+  return content.trim();
 };
 
 const normalizeMessage = (message: Partial<SharedMessage>) => {

@@ -14,7 +14,6 @@ import (
 	"mime"
 	"net/http"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -196,6 +195,7 @@ func extractSummary(content string) string {
 type Message struct {
 	ID               int64     `gorm:"column:id;type:bigint;primaryKey"`
 	Content          string    `gorm:"column:content;type:mediumtext"`
+	ModelID          string    `gorm:"column:model_id;type:varchar(128)"`
 	Role             string    `gorm:"column:role;type:varchar(20)"`
 	ConversationID   int64     `gorm:"column:conversation_id;type:bigint;index"`
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
@@ -214,7 +214,7 @@ type SharedMessage struct {
 	ImagePath        string    `json:"imagePath"`
 	Username         string    `json:"username"`
 	Avatar           string    `json:"avatar"`
-	ModelName        string    `json:"modelName"`
+	ModelID          string    `json:"modelID"`
 }
 
 // TableName 指定Message结构体对应的表名
@@ -678,6 +678,7 @@ type messageFormat struct {
 	ConversationID   int64  `json:"conversation_id"`
 	Role             string `json:"role"`
 	Content          string `json:"content"`
+	ModelID          string `json:"model_id,omitempty"`
 	ImagePath        string `json:"image_path,omitempty"`
 	ReasoningContent string `json:"reasoning_content,omitempty"`
 	Error            string `json:"error,omitempty"`
@@ -699,6 +700,7 @@ func LoadConversationHistoryFormat2(conversationID int64) ([]messageFormat, erro
 			ConversationID:   msg.ConversationID,
 			Role:             msg.Role,
 			Content:          msg.Content,
+			ModelID:          msg.ModelID,
 			ImagePath:        msg.ImagePath,
 			ReasoningContent: msg.ReasoningContent,
 			Error:            msg.Error,
@@ -778,6 +780,7 @@ func SaveConversationHistoryFormat2(conversationID int64, messages []messageForm
 		message := Message{
 			ID:               msg.ID,
 			Content:          msg.Content,
+			ModelID:          msg.ModelID,
 			Role:             msg.Role,
 			ConversationID:   conversationID,
 			ReasoningContent: msg.ReasoningContent,
@@ -851,11 +854,10 @@ func SaveUserImageMessage(conversationID int64, messageUserID int64, prompt stri
 }
 
 func SaveAssistantErrorMessage(conversationID int64, messageAssistantID int64, model string, errMsg string) error {
-	content := "<model=" + model + ">"
-
 	message := Message{
 		ID:             messageAssistantID,
-		Content:        content,
+		Content:        "",
+		ModelID:        model,
 		Role:           "assistant",
 		ConversationID: conversationID,
 		Error:          strings.TrimSpace(errMsg),
@@ -870,11 +872,10 @@ func SaveAssistantErrorMessage(conversationID int64, messageAssistantID int64, m
 }
 
 func SaveAssistantImageErrorMessage(conversationID int64, messageAssistantID int64, model string, prompt string, errMsg string) error {
-	content := "<model=" + model + ">"
-
 	message := Message{
 		ID:             messageAssistantID,
-		Content:        content,
+		Content:        "",
+		ModelID:        model,
 		Role:           "assistant",
 		ConversationID: conversationID,
 		Error:          strings.TrimSpace(errMsg),
@@ -900,11 +901,11 @@ func SaveAssistantImageMessage(conversationID int64, messageAssistantID int64, m
 	if err != nil {
 		return err
 	}
-	content := "<model=" + model + ">"
 
 	message := Message{
 		ID:             messageAssistantID,
-		Content:        content,
+		Content:        "",
+		ModelID:        model,
 		Role:           "assistant",
 		ConversationID: conversationID,
 		ImagePath:      imagePath,
@@ -1399,22 +1400,6 @@ func LoadMessagesByIDs(messageIDs []int64) ([]Message, error) {
 	return orderedMessages, nil
 }
 
-func getModelNameFromContent(content string) string {
-	matches := regexp.MustCompile(`^<model=([^>]+)>`).FindStringSubmatch(content)
-	if len(matches) < 2 {
-		return ""
-	}
-
-	modelID := matches[1]
-	for _, model := range GetConfig().Models {
-		if model.ID == modelID {
-			return model.Name
-		}
-	}
-
-	return ""
-}
-
 func LoadSharedMessagesByIDs(messageIDs []int64) ([]SharedMessage, error) {
 	messages, err := LoadMessagesByIDs(messageIDs)
 	if err != nil {
@@ -1473,7 +1458,7 @@ func LoadSharedMessagesByIDs(messageIDs []int64) ([]SharedMessage, error) {
 			ImagePath:        message.ImagePath,
 			Username:         owner.Username,
 			Avatar:           owner.Avatar,
-			ModelName:        getModelNameFromContent(message.Content),
+			ModelID:          message.ModelID,
 		})
 	}
 
@@ -2105,14 +2090,14 @@ func CreateNotification(title, content string) (*Notification, error) {
 		Title:   title,
 		Content: content,
 	}
-	
+
 	// 生成雪花ID
 	id, err := GenerateSnowflakeId()
 	if err != nil {
 		return nil, err
 	}
 	notification.ID = id
-	
+
 	if err := DB.Create(&notification).Error; err != nil {
 		return nil, err
 	}

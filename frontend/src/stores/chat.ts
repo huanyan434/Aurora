@@ -9,7 +9,7 @@ export interface Message {
   content: string;
   rawContent?: string;
   base64?: string; // 用于存储图片的base64数据
-  modelName?: string;
+  modelName: string;
   error?: string; // 用于存储后端错误信息
   reasoningContent?: string; // 推理内容
   reasoningTime?: number; // 推理时间
@@ -57,6 +57,12 @@ export interface Model {
   description?: string;
   tool?: number;
 }
+
+export const resolveModelName = (modelId: string, models: Model[]) => {
+  if (!modelId) return '';
+  const modelInfo = models.find((model) => model.id === modelId);
+  return modelInfo ? modelInfo.name : modelId;
+};
 
 export interface ModelsListResponse {
   models: Model[];

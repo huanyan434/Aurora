@@ -28,15 +28,9 @@
 
                     <!-- 助手消息 -->
                     <div v-else>
-                        <div v-if="message.modelName"
+                        <div v-if="getDisplayModelName(message.modelName)"
                             class="mb-2 share-model-role">
-                            <span>{{ message.modelName }}</span>
-                            <span v-if="hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1"
-                                class="message-time message-time-inline">{{ formatTime(message.createdAt) }}</span>
-                        </div>
-                        <div v-else-if="extractModelName(message.rawContent || message.content)"
-                            class="mb-2 share-model-role">
-                            <span>{{ extractModelName(message.rawContent || message.content) }}</span>
+                            <span>{{ getDisplayModelName(message.modelName) }}</span>
                             <span v-if="hoveredMessageId === (message.id || null) || index === displayedMessages.length - 1"
                                 class="message-time message-time-inline">{{ formatTime(message.createdAt) }}</span>
                         </div>
@@ -193,7 +187,7 @@ import {
     wsManager,
 } from "@/api/chat";
 import { useRoute, useRouter } from "vue-router";
-import { useChatStore } from "@/stores/chat";
+import { resolveModelName, useChatStore } from "@/stores/chat";
 import type { Message } from '@/stores/chat';
 import ReasoningContent from "./ReasoningContent.vue";
 import DsMarkdown from "./DsMarkdown.vue";
@@ -878,7 +872,7 @@ const handleRegenerateMessage = async (messageId: number | undefined) => {
     }
 
     const messageAssistantId = messageId;
-    const modelId = targetMessage.modelName || extractModelName(targetMessage.rawContent || targetMessage.content) || chatStore.selectedModel;
+    const modelId = targetMessage.modelName || chatStore.selectedModel;
     const modelDisplayName = chatStore.models.find((model) => model.id === modelId)?.name || modelId;
     const isImageRegeneration = isImageModel(modelId) || Boolean(targetMessage.base64) || targetMessage.messageKind === 'image';
     const model = modelId;
@@ -919,7 +913,7 @@ const handleRegenerateMessage = async (messageId: number | undefined) => {
 const copyMessage = async (content: string) => {
     try {
         // 在复制之前移除 <model=xxx> 标签
-        const cleanContent = removeModelTag(content);
+        const cleanContent = content;
 
         // 检查 navigator.clipboard 是否可用
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -966,6 +960,8 @@ const handleImageError = (event: Event) => {
 };
 
 // 获取图片源，处理 Data URL 或纯 base64
+const getDisplayModelName = (modelId: string) => resolveModelName(modelId, models.value);
+
 const getImageSrc = (src: string) => {
     if (!src) return "";
 
@@ -1142,6 +1138,7 @@ const setupGlobalGenerateHandler = () => {
                         isHistory: false,
                         disableTyping: false,
                         messageKind: 'text' as const,
+                    modelName: '',
                     };
                     chatStore.addMessage(convId, tempMessage);
                     void scrollMessagesAreaToBottom(true);
@@ -1198,6 +1195,7 @@ const setupGlobalGenerateHandler = () => {
                     isHistory: false,
                     disableTyping: false,
                     messageKind: placeholderSource?.messageKind || 'text',
+                    modelName: '',
                 });
             }
             chatStore.setIsTyping(true);
@@ -1251,6 +1249,7 @@ const setupGlobalGenerateHandler = () => {
                     isHistory: false,
                     disableTyping: false,
                     messageKind: 'text',
+                    modelName: '',
                 });
             }
             console.log('[缓存消息] 找到续流占位消息，ID:', fallbackId);
@@ -1302,7 +1301,7 @@ const setupGlobalGenerateHandler = () => {
 
             // 更新助手消息
             chatStore.updateMessage(state.messageAssistantId, {
-                content: removeModelTag(state.accumulatedContent),
+                content: state.accumulatedContent,
                 rawContent: state.accumulatedContent,
                 reasoningContent: state.accumulatedReasoningContent,
                 reasoningTime: state.lastReasoningTime,
@@ -1315,7 +1314,7 @@ const setupGlobalGenerateHandler = () => {
             // 更新打字状态的预期内容
             if (state.messageAssistantId) {
                 const typingState = getTypingState(state.messageAssistantId);
-                typingState.expectedContent = removeModelTag(state.accumulatedContent);
+                typingState.expectedContent = state.accumulatedContent;
                 typingState.isTyping = true;
                 // 同步更新全局 isTyping 状态
                 chatStore.setIsTyping(true);
@@ -1358,10 +1357,10 @@ const setupGlobalGenerateHandler = () => {
         if (data.streamSource === 'resume') {
             if (state.messageAssistantId) {
                 const currentMessage = displayedMessages.value.find(msg => msg.id === state.messageAssistantId);
-                const currentModelName = currentMessage?.modelName || extractModelName(currentMessage?.rawContent || currentMessage?.content || state.accumulatedContent) || undefined;
+                const currentModelName = currentMessage?.modelName || undefined;
                 const finalCreatedAt = currentMessage?.createdAt || new Date().toISOString();
                 chatStore.updateMessage(state.messageAssistantId, {
-                    content: removeModelTag(state.accumulatedContent || currentMessage?.content || ''),
+                    content: state.accumulatedContent || currentMessage?.content || '',
                     rawContent: state.accumulatedContent || currentMessage?.rawContent || '',
                     reasoningContent: state.accumulatedReasoningContent || currentMessage?.reasoningContent || '',
                     reasoningTime: state.lastReasoningTime || currentMessage?.reasoningTime || 0,
@@ -1376,7 +1375,7 @@ const setupGlobalGenerateHandler = () => {
             chatStore.setIsGenerating(false);
         } else if (state.messageAssistantId) {
             const currentMessage = displayedMessages.value.find(msg => msg.id === state.messageAssistantId);
-            const currentModelName = currentMessage?.modelName || extractModelName(currentMessage?.rawContent || currentMessage?.content || state.accumulatedContent) || undefined;
+            const currentModelName = currentMessage?.modelName || undefined;
             const finalCreatedAt = currentMessage?.createdAt || new Date().toISOString();
             chatStore.updateMessage(state.messageAssistantId, {
                 isStreaming: false,
@@ -1388,7 +1387,7 @@ const setupGlobalGenerateHandler = () => {
             if (typingState.finalized) {
                 console.log('[generate_end] 已完成最终收尾，跳过重复处理');
             } else {
-                const finalExpectedContent = removeModelTag(state.accumulatedContent);
+                const finalExpectedContent = state.accumulatedContent;
                 typingState.expectedContent = finalExpectedContent;
                 typingState.isTyping = false;
                 typingState.finalized = true;
@@ -1441,27 +1440,6 @@ const setupGlobalGenerateHandler = () => {
 };
 
 
-/**
- * 从消息内容中提取模型名称
- */
-const extractModelName = (content: string) => {
-    if (!content) return null;
-
-    // 匹配 <model=xxx> 格式的模型标识符
-    const modelMatch = content.match(/<model=([^>]+)>/);
-    if (modelMatch && modelMatch[1]) {
-        const modelId = modelMatch[1];
-
-        // 在模型列表中查找对应的名称
-        const modelInfo = models.value.find((model) => model.id === modelId);
-        const modelName = modelInfo ? modelInfo.name : modelId;
-
-        return modelName;
-    }
-
-    return null;
-};
-
 const formatTime = (time: string) => {
     const date = new Date(time);
     if (Number.isNaN(date.getTime())) {
@@ -1475,11 +1453,6 @@ const formatTime = (time: string) => {
         hour: '2-digit',
         minute: '2-digit',
     });
-};
-
-const removeModelTag = (content: string) => {
-    if (!content) return '';
-    return content.replace(/<model=[^>]+>/g, '').trim();
 };
 
 // 加载对话历史消息（使用 HTTP）
@@ -1517,7 +1490,7 @@ const loadConversationHistory = async (conversationId: number) => {
                 }
 
                 const cleanContent = msg.content
-                    ? removeModelTag(msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, "").trim())
+                    ? msg.content.replace(/<think time=\d+>[\s\S]*?<\/think>/g, "").trim()
                     : "";
 
                 return {
@@ -1535,6 +1508,7 @@ const loadConversationHistory = async (conversationId: number) => {
                     isStreaming: false,
                     disableTyping: true, // 历史消息不需要打字效果
                     isHistory: true, // 标记为历史消息，使用 DsMarkdown
+                    modelName: msg.model_id || msg.modelName || '',
                 };
             });
 

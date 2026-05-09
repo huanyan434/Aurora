@@ -408,7 +408,8 @@ func threadOpenaiWithHistory(conversationID int64, messageUserID int64, messageA
 						ID:               messageAssistantID,
 						ConversationID:   conversationID,
 						Role:             "assistant",
-						Content:          "<model=" + model + ">" + aiContentText,
+						Content:          aiContentText,
+						ModelID:        model,
 						ReasoningContent: aiReasoningText,
 						CreatedAt:        time.Now().Format("2006-01-02T15:04:05Z07:00"),
 					}
@@ -1930,12 +1931,9 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 					contentDelta := delta.Content
 					MessageContentCacheMutex.Lock()
 					if content, exists := MessageContentCache[messageAssistantID]; exists {
-						if content.Content == "" {
-							contentDelta = "<model=" + model + ">" + contentDelta
-						}
 						content.Content += delta.Content
 						if content.ResumeMode {
-							content.ContentChunks = append(content.ContentChunks, contentDelta)
+							content.ContentChunks = append(content.ContentChunks, delta.Content)
 						}
 					}
 					MessageContentCacheMutex.Unlock()
