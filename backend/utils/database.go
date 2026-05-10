@@ -40,7 +40,7 @@ func getWebDAVFileURL(relativePath string) string {
 	return baseURL + cleanPath
 }
 
-func uploadImageToWebDAV(userID int64, conversationID int64, imageBase64 string) (string, error) {
+func uploadImageToWebDAV(userID int64, conversationID int64, messageID int64, imageBase64 string) (string, error) {
 	decoded, mimeType, err := decodeDataURLBase64(imageBase64)
 	if err != nil {
 		return "", err
@@ -51,8 +51,8 @@ func uploadImageToWebDAV(userID int64, conversationID int64, imageBase64 string)
 
 	config := GetConfig()
 	rootPath := strings.TrimSpace(config.WebDAV.Path)
-	fileName := fmt.Sprintf("%d.png", conversationID)
-	relativePath := path.Join(rootPath, strconv.FormatInt(userID, 10), fileName)
+	fileName := fmt.Sprintf("%d.png", messageID)
+	relativePath := path.Join(rootPath, strconv.FormatInt(userID, 10), strconv.FormatInt(conversationID, 10), fileName)
 	if !strings.HasPrefix(relativePath, "/") {
 		relativePath = "/" + relativePath
 	}
@@ -826,7 +826,7 @@ func SaveUserImageMessage(conversationID int64, messageUserID int64, prompt stri
 	if userID == 0 {
 		return fmt.Errorf("无法获取对话所属用户")
 	}
-	imagePath, err := uploadImageToWebDAV(userID, conversationID, base64)
+	imagePath, err := uploadImageToWebDAV(userID, conversationID, messageUserID, base64)
 	if err != nil {
 		return err
 	}
@@ -897,7 +897,7 @@ func SaveAssistantImageMessage(conversationID int64, messageAssistantID int64, m
 	if userID == 0 {
 		return fmt.Errorf("无法获取对话所属用户")
 	}
-	imagePath, err := uploadImageToWebDAV(userID, conversationID, base64)
+	imagePath, err := uploadImageToWebDAV(userID, conversationID, messageAssistantID, base64)
 	if err != nil {
 		return err
 	}
