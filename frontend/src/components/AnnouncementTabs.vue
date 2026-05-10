@@ -70,18 +70,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { getAnnouncement, getNotifications } from '@/api/user';
+import { useAnnouncementStore } from '@/stores/announcement';
 
 marked.setOptions({
   breaks: true,
 });
 
 const route = useRoute();
+const announcementStore = useAnnouncementStore();
+announcementStore.loadFromStorage();
 const open = ref(false);
-const activeTab = ref('system'); // 默认显示系统公告
+const activeTab = ref('system');
 
 // 公告数据
 const announcement = ref({
-  title: '',
   summary: '',
   content: '',
   version: '',
@@ -106,18 +108,18 @@ const isVisible = computed(() => shouldShowOnRoute.value && hasAnnouncementConte
 
 const dialogOpen = computed(() => open.value);
 
-const hasNotificationItems = computed(() => notifications.value.length > 0);
 
 const hasSystemAnnouncement = computed(() => {
-  const title = String(announcement.value.title || '').trim();
   const summary = String(announcement.value.summary || '').trim();
   const content = String(announcement.value.content || '').trim();
-  return Boolean(title || summary || content);
+  return Boolean(summary || content);
 });
 
 // 检查是否有公告内容
 const hasAnnouncementContent = computed(() => {
-  return hasSystemAnnouncement.value || hasNotificationItems.value;
+  const hasUnreadNotification = notifications.value.length > 0 && announcementStore.shouldShowNotifications(notifications.value[0]?.createdAt || '')
+  const shouldShowSystemAnnouncement = hasSystemAnnouncement.value && announcementStore.shouldShowSystem(announcement.value.version)
+  return shouldShowSystemAnnouncement || hasUnreadNotification;
 });
 
 // 检查是否应该在当前路由显示公告
@@ -127,16 +129,24 @@ const shouldShowOnRoute = computed(() => {
 
 // 更新打开状态
 const updateOpenState = () => {
-  if (!isVisible.value) {
+  const latestNotification = notifications.value[0];
+  const shouldShowNotification = Boolean(latestNotification?.createdAt) && announcementStore.shouldShowNotifications(latestNotification?.createdAt || '')
+  const shouldShowSystem = hasSystemAnnouncement.value && announcementStore.shouldShowSystem(announcement.value.version)
+
+  if (!shouldShowSystem && !shouldShowNotification) {
     open.value = false;
     return;
   }
 
-  if (hasNotificationItems.value) {
-    activeTab.value = 'notifications';
-  } else {
-    activeTab.value = 'system';
+  if (shouldShowSystem && announcement.value.version) {
+    announcementStore.markSystemSeen(announcement.value.version);
   }
+  if (shouldShowNotification && latestNotification?.createdAt) {
+    announcementStore.markNotificationAck(latestNotification.createdAt);
+  }
+
+  open.value = true;
+  activeTab.value = shouldShowNotification ? 'notifications' : 'system';
 };
 
 // 加载公告数据
@@ -149,7 +159,6 @@ const loadAnnouncement = async () => {
 
     const announcementData = announcementResponse.data || announcementResponse;
     announcement.value = {
-      title: announcementData?.title || '',
       summary: announcementData?.summary || '',
       content: announcementData?.content || '',
       version: announcementData?.version || '',
@@ -171,7 +180,6 @@ const loadAnnouncement = async () => {
   } catch (error) {
     console.error('加载公告失败:', error);
     announcement.value = {
-      title: '',
       summary: '',
       content: '',
       version: '',
@@ -194,9 +202,12 @@ const onOpenChange = (nextOpen: boolean) => {
 // 手动打开公告对话框
 const handleManualOpen = () => {
   open.value = true;
-
-  // 用户手动打开时：默认进入系统公告
   activeTab.value = 'system';
+};
+
+const handleNewNotification = () => {
+  activeTab.value = 'notifications';
+  open.value = true;
 };
 
 // 格式化日期
@@ -223,12 +234,14 @@ watch(
 // 组件挂载时加载公告
 onMounted(() => {
   window.addEventListener('open-announcement-dialog', handleManualOpen as EventListener);
+  window.addEventListener('new-notification', handleNewNotification as EventListener);
   void loadAnnouncement();
 });
 
 // 组件卸载时移除事件监听器
 // onUnmounted(() => {
 //   window.removeEventListener('open-announcement-dialog', handleManualOpen as EventListener);
+//   window.removeEventListener('new-notification', handleNewNotification as EventListener);
 // });
 </script>
 

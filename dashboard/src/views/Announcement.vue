@@ -18,11 +18,6 @@
 
       <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">公告标题</label>
-          <input v-model="form.title" type="text" class="form-input" placeholder="请输入公告标题" />
-        </div>
-
-        <div class="form-group">
           <label class="form-label">公告版本</label>
           <input v-model="form.version" type="text" class="form-input" placeholder="例如：2026-05-01" />
         </div>
@@ -71,7 +66,6 @@ marked.setOptions({
 
 const saving = ref(false)
 const form = ref({
-  title: '',
   content: '',
   enabled: true,
   version: '',
@@ -86,7 +80,6 @@ const loadAnnouncement = async () => {
   const res = await dashboardApi.getAnnouncement()
   if (res.data?.data) {
     form.value = {
-      title: res.data.data.title || '',
       content: res.data.data.content || '',
       enabled: !!res.data.data.enabled,
       version: res.data.data.version || '',
@@ -98,7 +91,6 @@ const saveAnnouncement = async () => {
   saving.value = true
   try {
     await dashboardApi.updateAnnouncement({
-      title: form.value.title,
       summary: '',
       content: form.value.content,
       enabled: form.value.enabled,

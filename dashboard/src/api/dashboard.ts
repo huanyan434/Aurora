@@ -105,7 +105,6 @@ export interface AnnouncementResponse {
 }
 
 export interface UpdateAnnouncementRequest {
-  title: string
   summary: string
   content: string
   enabled: boolean

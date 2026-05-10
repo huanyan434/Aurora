@@ -790,7 +790,6 @@ func announcementHandler(c *gin.Context) {
 		"success": true,
 		"data": gin.H{
 			"id":        strconv.FormatInt(announcement.ID, 10),
-			"title":     announcement.Title,
 			"summary":   announcement.Summary,
 			"content":   announcement.Content,
 			"enabled":   announcement.Enabled,
@@ -820,7 +819,6 @@ func notificationsHandler(c *gin.Context) {
 	for _, item := range notifications {
 		items = append(items, gin.H{
 			"id":        strconv.FormatInt(item.ID, 10),
-			"title":     item.Title,
 			"content":   item.Content,
 			"createdAt": item.CreatedAt.Format(time.DateTime),
 			"updatedAt": item.UpdatedAt.Format(time.DateTime),
@@ -1239,7 +1237,6 @@ func dashboardAnnouncementHandler(c *gin.Context) {
 		"success": true,
 		"data": gin.H{
 			"id":        strconv.FormatInt(announcement.ID, 10),
-			"title":     announcement.Title,
 			"summary":   announcement.Summary,
 			"content":   announcement.Content,
 			"enabled":   announcement.Enabled,
@@ -1267,7 +1264,7 @@ func dashboardUpsertAnnouncementHandler(c *gin.Context) {
 		return
 	}
 
-	announcement, err := utils.UpsertAnnouncement(req.Title, req.Summary, req.Content, req.Enabled, req.Version)
+	announcement, err := utils.UpsertAnnouncement("", req.Summary, req.Content, req.Enabled, req.Version)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"success": false,
@@ -1281,7 +1278,6 @@ func dashboardUpsertAnnouncementHandler(c *gin.Context) {
 		"message": "公告保存成功",
 		"data": gin.H{
 			"id":        strconv.FormatInt(announcement.ID, 10),
-			"title":     announcement.Title,
 			"summary":   announcement.Summary,
 			"content":   announcement.Content,
 			"enabled":   announcement.Enabled,
@@ -1311,7 +1307,6 @@ func dashboardNotificationsHandler(c *gin.Context) {
 	for _, item := range notifications {
 		items = append(items, gin.H{
 			"id":        strconv.FormatInt(item.ID, 10),
-			"title":     item.Title,
 			"content":   item.Content,
 			"createdAt": item.CreatedAt.Format("2006-01-02 15:04:05"),
 			"updatedAt": item.UpdatedAt.Format("2006-01-02 15:04:05"),
@@ -1356,7 +1351,6 @@ func dashboardCreateNotificationHandler(c *gin.Context) {
 		"message": "创建通知成功",
 		"data": gin.H{
 			"id":        strconv.FormatInt(notification.ID, 10),
-			"title":     notification.Title,
 			"content":   notification.Content,
 			"createdAt": notification.CreatedAt.Format("2006-01-02 15:04:05"),
 			"updatedAt": notification.UpdatedAt.Format("2006-01-02 15:04:05"),
@@ -1473,7 +1467,6 @@ type dashboardPointsRecordsResponseFailed struct {
 }
 
 type dashboardAnnouncementRequest struct {
-	Title   string `json:"title"`
 	Summary string `json:"summary"`
 	Content string `json:"content"`
 	Enabled bool   `json:"enabled"`

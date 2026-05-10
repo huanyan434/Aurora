@@ -149,6 +149,7 @@ const openAnnouncementDialog = () => {
     window.dispatchEvent(new CustomEvent('open-announcement-dialog'));
 };
 
+
 const handleLogout = async () => {
     try {
         await logout();
