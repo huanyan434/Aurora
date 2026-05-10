@@ -1,68 +1,74 @@
 <template>
   <Dialog :open="dialogOpen" @update:open="onOpenChange">
-    <DialogContent class="announcement-dialog-content sm:max-w-[50dvw]" :class="{ 'announcement-dialog-content-visible': isVisible }">
-      <DialogHeader class="announcement-dialog-header">
-        <div class="announcement-dialog-badge">
-          <BellRing class="announcement-dialog-badge-icon" />
-        </div>
-        <DialogTitle class="announcement-dialog-title">
-          公告中心
-        </DialogTitle>
-        <DialogDescription class="announcement-dialog-description">
-          {{ activeTab === 'notifications' ? '查看最新通知内容。' : (announcement.summary || '查看系统公告详情。') }}
-        </DialogDescription>
-      </DialogHeader>
+    <DialogContent class="announcement-dialog-content sm:max-w-[50dvw]" :class="dialogContentClass">
+      <div ref="dialogContentRef" class="announcement-dialog-content-inner">
+        <DialogHeader class="announcement-dialog-header">
+          <div class="announcement-dialog-badge">
+            <BellRing class="announcement-dialog-badge-icon" />
+          </div>
+          <DialogTitle class="announcement-dialog-title">
+            公告中心
+          </DialogTitle>
+          <DialogDescription class="announcement-dialog-description">
+            {{ activeTab === 'notifications' ? '查看最新通知内容。' : (announcement.summary || '查看系统公告详情。') }}
+          </DialogDescription>
+        </DialogHeader>
 
-      <div class="announcement-dialog-body">
-        <Tabs v-model="activeTab" class="w-full">
-          <TabsList class="announcement-tabs-list">
-            <TabsTrigger
-              value="system"
-              class="announcement-tabs-trigger data-[state=active]:bg-primary data-[state=active]:text-white"
-            >
-              系统公告
-            </TabsTrigger>
-            <TabsTrigger
-              value="notifications"
-              class="announcement-tabs-trigger data-[state=active]:bg-primary data-[state=active]:text-white"
-            >
-              通知
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="system" class="mt-0">
-            <div v-if="hasSystemAnnouncement" class="announcement-markdown" v-html="renderedContent"></div>
-            <div v-else class="announcement-empty">
-              <div class="announcement-empty-title">暂无系统公告</div>
-              <div class="announcement-empty-description">当前没有启用的系统公告。</div>
-            </div>
-          </TabsContent>
-          <TabsContent value="notifications" class="mt-0">
-            <div v-if="notifications.length > 0" class="announcement-notification-list">
-              <div
-                v-for="notification in notifications"
-                :key="notification.id"
-                class="announcement-notification-item"
+        <div class="announcement-dialog-body">
+          <Tabs v-model="activeTab" class="announcement-tabs-root">
+            <TabsList class="announcement-tabs-list">
+              <TabsTrigger
+                value="system"
+                class="announcement-tabs-trigger data-[state=active]:bg-primary data-[state=active]:text-white"
               >
-                <div class="announcement-notification-content">{{ notification.content }}</div>
-                <div class="announcement-notification-time">{{ formatDate(notification.createdAt) }}</div>
+                系统公告
+              </TabsTrigger>
+              <TabsTrigger
+                value="notifications"
+                class="announcement-tabs-trigger data-[state=active]:bg-primary data-[state=active]:text-white"
+              >
+                通知
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="system" class="announcement-tab-pane">
+              <div class="announcement-tab-panel">
+                <div v-if="hasSystemAnnouncement" class="announcement-markdown" v-html="renderedContent"></div>
+                <div v-else class="announcement-empty">
+                  <div class="announcement-empty-title">暂无系统公告</div>
+                  <div class="announcement-empty-description">当前没有启用的系统公告。</div>
+                </div>
               </div>
-            </div>
-            <div v-else class="announcement-empty">暂无通知</div>
-          </TabsContent>
-        </Tabs>
-      </div>
+            </TabsContent>
+            <TabsContent value="notifications" class="announcement-tab-pane">
+              <div class="announcement-tab-panel">
+                <div v-if="notifications.length > 0" class="announcement-notification-list">
+                  <div
+                    v-for="notification in notifications"
+                    :key="notification.id"
+                    class="announcement-notification-item"
+                  >
+                    <div class="announcement-notification-content">{{ notification.content }}</div>
+                    <div class="announcement-notification-time">{{ formatDate(notification.createdAt) }}</div>
+                  </div>
+                </div>
+                <div v-else class="announcement-empty">暂无通知</div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
 
-      <DialogFooter class="announcement-dialog-footer">
-        <Button class="announcement-dialog-primary" @click="handleDismissNotificationBatch">
-          我知道了
-        </Button>
-      </DialogFooter>
+        <DialogFooter class="announcement-dialog-footer">
+          <Button class="announcement-dialog-primary" @click="handleDismissNotificationBatch">
+            我知道了
+          </Button>
+        </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { BellRing } from 'lucide-vue-next';
 import { marked } from 'marked';
@@ -81,6 +87,9 @@ const announcementStore = useAnnouncementStore();
 announcementStore.loadFromStorage();
 const open = ref(false);
 const activeTab = ref('system');
+const dialogContentRef = ref<HTMLElement | null>(null);
+const dialogContentClass = ref('');
+let dialogContentObserver: ResizeObserver | null = null;
 
 // 公告数据
 const announcement = ref({
@@ -108,7 +117,6 @@ const isVisible = computed(() => shouldShowOnRoute.value && hasAnnouncementConte
 
 const dialogOpen = computed(() => open.value);
 
-
 const hasSystemAnnouncement = computed(() => {
   const summary = String(announcement.value.summary || '').trim();
   const content = String(announcement.value.content || '').trim();
@@ -128,6 +136,39 @@ const shouldShowOnRoute = computed(() => {
 });
 
 // 更新打开状态
+const syncDialogSizeClass = async () => {
+  await nextTick();
+  const el = dialogContentRef.value;
+  if (!el) {
+    dialogContentClass.value = isVisible.value ? 'announcement-dialog-content-visible' : '';
+    return;
+  }
+
+  const width = el.offsetWidth;
+  const height = el.offsetHeight;
+  const classes = ['announcement-dialog-content-visible'];
+  if (height >= window.innerHeight * 0.7) {
+    classes.push('sm:h-[80dvh]');
+  }
+  dialogContentClass.value = classes.join(' ');
+};
+
+const startObserveDialog = () => {
+  const el = dialogContentRef.value;
+  if (!(el instanceof Element) || typeof ResizeObserver === 'undefined') {
+    return;
+  }
+
+  if (dialogContentObserver) {
+    dialogContentObserver.disconnect();
+  }
+
+  dialogContentObserver = new ResizeObserver(() => {
+    void syncDialogSizeClass();
+  });
+  dialogContentObserver.observe(el);
+};
+
 const updateOpenState = () => {
   const latestNotification = notifications.value[0];
   const shouldShowNotification = Boolean(latestNotification?.createdAt) && announcementStore.shouldShowNotifications(latestNotification?.createdAt || '')
@@ -147,6 +188,8 @@ const updateOpenState = () => {
 
   open.value = true;
   activeTab.value = shouldShowNotification ? 'notifications' : 'system';
+  void syncDialogSizeClass();
+  startObserveDialog();
 };
 
 // 加载公告数据
@@ -203,11 +246,15 @@ const onOpenChange = (nextOpen: boolean) => {
 const handleManualOpen = () => {
   open.value = true;
   activeTab.value = 'system';
+  void syncDialogSizeClass();
+  startObserveDialog();
 };
 
 const handleNewNotification = () => {
   activeTab.value = 'notifications';
   open.value = true;
+  void syncDialogSizeClass();
+  startObserveDialog();
 };
 
 // 格式化日期
@@ -231,11 +278,25 @@ watch(
   { immediate: true },
 );
 
+watch(isVisible, () => {
+  void syncDialogSizeClass();
+});
+
 // 组件挂载时加载公告
 onMounted(() => {
   window.addEventListener('open-announcement-dialog', handleManualOpen as EventListener);
   window.addEventListener('new-notification', handleNewNotification as EventListener);
   void loadAnnouncement();
+  startObserveDialog();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('open-announcement-dialog', handleManualOpen as EventListener);
+  window.removeEventListener('new-notification', handleNewNotification as EventListener);
+  if (dialogContentObserver) {
+    dialogContentObserver.disconnect();
+    dialogContentObserver = null;
+  }
 });
 
 // 组件卸载时移除事件监听器
@@ -257,8 +318,14 @@ onMounted(() => {
 
 .announcement-dialog-content {
   width: 70dvw;
+}
+
+.announcement-dialog-content-inner {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  max-height: 80dvh;
   overflow: hidden;
 }
 
@@ -270,7 +337,32 @@ onMounted(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  margin-top: 1rem;
 }
+
+.announcement-tabs-root {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.announcement-tab-pane {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 1rem;
+}
+
+.announcement-tab-panel {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
 
 .announcement-dialog-secondary {
   border-color: rgba(148, 163, 184, 0.35);
@@ -280,7 +372,8 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
 }
 
 .announcement-tabs-trigger {
@@ -322,9 +415,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 24rem;
-  overflow-y: auto;
-  padding-right: 0.25rem;
 }
 
 .announcement-notification-item {
