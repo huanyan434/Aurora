@@ -842,27 +842,30 @@ func GetMessageBase64ByID(messageID int64) (string, error) {
 }
 
 func SaveUserImageMessage(conversationID int64, messageUserID int64, prompt string, base64 string) error {
-	userID := int64(0)
-	if user, err := GetUserByConversationID(conversationID); err == nil {
-		userID = user.ID
-	}
-	if userID == 0 {
-		return fmt.Errorf("无法获取对话所属用户")
-	}
-	imagePath, err := uploadImageToWebDAV(userID, conversationID, messageUserID, base64)
-	if err != nil {
-		return err
-	}
 	message := Message{
 		ID:             messageUserID,
 		Content:        strings.TrimSpace(prompt),
 		Role:           "user",
 		ConversationID: conversationID,
-		ImagePath:      imagePath,
+	}
+
+	if strings.TrimSpace(base64) != "" {
+		userID := int64(0)
+		if user, err := GetUserByConversationID(conversationID); err == nil {
+			userID = user.ID
+		}
+		if userID == 0 {
+			return fmt.Errorf("无法获取对话所属用户")
+		}
+		imagePath, err := uploadImageToWebDAV(userID, conversationID, messageUserID, base64)
+		if err != nil {
+			return err
+		}
+		message.ImagePath = imagePath
 	}
 
 	// 尝试创建消息，如果主键冲突则返回错误
-	err = GetDB().Create(&message).Error
+	err := GetDB().Create(&message).Error
 	if err != nil {
 		// 检查是否是主键冲突错误
 		if strings.Contains(err.Error(), "Duplicate entry") && strings.Contains(err.Error(), "PRIMARY") {
@@ -872,7 +875,7 @@ func SaveUserImageMessage(conversationID int64, messageUserID int64, prompt stri
 		fmt.Printf("[image_db] 保存用户消息失败 conversationID=%d messageUserID=%d err=%v\n", conversationID, messageUserID, err)
 		return err
 	}
-	fmt.Printf("[image_db] 保存用户消息成功 conversationID=%d messageUserID=%d prompt_len=%d base64_len=%d\n", conversationID, messageUserID, len(strings.TrimSpace(prompt)), len(strings.TrimSpace(base64)))
+	fmt.Printf("[image_db] 保存用户消息成功 conversationID=%d messageUserID=%d prompt_len=%d base64_len=%d image_path=%s\n", conversationID, messageUserID, len(strings.TrimSpace(prompt)), len(strings.TrimSpace(base64)), message.ImagePath)
 	return nil
 }
 
