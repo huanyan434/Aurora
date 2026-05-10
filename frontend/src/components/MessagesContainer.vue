@@ -1385,6 +1385,9 @@ const setupGlobalGenerateHandler = () => {
 
             const typingState = getTypingState(state.messageAssistantId);
             if (typingState.finalized) {
+                typingState.isTyping = false;
+                chatStore.setIsTyping(false);
+                chatStore.setIsGenerating(false);
                 console.log('[generate_end] 已完成最终收尾，跳过重复处理');
             } else {
                 const finalExpectedContent = state.accumulatedContent;
