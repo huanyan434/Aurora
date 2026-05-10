@@ -144,7 +144,6 @@ const syncDialogSizeClass = async () => {
     return;
   }
 
-  const width = el.offsetWidth;
   const height = el.offsetHeight;
   const classes = ['announcement-dialog-content-visible'];
   if (height >= window.innerHeight * 0.7) {

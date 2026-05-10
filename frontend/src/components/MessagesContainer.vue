@@ -21,7 +21,7 @@
 
                         <!-- 图片附件 -->
                         <div v-if="message.base64" class="mt-2">
-                            <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded cursor-pointer"
+                            <img :src="getImageSrc(message.base64)" alt="上传的图片" class="max-w-10 max-h-10 h-auto w-auto rounded cursor-pointer"
                                 @click="openImagePreview(message.base64)" @error="handleImageError" />
                         </div>
                     </div>
@@ -47,7 +47,7 @@
 
                         <!-- 图片附件 -->
                         <div v-if="message.base64" class="mt-2">
-                            <img :src="getImageSrc(message.base64)" alt="助手返回的图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700 cursor-pointer"
+                            <img :src="getImageSrc(message.base64)" alt="助手返回的图片" class="max-w-10 max-h-10 h-auto w-auto rounded border border-gray-300 dark:border-gray-700 cursor-pointer"
                                 @click="openImagePreview(message.base64)" @load="() => handleHistoryImageLoad(message.id)" @error="handleImageError" />
                         </div>
 
@@ -662,7 +662,7 @@ const renderUserContent = (content: string) => {
             // 检查是否已经是完整的 data:image URL
             if (trimmedContent.startsWith("data:image/")) {
                 // 如果是完整的 data URL，直接使用
-                return `<img src="${trimmedContent}" alt="嵌入图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
+                return `<img src="${trimmedContent}" alt="嵌入图片" class="max-w-10 max-h-10 h-auto w-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
             }
             // 否则检查是否为纯 base64 字符串
             else {
@@ -691,7 +691,7 @@ const renderUserContent = (content: string) => {
                         imageType = "tiff";
                     }
 
-                    return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-[10rem] max-h-[10rem] h-auto w-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
+                    return `<img src="data:image/${imageType};base64,${trimmedContent}" alt="嵌入图片" class="max-w-10 max-h-10 h-auto w-auto rounded border border-gray-300 dark:border-gray-700" onerror="this.style.display='none'" onload="this.style.display='block'" />`;
                 } else {
                     // 如果不是有效的 base64，返回空字符串（移除标签）
                     console.warn(
