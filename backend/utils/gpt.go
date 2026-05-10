@@ -1387,15 +1387,11 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 		}
 		MessageContentCacheMutex.Lock()
 		if content, exists := MessageContentCache[messageAssistantID]; exists {
+			content.Content = finalContent
+			content.ReasoningContent = finalReasoningContent
 			content.Completed = true
 		}
 		MessageContentCacheMutex.Unlock()
-
-		endResp, _ := json.Marshal(Response{
-			Success: true,
-			Content: "",
-		})
-		resp <- string(endResp)
 	}()
 
 	// 流式读取响应

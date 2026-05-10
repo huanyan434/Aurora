@@ -532,28 +532,13 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		// 更新缓存内容已在 gpt.go 的 Openai 函数中完成，此处不再重复更新
 	}
 
-	// 如果已经生成完成但最终内容为空，先补发兜底消息
+	// 如果已经生成完成但最终内容为空，不再额外补发 fallback，直接结束
 	utils.MessageContentCacheMutex.RLock()
 	finalContent := ""
-	hasContentOrReasoning := false
 	if cachedContent, exists := utils.MessageContentCache[req.MessageAssistantID]; exists {
 		finalContent = strings.TrimSpace(cachedContent.Content)
-		hasContentOrReasoning = strings.TrimSpace(cachedContent.Content) != "" || strings.TrimSpace(cachedContent.ReasoningContent) != ""
 	}
 	utils.MessageContentCacheMutex.RUnlock()
-
-	if finalContent == "" && !hasContentOrReasoning {
-		fmt.Printf("[generate_end] empty final content, sending fallback conversationID=%d messageAssistantID=%d\n", req.ConversationID, req.MessageAssistantID)
-		sendWSResponse(conn, "generate_response", MSG{
-			Success:            true,
-			ReasoningContent:   "",
-			ReasoningTime:      0,
-			Content:            "当前内容为空，请重新生成。",
-			ConversationID:     req.ConversationID,
-			MessageAssistantID: req.MessageAssistantID,
-			ModelName:          utils.GetModelName(req.Model),
-		})
-	}
 
 	if !generationFailed && finalContent != "" && plannedPointsDeducted > 0 {
 		if err := utils.AddPoints(user.ID, -plannedPointsDeducted, "使用大语言模型"); err != nil {
