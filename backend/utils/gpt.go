@@ -1392,6 +1392,14 @@ func Openai(ctx context.Context, conversationID int64, messageUserID int64, mess
 			content.Completed = true
 		}
 		MessageContentCacheMutex.Unlock()
+
+		endResp, _ := json.Marshal(Response{
+			Success:            true,
+			Content:            finalContent,
+			ReasoningContent:   finalReasoningContent,
+			PointsDeductReason: "",
+		})
+		resp <- string(endResp)
 	}()
 
 	// 流式读取响应

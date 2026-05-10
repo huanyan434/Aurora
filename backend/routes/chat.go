@@ -498,6 +498,8 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		PresencePenalty:  req.PresencePenalty,
 	}
 	generationFailed := false
+	finalContent := ""
+	finalReasoningContent := ""
 	resp := utils.ThreadOpenai(req.ConversationID, req.MessageUserID, req.MessageAssistantID, req.Model, req.Prompt, req.Base64, req.Reasoning, params)
 	for response := range resp {
 		var msg MSG
@@ -518,6 +520,12 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		}
 
 		reasoningTime, reasoningContent, _ := utils.ParseThinkBlock(parsedResponse.ReasoningContent)
+		if strings.TrimSpace(parsedResponse.ReasoningContent) != "" {
+			finalReasoningContent += parsedResponse.ReasoningContent
+		}
+		if strings.TrimSpace(parsedResponse.Content) != "" {
+			finalContent += parsedResponse.Content
+		}
 		msg = MSG{
 			Success:            true,
 			ReasoningContent:   reasoningContent,
@@ -532,11 +540,14 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		// 更新缓存内容已在 gpt.go 的 Openai 函数中完成，此处不再重复更新
 	}
 
-	// 如果已经生成完成但最终内容为空，不再额外补发 fallback，直接结束
 	utils.MessageContentCacheMutex.RLock()
-	finalContent := ""
-	if cachedContent, exists := utils.MessageContentCache[req.MessageAssistantID]; exists {
-		finalContent = strings.TrimSpace(cachedContent.Content)
+	if finalContent == "" {
+		if cachedContent, exists := utils.MessageContentCache[req.MessageAssistantID]; exists {
+			finalContent = strings.TrimSpace(cachedContent.Content)
+			if finalReasoningContent == "" {
+				finalReasoningContent = strings.TrimSpace(cachedContent.ReasoningContent)
+			}
+		}
 	}
 	utils.MessageContentCacheMutex.RUnlock()
 
@@ -565,6 +576,8 @@ func handleWSGenerate(conn *websocket.Conn, user utils.User, req WSRequest) {
 		"pointsDeducted":     pointsDeducted,
 		"pointsDeductReason": pointsDeductReason,
 		"modelName":          utils.GetModelName(req.Model),
+		"content":            finalContent,
+		"reasoningContent":   finalReasoningContent,
 	})
 }
 
