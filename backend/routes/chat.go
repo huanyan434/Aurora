@@ -270,7 +270,7 @@ func wsHandler(c *gin.Context) {
 		case "stt":
 			handleWSSTT(conn, userInfo, req.Base64)
 		case "image_generate":
-			handleWSImageGenerate(conn, userInfo, req, true) // 新生成图片时需要保存用户消息
+			handleWSImageGenerate(conn, userInfo, req, false) // 新生成图片不需要保存用户消息
 		case "image_edit":
 			handleWSImageEdit(conn, userInfo, req)
 		case "resume_check":
