@@ -51,13 +51,12 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '23'
+        node-version: '24'
 
-    - name: Install pnpm via npm
-      run: |
-        echo "Installing pnpm..."
-        npm install -g pnpm
-        pnpm --version
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.33.2
 
     - name: Install Dependencies
       run: pnpm install --frozen-lockfile
@@ -85,13 +84,12 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '23'
+        node-version: '24'
 
-    - name: Install pnpm via npm
-      run: |
-        echo "Installing pnpm..."
-        npm install -g pnpm
-        pnpm --version
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.33.2
 
     - name: Install Dependencies
       run: pnpm install --frozen-lockfile
@@ -119,13 +117,12 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '23'
+        node-version: '24'
 
-    - name: Install pnpm via npm
-      run: |
-        echo "Installing pnpm..."
-        npm install -g pnpm
-        pnpm --version
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.33.2
 
     - name: Install Dependencies
       run: pnpm install --frozen-lockfile
