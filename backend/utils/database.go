@@ -1342,6 +1342,22 @@ func LoadShareMessages(shareID string) ([]int64, error) {
 func DeleteConversation(conversationID int64) error {
 	db := GetDB()
 
+	var messages []Message
+	if err := db.Table("messages").Where("conversation_id = ?", conversationID).Find(&messages).Error; err != nil {
+		return err
+	}
+
+	for _, message := range messages {
+		if strings.TrimSpace(message.ImagePath) == "" {
+			continue
+		}
+		if err := deleteImageFromWebDAV(message.ImagePath); err != nil {
+			fmt.Printf("[image_db] 删除对话图片失败 conversationID=%d messageID=%d image_path=%s err=%v\n", conversationID, message.ID, message.ImagePath, err)
+		} else {
+			fmt.Printf("[image_db] 删除对话图片成功 conversationID=%d messageID=%d image_path=%s\n", conversationID, message.ID, message.ImagePath)
+		}
+	}
+
 	// 使用事务保证数据一致性
 	tx := db.Begin()
 	defer func() {
