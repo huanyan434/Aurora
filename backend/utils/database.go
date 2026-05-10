@@ -80,6 +80,29 @@ func uploadImageToWebDAV(userID int64, conversationID int64, messageID int64, im
 	return relativePath, nil
 }
 
+func deleteImageFromWebDAV(relativePath string) error {
+	request, err := http.NewRequest(http.MethodDelete, getWebDAVFileURL(relativePath), nil)
+	if err != nil {
+		return err
+	}
+	config := GetConfig()
+	if user := strings.TrimSpace(config.WebDAV.User); user != "" {
+		request.SetBasicAuth(user, strings.TrimSpace(config.WebDAV.Pass))
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		body, _ := io.ReadAll(response.Body)
+		return fmt.Errorf("webdav 删除失败: status=%s body=%s", response.Status, strings.TrimSpace(string(body)))
+	}
+	return nil
+}
+
 func downloadImageFromWebDAV(relativePath string) (string, error) {
 	request, err := http.NewRequest(http.MethodGet, getWebDAVFileURL(relativePath), nil)
 	if err != nil {
@@ -1574,7 +1597,19 @@ func GetPreviousUserMessageBefore(conversationID int64, messageID int64) (*Messa
 func DeleteMessage(messageID int64) {
 	db := GetDB()
 	var message Message
-	db.Table("messages").Where("id = ?", messageID).First(&message).Delete(&message)
+	if err := db.Table("messages").Where("id = ?", messageID).First(&message).Error; err != nil {
+		return
+	}
+
+	if strings.TrimSpace(message.ImagePath) != "" {
+		if err := deleteImageFromWebDAV(message.ImagePath); err != nil {
+			fmt.Printf("[image_db] 删除图片文件失败 messageID=%d image_path=%s err=%v\n", messageID, message.ImagePath, err)
+		} else {
+			fmt.Printf("[image_db] 删除图片文件成功 messageID=%d image_path=%s\n", messageID, message.ImagePath)
+		}
+	}
+
+	db.Delete(&message)
 }
 
 // RecordPointsChange 记录积分变动
